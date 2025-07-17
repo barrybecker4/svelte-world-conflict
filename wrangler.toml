@@ -1,0 +1,28 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "svelte-world-conflict"
+compatibility_date = "2024-05-15"
+pages_build_output_dir = "dist"
+
+# Add nodejs compatibility for SvelteKit
+compatibility_flags = ["nodejs_compat"]
+
+[env.preview]
+kv_namespaces = [
+    { binding = "WORLD_CONFLICT_KV", id = "preview-kv-namespace-id-here" }
+]
+
+# Add services to preview environment (using production WebSocket worker)
+[env.preview.durable_objects]
+bindings = [
+    { name = "WEBSOCKET_HIBERNATION_SERVER", class_name = "WebSocketHibernationServer", script_name = "svelte-world-conflict-websocket" }
+]
+
+[env.production]
+kv_namespaces = [
+    { binding = "WORLD_CONFLICT_KV", id = "production-kv-namespace-id-here" }
+]
+
+[env.production.durable_objects]
+bindings = [
+    { name = "WEBSOCKET_HIBERNATION_SERVER", class_name = "WebSocketHibernationServer", script_name = "svelte-world-conflict-websocket" }
+]
