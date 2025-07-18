@@ -1,10 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { KVStorage } from '$lib/storage/kv.ts';
-import { GameStorage } from '$lib/storage/games.ts';
+import {
+    WorldConflictKVStorage,
+    WorldConflictGameStorage,
+} from '$lib/storage/world-conflict/index.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.js';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 
 interface MoveRequest {
     playerId: string;
@@ -25,8 +27,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const { gameId } = params;
         const moveData = await request.json() as MoveRequest;
 
-        const kv = new KVStorage(platform!);
-        const gameStorage = new GameStorage(kv);
+        const kv = new WorldConflictKVStorage(platform!);
+        const gameStorage = new WorldConflictGameStorage(kv);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {

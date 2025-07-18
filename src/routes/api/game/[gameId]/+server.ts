@@ -1,14 +1,16 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { KVStorage } from '$lib/storage/kv.ts';
-import { GameStorage } from '$lib/storage/games.ts';
+import {
+    WorldConflictKVStorage,
+    WorldConflictGameStorage,
+} from '$lib/storage/world-conflict/index.ts';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
     try {
         const { gameId } = params;
 
-        const kv = new KVStorage(platform!);
-        const gameStorage = new GameStorage(kv);
+        const kv = new WorldConflictKVStorage(platform!);
+        const gameStorage = new WorldConflictGameStorage(kv);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {

@@ -1,9 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { KVStorage } from '$lib/storage/kv.ts';
-import { GameStorage } from '$lib/storage/games.ts';
+import {
+    WorldConflictKVStorage,
+    WorldConflictGameStorage,
+} from '$lib/storage/world-conflict/index.ts';
+import { GameStorage } from '$lib/server/storage.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.js';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { Player, Region } from '$lib/game/types.ts';
 
 // Default World Conflict map data
@@ -33,8 +36,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         return json({ error: 'Player name required' }, { status: 400 });
     }
 
-    const kv = new KVStorage(platform!);
-    const gameStorage = new GameStorage(kv);
+    const kv = new WorldConflictKVStorage(platform!);
+    const gameStorage = new WorldConflictGameStorage(kv);
 
     const envInfo = WebSocketNotificationHelper.getEnvironmentInfo(platform!);
 
