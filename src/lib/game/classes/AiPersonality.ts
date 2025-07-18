@@ -2,9 +2,8 @@
  * AI Personality class for World Conflict
  * Defines how AI players behave in the game
  */
-
-import type { AiLevel, UpgradeType } from '../constants.js';
-import { UPGRADES } from '../constants.js';
+import { UPGRADES } from '$lib/game/constants/upgradeDefinitions.js';
+import { type AiLevel } from '$lib/game/constants/aiPersonalities.js';
 
 export interface AiPersonalityData {
     name: string;

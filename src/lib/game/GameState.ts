@@ -1,4 +1,4 @@
-import type { Player, Region, Temple, Upgrade } from './types';
+import type { Player, Region, Temple } from './types';
 
 export interface GameStateData {
     turnIndex: number;
