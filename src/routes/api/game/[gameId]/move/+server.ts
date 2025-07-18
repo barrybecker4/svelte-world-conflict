@@ -1,77 +1,112 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { validateGameId, validateMoveRequest } from '$lib/server/validation';
-import { kvGetJSON, kvPutJSON } from '$lib/server/kv';
-import { GameNotifications } from '$lib/server/websocket';
+import type { RequestHandler } from './$types.ts';
+import { KVStorage } from '$lib/storage/kv.ts';
+import { GameStorage } from '$lib/storage/games.ts';
+import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
+import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.js';
+
+interface MoveRequest {
+    playerId: string;
+    moveType: 'ARMY_MOVE' | 'BUILD' | 'END_TURN';
+
+    // Army move specific
+    source?: number;
+    destination?: number;
+    count?: number;
+
+    // Build specific
+    regionIndex?: number;
+    upgradeIndex?: number;
+}
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
-        const gameIdValidation = validateGameId(params.gameId);
-        if (!gameIdValidation.success) {
-            return json({ error: gameIdValidation.error }, { status: 400 });
-        }
+        const { gameId } = params;
+        const moveData = await request.json() as MoveRequest;
 
-        const body = await request.json();
-        const validation = validateMoveRequest(body);
-        if (!validation.success) {
-            return json({ error: validation.error }, { status: 400 });
-        }
+        const kv = new KVStorage(platform!);
+        const gameStorage = new GameStorage(kv);
 
-        const gameId = gameIdValidation.data;
-        const { playerId, move } = validation.data;
-
-        // Get current game data
-        const gameData = await kvGetJSON(platform, `game:${gameId}`);
-
-        if (!gameData) {
+        const game = await gameStorage.getGame(gameId);
+        if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        // Validate move
-        if (gameData.status !== 'ACTIVE') {
-            return json({ error: 'Game is not active' }, { status: 400 });
-        }
+        // Reconstruct World Conflict game state
+        const worldConflictState = new WorldConflictGameState(game.worldConflictState);
 
-        // Verify player is part of the game
-        const player = gameData.players.find((p: any) => p.id === playerId);
+        // Find player
+        const player = worldConflictState.getPlayers().find(p => p.id === moveData.playerId);
         if (!player) {
-            return json({ error: 'Player not found in game' }, { status: 400 });
+            return json({ error: 'Player not found' }, { status: 404 });
         }
 
-        // Process move
-        if (!gameData.moves) {
-            gameData.moves = [];
+        // Create appropriate command
+        let command;
+        switch (moveData.moveType) {
+            case 'ARMY_MOVE':
+                if (moveData.source === undefined || moveData.destination === undefined || moveData.count === undefined) {
+                    return json({ error: 'Missing army move parameters' }, { status: 400 });
+                }
+                command = new ArmyMoveCommand(
+                    worldConflictState,
+                    player,
+                    moveData.source,
+                    moveData.destination,
+                    moveData.count
+                );
+                break;
+
+            case 'BUILD':
+                if (moveData.regionIndex === undefined || moveData.upgradeIndex === undefined) {
+                    return json({ error: 'Missing build parameters' }, { status: 400 });
+                }
+                command = new BuildCommand(
+                    worldConflictState,
+                    player,
+                    moveData.regionIndex,
+                    moveData.upgradeIndex
+                );
+                break;
+
+            case 'END_TURN':
+                command = new EndTurnCommand(worldConflictState, player);
+                break;
+
+            default:
+                return json({ error: 'Invalid move type' }, { status: 400 });
         }
 
-        const moveRecord = {
-            playerId,
-            move,
-            timestamp: Date.now()
+        // Process command
+        const processor = new CommandProcessor();
+        const result = processor.process(command);
+
+        if (!result.success) {
+            return json({ error: result.error }, { status: 400 });
+        }
+
+        // Save updated game state
+        const updatedGame = {
+            ...game,
+            worldConflictState: result.newState!.toJSON(),
+            lastMoveAt: Date.now(),
+            status: result.newState!.endResult ? 'COMPLETED' : 'ACTIVE'
         };
 
-        gameData.moves.push(moveRecord);
-        gameData.lastUpdate = Date.now();
+        await gameStorage.saveGame(updatedGame);
 
-        // Check if game ended
-        const isGameEnding = move.type === 'SURRENDER' || move.type === 'VICTORY';
-        if (isGameEnding) {
-            gameData.status = 'FINISHED';
-            gameData.endedAt = Date.now();
-        }
+        // Send WebSocket updates
+        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
-        // Update game in KV
-        await kvPutJSON(platform, `game:${gameId}`, gameData);
+        return json({
+            success: true,
+            gameState: result.newState!.toJSON(),
+            command: command.serialize()
+        });
 
-        // Notify other players
-        if (isGameEnding) {
-            await GameNotifications.gameEnded(gameId, gameData, player);
-        } else {
-            await GameNotifications.gameStateChanged(gameId, gameData, moveRecord);
-        }
-
-        return json({ success: true, gameData });
     } catch (error) {
-        console.error('Error processing move:', error);
-        return json({ error: 'Failed to process move' }, { status: 500 });
+        console.error('Error in World Conflict move:', error);
+        return json({ error: 'Internal server error' }, { status: 500 });
     }
 };

@@ -1,26 +1,30 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { validateGameId } from '$lib/server/validation';
-import { kvGetJSON } from '$lib/server/kv';
+import type { RequestHandler } from './$types.ts';
+import { KVStorage } from '$lib/storage/kv.ts';
+import { GameStorage } from '$lib/storage/games.ts';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
     try {
-        const gameIdValidation = validateGameId(params.gameId);
+        const { gameId } = params;
 
-        if (!gameIdValidation.success) {
-            return json({ error: gameIdValidation.error }, { status: 400 });
-        }
+        const kv = new KVStorage(platform!);
+        const gameStorage = new GameStorage(kv);
 
-        const gameId = gameIdValidation.data;
-        const gameData = await kvGetJSON(platform, `game:${gameId}`);
-
-        if (!gameData) {
+        const game = await gameStorage.getGame(gameId);
+        if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        return json({ gameData });
+        return json({
+            gameId: game.gameId,
+            players: game.players,
+            status: game.status,
+            worldConflictState: game.worldConflictState,
+            createdAt: game.createdAt,
+            lastMoveAt: game.lastMoveAt
+        });
     } catch (error) {
-        console.error('Error fetching game:', error);
-        return json({ error: 'Failed to fetch game' }, { status: 500 });
+        console.error('Error in /api/game/[gameId]:', error);
+        return json({ error: 'Internal server error' }, { status: 500 });
     }
 };
