@@ -1,10 +1,59 @@
 <script>
-  function handleStartGame() {
-    alert('Game setup coming soon!');
+  import { onMount } from 'svelte';
+  import GameInstructions from '$lib/components/GameInstructions.svelte';
+  import GameLobby from '$lib/components/GameLobby.svelte';
+  import GameConfiguration from '$lib/components/GameConfiguration.svelte';
+
+  let showInstructions = true; // Auto-show on load
+  let showLobby = false;
+  let showConfiguration = false;
+  let hasOpenGames = false;
+  let loading = false;
+
+  onMount(() => {
+    // Instructions will show immediately
+    console.log('📖 Auto-showing instructions on page load');
+  });
+
+  async function handleInstructionsComplete() {
+    console.log('✅ Instructions complete - checking for open games');
+    showInstructions = false;
+    loading = true;
+
+    try {
+      // Check if there are any open games
+      const response = await fetch('/api/games/open');
+      if (response.ok) {
+        const openGames = await response.json();
+        hasOpenGames = openGames.length > 0;
+
+        if (hasOpenGames) {
+          console.log(`🎮 Found ${openGames.length} open games - showing lobby`);
+          showLobby = true;
+        } else {
+          console.log('🆕 No open games - showing game configuration');
+          showConfiguration = true;
+        }
+      } else {
+        console.log('🆕 API error - showing game configuration');
+        showConfiguration = true;
+      }
+    } catch (error) {
+      console.log('🆕 Network error - showing game configuration');
+      showConfiguration = true;
+    } finally {
+      loading = false;
+    }
   }
 
-  function handleJoinGame() {
-    alert('Join game feature coming soon!');
+  function handleLobbyClose() {
+    showLobby = false;
+    showConfiguration = true; // Go to game configuration instead of buttons
+  }
+
+  function handleConfigurationClose() {
+    showConfiguration = false;
+    showInstructions = true; // Back to instructions
   }
 </script>
 
@@ -45,22 +94,18 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
-      <button
-        class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg font-semibold text-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg"
-        on:click={handleStartGame}
-      >
-        Start New Game
-      </button>
-
-      <button
-        class="w-full sm:w-auto px-8 py-4 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold text-lg transition-all duration-200 border border-gray-600"
-        on:click={handleJoinGame}
-      >
-        Join Game
-      </button>
-    </div>
+    <!-- Content based on state -->
+    {#if loading}
+      <div class="text-center">
+        <div class="inline-block w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-gray-300">Checking for available games...</p>
+      </div>
+    {:else if !showInstructions && !showLobby && !showConfiguration}
+      <div class="text-center">
+        <p class="text-gray-300 mb-4">Welcome to World Conflict!</p>
+        <p class="text-gray-400 text-sm">Preparing your strategic experience...</p>
+      </div>
+    {/if}
 
     <!-- Features Grid -->
     <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -97,3 +142,18 @@
     </div>
   </div>
 </div>
+
+<!-- Instructions Modal - Shows automatically on load -->
+{#if showInstructions}
+  <GameInstructions on:complete={handleInstructionsComplete} />
+{/if}
+
+<!-- Game Lobby - Shows if open games exist -->
+{#if showLobby}
+  <GameLobby gameMode="join" on:close={handleLobbyClose} />
+{/if}
+
+<!-- Game Configuration - Shows when creating new game -->
+{#if showConfiguration}
+  <GameConfiguration on:close={handleConfigurationClose} />
+{/if}
