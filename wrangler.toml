@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [env.preview]
 kv_namespaces = [
-    { binding = "WORLD_CONFLICT_KV", id = "preview-kv-namespace-id-here" }
+    { binding = "WORLD_CONFLICT_KV", id = "a776ced349e4415ab2b2f7c519fb9642" }
 ]
 
 # Add services to preview environment (using production WebSocket worker)
@@ -19,10 +19,11 @@ bindings = [
 
 [env.production]
 kv_namespaces = [
-    { binding = "WORLD_CONFLICT_KV", id = "production-kv-namespace-id-here" }
+    { binding = "WORLD_CONFLICT_KV", id = "374d788f7a834bc3ad81f660362bd64" }
 ]
 
 [env.production.durable_objects]
 bindings = [
     { name = "WEBSOCKET_HIBERNATION_SERVER", class_name = "WebSocketHibernationServer", script_name = "svelte-world-conflict-websocket" }
 ]
+

@@ -1,8 +1,6 @@
 /**
  * WebSocket Worker for World Conflict
- * Handles real-time multiplayer communication using Cloudflare Durable Objects
  */
-
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
@@ -38,7 +36,6 @@ async function handleDurableObjectRequest(request, env) {
             const body = await request.json();
             gameId = body.gameId;
         } catch {
-            // If we can't parse the body, use a default room
             gameId = 'default';
         }
     }
@@ -130,26 +127,23 @@ export class WebSocketHibernationServer {
      */
     async handleNotification(request) {
         try {
-            const body = await request.json();
-            const { gameId, message } = body;
+            const { gameId, type, data } = await request.json();
 
-            console.log(`📢 Broadcasting to game ${gameId}:`, message.type);
+            if (!gameId || !type) {
+                return new Response('Missing gameId or type', { status: 400 });
+            }
 
             // Broadcast to all sessions subscribed to this game
-            await this.broadcastToGame(gameId, message);
+            this.broadcastToGame(gameId, {
+                type,
+                data,
+                timestamp: Date.now()
+            });
 
-            return new Response(JSON.stringify({ success: true }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
+            return new Response('Notification sent', { status: 200 });
         } catch (error) {
-            console.error('WebSocket notification error:', error);
-            return new Response(JSON.stringify({
-                success: false,
-                error: error.message
-            }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
+            console.error('Error handling notification:', error);
+            return new Response('Error processing notification', { status: 500 });
         }
     }
 
@@ -157,62 +151,78 @@ export class WebSocketHibernationServer {
      * Handle incoming WebSocket messages
      */
     handleMessage(sessionId, message) {
-        console.log(`📨 Received message from ${sessionId}:`, message.type);
+        console.log(`Message from ${sessionId}:`, message.type);
 
         switch (message.type) {
             case 'subscribe':
                 this.handleSubscribe(sessionId, message.gameId);
                 break;
+
             case 'unsubscribe':
                 this.handleUnsubscribe(sessionId);
                 break;
+
             case 'ping':
-                this.sendToSession(sessionId, { type: 'pong', timestamp: Date.now() });
+                this.sendToSession(sessionId, {
+                    type: 'pong',
+                    timestamp: Date.now()
+                });
                 break;
+
             default:
                 console.warn(`Unknown message type: ${message.type}`);
+                this.sendToSession(sessionId, {
+                    type: 'error',
+                    data: { error: `Unknown message type: ${message.type}` },
+                    timestamp: Date.now()
+                });
         }
     }
 
     /**
-     * Subscribe a session to a game
+     * Handle game subscription
      */
     handleSubscribe(sessionId, gameId) {
         if (!gameId) {
             this.sendToSession(sessionId, {
                 type: 'error',
-                data: { error: 'gameId is required for subscription' },
+                data: { error: 'Missing gameId' },
                 timestamp: Date.now()
             });
             return;
         }
 
+        // Store subscription
         this.gameSubscriptions.set(sessionId, gameId);
-        console.log(`✅ Session ${sessionId} subscribed to game ${gameId}`);
 
+        // Send confirmation
         this.sendToSession(sessionId, {
             type: 'subscribed',
-            gameId: gameId,
+            gameId,
             timestamp: Date.now()
         });
+
+        console.log(`Session ${sessionId} subscribed to game ${gameId}`);
     }
 
     /**
-     * Unsubscribe a session from its current game
+     * Handle game unsubscription
      */
     handleUnsubscribe(sessionId) {
         const gameId = this.gameSubscriptions.get(sessionId);
         if (gameId) {
             this.gameSubscriptions.delete(sessionId);
-            console.log(`❌ Session ${sessionId} unsubscribed from game ${gameId}`);
+            console.log(`Session ${sessionId} unsubscribed from game ${gameId}`);
         }
     }
 
     /**
-     * Handle client disconnect
+     * Handle session disconnect
      */
     handleDisconnect(sessionId) {
-        console.log(`🔌 Session ${sessionId} disconnected`);
+        console.log(`Session ${sessionId} disconnected`);
+
+        // Clean up
         this.sessions.delete(sessionId);
         this.gameSubscriptions.delete(sessionId);
     }
@@ -221,12 +231,12 @@ export class WebSocketHibernationServer {
      * Send message to a specific session
      */
     sendToSession(sessionId, message) {
-        const session = this.sessions.get(sessionId);
-        if (session && session.readyState === WebSocket.READY_STATE_OPEN) {
+        const ws = this.sessions.get(sessionId);
+        if (ws && ws.readyState === WebSocket.READY_STATE_OPEN) {
             try {
-                session.send(JSON.stringify(message));
+                ws.send(JSON.stringify(message));
             } catch (error) {
-                console.error(`Failed to send message to session ${sessionId}:`, error);
+                console.error(`Error sending to session ${sessionId}:`, error);
                 this.handleDisconnect(sessionId);
             }
         }
@@ -235,7 +245,7 @@ export class WebSocketHibernationServer {
     /**
      * Broadcast message to all sessions subscribed to a game
      */
-    async broadcastToGame(gameId, message) {
+    broadcastToGame(gameId, message) {
         let sentCount = 0;
 
         for (const [sessionId, subscribedGameId] of this.gameSubscriptions.entries()) {
@@ -245,14 +255,14 @@ export class WebSocketHibernationServer {
             }
         }
 
-        console.log(`📤 Broadcast to ${sentCount} sessions for game ${gameId}`);
-        return sentCount;
+        console.log(`Broadcast to ${sentCount} sessions for game ${gameId}`);
     }
 
     /**
      * Generate unique session ID
      */
     generateSessionId() {
-        return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        return Math.random().toString(36).substring(2, 15) +
+            Math.random().toString(36).substring(2, 15);
     }
 }

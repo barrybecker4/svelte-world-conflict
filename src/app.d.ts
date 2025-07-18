@@ -10,8 +10,16 @@ declare global {
     interface PageState {}
     interface Platform {
       env: {
-        TTT_GAME_KV: KVNamespace;
-        WEBSOCKET_HIBERNATION_SERVER?: DurableObjectNamespace;
+        WORLD_CONFLICT_KV: {
+          get(key: string): Promise<string | null>;
+          put(key: string, value: string): Promise<void>;
+          delete(key: string): Promise<void>;
+          list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>;
+        };
+        WEBSOCKET_HIBERNATION_SERVER: {
+          idFromName(name: string): any;
+          get(id: any): any;
+        };
       };
       context: {
         waitUntil(promise: Promise<any>): void;
