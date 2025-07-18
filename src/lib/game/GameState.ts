@@ -47,7 +47,6 @@ export class GameState {
 
     // Constants - these would typically come from a game data manager
     private static readonly BASE_MOVES_PER_TURN = 3;
-    private static readonly MAX_TEMPLE_LEVEL = 3;
 
     constructor(data: GameStateData) {
         this.turnIndex = data.turnIndex;
@@ -277,11 +276,7 @@ export class GameState {
 
         // Check if regions are adjacent
         const sourceRegion = regions.find(r => r.index === fromRegion);
-        if (!sourceRegion || !sourceRegion.neighbors.includes(toRegion)) {
-            return false;
-        }
-
-        return true;
+        return !(!sourceRegion || !sourceRegion.neighbors.includes(toRegion));
     }
 
     // ==================== RESOURCE MANAGEMENT ====================

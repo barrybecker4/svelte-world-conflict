@@ -1,5 +1,5 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
-import { PlatformProxy } from 'wrangler';
+//import { PlatformProxy } from 'wrangler';
 
 // See https://kit.svelte.dev/docs/types#app
 declare global {

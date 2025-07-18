@@ -103,7 +103,6 @@ describe('GameState', () => {
 
         it('should set and remove owners correctly', () => {
             const alice = mockPlayers[0];
-            const bob = mockPlayers[1];
 
             // Transfer ownership
             gameState.setOwner(1, alice);
