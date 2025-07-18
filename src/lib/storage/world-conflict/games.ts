@@ -140,7 +140,7 @@ export class WorldConflictGameStorage {
             if (!game) return null;
 
             // Check if player already in game
-            if (game.players.some(p => p.id === player.id)) {
+            if (game.players.some(p => p.index === player.index)) {
                 return game;
             }
 
@@ -154,7 +154,7 @@ export class WorldConflictGameStorage {
             }
 
             // Map player to game
-            await this.kv.put(`wc_player:${player.id}:game`, gameId);
+            await this.kv.put(`wc_player:${player.index}:game`, gameId);
 
             await this.saveGame(game);
             return game;
@@ -222,7 +222,7 @@ export class WorldConflictGameStorage {
 
             // Remove player mappings
             for (const player of game.players) {
-                await this.kv.delete(`wc_player:${player.id}:game`);
+                await this.kv.delete(`wc_player:${player.index}:game`);
             }
 
             await this.kv.delete(`wc_game:${gameId}`);

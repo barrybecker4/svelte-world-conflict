@@ -1,6 +1,7 @@
 import type { GameState } from '../GameState.ts';
 import type { Player } from '../types.ts';
 import { AttackSequenceGenerator, type AttackEvent } from './AttackSequenceGenerator.ts';
+import type { WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
 
 export interface ValidationResult {
     valid: boolean;
@@ -8,13 +9,13 @@ export interface ValidationResult {
 }
 
 export abstract class Command {
-    protected gameState: GameState;
+    protected gameState: WorldConflictGameState;
     protected player: Player;
     protected timestamp: string;
     protected id: string;
     protected previousState?: GameState;
 
-    constructor(gameState: GameState, player: Player) {
+    constructor(gameState: WorldConflictGameState, player: Player) {
         this.gameState = gameState;
         this.player = player;
         this.timestamp = new Date().toISOString();
@@ -46,7 +47,7 @@ export class ArmyMoveCommand extends Command {
     public attackSequence?: AttackEvent[];
 
     constructor(
-        gameState: GameState,
+        gameState: WorldConflictGameState,
         player: Player,
         source: number,
         destination: number,
@@ -182,7 +183,7 @@ export class BuildCommand extends Command {
     public upgradeIndex: number;
 
     constructor(
-        gameState: GameState,
+        gameState: WorldConflictGameState,
         player: Player,
         regionIndex: number,
         upgradeIndex: number
@@ -340,7 +341,7 @@ export class EndTurnCommand extends Command {
     private determineWinner(state: GameState, players: Player[]): Player | 'DRAWN_GAME' {
         const scores = players.map(player => ({
             player,
-            score: state.regionCount(player) * 1000 + state.totalSoldiers(player)
+            score: state.regionCount(player) * 1000 + state.totalSoldiers(player, this.gameState.getRegions())
         }));
 
         scores.sort((a, b) => b.score - a.score);

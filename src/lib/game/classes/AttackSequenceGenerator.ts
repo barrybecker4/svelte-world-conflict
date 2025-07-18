@@ -1,5 +1,6 @@
 import type { GameState } from '../GameState.ts';
 import type { Player } from '../types.ts';
+import type {WorldConflictGameState} from "$lib/game/WorldConflictGameState.ts";
 
 export interface AttackEvent {
     attackerCasualties?: number;
@@ -24,18 +25,21 @@ export class AttackSequenceGenerator {
     private fromRegion: number;
     private toRegion: number;
     private soldiers: number;
-    private state: GameState;
+    private state: WorldConflictGameState;
     private incomingSoldiers: number;
     private fromOwner: Player | null;
     private toOwner: Player | null;
 
-    // Combat constants
     private static readonly WIN_THRESHOLD = 120;
 
     constructor(armyMove: ArmyMoveData) {
         this.fromRegion = armyMove.source;
         this.toRegion = armyMove.destination;
         this.soldiers = armyMove.count;
+        this.state = new WorldConflictGameState();
+        this.incomingSoldiers = 0;
+        this.fromOwner = null;
+        this.toOwner = null;
     }
 
     /**

@@ -17,7 +17,7 @@ export interface WorldConflictGameStateData {
     // World Conflict specific
     owners: Record<number, number>; // regionIndex -> playerIndex
     temples: Record<number, Temple>; // regionIndex -> Temple
-    soldiersByRegion: Record<number, Array<{ i: string }>>; // regionIndex -> soldiers
+    soldiersByRegion: Record<number, Array<{ i: number }>>; // regionIndex -> soldiers
     cash: Record<number, number>; // playerIndex -> cash amount
 
     // Optional state
@@ -39,7 +39,7 @@ export interface WorldConflictGameStateData {
 export class WorldConflictGameState extends GameState {
     public owners: Record<number, number>;
     public temples: Record<number, Temple>;
-    public soldiersByRegion: Record<number, Array<{ i: string }>>;
+    public soldiersByRegion: Record<number, { i: number }[]>;
     public cash: Record<number, number>;
     public simulatingPlayer?: Player;
     public floatingText?: FloatingText[];
@@ -53,15 +53,20 @@ export class WorldConflictGameState extends GameState {
 
     constructor(data: WorldConflictGameStateData) {
         super({
+            // GameStateData: movesRemaining, soldiersByRegion, cash, id
+            id: data.id,
+            movesRemaining: data.movesRemaining,
+            soldiersByRegion: data.soldiersByRegion,
+            cash: data.cash,
             gameId: data.gameId,
-            players: data.players.map(p => ({ id: p.id, name: p.name })),
-            status: data.endResult ? 'COMPLETED' : 'ACTIVE',
+            playerIndex: data.playerIndex,
+            owners: data.owners,
+            temples: data.temples,
+            //players: data.players,
+            //status: data.endResult ? 'COMPLETED' : 'ACTIVE',
             turnIndex: data.turnIndex,
-            board: [], // Not used in World Conflict
-            player1: data.players[0] ? { id: data.players[0].id, name: data.players[0].name } : { id: '', name: '' },
-            player2: data.players[1] ? { id: data.players[1].id, name: data.players[1].name } : null,
-            lastMoveAt: Date.now(),
-            createdAt: Date.now()
+            //board: [], // Not used in World Conflict
+            //createdAt: Date.now()
         });
 
         this.owners = data.owners || {};
@@ -111,7 +116,7 @@ export class WorldConflictGameState extends GameState {
     /**
      * Get soldiers array at a region
      */
-    soldiersAtRegion(regionIndex: number): Array<{ i: string }> {
+    soldiersAtRegion(regionIndex: number): Array<{ i: number }> {
         if (!this.soldiersByRegion[regionIndex]) {
             this.soldiersByRegion[regionIndex] = [];
         }
@@ -124,7 +129,7 @@ export class WorldConflictGameState extends GameState {
     addSoldiers(regionIndex: number, count: number): void {
         const soldierList = this.soldiersAtRegion(regionIndex);
         for (let i = 0; i < count; i++) {
-            const soldierId = Math.random().toString(36).substr(2, 9);
+            const soldierId = Math.random(); // .toString(36).substr(2, 9);
             soldierList.push({ i: soldierId });
         }
     }
