@@ -2,12 +2,12 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import {
     WorldConflictKVStorage,
-    WorldConflictGameStorage, type WorldConflictGameRecord,
+    WorldConflictGameStorage,
+    type WorldConflictGameRecord
 } from '$lib/storage/world-conflict/index.ts';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
+import { WorldConflictGameState, type Player, type Region } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
-import { generateGameId, generatePlayerId } from "$lib/server/api-utils.ts";
+import { createPlayer, generateGameId, generatePlayerId, getErrorMessage } from '$lib/server/api-utils.ts';
 
 // Default World Conflict map data
 const DEFAULT_REGIONS: Region[] = [
@@ -28,131 +28,146 @@ interface NewGameRequest {
 }
 
 export const POST: RequestHandler = async ({ request, platform }) => {
-    const { playerName, gameType = 'MULTIPLAYER' } = await request.json() as NewGameRequest;
+    try {
+        const { playerName, gameType = 'MULTIPLAYER' } = await request.json() as NewGameRequest;
 
-    console.log(`🎯 NEW WORLD CONFLICT GAME: Player "${playerName}" wants to play`);
+        console.log(`🎯 NEW GAME REQUEST: Player "${playerName}" wants to play`);
 
-    if (!playerName) {
-        return json({ error: 'Player name required' }, { status: 400 });
-    }
+        if (!playerName) {
+            return json({ error: 'Player name required' }, { status: 400 });
+        }
 
-    const kv = new WorldConflictKVStorage(platform!);
-    const gameStorage = new WorldConflictGameStorage(kv);
+        const kv = new WorldConflictKVStorage(platform!);
+        const gameStorage = new WorldConflictGameStorage(kv);
 
-    const envInfo = WebSocketNotificationHelper.getEnvironmentInfo(platform!);
+        try {
+            // Check for existing open games that this player can join
+            const openGames = await gameStorage.getOpenGames();
+            console.log(`📋 Found ${openGames.length} open games`);
 
-    // Try to find an existing game to join
-    const availableGame = await findAvailableGame(gameStorage, playerName, platform!);
-    if (availableGame) {
-        return json({
-            gameId: availableGame.gameId,
-            players: availableGame.players,
-            playerId: availableGame.newPlayerId,
-            playerIndex: availableGame.playerIndex,
-            status: 'ACTIVE',
-            regions: DEFAULT_REGIONS,
-            webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
-        });
-    }
+            for (const game of openGames) {
+                // Check if player can join this game
+                if (game.status === 'PENDING' && game.players.length < 4) {
+                    // Make sure player isn't already in the game
+                    const existingPlayer = game.players.find(p => p.name === playerName);
+                    if (!existingPlayer) {
+                        console.log(`🎮 Adding ${playerName} to existing game ${game.gameId}`);
 
-    // Create new game
-    const newGame = await createNewWorldConflictGame(playerName, gameType, gameStorage);
+                        // Add player to existing game - use createPlayer to ensure proper typing
+                        const newPlayer = createPlayer(playerName, game.players.length, false);
+                        // Add id property for compatibility
+                        const newPlayerWithId = { ...newPlayer, id: generatePlayerId() };
 
-    return json({
-        gameId: newGame.gameId,
-        players: newGame.players,
-        playerId: newGame.players[0].id,
-        playerIndex: 0,
-        status: gameType === 'AI' ? 'ACTIVE' : 'PENDING',
-        regions: DEFAULT_REGIONS,
-        webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
-    });
-};
+                        const updatedPlayers = [...game.players, newPlayerWithId];
 
-async function findAvailableGame(gameStorage: WorldConflictGameStorage, playerName: string, platform: App.Platform) {
-    // Look for games waiting for players
-    const waitingGames = await gameStorage.getGamesByStatus('PENDING');
+                        const updatedGame: WorldConflictGameRecord = {
+                            ...game,
+                            players: updatedPlayers,
+                            status: updatedPlayers.length >= 2 ? 'ACTIVE' : 'PENDING',
+                            lastMoveAt: Date.now()
+                        };
 
-    for (const game of waitingGames) {
-        if (game.players.length < 4 && !game.players.some(p => p.name === playerName)) {
-            // Add player to existing game
-            const newPlayerId = generatePlayerId();
-            const playerIndex = game.players.length;
+                        await gameStorage.saveGame(updatedGame);
 
-            const updatedPlayers = [
-                ...game.players,
-                { id: newPlayerId, name: playerName, index: playerIndex }
+                        // Send WebSocket notification using the proper WorldConflictGameRecord
+                        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+
+                        return json({
+                            success: true,
+                            gameId: game.gameId,
+                            playerIndex: newPlayer.index,
+                            players: updatedPlayers.map(p => ({
+                                name: p.name,
+                                index: p.index,
+                                color: p.color,
+                                isAI: p.isAI
+                            })),
+                            status: updatedGame.status,
+                            message: updatedGame.status === 'ACTIVE' ? 'Game started!' : 'Waiting for more players...'
+                        });
+                    }
+                }
+            }
+
+            // Create new game
+            const gameId = generateGameId();
+
+            // Create players using the createPlayer utility function to ensure proper typing
+            const players: Player[] = [
+                { ...createPlayer(playerName, 0, false), id: generatePlayerId() }
             ];
 
-            // Convert to World Conflict game state
-            const worldConflictGame = WorldConflictGameState.createInitialState(
-                game.gameId,
-                updatedPlayers as Player[],
-                DEFAULT_REGIONS
-            );
+            // Add AI players for AI games
+            if (gameType === 'AI') {
+                players.push(
+                    { ...createPlayer('AI Warrior', 1, true), id: generatePlayerId() },
+                    { ...createPlayer('AI Strategist', 2, true), id: generatePlayerId() }
+                );
+            }
 
-            await gameStorage.saveGame({
-                ...game,
-                players: updatedPlayers,
-                status: updatedPlayers.length >= 2 ? 'ACTIVE' : 'PENDING'
+            const status = gameType === 'AI' ? 'ACTIVE' : 'PENDING';
+
+            // Create initial game state for AI games
+            let worldConflictState = null;
+            if (gameType === 'AI') {
+                const wcGameState = WorldConflictGameState.createInitialState(
+                    gameId,
+                    players,
+                    DEFAULT_REGIONS
+                );
+                worldConflictState = wcGameState.toJSON();
+            }
+
+            // Create properly typed WorldConflictGameRecord
+            const newGame: WorldConflictGameRecord = {
+                gameId,
+                players,
+                status: status as 'PENDING' | 'ACTIVE' | 'COMPLETED',
+                createdAt: Date.now(),
+                lastMoveAt: Date.now(),
+                currentPlayerIndex: 0, // Add missing required property
+                worldConflictState: worldConflictState || {
+                    turnIndex: 1,
+                    playerIndex: 0,
+                    movesRemaining: 3,
+                    owners: {},
+                    temples: {},
+                    soldiersByRegion: {},
+                    cash: {},
+                    id: 1,
+                    gameId,
+                    players: players,
+                    regions: DEFAULT_REGIONS
+                }
+            };
+
+            await gameStorage.saveGame(newGame);
+
+            console.log(`✅ Created new ${gameType} game ${gameId} for ${playerName}`);
+
+            return json({
+                success: true,
+                gameId,
+                players: players.map(p => ({
+                    name: p.name,
+                    index: p.index,
+                    color: p.color,
+                    isAI: p.isAI
+                })),
+                playerIndex: 0,
+                status,
+                message: gameType === 'AI' ? 'Game started!' : 'Waiting for other players...'
             });
 
-            const gameRecord = worldConflictGame.toJSON() as WorldConflictGameRecord;
-            await WebSocketNotificationHelper.sendGameUpdate(gameRecord, platform);
-
-            return {
-                gameId: game.gameId,
-                players: updatedPlayers,
-                newPlayerId,
-                playerIndex
-            };
+        } catch (error) {
+            console.error('❌ Error creating new game:', error);
+            return json({
+                error: 'Failed to create game: ' + getErrorMessage(error)
+            }, { status: 500 });
         }
+
+    } catch (error) {
+        console.error('❌ Error in /api/game/new:', error);
+        return json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    return null;
-}
-
-async function createNewWorldConflictGame(
-    playerName: string,
-    gameType: string,
-    gameStorage: WorldConflictGameStorage
-) {
-    const gameId = generateGameId();
-    const players: Player[] = [
-        { id: generatePlayerId(), name: playerName, index: 0 }
-    ];
-
-    // Add AI players if requested
-    if (gameType === 'AI') {
-        players.push(
-            { id: generatePlayerId(), name: 'AI Warrior', index: 1 },
-            { id: generatePlayerId(), name: 'AI Strategist', index: 2 }
-        );
-    }
-
-    const worldConflictGame = WorldConflictGameState.createInitialState(
-        gameId,
-        players,
-        DEFAULT_REGIONS
-    );
-
-    const gameData = {
-        gameId,
-        players: players.map(p => ({ id: p.id, name: p.name })),
-        status: gameType === 'AI' ? 'ACTIVE' : 'PENDING' as const,
-        createdAt: Date.now(),
-        lastMoveAt: Date.now(),
-        worldConflictState: worldConflictGame.toJSON(),
-    };
-
-    await gameStorage.saveGame(gameData);
-
-    console.log(`✅ NEW WORLD CONFLICT GAME CREATED: ${gameId}`);
-    console.log(`   Players: ${players.map(p => p.name).join(', ')}`);
-
-    return {
-        gameId,
-        players,
-        gameData: worldConflictGame.toJSON()
-    };
-}
+};

@@ -1,4 +1,3 @@
-import type { GameState } from '../game/GameState.ts';
 import type {WorldConflictGameRecord} from "$lib/storage/world-conflict";
 
 // Update with your deployed worker URL

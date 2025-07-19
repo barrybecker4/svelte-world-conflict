@@ -1,5 +1,10 @@
 import { AttackSequenceGenerator, type AttackEvent } from './AttackSequenceGenerator.ts';
-import { type Player, WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
+import {
+    type Player,
+    type Soldier,
+    WorldConflictGameState
+} from "$lib/game/WorldConflictGameState.ts";
+import type { Region } from '$lib/game/WorldConflictGameState.ts';
 
 export interface ValidationResult {
     valid: boolean;
@@ -71,7 +76,7 @@ export class ArmyMoveCommand extends Command {
 
         // Check if regions are neighbors (requires regions data)
         const regions = this.gameState.getRegions();
-        const sourceRegion = regions.find(r => r.index === this.source);
+        const sourceRegion = regions.find((r: Region) => r.index === this.source);
         if (sourceRegion && !sourceRegion.neighbors.includes(this.destination)) {
             errors.push("Destination must be a neighboring region");
         }
@@ -115,22 +120,19 @@ export class ArmyMoveCommand extends Command {
         const fromList = state.soldiersAtRegion(this.source);
         const toList = state.soldiersAtRegion(this.destination);
 
-        // Process combat if there was an attack sequence
-        if (this.attackSequence) {
-            this.processCombat(state, fromList, toList);
+        if (this.attackSequence && this.attackSequence.length > 0) {
+            // Combat occurred - handle casualties and potential conquest
+            this.handleCombatResult(state, fromList, toList);
+        } else {
+            // Peaceful move between own regions
+            this.transferSoldiers(state, fromList, toList, this.count);
         }
 
-        // Move remaining soldiers
-        const soldiersToMove = Math.min(this.count, fromList.length);
-        const movedSoldiers = fromList.splice(0, soldiersToMove);
-        toList.push(...movedSoldiers);
-
-        // Update ownership if destination was conquered
-        if (this.attackSequence && toList.length > 0 && !state.isOwnedBy(this.destination, this.player)) {
-            state.setOwner(this.destination, this.player);
-            if (!state.conqueredRegions) {
-                state.conqueredRegions = [];
-            }
+        // Update conquered regions if this was a conquest
+        if (!state.conqueredRegions) {
+            state.conqueredRegions = [];
+        }
+        if (!state.isOwnedBy(this.destination, this.player) && toList.length === 0) {
             state.conqueredRegions.push(this.destination);
         }
 
@@ -157,6 +159,43 @@ export class ArmyMoveCommand extends Command {
                 for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
                     toList.shift();
                 }
+            }
+        }
+    }
+
+    private handleCombatResult(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[]): void {
+        // Apply attack sequence results
+        if (this.attackSequence) {
+            for (const event of this.attackSequence) {
+                if (event.attackerCasualties) {
+                    // Remove attacker casualties
+                    for (let i = 0; i < event.attackerCasualties && fromList.length > 0; i++) {
+                        fromList.pop();
+                    }
+                }
+                if (event.defenderCasualties) {
+                    // Remove defender casualties
+                    for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
+                        toList.pop();
+                    }
+                }
+            }
+        }
+
+        // If defenders are eliminated, conquer the region
+        if (toList.length === 0) {
+            state.owners[this.destination] = this.player.index;
+            // Move remaining attackers to conquered region
+            this.transferSoldiers(state, fromList, toList, Math.min(this.count, fromList.length));
+        }
+    }
+
+    private transferSoldiers(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[], count: number): void {
+        const actualCount = Math.min(count, fromList.length);
+        for (let i = 0; i < actualCount; i++) {
+            const soldier = fromList.pop();
+            if (soldier) {
+                toList.push(soldier);
             }
         }
     }
@@ -233,7 +272,6 @@ export class BuildCommand extends Command {
         const temple = newState.temples[this.regionIndex];
         if (temple) {
             // Update temple based on upgrade type
-            // This is a simplified implementation - adjust based on your game rules
             if (this.upgradeIndex === 1) { // SOLDIER upgrade
                 // Buy soldier
                 newState.numBoughtSoldiers = (newState.numBoughtSoldiers || 0) + 1;

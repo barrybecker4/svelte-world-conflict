@@ -1,3 +1,5 @@
+import { UPGRADES } from '$lib/game/constants/upgradeDefinitions.js';
+
 /**
  * World Conflict Game State - Consolidated Implementation
  * This replaces both GameState.ts and WorldConflictGameState.ts
@@ -146,6 +148,15 @@ export class WorldConflictGameState {
     get floatingText(): FloatingText[] | undefined { return this.state.floatingText ? [...this.state.floatingText] : undefined; }
     get conqueredRegions(): number[] | undefined { return this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined; }
     get simulatingPlayer(): Player | undefined { return this.state.simulatingPlayer; }
+    get numBoughtSoldiers(): number | undefined { return this.state.numBoughtSoldiers; }
+    set numBoughtSoldiers(value: number | undefined) { this.state.numBoughtSoldiers = value; }
+
+    set turnIndex(value: number) { this.state.turnIndex = value; }
+    set playerIndex(value: number) { this.state.playerIndex = value; }
+    set movesRemaining(value: number) { this.state.movesRemaining = value; }
+    set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
+    set floatingText(value: FloatingText[] | undefined) { this.state.floatingText = value; }
+    set conqueredRegions(value: number[] | undefined) { this.state.conqueredRegions = value; }
 
     // ==================== GAME LOGIC METHODS ====================
 
@@ -204,6 +215,115 @@ export class WorldConflictGameState {
 
     getPlayerById(id: string): Player | undefined {
         return this.state.players.find(p => p.id === id);
+    }
+
+    /**
+     * Get the current upgrade level for specified player and upgrade type
+     * @param player - The player to check upgrades for (null for neutral forces)
+     * @param upgradeTypeName - The upgrade type name (e.g., 'DEFENSE', 'FIRE', 'WATER', etc.)
+     * @returns The maximum upgrade level for that type, or 0 if none found
+     */
+    upgradeLevel(player: Player | null, upgradeTypeName: string): number {
+        if (!player) {
+            // neutral forces always have upgrade level 0
+            return 0;
+        }
+
+        // Map upgrade type names to upgrade definitions
+        const upgradeTypeMap: Record<string, any> = {
+            'DEFENSE': UPGRADES.EARTH,
+            'FIRE': UPGRADES.FIRE,
+            'WATER': UPGRADES.WATER,
+            'AIR': UPGRADES.AIR,
+            'EARTH': UPGRADES.EARTH,
+            'SOLDIER': UPGRADES.SOLDIER,
+            'REBUILD': UPGRADES.REBUILD
+        };
+
+        const upgradeType = upgradeTypeMap[upgradeTypeName];
+        if (!upgradeType) {
+            console.warn(`Unknown upgrade type: ${upgradeTypeName}`);
+            return 0;
+        }
+
+        let maxLevel = 0;
+
+        // Check all regions for temples owned by this player
+        for (const region of this.state.regions) {
+            const temple = this.state.temples[region.index];
+
+            if (temple && this.isOwnedBy(region.index, player)) {
+                // Check if this temple has the right type of upgrade
+                if (temple.upgradeIndex &&
+                    temple.upgradeIndex === upgradeType.index) {
+
+                    // Get the upgrade level value from the upgrade definition
+                    const currentLevel = temple.level || 0;
+                    if (currentLevel < upgradeType.level.length) {
+                        const levelValue = upgradeType.level[currentLevel];
+                        maxLevel = Math.max(maxLevel, levelValue);
+                    }
+                }
+            }
+        }
+
+        return maxLevel;
+    }
+
+    /**
+     * Get the raw upgrade level (temple level + 1) for specified player and upgrade type
+     * This is used for checking upgrade prerequisites
+     */
+    rawUpgradeLevel(player: Player | null, upgradeTypeName: string): number {
+        if (!player) {
+            return 0;
+        }
+
+        const upgradeTypeMap: Record<string, any> = {
+            'DEFENSE': UPGRADES.EARTH,
+            'FIRE': UPGRADES.FIRE,
+            'WATER': UPGRADES.WATER,
+            'AIR': UPGRADES.AIR,
+            'EARTH': UPGRADES.EARTH,
+            'SOLDIER': UPGRADES.SOLDIER,
+            'REBUILD': UPGRADES.REBUILD
+        };
+
+        const upgradeType = upgradeTypeMap[upgradeTypeName];
+        if (!upgradeType) {
+            return 0;
+        }
+
+        let maxLevel = 0;
+
+        // Get all temples for this player
+        for (const region of this.state.regions) {
+            const temple = this.state.temples[region.index];
+
+            if (temple && this.isOwnedBy(region.index, player)) {
+                if (temple.upgradeIndex &&
+                    temple.upgradeIndex === upgradeType.index) {
+                    const level = (temple.level || 0) + 1;
+                    maxLevel = Math.max(maxLevel, level);
+                }
+            }
+        }
+
+        return maxLevel;
+    }
+
+    /**
+     * Get players array (for compatibility with existing code)
+     */
+    getPlayers(): Player[] {
+        return this.players;
+    }
+
+    /**
+     * Get regions array (for compatibility with existing code)
+     */
+    getRegions(): Region[] {
+        return this.regions;
     }
 
     // ==================== STATE MUTATIONS ====================
