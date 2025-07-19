@@ -22,6 +22,40 @@ function getErrorMessage(error: unknown): string {
     return String(error);
 }
 
+export const GET: RequestHandler = async ({ params, platform }) => {
+    try {
+        const { gameId } = params;
+
+        if (!gameId) {
+            return json({ error: 'Game ID is required' }, { status: 400 });
+        }
+
+        const kv = new WorldConflictKVStorage(platform!);
+        const gameStorage = new WorldConflictGameStorage(kv);
+
+        const game = await gameStorage.getGame(gameId);
+        if (!game) {
+            return json({ error: 'Game not found' }, { status: 404 });
+        }
+
+        // Return the complete game record for World Conflict games
+        return json({
+            gameId: game.gameId,
+            status: game.status,
+            players: game.players,
+            worldConflictState: game.worldConflictState,
+            createdAt: game.createdAt,
+            lastMoveAt: game.lastMoveAt,
+            currentPlayerIndex: game.currentPlayerIndex,
+            gameType: game.gameType
+        });
+
+    } catch (error) {
+        console.error(`Error getting World Conflict game ${params.gameId}:`, error);
+        return json({ error: 'Failed to load game: ' + getErrorMessage(error) }, { status: 500 });
+    }
+};
+
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;

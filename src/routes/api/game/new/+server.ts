@@ -118,14 +118,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 worldConflictState = wcGameState.toJSON();
             }
 
-            // Create properly typed WorldConflictGameRecord
             const newGame: WorldConflictGameRecord = {
                 gameId,
                 players,
                 status: status as 'PENDING' | 'ACTIVE' | 'COMPLETED',
                 createdAt: Date.now(),
                 lastMoveAt: Date.now(),
-                currentPlayerIndex: 0, // Add missing required property
+                currentPlayerIndex: 0,
+                gameType,
                 worldConflictState: worldConflictState || {
                     turnIndex: 1,
                     playerIndex: 0,

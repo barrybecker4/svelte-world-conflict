@@ -1,5 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
 
   // Simple interface for page data (SvelteKit generates $types automatically)
@@ -9,12 +11,13 @@
     player?: any;
   }
 
-  // Accept data prop from load function (even if unused)
-  export let data: PageData = {};
+  // Change to const export since it's unused for external reference only
+  export const data: PageData = {};
 
   // Properly typed variables
   let gameId: string = $page.params.gameId || '';
-  let playerInfo: any = null; // You can replace 'any' with proper player type
+  let playerId: string = '';
+  let playerIndex: number = -1;
   let loading: boolean = true;
   let error: string | null = null;
 
@@ -26,20 +29,65 @@
     return String(err);
   }
 
+  // Load player info from localStorage and validate game access
+  function loadPlayerInfo(): boolean {
+    try {
+      const stored = localStorage.getItem(`wc_game_${gameId}`);
+      if (!stored) {
+        error = 'No player information found for this game';
+        return false;
+      }
+
+      const playerInfo = JSON.parse(stored);
+      if (playerInfo.playerIndex === undefined) {
+        error = 'Invalid player information stored';
+        return false;
+      }
+
+      // For World Conflict, playerId is typically the string version of playerIndex
+      playerId = playerInfo.playerId || playerInfo.playerIndex.toString();
+      playerIndex = playerInfo.playerIndex;
+      return true;
+    } catch (err) {
+      error = 'Failed to load player information';
+      return false;
+    }
+  }
+
   // Load game data when component mounts
   async function loadGameData(): Promise<void> {
     try {
       loading = true;
       error = null;
 
+      // First, load player info from localStorage
+      if (!loadPlayerInfo()) {
+        // Redirect to lobby if no valid player info
+        setTimeout(() => goto('/'), 2000);
+        return;
+      }
+
+          // Fetch World Conflict game data
       const response = await fetch(`/api/game/${gameId}`);
 
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Game not found');
+        }
         throw new Error(`Failed to load game: ${response.status}`);
       }
 
       const gameData = await response.json();
-      playerInfo = gameData;
+
+      // Validate that the game data has the expected structure for World Conflict
+      if (!gameData.worldConflictState) {
+        throw new Error('This does not appear to be a World Conflict game');
+      }
+
+      // Additional validation
+      if (gameData.gameType && gameData.gameType !== 'MULTIPLAYER' && gameData.gameType !== 'AI') {
+        throw new Error('Invalid game type');
+      }
 
     } catch (err) {
       error = getErrorMessage(err);
@@ -50,7 +98,9 @@
   }
 
   // Load data when component mounts
-  loadGameData();
+  onMount(() => {
+    loadGameData();
+  });
 </script>
 
 <svelte:head>
@@ -69,22 +119,31 @@
     <div class="text-center max-w-md">
       <h2 class="text-2xl font-bold text-red-600 mb-4">Error Loading Game</h2>
       <p class="text-gray-700 mb-6">{error}</p>
-      <button
-        on:click={loadGameData}
-        class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-      >
-        Try Again
-      </button>
+      <div class="space-y-3">
+        <button
+          on:click={loadGameData}
+          class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
+          Try Again
+        </button>
+        <button
+          on:click={() => goto('/')}
+          class="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+        >
+          Back to Lobby
+        </button>
+      </div>
     </div>
   </div>
-{:else if playerInfo}
+{:else if playerId && playerIndex !== -1}
   <WorldConflictGame
-    gameId={gameId}
-    playerInfo={playerInfo}
+    {gameId}
+    {playerId}
+    {playerIndex}
   />
 {:else}
   <div class="flex items-center justify-center min-h-screen">
-    <p class="text-gray-600">No game data available</p>
+    <p class="text-gray-600">No valid player data available</p>
   </div>
 {/if}
 

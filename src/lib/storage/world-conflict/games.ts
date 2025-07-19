@@ -9,6 +9,7 @@ export interface WorldConflictGameRecord {
     createdAt: number;
     lastMoveAt: number;
     currentPlayerIndex: number;
+    gameType: 'MULTIPLAYER' | 'AI';
 }
 
 export interface OpenWorldConflictGamesList {
@@ -57,24 +58,25 @@ export class WorldConflictGameStorage {
         }
     }
 
-    async createGame(gameData: Partial<WorldConflictGameRecord>): Promise<WorldConflictGameRecord> {
-        const gameId = this.generateGameId();
-
-        const newGame: WorldConflictGameRecord = {
-            gameId,
-            status: 'PENDING',
-            players: gameData.players || [],
-            worldConflictState: gameData.worldConflictState!,
-            createdAt: Date.now(),
-            lastMoveAt: Date.now(),
-            currentPlayerIndex: 0,
-            ...gameData
-        };
-
-        await this.saveGame(newGame);
-
-        return newGame;
-    }
+    // async createGame(gameData: Partial<WorldConflictGameRecord>): Promise<WorldConflictGameRecord> {
+    //     const gameId = this.generateGameId();
+    //
+    //     const newGame: WorldConflictGameRecord = {
+    //         gameId,
+    //         status: 'PENDING',
+    //         players: gameData.players || [],
+    //         worldConflictState: gameData.worldConflictState!,
+    //         createdAt: Date.now(),
+    //         lastMoveAt: Date.now(),
+    //         currentPlayerIndex: 0,
+    //         gameType: gameData.gameType || 'MULTIPLAYER', // Add this line with default
+    //         ...gameData
+    //     };
+    //
+    //     await this.saveGame(newGame);
+    //
+    //     return newGame;
+    // }
 
     async getOpenGames(): Promise<WorldConflictGameRecord[]> {
         try {
@@ -178,7 +180,7 @@ export class WorldConflictGameStorage {
                 createdAt: game.createdAt,
                 playerCount: game.players.length,
                 maxPlayers: 4,
-                gameType: 'MULTIPLAYER' as const
+                gameType: game.gameType // Use the gameType from the game record instead of hardcoding
             };
 
             // Check if already exists

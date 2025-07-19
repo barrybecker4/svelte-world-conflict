@@ -1,8 +1,7 @@
 <script lang="ts">
-  import type { GameState } from '$lib/game/types';
-  import type { Player } from '$lib/game/types';
+  import type { WorldConflictGameState, Player } from '$lib/game/WorldConflictGameState';
 
-  export let gameState: GameState | null = null;
+  export let gameState: WorldConflictGameState | null = null;
   export let currentPlayer: Player | null = null;
   export let onEndTurn: () => void = () => {};
   export let onBuyArmies: () => void = () => {};
