@@ -4,29 +4,97 @@
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
-  export const currentPlayer: Player | null = null; // Changed to const export since unused
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
+  export let moveMode: string = 'IDLE';
 
   let mapContainer: HTMLDivElement;
-  let mapWidth = 800;
-  let mapHeight = 600;
+  let mapWidth = 300;
+  let mapHeight = 250;
 
-  // Sample regions for development - now properly typed with hasTemple property
-  const sampleRegions: Region[] = [
-    { index: 0, name: 'North America', x: 200, y: 150, neighbors: [1, 2], hasTemple: true },
-    { index: 1, name: 'Europe', x: 400, y: 120, neighbors: [0, 2, 3], hasTemple: false },
-    { index: 2, name: 'Asia', x: 600, y: 180, neighbors: [0, 1, 3], hasTemple: true },
-    { index: 3, name: 'Africa', x: 450, y: 350, neighbors: [1, 2, 4], hasTemple: false },
-    { index: 4, name: 'South America', x: 250, y: 400, neighbors: [0, 3], hasTemple: true },
-    { index: 5, name: 'Australia', x: 650, y: 450, neighbors: [2], hasTemple: false }
-  ];
+  // Cache for generated polygon paths
+  let regionPolygons: Map<number, string> = new Map();
 
   onMount(() => {
-    if (regions.length === 0) {
-      regions = sampleRegions;
+    if (regions.length > 0) {
+      generateRegionPolygons();
     }
   });
+
+  // Regenerate when regions change
+  $: if (regions.length > 0) {
+    generateRegionPolygons();
+  }
+
+  function generateRegionPolygons() {
+    console.log('Generating simple irregular polygons for', regions.length, 'regions');
+
+    regionPolygons.clear();
+
+    regions.forEach(region => {
+      const polygon = generateSimpleIrregularPolygon(region.x, region.y, region.index);
+      regionPolygons.set(region.index, polygon);
+    });
+
+    regionPolygons = regionPolygons; // Trigger reactivity
+    console.log('Generated polygons for', regions.length, 'regions');
+  }
+
+  function generateSimpleIrregularPolygon(centerX: number, centerY: number, seed: number): string {
+    const points: { x: number; y: number }[] = [];
+    const numPoints = 6 + (seed % 3); // 6-8 points for variety
+    const baseRadius = 25; // Fixed size that works well in the 300x250 viewBox
+
+    // Seeded random for consistent polygons
+    let randomSeed = seed * 12345;
+    const seededRandom = () => {
+      randomSeed = (randomSeed * 9301 + 49297) % 233280;
+      return randomSeed / 233280;
+    };
+
+    // Generate points in a circle with random variation
+    for (let i = 0; i < numPoints; i++) {
+      const angle = (i / numPoints) * 2 * Math.PI;
+
+      // Add randomness to radius for irregular shape
+      const radiusVariation = 0.7 + seededRandom() * 0.6; // 70-130% of base radius
+      const radius = baseRadius * radiusVariation;
+
+      // Small random angle variation
+      const angleVariation = (seededRandom() - 0.5) * 0.3;
+      const finalAngle = angle + angleVariation;
+
+      const x = centerX + Math.cos(finalAngle) * radius;
+      const y = centerY + Math.sin(finalAngle) * radius;
+
+      points.push({ x, y });
+    }
+
+    // Create smooth SVG path
+    if (points.length === 0) return '';
+
+    let path = `M ${points[0].x},${points[0].y}`;
+
+    // Use smooth curves between points
+    for (let i = 0; i < points.length; i++) {
+      const current = points[i];
+      const next = points[(i + 1) % points.length];
+
+      // Create smooth curve to next point
+      const cp1x = current.x + (next.x - current.x) * 0.5;
+      const cp1y = current.y + (next.y - current.y) * 0.5;
+
+      if (i === points.length - 1) {
+        // Close back to start
+        path += ` Q ${cp1x},${cp1y} ${points[0].x},${points[0].y}`;
+      } else {
+        path += ` Q ${cp1x},${cp1y} ${next.x},${next.y}`;
+      }
+    }
+
+    path += ' Z';
+    return path;
+  }
 
   function getRegionOwner(regionIndex: number): Player | null {
     if (!gameState?.owners || gameState.owners[regionIndex] === undefined) {
@@ -62,128 +130,188 @@
   function isRegionSelected(regionIndex: number): boolean {
     return selectedRegion?.index === regionIndex;
   }
+
+  function getStrokeColor(regionIndex: number): string {
+    if (isRegionSelected(regionIndex)) return '#fbbf24';
+    if (moveMode !== 'IDLE') return '#60a5fa';
+    return '#374151';
+  }
+
+  function getStrokeWidth(regionIndex: number): string {
+    return isRegionSelected(regionIndex) ? '3' : '2';
+  }
 </script>
 
 <div class="game-map" bind:this={mapContainer}>
   <svg width={mapWidth} height={mapHeight} viewBox="0 0 {mapWidth} {mapHeight}">
-    <!-- Region connections -->
+    <defs>
+      <!-- Map background gradient -->
+      <radialGradient id="mapBackground" cx="50%" cy="50%" r="70%">
+        <stop offset="0%" style="stop-color:#1e40af;stop-opacity:0.1" />
+        <stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:0.3" />
+      </radialGradient>
+
+      <!-- Glow filter for selected regions -->
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+
+      <!-- Drop shadow for depth -->
+      <filter id="shadow">
+        <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="rgba(0,0,0,0.3)"/>
+      </filter>
+    </defs>
+
+    <!-- Map background -->
+    <rect width="100%" height="100%" fill="url(#mapBackground)" />
+
+    <!-- Region connections (draw first so they appear behind regions) -->
     {#each regions as region}
       {#each region.neighbors as neighborIndex}
-        {#if regions[neighborIndex]}
+        {@const neighbor = regions.find(r => r.index === neighborIndex)}
+        {#if neighbor}
           <line
             x1={region.x}
             y1={region.y}
-            x2={regions[neighborIndex].x}
-            y2={regions[neighborIndex].y}
+            x2={neighbor.x}
+            y2={neighbor.y}
             stroke="#374151"
-            stroke-width="2"
+            stroke-width="1"
             opacity="0.3"
+            class="connection-line"
           />
         {/if}
       {/each}
     {/each}
 
-    <!-- Regions -->
+    <!-- Regions with individual irregular polygons -->
     {#each regions as region}
-      <g>
-        <!-- Region circle with proper accessibility -->
-        <circle
-          cx={region.x}
-          cy={region.y}
-          r="40"
-          fill={getRegionColor(region.index)}
-          stroke={isRegionSelected(region.index) ? '#fbbf24' : '#374151'}
-          stroke-width={isRegionSelected(region.index) ? '4' : '2'}
-          class="region-circle"
-          class:selected={isRegionSelected(region.index)}
-          role="button"
-          tabindex="0"
-          aria-label={`Region ${region.name}, armies: ${getRegionArmies(region.index)}`}
-          on:click={() => handleRegionClick(region)}
-          on:keydown={(event) => handleRegionKeydown(event, region)}
-        />
-
-        <!-- Temple indicator -->
-        {#if region.hasTemple}
-          <circle
-            cx={region.x + 25}
-            cy={region.y - 25}
-            r="8"
-            fill="#fbbf24"
-            stroke="#92400e"
-            stroke-width="2"
-            class="temple-indicator"
-            aria-label="Temple site"
+      {@const polygon = regionPolygons.get(region.index)}
+      {#if polygon}
+        <g class="region-group">
+          <!-- Main region polygon -->
+          <path
+            d={polygon}
+            fill={getRegionColor(region.index)}
+            stroke={getStrokeColor(region.index)}
+            stroke-width={getStrokeWidth(region.index)}
+            filter="url(#shadow)"
+            class="region-polygon"
+            class:selected={isRegionSelected(region.index)}
+            class:neutral={!getRegionOwner(region.index)}
+            class:interactive={moveMode !== 'IDLE'}
+            role="button"
+            tabindex="0"
+            aria-label={`Region ${region.index}, armies: ${getRegionArmies(region.index)}`}
+            on:click={() => handleRegionClick(region)}
+            on:keydown={(event) => handleRegionKeydown(event, region)}
           />
-        {/if}
 
-        <!-- Region name -->
-        <text
-          x={region.x}
-          y={region.y - 50}
-          text-anchor="middle"
-          class="region-name"
-          fill="#1f2937"
-          font-size="12"
-          font-weight="bold"
-        >
-          {region.name}
-        </text>
+          <!-- Highlight overlay for selected regions -->
+          {#if isRegionSelected(region.index)}
+            <path
+              d={polygon}
+              fill="none"
+              stroke="#fbbf24"
+              stroke-width="4"
+              opacity="0.6"
+              filter="url(#glow)"
+              class="selection-highlight"
+              pointer-events="none"
+            />
+          {/if}
 
-        <!-- Army count -->
-        <text
-          x={region.x}
-          y={region.y + 5}
-          text-anchor="middle"
-          class="army-count"
-          fill="white"
-          font-size="16"
-          font-weight="bold"
-        >
-          {getRegionArmies(region.index)}
-        </text>
-      </g>
+          <!-- Temple indicator -->
+          {#if region.hasTemple}
+            <circle
+              cx={region.x + 12}
+              cy={region.y - 12}
+              r="4"
+              fill="#fbbf24"
+              stroke="#92400e"
+              stroke-width="1"
+              class="temple-indicator"
+              aria-label="Temple site"
+            />
+          {/if}
+
+          <!-- Army count -->
+          <text
+            x={region.x}
+            y={region.y + 3}
+            text-anchor="middle"
+            class="army-count"
+            fill="#ffffff"
+            font-size="14"
+            font-weight="bold"
+            text-shadow="1px 1px 2px rgba(0,0,0,0.8)"
+            pointer-events="none"
+          >
+            {getRegionArmies(region.index)}
+          </text>
+        </g>
+      {/if}
     {/each}
   </svg>
 </div>
 
 <style>
   .game-map {
-    background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: 1rem;
+    border: 1px solid #475569;
+    overflow: hidden;
   }
 
-  .region-circle {
+  .region-polygon {
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     outline: none;
   }
 
-  .region-circle:hover,
-  .region-circle:focus {
-    stroke-width: 3;
-    filter: brightness(1.1);
+  .region-polygon:hover {
+    filter: brightness(1.15) saturate(1.1) url(#shadow);
   }
 
-  .region-circle:focus {
+  .region-polygon:focus {
     outline: 2px solid #3b82f6;
     outline-offset: 2px;
   }
 
-  .region-circle.selected {
-    animation: pulse 1.5s ease-in-out infinite;
+  .region-polygon.selected {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .region-polygon.neutral {
+    filter: saturate(0.8) url(#shadow);
+  }
+
+  .region-polygon.interactive {
+    cursor: crosshair;
+  }
+
+  .region-polygon.interactive:hover {
+    stroke: #60a5fa;
+    stroke-width: 3;
+  }
+
+  .selection-highlight {
+    animation: glow 1s ease-in-out infinite alternate;
+  }
+
+  .connection-line {
+    pointer-events: none;
   }
 
   .temple-indicator {
     pointer-events: none;
-    animation: glow 2s ease-in-out infinite alternate;
-  }
-
-  .region-name {
-    pointer-events: none;
-    user-select: none;
+    animation: templeGlow 3s ease-in-out infinite alternate;
   }
 
   .army-count {
@@ -194,24 +322,36 @@
   @keyframes pulse {
     0%, 100% {
       opacity: 1;
+      transform: scale(1);
     }
     50% {
-      opacity: 0.7;
+      opacity: 0.85;
+      transform: scale(1.02);
     }
   }
 
   @keyframes glow {
     from {
-      filter: drop-shadow(0 0 2px #fbbf24);
+      opacity: 0.4;
     }
     to {
-      filter: drop-shadow(0 0 6px #fbbf24);
+      opacity: 0.8;
     }
   }
 
+  @keyframes templeGlow {
+    from {
+      filter: drop-shadow(0 0 1px #fbbf24);
+    }
+    to {
+      filter: drop-shadow(0 0 4px #fbbf24);
+    }
+  }
+
+  /* Responsive adjustments */
   @media (max-width: 768px) {
-    .game-map {
-      padding: 0.5rem;
+    .army-count {
+      font-size: 12px;
     }
   }
 </style>
