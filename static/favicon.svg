@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+    <!-- Background circle -->
+    <circle cx="32" cy="32" r="30" fill="#1e293b" stroke="#3b82f6" stroke-width="4"/>
+
+    <!-- Globe/World outline -->
+    <circle cx="32" cy="32" r="20" fill="#334155" stroke="#60a5fa" stroke-width="1"/>
+
+    <!-- Continent shapes -->
+    <path d="M20 25 Q25 20 30 25 L32 22 L35 27 Q32 30 28 28 L25 32 Q20 30 20 25 Z" fill="#4ade80"/>
+    <path d="M36 30 Q42 28 45 33 L44 38 Q40 35 38 32 L36 30 Z" fill="#22c55e"/>
+    <path d="M25 35 Q30 38 28 42 L25 45 Q22 40 25 35 Z" fill="#16a34a"/>
+
+    <!-- Crossed swords over the globe -->
+    <g stroke="#fbbf24" stroke-width="2" fill="#f59e0b">
+        <!-- First sword -->
+        <line x1="18" y1="18" x2="46" y2="46" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="2" fill="#fbbf24"/>
+        <rect x="15" y="15" width="2" height="4" fill="#a16207"/>
+
+        <!-- Second sword -->
+        <line x1="46" y1="18" x2="18" y2="46" stroke-linecap="round"/>
+        <circle cx="48" cy="16" r="2" fill="#fbbf24"/>
+        <rect x="47" y="15" width="2" height="4" fill="#a16207"/>
+    </g>
+
+    <!-- Small strategic elements -->
+    <circle cx="25" cy="20" r="1" fill="#ef4444"/>
+    <circle cx="38" cy="24" r="1" fill="#ef4444"/>
+    <circle cx="30" cy="40" r="1" fill="#ef4444"/>
+    <circle cx="40" cy="38" r="1" fill="#ef4444"/>
+</svg>

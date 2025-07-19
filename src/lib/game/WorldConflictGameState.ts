@@ -379,11 +379,3 @@ export class WorldConflictGameState {
         };
     }
 }
-
-// ==================== BACKWARD COMPATIBILITY EXPORTS ====================
-
-// For any code that imported GameState class
-export { WorldConflictGameState as GameState };
-
-// Default export for convenience
-export default WorldConflictGameState;

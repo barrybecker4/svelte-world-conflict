@@ -113,6 +113,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          playerName: "Red Baron",
           players: activePlayers,
           gameType: getOpenSlotCount() > 0 ? 'MULTIPLAYER' : 'AI'
         })

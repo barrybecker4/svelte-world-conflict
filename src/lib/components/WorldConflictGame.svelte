@@ -294,7 +294,6 @@
             <svg viewBox="0 0 300 250" class="map-svg">
                 {#each regions as region}
                     <g class="region-group">
-                        <!-- Region connections -->
                         {#each region.neighbors as neighborIndex}
                             {@const neighbor = regions.find(r => r.index === neighborIndex)}
                             {#if neighbor}
@@ -309,7 +308,7 @@
                                 />
                             {/if}
                         {/each}
-                    {/g}
+                    </g>
                 {/each}
 
                 {#each regions as region}
