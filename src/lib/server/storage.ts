@@ -41,9 +41,9 @@ export class StorageAdapter {
 
     async list(prefix?: string): Promise<{ keys: Array<{ name: string }> }> {
         if (this.isMemory) {
-            const keys = Array.from(this.storage.keys())
-                .filter(key => !prefix || key.startsWith(prefix))
-                .map(name => ({ name }));
+            const keys = Array.from(this.storage.keys() as IterableIterator<string>)
+                .filter((key: string) => !prefix || key.startsWith(prefix))
+                .map((name: string) => ({ name }));
             return { keys };
         }
         return await this.storage.list(prefix ? { prefix } : undefined);
@@ -71,8 +71,3 @@ export class StorageAdapter {
         return this.isMemory;
     }
 }
-
-// Usage in API endpoints:
-// const storage = new StorageAdapter(platform);
-// const gameData = await storage.getGameData('game:123');
-// await storage.putGameData('game:123', gameData);

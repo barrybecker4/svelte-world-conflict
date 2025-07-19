@@ -1,7 +1,6 @@
-import type { GameState } from '../GameState.ts';
 import type { Player } from '../types.ts';
 import { AttackSequenceGenerator, type AttackEvent } from './AttackSequenceGenerator.ts';
-import type { WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
+import { WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
 
 export interface ValidationResult {
     valid: boolean;
@@ -13,7 +12,7 @@ export abstract class Command {
     protected player: Player;
     protected timestamp: string;
     protected id: string;
-    protected previousState?: GameState;
+    protected previousState?: WorldConflictGameState;
 
     constructor(gameState: WorldConflictGameState, player: Player) {
         this.gameState = gameState;
@@ -23,14 +22,14 @@ export abstract class Command {
     }
 
     abstract validate(): ValidationResult;
-    abstract execute(): GameState;
+    abstract execute(): WorldConflictGameState;
     abstract serialize(): any;
 
     protected generateId(): string {
         return `${this.gameState.id}-${this.player.index}-${Date.now()}`;
     }
 
-    undo(): GameState {
+    undo(): WorldConflictGameState {
         if (!this.previousState) {
             throw new Error("Cannot undo - no previous state stored");
         }
@@ -92,9 +91,9 @@ export class ArmyMoveCommand extends Command {
         };
     }
 
-    execute(): GameState {
-        this.previousState = this.gameState.copy();
-        const newState = this.gameState.copy();
+    execute(): WorldConflictGameState {
+        this.previousState = this.gameState.copy() as WorldConflictGameState;
+        const newState = this.gameState.copy() as WorldConflictGameState;
         const players = newState.getPlayers();
 
         // Generate attack sequence if combat needed
@@ -107,11 +106,13 @@ export class ArmyMoveCommand extends Command {
             this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
         }
 
+        // Execute the move logic
         this.executeMoveLogic(newState);
+
         return newState;
     }
 
-    private executeMoveLogic(state: GameState): void {
+    private executeMoveLogic(state: WorldConflictGameState): void {
         const fromList = state.soldiersAtRegion(this.source);
         const toList = state.soldiersAtRegion(this.destination);
 
@@ -120,42 +121,41 @@ export class ArmyMoveCommand extends Command {
             this.processCombat(state, fromList, toList);
         }
 
-        // Move surviving soldiers
+        // Move remaining soldiers
         const soldiersToMove = Math.min(this.count, fromList.length);
-        for (let i = 0; i < soldiersToMove; i++) {
-            const soldier = fromList.shift();
-            if (soldier) {
-                toList.push(soldier);
-            }
-        }
+        const movedSoldiers = fromList.splice(0, soldiersToMove);
+        toList.push(...movedSoldiers);
 
-        // Update ownership if we conquered the region
-        if (toList.length > 0 && fromList.length === 0) {
-            state.owners[this.destination] = this.player.index;
-
-            // Track conquered regions for this turn
+        // Update ownership if destination was conquered
+        if (this.attackSequence && toList.length > 0 && !state.isOwnedBy(this.destination, this.player)) {
+            state.setOwner(this.destination, this.player);
             if (!state.conqueredRegions) {
                 state.conqueredRegions = [];
             }
             state.conqueredRegions.push(this.destination);
         }
 
-        // Use one move
-        state.movesRemaining--;
+        // Decrease moves remaining
+        state.movesRemaining = Math.max(0, state.movesRemaining - 1);
     }
 
-    private processCombat(state: GameState, fromList: any[], toList: any[]): void {
+    private processCombat(
+        state: WorldConflictGameState,
+        fromList: { i: number }[],
+        toList: { i: number }[]
+    ): void {
         if (!this.attackSequence) return;
 
         // Apply combat results from attack sequence
         for (const event of this.attackSequence) {
-            if (event.attackerCasualties) {
-                for (let i = 0; i < event.attackerCasualties; i++) {
-                    fromList.shift();
+            if (event.attackerCasualties && event.attackerCasualties > 0) {
+                for (let i = 0; i < event.attackerCasualties && fromList.length > 0; i++) {
+                    fromList.pop();
                 }
             }
-            if (event.defenderCasualties) {
-                for (let i = 0; i < event.defenderCasualties; i++) {
+
+            if (event.defenderCasualties && event.defenderCasualties > 0) {
+                for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
                     toList.shift();
                 }
             }
@@ -219,38 +219,43 @@ export class BuildCommand extends Command {
 
     private calculateCost(): number {
         // Implementation depends on upgrade system
-        // This is a simplified version
+        // This is a simplified version - you may need to adjust based on your game rules
         const baseCosts = [0, 10, 25, 20, 30, 10]; // NONE, SOLDIER, AIR, DEFENSE, INCOME, REBUILD
         return baseCosts[this.upgradeIndex] || 0;
     }
 
-    execute(): GameState {
-        this.previousState = this.gameState.copy();
-        const newState = this.gameState.copy();
+    execute(): WorldConflictGameState {
+        this.previousState = this.gameState.copy() as WorldConflictGameState;
+        const newState = this.gameState.copy() as WorldConflictGameState;
 
         const cost = this.calculateCost();
-        newState.cash[this.player.index] -= cost;
+        newState.cash[this.player.index] = (newState.cash[this.player.index] || 0) - cost;
 
         const temple = newState.temples[this.regionIndex];
-
-        if (this.upgradeIndex === 1) { // SOLDIER
-            newState.addSoldiers(this.regionIndex, 1);
-            newState.numBoughtSoldiers = (newState.numBoughtSoldiers || 0) + 1;
-        } else if (this.upgradeIndex === 5) { // REBUILD
-            temple.upgradeIndex = undefined;
-            temple.level = 0;
-        } else {
-            // Apply temple upgrade
-            if (temple.upgradeIndex === this.upgradeIndex) {
-                temple.level = Math.min(temple.level + 1, 3);
-            } else {
-                temple.upgradeIndex = this.upgradeIndex;
+        if (temple) {
+            // Update temple based on upgrade type
+            // This is a simplified implementation - adjust based on your game rules
+            if (this.upgradeIndex === 1) { // SOLDIER upgrade
+                // Buy soldier
+                newState.numBoughtSoldiers = (newState.numBoughtSoldiers || 0) + 1;
+                newState.addSoldiers(this.regionIndex, 1);
+            } else if (this.upgradeIndex === 5) { // REBUILD upgrade
+                // Rebuild temple
+                temple.upgradeIndex = undefined;
                 temple.level = 0;
-            }
+            } else {
+                // Other upgrades
+                if (temple.upgradeIndex === this.upgradeIndex) {
+                    temple.level = (temple.level || 0) + 1;
+                } else {
+                    temple.upgradeIndex = this.upgradeIndex;
+                    temple.level = 0;
+                }
 
-            // Air upgrade gives immediate move
-            if (this.upgradeIndex === 2) { // AIR
-                newState.movesRemaining++;
+                // Air upgrade gives extra move
+                if (this.upgradeIndex === 2) { // AIR upgrade
+                    newState.movesRemaining++;
+                }
             }
         }
 
@@ -275,10 +280,15 @@ export class EndTurnCommand extends Command {
     private income: number = 0;
     private generatedSoldiers: number[] = [];
 
+    constructor(gameState: WorldConflictGameState, player: Player) {
+        super(gameState, player);
+    }
+
     validate(): ValidationResult {
         const errors: string[] = [];
 
-        if (this.gameState.playerIndex !== this.player.index) {
+        const activePlayer = this.gameState.activePlayer();
+        if (activePlayer.index !== this.player.index) {
             errors.push("Not your turn");
         }
 
@@ -288,65 +298,84 @@ export class EndTurnCommand extends Command {
         };
     }
 
-    execute(): GameState {
-        this.previousState = this.gameState.copy();
-        const newState = this.gameState.copy();
-        const players = newState.getPlayers();
+    execute(): WorldConflictGameState {
+        this.previousState = this.gameState.copy() as WorldConflictGameState;
+        const newState = this.gameState.copy() as WorldConflictGameState;
 
-        // Calculate and apply income
+        // Calculate and add income
         this.income = this.calculateIncome(newState);
-        newState.cash[this.player.index] += this.income;
+        newState.cash[this.player.index] = (newState.cash[this.player.index] || 0) + this.income;
 
         // Generate soldiers at temples
         this.generateSoldiersAtTemples(newState);
 
-        // Advance to next player
-        newState.advanceToNextPlayer(players);
-
         // Check for game end
-        if (newState.turnIndex > 100) { // Max turns
-            newState.endResult = this.determineWinner(newState, players);
+        const gameEndResult = newState.checkGameEnd();
+        if (gameEndResult) {
+            newState.endResult = gameEndResult;
+        }
+
+        // Reset turn state
+        newState.movesRemaining = 3; // Default moves per turn
+        newState.numBoughtSoldiers = 0;
+        newState.conqueredRegions = [];
+
+        // Advance to next player
+        const players = newState.getPlayers();
+        newState.playerIndex = (newState.playerIndex + 1) % players.length;
+
+        // If back to first player, increment turn
+        if (newState.playerIndex === 0) {
+            newState.turnIndex++;
         }
 
         return newState;
     }
 
-    private calculateIncome(state: GameState): number {
-        let income = 0;
-
-        // Base income per region
+    private calculateIncome(state: WorldConflictGameState): number {
+        // Basic income calculation - adjust based on your game rules
+        const baseIncome = 5;
         const regionCount = state.regionCount(this.player);
-        income += regionCount * 5;
+        const incomePerRegion = 2;
 
-        // Temple income bonuses
-        const temples = state.templesForPlayer(this.player);
-        for (const temple of temples) {
-            if (temple.upgradeIndex === 4) { // INCOME upgrade
-                const incomeBonus = [5, 10, 20][temple.level] || 0;
-                income += incomeBonus;
+        // Add temple income bonuses
+        let templeBonus = 0;
+        for (const [regionIndex, temple] of Object.entries(state.temples)) {
+            const regionIdx = parseInt(regionIndex);
+            if (state.isOwnedBy(regionIdx, this.player)) {
+                // Income upgrade bonus (upgrade index 4)
+                if (temple.upgradeIndex === 4) {
+                    templeBonus += (temple.level || 0) * 3;
+                }
             }
         }
 
-        return income;
+        return baseIncome + (regionCount * incomePerRegion) + templeBonus;
     }
 
-    private generateSoldiersAtTemples(state: GameState): void {
-        const temples = state.templesForPlayer(this.player);
-        for (const temple of temples) {
-            state.addSoldiers(temple.regionIndex, 1);
-            this.generatedSoldiers.push(temple.regionIndex);
+    private generateSoldiersAtTemples(state: WorldConflictGameState): void {
+        for (const [regionIndex, temple] of Object.entries(state.temples)) {
+            const regionIdx = parseInt(regionIndex);
+            if (state.isOwnedBy(regionIdx, this.player)) {
+                // Generate soldiers based on temple level and upgrade
+                let soldiersToGenerate = 0;
+
+                // Basic temple generation
+                if (temple.level && temple.level > 0) {
+                    soldiersToGenerate = 1;
+                }
+
+                // Soldier upgrade bonus (upgrade index 1)
+                if (temple.upgradeIndex === 1) {
+                    soldiersToGenerate += (temple.level || 0);
+                }
+
+                if (soldiersToGenerate > 0) {
+                    state.addSoldiers(regionIdx, soldiersToGenerate);
+                    this.generatedSoldiers.push(regionIdx);
+                }
+            }
         }
-    }
-
-    private determineWinner(state: GameState, players: Player[]): Player | 'DRAWN_GAME' {
-        const scores = players.map(player => ({
-            player,
-            score: state.regionCount(player) * 1000 + state.totalSoldiers(player, this.gameState.getRegions())
-        }));
-
-        scores.sort((a, b) => b.score - a.score);
-
-        return scores[0].score > scores[1]?.score ? scores[0].player : 'DRAWN_GAME';
     }
 
     serialize(): any {
@@ -363,9 +392,16 @@ export class EndTurnCommand extends Command {
 
 // ==================== COMMAND PROCESSOR ====================
 
+export interface CommandResult {
+    success: boolean;
+    error?: string;
+    newState?: WorldConflictGameState;
+}
+
 export class CommandProcessor {
-    process(command: Command): { success: boolean; newState?: GameState; error?: string } {
+    process(command: Command): CommandResult {
         try {
+            // Validate command
             const validation = command.validate();
             if (!validation.valid) {
                 return {

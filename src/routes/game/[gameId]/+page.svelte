@@ -1,31 +1,56 @@
-<script>
-  import { onMount } from 'svelte';
+<script lang="ts">
   import { page } from '$app/stores';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
 
-  export let data;
+  // Simple interface for page data (SvelteKit generates $types automatically)
+  interface PageData {
+    gameId?: string;
+    game?: any;
+    player?: any;
+  }
 
-  let gameId = $page.params.gameId;
-  let playerInfo = null;
-  let loading = true;
-  let error = null;
+  // Accept data prop from load function (even if unused)
+  export let data: PageData = {};
 
-  onMount(() => {
-    // Get player info from localStorage
-    const stored = localStorage.getItem(`wc_game_${gameId}`);
-    if (stored) {
-      try {
-        playerInfo = JSON.parse(stored);
-        loading = false;
-      } catch (err) {
-        error = 'Invalid player data stored';
-        loading = false;
+  // Properly typed variables
+  let gameId: string = $page.params.gameId || '';
+  let playerInfo: any = null; // You can replace 'any' with proper player type
+  let loading: boolean = true;
+  let error: string | null = null;
+
+  // Helper function for safe error handling
+  function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) {
+      return err.message;
+    }
+    return String(err);
+  }
+
+  // Load game data when component mounts
+  async function loadGameData(): Promise<void> {
+    try {
+      loading = true;
+      error = null;
+
+      const response = await fetch(`/api/game/${gameId}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to load game: ${response.status}`);
       }
-    } else {
-      error = 'No player data found - please join the game first';
+
+      const gameData = await response.json();
+      playerInfo = gameData;
+
+    } catch (err) {
+      error = getErrorMessage(err);
+      console.error('Failed to load game:', err);
+    } finally {
       loading = false;
     }
-  });
+  }
+
+  // Load data when component mounts
+  loadGameData();
 </script>
 
 <svelte:head>
@@ -33,85 +58,39 @@
 </svelte:head>
 
 {#if loading}
-  <div class="loading-screen">
-    <div class="loading-content">
-      <div class="loading-spinner"></div>
-      <h2>Loading World Conflict...</h2>
-      <p>Preparing your strategic campaign</p>
+  <div class="loading-screen flex items-center justify-center min-h-screen">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p class="text-gray-600">Loading game...</p>
     </div>
   </div>
 {:else if error}
-  <div class="error-screen">
-    <div class="error-content">
-      <h2>Game Access Error</h2>
-      <p>{error}</p>
-      <a href="/" class="home-link">Return to Main Menu</a>
+  <div class="error-screen flex items-center justify-center min-h-screen">
+    <div class="text-center max-w-md">
+      <h2 class="text-2xl font-bold text-red-600 mb-4">Error Loading Game</h2>
+      <p class="text-gray-700 mb-6">{error}</p>
+      <button
+        on:click={loadGameData}
+        class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+      >
+        Try Again
+      </button>
     </div>
   </div>
 {:else if playerInfo}
   <WorldConflictGame
-    {gameId}
-    playerId={playerInfo.playerId}
-    playerIndex={playerInfo.playerIndex}
+    gameId={gameId}
+    playerInfo={playerInfo}
   />
 {:else}
-  <div class="error-screen">
-    <div class="error-content">
-      <h2>Player Not Found</h2>
-      <p>Unable to load your player information.</p>
-      <a href="/" class="home-link">Return to Main Menu</a>
-    </div>
+  <div class="flex items-center justify-center min-h-screen">
+    <p class="text-gray-600">No game data available</p>
   </div>
 {/if}
 
 <style>
-  .loading-screen,
-  .error-screen {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  .loading-screen, .error-screen {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    font-family: system-ui, sans-serif;
-  }
-
-  .loading-content,
-  .error-content {
-    text-align: center;
-    max-width: 400px;
-    padding: 2rem;
-  }
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #374151;
-    border-top: 3px solid #60a5fa;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  .home-link {
-    display: inline-block;
-    margin-top: 1rem;
-    padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-
-  .home-link:hover {
-    background: linear-gradient(135deg, #1d4ed8, #1e40af);
-    transform: translateY(-2px);
   }
 </style>

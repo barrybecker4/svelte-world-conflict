@@ -4,10 +4,10 @@ import {
     WorldConflictKVStorage,
     WorldConflictGameStorage,
 } from '$lib/storage/world-conflict/index.ts';
-import { GameStorage } from '$lib/server/storage.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { Player, Region } from '$lib/game/types.ts';
+import { generateGameId, generatePlayerId } from "$lib/server/api-utils.ts";
 
 // Default World Conflict map data
 const DEFAULT_REGIONS: Region[] = [
@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     });
 };
 
-async function findAvailableGame(gameStorage: GameStorage, playerName: string) {
+async function findAvailableGame(gameStorage: WorldConflictGameStorage, playerName: string) {
     // Look for games waiting for players
     const waitingGames = await gameStorage.getGamesByStatus('WAITING');
 
@@ -114,7 +114,7 @@ async function findAvailableGame(gameStorage: GameStorage, playerName: string) {
 async function createNewWorldConflictGame(
     playerName: string,
     gameType: string,
-    gameStorage: GameStorage
+    gameStorage: WorldConflictGameStorage
 ) {
     const gameId = generateGameId();
     const players: Player[] = [
@@ -154,12 +154,4 @@ async function createNewWorldConflictGame(
         players,
         gameData: worldConflictGame.toJSON()
     };
-}
-
-function generateGameId(): string {
-    return 'wc_' + Math.random().toString(36).substr(2, 9);
-}
-
-function generatePlayerId(): string {
-    return Math.random().toString(36).substr(2, 9);
 }

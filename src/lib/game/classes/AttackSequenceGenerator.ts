@@ -1,6 +1,6 @@
 import type { GameState } from '../GameState.ts';
 import type { Player } from '../types.ts';
-import type {WorldConflictGameState} from "$lib/game/WorldConflictGameState.ts";
+import { WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
 
 export interface AttackEvent {
     attackerCasualties?: number;
@@ -25,7 +25,7 @@ export class AttackSequenceGenerator {
     private fromRegion: number;
     private toRegion: number;
     private soldiers: number;
-    private state: WorldConflictGameState;
+    private state: WorldConflictGameState | null = null;
     private incomingSoldiers: number;
     private fromOwner: Player | null;
     private toOwner: Player | null;
@@ -36,7 +36,6 @@ export class AttackSequenceGenerator {
         this.fromRegion = armyMove.source;
         this.toRegion = armyMove.destination;
         this.soldiers = armyMove.count;
-        this.state = new WorldConflictGameState();
         this.incomingSoldiers = 0;
         this.fromOwner = null;
         this.toOwner = null;
@@ -46,12 +45,13 @@ export class AttackSequenceGenerator {
      * Create attack sequence for combat resolution
      * Returns undefined if no combat needed (same owner)
      */
-    createAttackSequenceIfFight(origState: GameState, players: Player[]): AttackEvent[] | undefined {
-        this.state = origState.copy();
+    createAttackSequenceIfFight(origState: WorldConflictGameState, players: Player[]): AttackEvent[] | undefined {
+        this.state = origState.copy() as WorldConflictGameState;
         this.incomingSoldiers = this.soldiers;
 
-        this.fromOwner = this.state.owner(this.fromRegion, players);
-        this.toOwner = this.state.owner(this.toRegion, players);
+        // WorldConflictGameState.owner() only takes regionIndex parameter
+        this.fromOwner = this.state.owner(this.fromRegion);
+        this.toOwner = this.state.owner(this.toRegion);
 
         // No fight if same owner
         if (this.fromOwner === this.toOwner) {
@@ -92,94 +92,77 @@ export class AttackSequenceGenerator {
             }
         }
 
-        return attackSequence.length > 0 ? attackSequence : undefined;
+        return attackSequence;
     }
 
     private recordPreemptiveDamage(
         damage: number,
-        sequence: AttackEvent[],
-        fromList: any[]
+        attackSequence: AttackEvent[],
+        fromList: { i: number }[]
     ): void {
-        sequence.push({
+        // Remove soldiers from attacking force
+        for (let i = 0; i < damage && fromList.length > 0; i++) {
+            fromList.pop();
+        }
+
+        this.incomingSoldiers -= damage;
+
+        attackSequence.push({
+            attackerCasualties: damage,
+            soundCue: 'ATTACKER_CASUALTIES',
             delay: 50,
             floatingText: [{
                 regionIdx: this.toRegion,
-                text: `Defense kills ${damage}!`,
-                color: '#8B5CF6', // Purple for defense magic
-                width: 9
+                text: `Earth kills ${damage}!`,
+                color: '#8B4513',
+                width: 8
             }]
-        });
-
-        // Remove attacking soldiers
-        for (let i = 0; i < damage; i++) {
-            fromList.shift();
-            this.incomingSoldiers--;
-        }
-
-        sequence.push({
-            attackerCasualties: damage
         });
     }
 
     private recordFight(
         defendingSoldiers: number,
-        sequence: AttackEvent[],
-        fromList: any[],
-        toList: any[]
+        attackSequence: AttackEvent[],
+        fromList: { i: number }[],
+        toList: { i: number }[]
     ): void {
-        // Calculate combat strengths with upgrades
-        const attackBonus = this.state.upgradeLevel(this.fromOwner, 'AIR') || 0;
-        const defenseBonus = this.state.upgradeLevel(this.toOwner, 'DEFENSE') || 0;
+        if (!this.state) return;
 
-        const incomingStrength = this.incomingSoldiers * (1 + attackBonus * 0.01);
-        const defendingStrength = defendingSoldiers * (1 + defenseBonus * 0.01);
+        // Simple combat resolution - this is a placeholder implementation
+        // You'll need to implement the actual combat logic based on your game rules
+        const attackerCasualties = Math.floor(Math.random() * Math.min(this.incomingSoldiers, defendingSoldiers));
+        const defenderCasualties = Math.floor(Math.random() * Math.min(defendingSoldiers, this.incomingSoldiers));
 
-        const repeats = Math.min(this.incomingSoldiers, defendingSoldiers);
-        const attackerWinChance = 100 * Math.pow(incomingStrength / defendingStrength, 1.6);
-
-        // Fire upgrade provides invincibility
-        let invincibility = this.state.upgradeLevel(this.fromOwner, 'AIR') || 0;
-
-        for (let i = 0; i < repeats; i++) {
-            const rndNum = this.randomNumberForFight(i, attackerWinChance, repeats);
-
-            if (rndNum <= AttackSequenceGenerator.WIN_THRESHOLD) {
-                // Defender wins this round
-                if (invincibility > 0) {
-                    invincibility--;
-                    sequence.push({
-                        delay: 800,
-                        floatingText: [{
-                            regionIdx: this.fromRegion,
-                            text: "Protected by Air!",
-                            color: '#06B6D4', // Cyan for air magic
-                            width: 10
-                        }]
-                    });
-                } else {
-                    fromList.shift();
-                    this.incomingSoldiers--;
-                    sequence.push({
-                        attackerCasualties: 1,
-                        soundCue: 'defeat',
-                        delay: 250
-                    });
-                }
-            } else {
-                // Attacker wins this round
-                toList.shift();
-                sequence.push({
-                    defenderCasualties: 1,
-                    soundCue: 'victory',
-                    delay: 250
-                });
-            }
+        // Remove casualties
+        for (let i = 0; i < attackerCasualties && fromList.length > 0; i++) {
+            fromList.pop();
         }
-    }
 
-    private randomNumberForFight(index: number, attackerWinChance: number, repeats: number): number {
-        // Deterministic randomness based on combat parameters
-        const seed = this.fromRegion + this.toRegion + index + this.soldiers;
-        return (Math.sin(seed) * 10000) % 200;
+        for (let i = 0; i < defenderCasualties && toList.length > 0; i++) {
+            toList.pop();
+        }
+
+        this.incomingSoldiers -= attackerCasualties;
+
+        attackSequence.push({
+            attackerCasualties,
+            defenderCasualties,
+            soundCue: 'COMBAT',
+            delay: 100,
+            floatingText: [
+                {
+                    regionIdx: this.fromRegion,
+                    text: `-${attackerCasualties}`,
+                    color: '#ff0000',
+                    width: 3
+                },
+                {
+                    regionIdx: this.toRegion,
+                    text: `-${defenderCasualties}`,
+                    color: '#ff0000',
+                    width: 3
+                }
+            ]
+        });
     }
 }

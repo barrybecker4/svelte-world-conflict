@@ -7,6 +7,7 @@ import {
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
+import type { WorldConflictGameRecord } from '$lib/storage/world-conflict/games.ts';
 
 interface MoveRequest {
     playerId: string;
@@ -20,6 +21,16 @@ interface MoveRequest {
     // Build specific
     regionIndex?: number;
     upgradeIndex?: number;
+}
+
+/**
+ * Helper function to safely get error message
+ */
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return String(error);
 }
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
@@ -38,8 +49,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Reconstruct World Conflict game state
         const worldConflictState = new WorldConflictGameState(game.worldConflictState);
 
-        // Find player
-        const player = worldConflictState.getPlayers().find(p => p.id === moveData.playerId);
+        // Find player by matching playerId with player index or name
+        // Since WC Player type uses index, we need to convert playerId to index
+        const playerIndex = parseInt(moveData.playerId);
+        const player = worldConflictState.getPlayers().find(p => p.index === playerIndex);
+
         if (!player) {
             return json({ error: 'Player not found' }, { status: 404 });
         }
@@ -88,27 +102,31 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: result.error }, { status: 400 });
         }
 
+        // Determine proper status
+        const gameStatus: 'ACTIVE' | 'COMPLETED' | 'PENDING' = result.newState!.endResult ? 'COMPLETED' : 'ACTIVE';
+
         // Save updated game state
-        const updatedGame = {
+        const updatedGame: WorldConflictGameRecord = {
             ...game,
             worldConflictState: result.newState!.toJSON(),
             lastMoveAt: Date.now(),
-            status: result.newState!.endResult ? 'COMPLETED' : 'ACTIVE'
+            status: gameStatus
         };
 
         await gameStorage.saveGame(updatedGame);
 
-        // Send WebSocket updates
+        // Send WebSocket updates - pass the game record
         await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
         return json({
             success: true,
             gameState: result.newState!.toJSON(),
-            command: command.serialize()
+            game: updatedGame,
+            message: 'Move processed successfully'
         });
 
     } catch (error) {
-        console.error('Error in World Conflict move:', error);
-        return json({ error: 'Internal server error' }, { status: 500 });
+        console.error('Error processing move:', error);
+        return json({ error: 'Internal server error: ' + getErrorMessage(error) }, { status: 500 });
     }
 };
