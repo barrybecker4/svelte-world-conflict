@@ -5,7 +5,7 @@ import {
     WorldConflictGameStorage
 } from '$lib/storage/world-conflict/index.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player } from '$lib/game/types.ts';
+import type { Player } from '$lib/game/WorldConflictGameState.ts';
 
 interface QuitGameRequest {
     playerId: string;

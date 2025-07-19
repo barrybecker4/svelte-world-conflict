@@ -1,15 +1,15 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { writable } from 'svelte/store';
-    import type { WorldConflictGameStateData } from '$lib/game/WorldConflictGameState.ts';
-    import type { Player, Region } from '$lib/game/types.ts';
+    import type { WorldConflictStateData } from '$lib/game/WorldConflictGameState.ts';
+    import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
 
     export let gameId: string;
     export let playerId: string;
     export let playerIndex: number;
 
     // Game state
-    let gameState = writable<WorldConflictGameStateData | null>(null);
+    let gameState = writable<WorldConflictStateData | null>(null);
     let regions: Region[] = [];
     let selectedRegion: number | null = null;
     let hoveredRegion: number | null = null;

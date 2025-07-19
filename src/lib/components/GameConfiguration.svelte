@@ -109,7 +109,7 @@
           index: slot.index
         }));
 
-      const response = await fetch('/api/games/create', {
+      const response = await fetch('/api/game/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

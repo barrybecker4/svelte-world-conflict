@@ -1,6 +1,5 @@
-import type { Player } from '../types.ts';
 import { AttackSequenceGenerator, type AttackEvent } from './AttackSequenceGenerator.ts';
-import { WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
+import { type Player, WorldConflictGameState } from "$lib/game/WorldConflictGameState.ts";
 
 export interface ValidationResult {
     valid: boolean;

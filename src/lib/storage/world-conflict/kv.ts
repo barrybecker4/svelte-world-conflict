@@ -1,19 +1,39 @@
-/**
- * KV Storage wrapper for World Conflict using WORLD_CONFLICT_KV binding
- */
+
+// Memory storage for development fallback
+const memoryStorage = new Map<string, string>();
+let hasWarnedAboutMemoryStorage = false;
+
 export class WorldConflictKVStorage {
     private kv: any;
+    private isMemoryMode: boolean;
 
     constructor(platform: App.Platform) {
-        if (!platform?.env?.WORLD_CONFLICT_KV) {
-            throw new Error('WORLD_CONFLICT_KV binding not available');
+        if (platform?.env?.WORLD_CONFLICT_KV) {
+            this.kv = platform.env.WORLD_CONFLICT_KV;
+            this.isMemoryMode = false;
+        } else {
+            // Fallback to memory storage for development
+            this.kv = null;
+            this.isMemoryMode = true;
+
+            if (!hasWarnedAboutMemoryStorage) {
+                console.warn('🚨 WORLD_CONFLICT_KV binding not available - using memory storage for development');
+                console.warn('⚠️  Data will not persist between server restarts');
+                hasWarnedAboutMemoryStorage = true;
+            }
         }
-        this.kv = platform.env.WORLD_CONFLICT_KV;
     }
 
     async get<T = any>(key: string): Promise<T | null> {
         try {
-            const value = await this.kv.get(key);
+            let value: string | null;
+
+            if (this.isMemoryMode) {
+                value = memoryStorage.get(key) || null;
+            } else {
+                value = await this.kv.get(key);
+            }
+
             if (!value) return null;
 
             // Try to parse as JSON, fallback to string
@@ -31,7 +51,12 @@ export class WorldConflictKVStorage {
     async put(key: string, value: any): Promise<void> {
         try {
             const serialized = typeof value === 'string' ? value : JSON.stringify(value);
-            await this.kv.put(key, serialized);
+
+            if (this.isMemoryMode) {
+                memoryStorage.set(key, serialized);
+            } else {
+                await this.kv.put(key, serialized);
+            }
         } catch (error) {
             console.error(`Error putting key ${key}:`, error);
             throw error;
@@ -40,7 +65,11 @@ export class WorldConflictKVStorage {
 
     async delete(key: string): Promise<void> {
         try {
-            await this.kv.delete(key);
+            if (this.isMemoryMode) {
+                memoryStorage.delete(key);
+            } else {
+                await this.kv.delete(key);
+            }
         } catch (error) {
             console.error(`Error deleting key ${key}:`, error);
             throw error;
@@ -49,11 +78,38 @@ export class WorldConflictKVStorage {
 
     async list(prefix?: string): Promise<{ keys: Array<{ name: string }> }> {
         try {
-            const options = prefix ? { prefix } : {};
-            return await this.kv.list(options);
+            if (this.isMemoryMode) {
+                const keys = Array.from(memoryStorage.keys())
+                    .filter(key => !prefix || key.startsWith(prefix))
+                    .map(name => ({ name }));
+                return { keys };
+            } else {
+                const options = prefix ? { prefix } : {};
+                return await this.kv.list(options);
+            }
         } catch (error) {
             console.error(`Error listing keys with prefix ${prefix}:`, error);
             return { keys: [] };
         }
+    }
+
+    /**
+     * Check if we're using memory storage (development mode)
+     */
+    isUsingMemoryStorage(): boolean {
+        return this.isMemoryMode;
+    }
+
+    /**
+     * Get storage info for debugging
+     */
+    getStorageInfo(): { type: string; keyCount?: number } {
+        if (this.isMemoryMode) {
+            return {
+                type: 'memory',
+                keyCount: memoryStorage.size
+            };
+        }
+        return { type: 'cloudflare-kv' };
     }
 }

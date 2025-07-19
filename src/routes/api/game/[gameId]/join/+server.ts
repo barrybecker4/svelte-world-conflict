@@ -6,7 +6,7 @@ import {
 } from '$lib/storage/world-conflict/index.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player } from '$lib/game/types.ts';
+import type { Player } from '$lib/game/WorldConflictGameState.ts';
 
 interface JoinGameRequest {
     playerName: string;

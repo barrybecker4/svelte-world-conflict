@@ -2,11 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import {
     WorldConflictKVStorage,
-    WorldConflictGameStorage,
+    WorldConflictGameStorage, type WorldConflictGameRecord,
 } from '$lib/storage/world-conflict/index.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player, Region } from '$lib/game/types.ts';
+import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
 import { generateGameId } from "$lib/server/api-utils.ts";
 
 // Default World Conflict map data
@@ -99,7 +99,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                         status,
                         lastMoveAt: Date.now(),
                         worldConflictState: gameState || game.worldConflictState
-                    };
+                    } as WorldConflictGameRecord;
 
                     await gameStorage.saveGame(updatedGame);
 
@@ -151,7 +151,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const newGame = {
             gameId,
             players,
-            status,
+            status: gameType === 'AI' ? 'ACTIVE' : 'PENDING' as const, // Ensure proper typing
             createdAt: Date.now(),
             lastMoveAt: Date.now(),
             currentPlayerIndex: 0,
@@ -159,8 +159,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 regions: DEFAULT_REGIONS,
                 players: players
             }
-        };
-
+        } as WorldConflictGameRecord;
         await gameStorage.saveGame(newGame);
 
         console.log(`✅ Created new ${gameType} game ${gameId} for ${playerName}`);

@@ -79,7 +79,7 @@
     try {
       const playerName = FIXED_PLAYER_NAMES[0]; // Always start as first player
 
-      const response = await fetch('/api/games/create', {
+      const response = await fetch('/api/game/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

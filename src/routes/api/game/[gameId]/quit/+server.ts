@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { validateGameId } from '$lib/server/validation';
-import { getKV } from '$lib/server/kv';
 import { GameNotifications } from '$lib/server/websocket';
+import { WorldConflictKVStorage } from '$lib/storage/world-conflict';
 
 interface QuitGameRequest {
     playerId: string;
@@ -11,7 +11,7 @@ interface QuitGameRequest {
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
-        const kv = getKV(platform);
+        const kv = new WorldConflictKVStorage(platform!);
 
         const gameIdValidation = validateGameId(params.gameId);
         if (!gameIdValidation.success) {

@@ -1,6 +1,5 @@
 import type { WorldConflictKVStorage } from './kv.ts';
-import type { Player } from '$lib/game/types.ts';
-import type { WorldConflictGameStateData } from '$lib/game/WorldConflictGameState.ts';
+import type { Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState.ts';
 
 export interface WorldConflictGameRecord {
     gameId: string;
@@ -230,6 +229,34 @@ export class WorldConflictGameStorage {
         } catch (error) {
             console.error(`Error deleting World Conflict game ${gameId}:`, error);
             throw error;
+        }
+    }
+
+    async getGamesByStatus(status: 'PENDING' | 'ACTIVE' | 'COMPLETED'): Promise<WorldConflictGameRecord[]> {
+        try {
+            if (status === 'PENDING') {
+                // For PENDING games, use the existing getOpenGames method which already filters for PENDING status
+                return await this.getOpenGames();
+            }
+
+            // For other statuses, we need to implement a broader search
+            // This is a simplified implementation - you might want to optimize this based on your storage strategy
+            const openGamesList = await this.kv.get<OpenWorldConflictGamesList>('wc_games:open');
+            if (!openGamesList) return [];
+
+            const matchingGames: WorldConflictGameRecord[] = [];
+
+            for (const gameInfo of openGamesList.games) {
+                const fullGame = await this.getGame(gameInfo.gameId);
+                if (fullGame && fullGame.status === status) {
+                    matchingGames.push(fullGame);
+                }
+            }
+
+            return matchingGames;
+        } catch (error) {
+            console.error(`Error getting World Conflict games with status ${status}:`, error);
+            return [];
         }
     }
 }

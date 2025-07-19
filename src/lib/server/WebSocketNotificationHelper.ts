@@ -1,4 +1,5 @@
 import type { GameState } from '../game/GameState.ts';
+import type {WorldConflictGameRecord} from "$lib/storage/world-conflict";
 
 // Update with your deployed worker URL
 const WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
@@ -13,14 +14,14 @@ export class WebSocketNotificationHelper {
     /**
      * Send a game update notification
      */
-    static async sendGameUpdate(gameState: GameState, platform: App.Platform): Promise<void> {
+    static async sendGameUpdate(gameState: WorldConflictGameRecord, platform: App.Platform): Promise<void> {
         console.log(`🔔 Sending gameUpdate notification for game ${gameState.gameId}`);
 
         const message = this.createMessage(gameState, 'gameUpdate');
         await this.sendNotification(gameState.gameId, message, platform);
     }
 
-    private static createMessage(gameState: GameState, type: string) {
+    private static createMessage(gameState: WorldConflictGameRecord, type: string) {
         return {
             type,
             gameId: gameState.gameId,

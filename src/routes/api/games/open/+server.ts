@@ -7,8 +7,7 @@ export const GET: RequestHandler = async ({ platform }) => {
     const gameStorage = new WorldConflictGameStorage(kv);
 
     try {
-        // Get games with status 'WAITING' (not full, not started)
-        const waitingGames = await gameStorage.getGamesByStatus('WAITING');
+        const waitingGames = await gameStorage.getGamesByStatus('PENDING');
 
         const openGames = waitingGames.map(game => ({
             gameId: game.gameId,

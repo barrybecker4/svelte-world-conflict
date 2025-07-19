@@ -1,4 +1,4 @@
-import type { Player } from '$lib/game/types.ts';
+import type { Player } from '$lib/game/WorldConflictGameState.ts';
 
 /**
  * Helper function to safely get error message from unknown error type

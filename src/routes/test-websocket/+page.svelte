@@ -1,18 +1,17 @@
-<script>
+<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { multiplayerActions, multiplayerState, gameUpdates } from '$lib/multiplayer/stores/multiplayerStore.js';
 
   let testGameId = 'test-game-123';
   let messages = [];
   let messageToSend = '';
-  let connectionLogs = [];
+  let connectionLogs: string[] = [];
 
   // Reactive state from store
   $: currentState = $multiplayerState;
   $: latestUpdate = $gameUpdates;
 
-  // Add connection logs
-  function addLog(message) {
+  function addLog(message: string): void {
     connectionLogs = [...connectionLogs, `${new Date().toLocaleTimeString()}: ${message}`];
   }
 
@@ -26,23 +25,24 @@
     addLog(`Connection status: ${currentState.connectionStatus}`);
   }
 
-  async function connectToGame() {
+  async function connectToGame(): Promise<void> {
     try {
       addLog(`Attempting to connect to game: ${testGameId}`);
       await multiplayerActions.connectToGame(testGameId);
       addLog('Connected successfully!');
     } catch (error) {
-      addLog(`Connection failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`Connection failed: ${errorMessage}`);
     }
   }
 
-  function disconnect() {
+  function disconnect(): void {
     addLog('Disconnecting...');
     multiplayerActions.disconnect();
     addLog('Disconnected');
   }
 
-  function sendTestMessage() {
+  function sendTestMessage(): void {
     if (!messageToSend.trim()) return;
 
     const message = {
@@ -57,18 +57,19 @@
     messageToSend = '';
   }
 
-  async function checkWorkerHealth() {
+  async function checkWorkerHealth(): Promise<void> {
     try {
       addLog('Checking WebSocket worker health...');
       const response = await fetch('http://localhost:8787/health');
       const result = await response.text();
       addLog(`Health check result: ${result}`);
     } catch (error) {
-      addLog(`Health check failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog(`Health check failed: ${errorMessage}`);
     }
   }
 
-  function clearLogs() {
+  function clearLogs(): void {
     connectionLogs = [];
   }
 

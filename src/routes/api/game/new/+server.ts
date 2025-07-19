@@ -2,11 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import {
     WorldConflictKVStorage,
-    WorldConflictGameStorage,
+    WorldConflictGameStorage, type WorldConflictGameRecord,
 } from '$lib/storage/world-conflict/index.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player, Region } from '$lib/game/types.ts';
+import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
 import { generateGameId, generatePlayerId } from "$lib/server/api-utils.ts";
 
 // Default World Conflict map data
@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const envInfo = WebSocketNotificationHelper.getEnvironmentInfo(platform!);
 
     // Try to find an existing game to join
-    const availableGame = await findAvailableGame(gameStorage, playerName);
+    const availableGame = await findAvailableGame(gameStorage, playerName, platform!);
     if (availableGame) {
         return json({
             gameId: availableGame.gameId,
@@ -63,15 +63,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         players: newGame.players,
         playerId: newGame.players[0].id,
         playerIndex: 0,
-        status: gameType === 'AI' ? 'ACTIVE' : 'WAITING',
+        status: gameType === 'AI' ? 'ACTIVE' : 'PENDING',
         regions: DEFAULT_REGIONS,
         webSocketNotificationsEnabled: envInfo.webSocketNotificationsAvailable
     });
 };
 
-async function findAvailableGame(gameStorage: WorldConflictGameStorage, playerName: string) {
+async function findAvailableGame(gameStorage: WorldConflictGameStorage, playerName: string, platform: App.Platform) {
     // Look for games waiting for players
-    const waitingGames = await gameStorage.getGamesByStatus('WAITING');
+    const waitingGames = await gameStorage.getGamesByStatus('PENDING');
 
     for (const game of waitingGames) {
         if (game.players.length < 4 && !game.players.some(p => p.name === playerName)) {
@@ -94,10 +94,11 @@ async function findAvailableGame(gameStorage: WorldConflictGameStorage, playerNa
             await gameStorage.saveGame({
                 ...game,
                 players: updatedPlayers,
-                status: updatedPlayers.length >= 2 ? 'ACTIVE' : 'WAITING'
+                status: updatedPlayers.length >= 2 ? 'ACTIVE' : 'PENDING'
             });
 
-            await WebSocketNotificationHelper.sendGameUpdate(worldConflictGame.toJSON(), null);
+            const gameRecord = worldConflictGame.toJSON() as WorldConflictGameRecord;
+            await WebSocketNotificationHelper.sendGameUpdate(gameRecord, platform);
 
             return {
                 gameId: game.gameId,
@@ -138,10 +139,10 @@ async function createNewWorldConflictGame(
     const gameData = {
         gameId,
         players: players.map(p => ({ id: p.id, name: p.name })),
-        status: gameType === 'AI' ? 'ACTIVE' : 'WAITING',
+        status: gameType === 'AI' ? 'ACTIVE' : 'PENDING' as const,
         createdAt: Date.now(),
         lastMoveAt: Date.now(),
-        worldConflictState: worldConflictGame.toJSON()
+        worldConflictState: worldConflictGame.toJSON(),
     };
 
     await gameStorage.saveGame(gameData);
