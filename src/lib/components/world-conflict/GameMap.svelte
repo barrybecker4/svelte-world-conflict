@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Region } from '$lib/game/classes/Region';
-  import type { Player } from '$lib/game/types';
+  import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
 
   export let regions: Region[] = [];
-  export let gameState: any = null;
-  export let currentPlayer: Player | null = null;
+  export let gameState: WorldConflictGameStateData | null = null;
+  export const currentPlayer: Player | null = null; // Changed to const export since unused
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
 
@@ -13,14 +12,14 @@
   let mapWidth = 800;
   let mapHeight = 600;
 
-  // Sample regions for development (you'll replace with actual world map data)
-  const sampleRegions = [
-    { index: 0, name: 'North America', x: 200, y: 150, neighbors: [1, 2] },
-    { index: 1, name: 'Europe', x: 400, y: 120, neighbors: [0, 2, 3] },
-    { index: 2, name: 'Asia', x: 600, y: 180, neighbors: [0, 1, 3] },
-    { index: 3, name: 'Africa', x: 450, y: 350, neighbors: [1, 2, 4] },
-    { index: 4, name: 'South America', x: 250, y: 400, neighbors: [0, 3] },
-    { index: 5, name: 'Australia', x: 650, y: 450, neighbors: [2] }
+  // Sample regions for development - now properly typed with hasTemple property
+  const sampleRegions: Region[] = [
+    { index: 0, name: 'North America', x: 200, y: 150, neighbors: [1, 2], hasTemple: true },
+    { index: 1, name: 'Europe', x: 400, y: 120, neighbors: [0, 2, 3], hasTemple: false },
+    { index: 2, name: 'Asia', x: 600, y: 180, neighbors: [0, 1, 3], hasTemple: true },
+    { index: 3, name: 'Africa', x: 450, y: 350, neighbors: [1, 2, 4], hasTemple: false },
+    { index: 4, name: 'South America', x: 250, y: 400, neighbors: [0, 3], hasTemple: true },
+    { index: 5, name: 'Australia', x: 650, y: 450, neighbors: [2], hasTemple: false }
   ];
 
   onMount(() => {
@@ -30,9 +29,11 @@
   });
 
   function getRegionOwner(regionIndex: number): Player | null {
-    return gameState?.owners?.[regionIndex] !== undefined
-      ? gameState.players[gameState.owners[regionIndex]]
-      : null;
+    if (!gameState?.owners || gameState.owners[regionIndex] === undefined) {
+      return null;
+    }
+    const playerIndex = gameState.owners[regionIndex];
+    return gameState.players[playerIndex] || null;
   }
 
   function getRegionColor(regionIndex: number): string {
@@ -49,6 +50,13 @@
 
   function handleRegionClick(region: Region) {
     onRegionClick(region);
+  }
+
+  function handleRegionKeydown(event: KeyboardEvent, region: Region) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleRegionClick(region);
+    }
   }
 
   function isRegionSelected(regionIndex: number): boolean {
@@ -78,7 +86,7 @@
     <!-- Regions -->
     {#each regions as region}
       <g>
-        <!-- Region circle -->
+        <!-- Region circle with proper accessibility -->
         <circle
           cx={region.x}
           cy={region.y}
@@ -88,8 +96,26 @@
           stroke-width={isRegionSelected(region.index) ? '4' : '2'}
           class="region-circle"
           class:selected={isRegionSelected(region.index)}
+          role="button"
+          tabindex="0"
+          aria-label={`Region ${region.name}, armies: ${getRegionArmies(region.index)}`}
           on:click={() => handleRegionClick(region)}
+          on:keydown={(event) => handleRegionKeydown(event, region)}
         />
+
+        <!-- Temple indicator -->
+        {#if region.hasTemple}
+          <circle
+            cx={region.x + 25}
+            cy={region.y - 25}
+            r="8"
+            fill="#fbbf24"
+            stroke="#92400e"
+            stroke-width="2"
+            class="temple-indicator"
+            aria-label="Temple site"
+          />
+        {/if}
 
         <!-- Region name -->
         <text
@@ -132,15 +158,27 @@
   .region-circle {
     cursor: pointer;
     transition: all 0.2s ease;
+    outline: none;
   }
 
-  .region-circle:hover {
+  .region-circle:hover,
+  .region-circle:focus {
     stroke-width: 3;
     filter: brightness(1.1);
   }
 
+  .region-circle:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
   .region-circle.selected {
     animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .temple-indicator {
+    pointer-events: none;
+    animation: glow 2s ease-in-out infinite alternate;
   }
 
   .region-name {
@@ -159,6 +197,15 @@
     }
     50% {
       opacity: 0.7;
+    }
+  }
+
+  @keyframes glow {
+    from {
+      filter: drop-shadow(0 0 2px #fbbf24);
+    }
+    to {
+      filter: drop-shadow(0 0 6px #fbbf24);
     }
   }
 

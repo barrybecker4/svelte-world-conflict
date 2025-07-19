@@ -3,12 +3,43 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
+  import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState.ts';
 
   // Simple interface for page data (SvelteKit generates $types automatically)
   interface PageData {
     gameId?: string;
     game?: any;
     player?: any;
+  }
+
+  // Interface for the World Conflict game API response
+  interface WorldConflictGameResponse {
+    gameId: string;
+    status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
+    players: Player[];
+    worldConflictState: WorldConflictGameStateData;
+    createdAt: number;
+    lastMoveAt: number;
+    currentPlayerIndex: number;
+    gameType: 'MULTIPLAYER' | 'AI';
+  }
+
+  // Type guard to validate game data structure
+  function isWorldConflictGameResponse(data: any): data is WorldConflictGameResponse {
+    return (
+      data &&
+      typeof data === 'object' &&
+      typeof data.gameId === 'string' &&
+      typeof data.status === 'string' &&
+      Array.isArray(data.players) &&
+      data.worldConflictState &&
+      typeof data.worldConflictState === 'object' &&
+      typeof data.createdAt === 'number' &&
+      typeof data.lastMoveAt === 'number' &&
+      typeof data.currentPlayerIndex === 'number' &&
+      data.gameType &&
+      (data.gameType === 'MULTIPLAYER' || data.gameType === 'AI')
+    );
   }
 
   // Change to const export since it's unused for external reference only
@@ -67,7 +98,7 @@
         return;
       }
 
-          // Fetch World Conflict game data
+      // Fetch World Conflict game data
       const response = await fetch(`/api/game/${gameId}`);
 
       if (!response.ok) {
@@ -77,17 +108,15 @@
         throw new Error(`Failed to load game: ${response.status}`);
       }
 
-      const gameData = await response.json();
+      const gameData: unknown = await response.json();
 
       // Validate that the game data has the expected structure for World Conflict
-      if (!gameData.worldConflictState) {
-        throw new Error('This does not appear to be a World Conflict game');
+      if (!isWorldConflictGameResponse(gameData)) {
+        throw new Error('Invalid game data received from server - not a valid World Conflict game');
       }
 
-      // Additional validation
-      if (gameData.gameType && gameData.gameType !== 'MULTIPLAYER' && gameData.gameType !== 'AI') {
-        throw new Error('Invalid game type');
-      }
+      // At this point, gameData is properly typed as WorldConflictGameResponse
+      console.log('✅ Game data loaded successfully:', gameData.gameId);
 
     } catch (err) {
       error = getErrorMessage(err);

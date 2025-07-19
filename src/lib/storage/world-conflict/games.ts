@@ -9,7 +9,7 @@ export interface WorldConflictGameRecord {
     createdAt: number;
     lastMoveAt: number;
     currentPlayerIndex: number;
-    gameType: 'MULTIPLAYER' | 'AI';
+    gameType: 'MULTIPLAYER' | 'AI';  // Add this line
 }
 
 export interface OpenWorldConflictGamesList {
@@ -57,26 +57,6 @@ export class WorldConflictGameStorage {
             throw error;
         }
     }
-
-    // async createGame(gameData: Partial<WorldConflictGameRecord>): Promise<WorldConflictGameRecord> {
-    //     const gameId = this.generateGameId();
-    //
-    //     const newGame: WorldConflictGameRecord = {
-    //         gameId,
-    //         status: 'PENDING',
-    //         players: gameData.players || [],
-    //         worldConflictState: gameData.worldConflictState!,
-    //         createdAt: Date.now(),
-    //         lastMoveAt: Date.now(),
-    //         currentPlayerIndex: 0,
-    //         gameType: gameData.gameType || 'MULTIPLAYER', // Add this line with default
-    //         ...gameData
-    //     };
-    //
-    //     await this.saveGame(newGame);
-    //
-    //     return newGame;
-    // }
 
     async getOpenGames(): Promise<WorldConflictGameRecord[]> {
         try {
