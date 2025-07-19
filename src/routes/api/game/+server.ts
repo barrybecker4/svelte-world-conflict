@@ -2,29 +2,17 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import {
     WorldConflictKVStorage,
-    WorldConflictGameStorage, type WorldConflictGameRecord,
+    WorldConflictGameStorage
 } from '$lib/storage/world-conflict/index.ts';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
-import { generateGameId } from "$lib/server/api-utils.ts";
 
-// Default World Conflict map data
-const DEFAULT_REGIONS: Region[] = [
-    { index: 0, name: "Northern Wastes", neighbors: [1, 3], x: 100, y: 50, hasTemple: true },
-    { index: 1, name: "Eastern Plains", neighbors: [0, 2, 4], x: 200, y: 80, hasTemple: false },
-    { index: 2, name: "Southern Desert", neighbors: [1, 5], x: 180, y: 200, hasTemple: true },
-    { index: 3, name: "Western Mountains", neighbors: [0, 4, 6], x: 50, y: 120, hasTemple: false },
-    { index: 4, name: "Central Valley", neighbors: [1, 3, 5, 7], x: 150, y: 120, hasTemple: true },
-    { index: 5, name: "Eastern Coast", neighbors: [2, 4, 8], x: 250, y: 150, hasTemple: false },
-    { index: 6, name: "Ancient Ruins", neighbors: [3, 7], x: 80, y: 180, hasTemple: true },
-    { index: 7, name: "Sacred Grove", neighbors: [4, 6, 8], x: 150, y: 180, hasTemple: true },
-    { index: 8, name: "Dragon's Lair", neighbors: [5, 7], x: 220, y: 220, hasTemple: true }
-];
+interface RouteParams {
+    gameId: string;
+}
 
-interface NewGameRequest {
-    playerName: string;
-    gameType?: 'MULTIPLAYER' | 'AI';
+interface QuitGameRequest {
+    playerId: string;
+    reason?: 'RESIGN' | 'TIMEOUT' | 'DISCONNECT';
 }
 
 /**
@@ -37,151 +25,111 @@ function getErrorMessage(error: unknown): string {
     return String(error);
 }
 
-/**
- * Create a proper World Conflict Player object
- */
-function createPlayer(name: string, index: number, isAI: boolean = false): Player {
-    const colors = [
-        '#dc2626', // Red
-        '#2563eb', // Blue
-        '#16a34a', // Green
-        '#ca8a04'  // Yellow
-    ];
+export const GET: RequestHandler = async ({ params, platform }) => {
 
-    return {
-        index,
-        name: name.trim(),
-        color: colors[index % colors.length],
-        isAI
-    };
-}
-
-export const POST: RequestHandler = async ({ request, platform }) => {
     try {
-        const { playerName, gameType = 'MULTIPLAYER' } = await request.json() as NewGameRequest;
+        const { gameId } = params as RouteParams;
 
-        console.log(`🎯 NEW GAME REQUEST: Player "${playerName}" wants to play`);
-
-        if (!playerName) {
-            return json({ error: 'Player name required' }, { status: 400 });
+        if (!gameId) {
+            return json({ error: 'Game ID is required' }, { status: 400 });
         }
 
         const kv = new WorldConflictKVStorage(platform!);
         const gameStorage = new WorldConflictGameStorage(kv);
 
-        // Try to find an existing waiting game first (for multiplayer)
-        if (gameType === 'MULTIPLAYER') {
-            const waitingGames = await gameStorage.getGamesByStatus('PENDING');
-
-            for (const game of waitingGames) {
-                if (game.players.length < 4 && !game.players.some((p: Player) => p.name === playerName)) {
-                    // Add player to existing game
-                    const newPlayer = createPlayer(playerName, game.players.length);
-                    const updatedPlayers = [...game.players, newPlayer];
-
-                    // Start game if we have enough players
-                    const shouldStart = updatedPlayers.length >= 2;
-                    const status = shouldStart ? 'ACTIVE' : 'PENDING';
-
-                    let gameState = null;
-                    if (shouldStart) {
-                        const wcGameState = WorldConflictGameState.createInitialState(
-                            game.gameId,
-                            updatedPlayers,
-                            DEFAULT_REGIONS
-                        );
-                        gameState = wcGameState.toJSON();
-                    }
-
-                    const updatedGame = {
-                        ...game,
-                        players: updatedPlayers,
-                        status,
-                        lastMoveAt: Date.now(),
-                        worldConflictState: gameState || game.worldConflictState
-                    } as WorldConflictGameRecord;
-
-                    await gameStorage.saveGame(updatedGame);
-
-                    if (platform) {
-                        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform);
-                    }
-
-                    console.log(`✅ Player ${playerName} joined existing game ${game.gameId}`);
-
-                    return json({
-                        success: true,
-                        gameId: game.gameId,
-                        players: updatedGame.players,
-                        playerIndex: newPlayer.index,
-                        status: updatedGame.status,
-                        message: shouldStart ? 'Game started!' : 'Waiting for more players...'
-                    });
-                }
-            }
+        const game = await gameStorage.getGame(gameId);
+        if (!game) {
+            return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        // Create new game
-        const gameId = generateGameId();
-        const players: Player[] = [
-            createPlayer(playerName, 0, false)
-        ];
+        console.log(`🎮 Loading game ${gameId}:`, {
+            status: game.status,
+            players: game.players?.length,
+            hasWorldConflictState: !!game.worldConflictState,
+            hasGameType: !!game.gameType,
+            worldConflictStateKeys: game.worldConflictState ? Object.keys(game.worldConflictState) : []
+        });
 
-        // Add AI players for AI games
-        if (gameType === 'AI') {
-            players.push(
-                createPlayer('AI Warrior', 1, true),
-                createPlayer('AI Strategist', 2, true)
-            );
+        // Ensure all required fields exist with proper defaults
+        const response = {
+            gameId: game.gameId,
+            status: game.status || 'ACTIVE',
+            players: game.players || [],
+            worldConflictState: game.worldConflictState || {},
+            createdAt: game.createdAt || Date.now(),
+            lastMoveAt: game.lastMoveAt || Date.now(),
+            currentPlayerIndex: game.currentPlayerIndex || 0,
+            gameType: game.gameType || 'AI' // Default to AI if not specified
+        };
+
+        // Validate that worldConflictState has the basic structure
+        if (!response.worldConflictState.regions) {
+            console.error(`❌ Game ${gameId} missing regions in worldConflictState`);
+            return json({ error: 'Game data is corrupted - missing regions' }, { status: 500 });
         }
 
-        const status = gameType === 'AI' ? 'ACTIVE' : 'PENDING';
-
-        // Create initial game state for AI games
-        let initialGameState = null;
-        if (gameType === 'AI') {
-            const wcGameState = WorldConflictGameState.createInitialState(
-                gameId,
-                players,
-                DEFAULT_REGIONS
-            );
-            initialGameState = wcGameState.toJSON();
+        if (!response.worldConflictState.players) {
+            console.error(`❌ Game ${gameId} missing players in worldConflictState`);
+            return json({ error: 'Game data is corrupted - missing players' }, { status: 500 });
         }
 
-        const newGame = {
-            gameId,
-            players,
-            status: gameType === 'AI' ? 'ACTIVE' : 'PENDING' as const, // Ensure proper typing
-            createdAt: Date.now(),
-            lastMoveAt: Date.now(),
-            currentPlayerIndex: 0,
-            worldConflictState: initialGameState || {
-                regions: DEFAULT_REGIONS,
-                players: players
-            }
-        } as WorldConflictGameRecord;
-        await gameStorage.saveGame(newGame);
+        console.log(`✅ Returning game data for ${gameId}:`, {
+            regions: response.worldConflictState.regions?.length,
+            players: response.worldConflictState.players?.length,
+            owners: Object.keys(response.worldConflictState.owners || {}).length,
+            soldiers: Object.keys(response.worldConflictState.soldiersByRegion || {}).length
+        });
 
-        console.log(`✅ Created new ${gameType} game ${gameId} for ${playerName}`);
+        return json(response);
+
+    } catch (error) {
+        console.error(`Error getting World Conflict game ${params.gameId}:`, error);
+        return json({ error: 'Failed to load game: ' + getErrorMessage(error) }, { status: 500 });
+    }
+};
+
+export const POST: RequestHandler = async ({ params, request, platform }) => {
+    try {
+        const gameId = params.gameId;
+        const { playerId, reason = 'RESIGN' } = await request.json() as QuitGameRequest;
+
+        if (!gameId) {
+            return json({ error: 'Game ID is required' }, { status: 400 });
+        }
+
+        if (!playerId) {
+            return json({ error: 'Player ID is required' }, { status: 400 });
+        }
+
+        const kv = new WorldConflictKVStorage(platform!.env.WORLD_CONFLICT_KV);
+        const gameStorage = new WorldConflictGameStorage(kv);
+
+        const game = await gameStorage.getGame(gameId);
+        if (!game) {
+            return json({ error: 'Game not found' }, { status: 404 });
+        }
+
+        // Mark player as quit and update game status
+        const updatedGame = {
+            ...game,
+            status: 'COMPLETED' as const,
+            lastMoveAt: Date.now()
+        };
+
+        await gameStorage.saveGame(updatedGame);
+
+        // Notify other players via WebSocket
+        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+
+        console.log(`Player ${playerId} quit game ${gameId} (${reason})`);
 
         return json({
             success: true,
-            gameId,
-            players: players.map(p => ({
-                name: p.name,
-                index: p.index,
-                color: p.color,
-                isAI: p.isAI
-            })),
-            playerIndex: 0,
-            status,
-            message: gameType === 'AI' ? 'Game started!' : 'Waiting for other players...'
+            message: 'Successfully left the game'
         });
 
     } catch (error) {
-        console.error('❌ Error creating new game:', error);
-        return json({
-            error: 'Failed to create game: ' + getErrorMessage(error)
-        }, { status: 500 });
+        console.error(`Error quitting game. Could not get gameId from ${params}:`, error);
+        return json({ error: 'Failed to quit game: ' + getErrorMessage(error) }, { status: 500 });
     }
 };

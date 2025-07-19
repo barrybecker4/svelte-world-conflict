@@ -24,7 +24,7 @@ function getErrorMessage(error: unknown): string {
 
 export const GET: RequestHandler = async ({ params, platform }) => {
     try {
-        const { gameId } = params;
+        const gameId = params.gameId;
 
         if (!gameId) {
             return json({ error: 'Game ID is required' }, { status: 400 });

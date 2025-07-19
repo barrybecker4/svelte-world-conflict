@@ -4,100 +4,221 @@
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
+  export const currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
-  export let moveMode: string = 'IDLE';
 
   let mapContainer: HTMLDivElement;
-  let mapWidth = 300;
-  let mapHeight = 250;
+  let mapWidth = 800;
+  let mapHeight = 600;
 
-  // Cache for generated polygon paths
-  let regionPolygons: Map<number, string> = new Map();
+  // Adjust polygon size based on number of regions
+  $: baseRadius = calculateBaseRadius(regions.length);
 
-  onMount(() => {
-    if (regions.length > 0) {
-      generateRegionPolygons();
-    }
-  });
-
-  // Regenerate when regions change
-  $: if (regions.length > 0) {
-    generateRegionPolygons();
+  // Enhanced region interface with boundary data
+  interface EnhancedRegion extends Region {
+    boundary?: string;
   }
 
-  function generateRegionPolygons() {
-    console.log('Generating simple irregular polygons for', regions.length, 'regions');
+  // Generate a realistic 30-region map that forms a connected landmass
+  const generateConnectedMap = (): Region[] => {
+    const regions: Region[] = [];
+    const gridWidth = 6;
+    const gridHeight = 5;
+    const cellWidth = mapWidth / (gridWidth + 1);
+    const cellHeight = mapHeight / (gridHeight + 1);
 
-    regionPolygons.clear();
+    // Create a grid-based layout with some randomization
+    for (let row = 0; row < gridHeight; row++) {
+      for (let col = 0; col < gridWidth; col++) {
+        const index = row * gridWidth + col;
 
-    regions.forEach(region => {
-      const polygon = generateSimpleIrregularPolygon(region.x, region.y, region.index);
-      regionPolygons.set(region.index, polygon);
+        // Add some randomization to positions while keeping them roughly in grid
+        const baseX = (col + 1) * cellWidth;
+        const baseY = (row + 1) * cellHeight;
+        const offsetX = (Math.random() - 0.5) * cellWidth * 0.4;
+        const offsetY = (Math.random() - 0.5) * cellHeight * 0.4;
+
+        regions.push({
+          index,
+          name: generateRegionName(index),
+          x: Math.round(baseX + offsetX),
+          y: Math.round(baseY + offsetY),
+          neighbors: [],
+          hasTemple: Math.random() < 0.25 // 25% chance of temple
+        });
+      }
+    }
+
+    // Connect neighbors based on proximity (grid-like but with some variation)
+    for (let i = 0; i < regions.length; i++) {
+      const region = regions[i];
+      const row = Math.floor(i / gridWidth);
+      const col = i % gridWidth;
+
+      // Add grid neighbors
+      const potentialNeighbors = [
+        (row - 1) * gridWidth + col,     // North
+        (row + 1) * gridWidth + col,     // South
+        row * gridWidth + (col - 1),     // West
+        row * gridWidth + (col + 1),     // East
+      ];
+
+      // Add diagonal neighbors sometimes for more interesting connections
+      if (Math.random() < 0.3) {
+        potentialNeighbors.push((row - 1) * gridWidth + (col - 1)); // NW
+      }
+      if (Math.random() < 0.3) {
+        potentialNeighbors.push((row - 1) * gridWidth + (col + 1)); // NE
+      }
+      if (Math.random() < 0.3) {
+        potentialNeighbors.push((row + 1) * gridWidth + (col - 1)); // SW
+      }
+      if (Math.random() < 0.3) {
+        potentialNeighbors.push((row + 1) * gridWidth + (col + 1)); // SE
+      }
+
+      for (const neighborIndex of potentialNeighbors) {
+        if (neighborIndex >= 0 && neighborIndex < regions.length && neighborIndex !== i) {
+          const neighbor = regions[neighborIndex];
+          const distance = Math.sqrt(
+            Math.pow(region.x - neighbor.x, 2) + Math.pow(region.y - neighbor.y, 2)
+          );
+
+          // Connect if close enough
+          if (distance < cellWidth * 1.5) {
+            if (!region.neighbors.includes(neighborIndex)) {
+              region.neighbors.push(neighborIndex);
+            }
+            if (!neighbor.neighbors.includes(i)) {
+              neighbor.neighbors.push(i);
+            }
+          }
+        }
+      }
+    }
+
+    return regions;
+  };
+
+  // Generate fantasy region names
+  const generateRegionName = (index: number): string => {
+    const prefixes = ['North', 'South', 'East', 'West', 'Upper', 'Lower', 'Great', 'Little', 'Old', 'New'];
+    const roots = ['haven', 'shire', 'moor', 'vale', 'burg', 'ford', 'ton', 'wood', 'fell', 'marsh', 'peak', 'ridge', 'glen', 'holm', 'gate'];
+    const suffixes = ['lands', 'heim', 'stad', 'mark', 'wick', 'thorpe', 'by', 'garth'];
+
+    // Some regions get single names, others get compound names
+    if (Math.random() < 0.3) {
+      return roots[index % roots.length].charAt(0).toUpperCase() + roots[index % roots.length].slice(1);
+    } else {
+      const prefix = prefixes[index % prefixes.length];
+      const suffix = Math.random() < 0.5 ? roots[index % roots.length] : suffixes[index % suffixes.length];
+      return `${prefix}${suffix}`;
+    }
+  };
+
+  // Calculate appropriate polygon size based on region count
+  function calculateBaseRadius(regionCount: number): number {
+    // Scale polygon size inversely with region count
+    if (regionCount <= 15) return 45;      // Small maps - larger regions
+    if (regionCount <= 20) return 40;      // Medium maps
+    return 35;                             // Large maps - smaller regions
+  }
+
+  // Generate irregular boundaries using a more realistic approach
+  function generateIrregularBoundary(
+    region: Region,
+    allRegions: Region[],
+    mapWidth: number,
+    mapHeight: number
+  ): string {
+    const centerX = region.x;
+    const centerY = region.y;
+
+    // Calculate appropriate radius based on regional density
+    const neighborDistances = region.neighbors.map(nIndex => {
+      const neighbor = allRegions.find(r => r.index === nIndex);
+      if (neighbor) {
+        return Math.sqrt(Math.pow(region.x - neighbor.x, 2) + Math.pow(region.y - neighbor.y, 2));
+      }
+      return 100;
     });
 
-    regionPolygons = regionPolygons; // Trigger reactivity
-    console.log('Generated polygons for', regions.length, 'regions');
-  }
+    const avgNeighborDistance = neighborDistances.length > 0
+      ? neighborDistances.reduce((a, b) => a + b, 0) / neighborDistances.length
+      : 80;
 
-  function generateSimpleIrregularPolygon(centerX: number, centerY: number, seed: number): string {
-    const points: { x: number; y: number }[] = [];
-    const numPoints = 6 + (seed % 3); // 6-8 points for variety
-    const baseRadius = 25; // Fixed size that works well in the 300x250 viewBox
+    const regionBaseRadius = Math.min(avgNeighborDistance * 0.45, baseRadius);
 
-    // Seeded random for consistent polygons
-    let randomSeed = seed * 12345;
-    const seededRandom = () => {
-      randomSeed = (randomSeed * 9301 + 49297) % 233280;
-      return randomSeed / 233280;
-    };
+    // Create boundary points
+    const points: Array<{x: number, y: number}> = [];
+    const numPoints = 8 + Math.floor(Math.random() * 4);
 
-    // Generate points in a circle with random variation
     for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * 2 * Math.PI;
+      const angle = (i / numPoints) * Math.PI * 2;
 
-      // Add randomness to radius for irregular shape
-      const radiusVariation = 0.7 + seededRandom() * 0.6; // 70-130% of base radius
-      const radius = baseRadius * radiusVariation;
+      // Vary radius for irregular shape
+      const radiusVariation = 0.7 + Math.random() * 0.6;
+      const radius = regionBaseRadius * radiusVariation;
 
-      // Small random angle variation
-      const angleVariation = (seededRandom() - 0.5) * 0.3;
-      const finalAngle = angle + angleVariation;
+      // Add angular noise
+      const angleNoise = (Math.random() - 0.5) * 0.4;
+      const finalAngle = angle + angleNoise;
 
-      const x = centerX + Math.cos(finalAngle) * radius;
-      const y = centerY + Math.sin(finalAngle) * radius;
+      let x = centerX + Math.cos(finalAngle) * radius;
+      let y = centerY + Math.sin(finalAngle) * radius;
+
+      // Keep within bounds
+      x = Math.max(20, Math.min(mapWidth - 20, x));
+      y = Math.max(20, Math.min(mapHeight - 20, y));
 
       points.push({ x, y });
     }
 
-    // Create smooth SVG path
+    // Create smooth path
     if (points.length === 0) return '';
 
     let path = `M ${points[0].x},${points[0].y}`;
 
-    // Use smooth curves between points
-    for (let i = 0; i < points.length; i++) {
-      const current = points[i];
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
       const next = points[(i + 1) % points.length];
 
-      // Create smooth curve to next point
-      const cp1x = current.x + (next.x - current.x) * 0.5;
-      const cp1y = current.y + (next.y - current.y) * 0.5;
+      const cp1x = prev.x + (curr.x - prev.x) * 0.5;
+      const cp1y = prev.y + (curr.y - prev.y) * 0.5;
 
-      if (i === points.length - 1) {
-        // Close back to start
-        path += ` Q ${cp1x},${cp1y} ${points[0].x},${points[0].y}`;
-      } else {
-        path += ` Q ${cp1x},${cp1y} ${next.x},${next.y}`;
-      }
+      path += ` Q ${cp1x},${cp1y} ${curr.x},${curr.y}`;
     }
 
-    path += ' Z';
+    // Close path
+    const first = points[0];
+    const last = points[points.length - 1];
+    const cp1x = last.x + (first.x - last.x) * 0.5;
+    const cp1y = last.y + (first.y - last.y) * 0.5;
+
+    path += ` Q ${cp1x},${cp1y} ${first.x},${first.y} Z`;
+
     return path;
   }
 
+  // Enhanced regions with boundary data
+  let enhancedRegions: EnhancedRegion[] = [];
+
+  onMount(() => {
+    if (regions.length === 0) {
+      regions = generateConnectedMap();
+    }
+
+    // Generate boundaries for all regions
+    enhancedRegions = regions.map(region => ({
+      ...region,
+      boundary: generateIrregularBoundary(region, regions, mapWidth, mapHeight)
+    }));
+  });
+
   function getRegionOwner(regionIndex: number): Player | null {
-    if (!gameState?.owners || gameState.owners[regionIndex] === undefined) {
+    if (!gameState?.owners || gameState.owners[regionIndex] === undefined || gameState.owners[regionIndex] === -1) {
       return null;
     }
     const playerIndex = gameState.owners[regionIndex];
@@ -106,14 +227,19 @@
 
   function getRegionColor(regionIndex: number): string {
     const owner = getRegionOwner(regionIndex);
-    if (!owner) return '#94a3b8'; // neutral gray
+    if (!owner) return '#6b7280'; // neutral gray for unoccupied regions
 
     const playerColors = ['#dc2626', '#2563eb', '#16a34a', '#ca8a04'];
     return playerColors[owner.index % playerColors.length];
   }
 
   function getRegionArmies(regionIndex: number): number {
-    return gameState?.soldiersByRegion?.[regionIndex]?.length || 0;
+    // Handle both array format and object format
+    const soldiers = gameState?.soldiersByRegion?.[regionIndex];
+    if (Array.isArray(soldiers)) {
+      return soldiers.length || 1;
+    }
+    return 1; // Default to 1 army if no data
   }
 
   function handleRegionClick(region: Region) {
@@ -131,190 +257,211 @@
     return selectedRegion?.index === regionIndex;
   }
 
-  function getStrokeColor(regionIndex: number): string {
-    if (isRegionSelected(regionIndex)) return '#fbbf24';
-    if (moveMode !== 'IDLE') return '#60a5fa';
-    return '#374151';
-  }
-
-  function getStrokeWidth(regionIndex: number): string {
-    return isRegionSelected(regionIndex) ? '3' : '2';
+  function isRegionOccupied(regionIndex: number): boolean {
+    return getRegionOwner(regionIndex) !== null;
   }
 </script>
 
 <div class="game-map" bind:this={mapContainer}>
   <svg width={mapWidth} height={mapHeight} viewBox="0 0 {mapWidth} {mapHeight}">
+    <!-- Background texture and gradients -->
     <defs>
-      <!-- Map background gradient -->
-      <radialGradient id="mapBackground" cx="50%" cy="50%" r="70%">
-        <stop offset="0%" style="stop-color:#1e40af;stop-opacity:0.1" />
-        <stop offset="100%" style="stop-color:#1e3a8a;stop-opacity:0.3" />
+      <pattern id="mapTexture" patternUnits="userSpaceOnUse" width="30" height="30">
+        <rect width="30" height="30" fill="#1e3a8a" opacity="0.05"/>
+        <circle cx="15" cy="15" r="1" fill="#3730a3" opacity="0.2"/>
+        <circle cx="5" cy="25" r="0.5" fill="#3730a3" opacity="0.1"/>
+        <circle cx="25" cy="5" r="0.5" fill="#3730a3" opacity="0.1"/>
+      </pattern>
+
+      <!-- Neutral gradient for unoccupied regions -->
+      <radialGradient id="neutralGradient" cx="50%" cy="30%">
+        <stop offset="0%" stop-color="#9ca3af"/>
+        <stop offset="50%" stop-color="#6b7280"/>
+        <stop offset="100%" stop-color="#4b5563"/>
       </radialGradient>
 
-      <!-- Glow filter for selected regions -->
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-
-      <!-- Drop shadow for depth -->
-      <filter id="shadow">
-        <feDropShadow dx="1" dy="1" stdDeviation="1" flood-color="rgba(0,0,0,0.3)"/>
-      </filter>
+      <!-- Dynamic gradients for each region based on owner -->
+      {#each enhancedRegions as region}
+        <radialGradient id="regionGradient{region.index}" cx="50%" cy="30%">
+          <stop offset="0%" stop-color={getRegionColor(region.index)} stop-opacity="0.9"/>
+          <stop offset="100%" stop-color={getRegionColor(region.index)} stop-opacity="0.7"/>
+        </radialGradient>
+      {/each}
     </defs>
 
-    <!-- Map background -->
-    <rect width="100%" height="100%" fill="url(#mapBackground)" />
+    <!-- Ocean background -->
+    <rect width={mapWidth} height={mapHeight} fill="#1e3a8a"/>
+    <rect width={mapWidth} height={mapHeight} fill="url(#mapTexture)"/>
 
-    <!-- Region connections (draw first so they appear behind regions) -->
-    {#each regions as region}
-      {#each region.neighbors as neighborIndex}
-        {@const neighbor = regions.find(r => r.index === neighborIndex)}
-        {#if neighbor}
-          <line
-            x1={region.x}
-            y1={region.y}
-            x2={neighbor.x}
-            y2={neighbor.y}
-            stroke="#374151"
-            stroke-width="1"
-            opacity="0.3"
-            class="connection-line"
-          />
-        {/if}
+    <!-- Debug info (remove in production) -->
+    {#if enhancedRegions.length > 0}
+      <text x="10" y="25" fill="#94a3b8" font-size="12" font-family="monospace">
+        Regions: {enhancedRegions.length} | Occupied: {Object.keys(gameState?.owners || {}).length} | Neutral: {enhancedRegions.length - Object.keys(gameState?.owners || {}).length}
+      </text>
+    {/if}
+
+    <!-- Region connections (drawn behind regions) -->
+    <g opacity="0.4">
+      {#each enhancedRegions as region}
+        {#each region.neighbors as neighborIndex}
+          {@const neighbor = enhancedRegions.find(r => r.index === neighborIndex)}
+          {#if neighbor && neighborIndex > region.index}
+            <!-- Only draw each connection once by checking neighborIndex > region.index -->
+            <line
+              x1={region.x}
+              y1={region.y}
+              x2={neighbor.x}
+              y2={neighbor.y}
+              stroke="#374151"
+              stroke-width="1"
+              opacity="0.6"
+            />
+          {/if}
+        {/each}
       {/each}
-    {/each}
+    </g>
 
-    <!-- Regions with individual irregular polygons -->
-    {#each regions as region}
-      {@const polygon = regionPolygons.get(region.index)}
-      {#if polygon}
-        <g class="region-group">
-          <!-- Main region polygon -->
+    <!-- Region polygons -->
+    {#if enhancedRegions.length > 0}
+      {#each enhancedRegions as region}
+        {@const owner = getRegionOwner(region.index)}
+        {@const fillColor = owner ? `url(#regionGradient${region.index})` : 'url(#neutralGradient)'}
+        {@const isSelected = isRegionSelected(region.index)}
+        {@const isOccupied = isRegionOccupied(region.index)}
+
+        <g>
+          <!-- Region boundary -->
           <path
-            d={polygon}
-            fill={getRegionColor(region.index)}
-            stroke={getStrokeColor(region.index)}
-            stroke-width={getStrokeWidth(region.index)}
-            filter="url(#shadow)"
-            class="region-polygon"
-            class:selected={isRegionSelected(region.index)}
-            class:neutral={!getRegionOwner(region.index)}
-            class:interactive={moveMode !== 'IDLE'}
+            d={region.boundary}
+            fill={fillColor}
+            stroke={isSelected ? '#fbbf24' : (isOccupied ? '#374151' : '#64748b')}
+            stroke-width={isSelected ? 3 : (isOccupied ? 2 : 1)}
+            class="region-path"
+            class:selected={isSelected}
+            class:neutral={!isOccupied}
             role="button"
             tabindex="0"
-            aria-label={`Region ${region.index}, armies: ${getRegionArmies(region.index)}`}
+            aria-label={`Region ${region.name}, armies: ${getRegionArmies(region.index)}, owner: ${owner?.name || 'neutral'}`}
             on:click={() => handleRegionClick(region)}
             on:keydown={(event) => handleRegionKeydown(event, region)}
           />
 
-          <!-- Highlight overlay for selected regions -->
-          {#if isRegionSelected(region.index)}
-            <path
-              d={polygon}
-              fill="none"
-              stroke="#fbbf24"
-              stroke-width="4"
-              opacity="0.6"
-              filter="url(#glow)"
-              class="selection-highlight"
-              pointer-events="none"
-            />
-          {/if}
-
           <!-- Temple indicator -->
           {#if region.hasTemple}
-            <circle
-              cx={region.x + 12}
-              cy={region.y - 12}
-              r="4"
-              fill="#fbbf24"
-              stroke="#92400e"
-              stroke-width="1"
-              class="temple-indicator"
-              aria-label="Temple site"
-            />
+            <g class="temple-indicator">
+              <circle
+                cx={region.x + 18}
+                cy={region.y - 18}
+                r="6"
+                fill="#fbbf24"
+                stroke="#92400e"
+                stroke-width="1"
+                aria-label="Temple site"
+              />
+              <text
+                x={region.x + 18}
+                y={region.y - 15}
+                text-anchor="middle"
+                font-size="8"
+                fill="#92400e"
+                font-weight="bold"
+              >
+                ⛩
+              </text>
+            </g>
           {/if}
 
-          <!-- Army count -->
+          <!-- Region name (smaller for many regions) -->
+          <text
+            x={region.x}
+            y={region.y - 25}
+            text-anchor="middle"
+            class="region-name"
+            fill="#f8fafc"
+            font-size="10"
+            font-weight="bold"
+          >
+            {region.name}
+          </text>
+
+          <!-- Army count circle and number -->
+          <circle
+            cx={region.x}
+            cy={region.y}
+            r="12"
+            fill="rgba(0,0,0,0.8)"
+            stroke={isOccupied ? "#fff" : "#94a3b8"}
+            stroke-width="1.5"
+            class="army-circle"
+          />
           <text
             x={region.x}
             y={region.y + 3}
             text-anchor="middle"
             class="army-count"
-            fill="#ffffff"
-            font-size="14"
+            fill="white"
+            font-size="11"
             font-weight="bold"
-            text-shadow="1px 1px 2px rgba(0,0,0,0.8)"
-            pointer-events="none"
           >
             {getRegionArmies(region.index)}
           </text>
         </g>
-      {/if}
-    {/each}
+      {/each}
+    {:else}
+      <!-- Empty state -->
+      <text x={mapWidth/2} y={mapHeight/2} text-anchor="middle" fill="#94a3b8" font-size="16">
+        No regions loaded
+      </text>
+    {/if}
   </svg>
 </div>
 
 <style>
   .game-map {
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.8);
-    border-radius: 1rem;
-    border: 1px solid #475569;
-    overflow: hidden;
+    background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
-  .region-polygon {
+  .region-path {
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     outline: none;
   }
 
-  .region-polygon:hover {
-    filter: brightness(1.15) saturate(1.1) url(#shadow);
-  }
-
-  .region-polygon:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-  }
-
-  .region-polygon.selected {
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  .region-polygon.neutral {
-    filter: saturate(0.8) url(#shadow);
-  }
-
-  .region-polygon.interactive {
-    cursor: crosshair;
-  }
-
-  .region-polygon.interactive:hover {
-    stroke: #60a5fa;
+  .region-path:hover,
+  .region-path:focus {
     stroke-width: 3;
+    filter: brightness(1.15);
   }
 
-  .selection-highlight {
-    animation: glow 1s ease-in-out infinite alternate;
+  .region-path.neutral:hover {
+    fill: #7c8694;
   }
 
-  .connection-line {
-    pointer-events: none;
+  .region-path:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 1px;
+  }
+
+  .region-path.selected {
+    animation: pulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
   }
 
   .temple-indicator {
     pointer-events: none;
-    animation: templeGlow 3s ease-in-out infinite alternate;
+    animation: glow 3s ease-in-out infinite alternate;
   }
 
-  .army-count {
+  .region-name {
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
+  }
+
+  .army-count, .army-circle {
     pointer-events: none;
     user-select: none;
   }
@@ -322,24 +469,13 @@
   @keyframes pulse {
     0%, 100% {
       opacity: 1;
-      transform: scale(1);
     }
     50% {
-      opacity: 0.85;
-      transform: scale(1.02);
-    }
-  }
-
-  @keyframes glow {
-    from {
-      opacity: 0.4;
-    }
-    to {
       opacity: 0.8;
     }
   }
 
-  @keyframes templeGlow {
+  @keyframes glow {
     from {
       filter: drop-shadow(0 0 1px #fbbf24);
     }
@@ -348,10 +484,9 @@
     }
   }
 
-  /* Responsive adjustments */
   @media (max-width: 768px) {
-    .army-count {
-      font-size: 12px;
+    .game-map {
+      padding: 0.5rem;
     }
   }
 </style>
