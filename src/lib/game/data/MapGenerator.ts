@@ -24,23 +24,10 @@ export class MapGenerator {
         };
 
         const targetRegions = regionCounts[options.size];
-        const lakePercentage = options.lakePercentage || 0.15; // 15% become lakes by default
 
         // Generate initial regions with more organic positioning
         let regions = this.generateOrganicRegions(targetRegions);
-
-        // Connect neighbors
         this.connectNeighbors(regions);
-
-        // Remove some regions to create lakes and vary neighbor counts
-        regions = this.createLakes(regions, lakePercentage);
-
-        // Reindex regions after lake removal
-        regions = this.reindexRegions(regions);
-
-        // Update neighbor connections after reindexing
-        this.updateNeighborConnections(regions);
-
         return regions;
     }
 
@@ -140,85 +127,5 @@ export class MapGenerator {
                 }
             }
         }
-    }
-
-    private createLakes(regions: Region[], lakePercentage: number): Region[] {
-        // Remove some regions to create "lakes" and make map more interesting
-        const numToRemove = Math.floor(regions.length * lakePercentage);
-        const toRemove: number[] = [];
-
-        // Prefer to remove regions with many neighbors (creates interesting shapes)
-        const candidates = regions
-            .map((region, index) => ({
-                index,
-                neighborCount: region.neighbors.length,
-                // Avoid removing edge regions (keep coastline intact)
-                isEdge: this.isEdgeRegion(region, regions)
-            }))
-            .filter(candidate => !candidate.isEdge) // Don't remove edge regions
-            .sort((a, b) => b.neighborCount - a.neighborCount); // Sort by neighbor count (descending)
-
-        // Remove regions starting with those that have most neighbors
-        for (let i = 0; i < Math.min(numToRemove, candidates.length); i++) {
-            toRemove.push(candidates[i].index);
-        }
-
-        // Remove the selected regions
-        const filteredRegions = regions.filter((_, index) => !toRemove.includes(index));
-
-        // Update neighbor lists to remove references to deleted regions
-        filteredRegions.forEach(region => {
-            region.neighbors = region.neighbors.filter(neighborIndex =>
-                !toRemove.includes(neighborIndex)
-            );
-        });
-
-        return filteredRegions;
-    }
-
-    private isEdgeRegion(region: Region, allRegions: Region[]): boolean {
-        // Consider a region "edge" if it's near the map boundaries
-        const edgeThreshold = 100;
-        return (
-            region.x < edgeThreshold ||
-            region.x > this.mapWidth - edgeThreshold ||
-            region.y < edgeThreshold ||
-            region.y > this.mapHeight - edgeThreshold
-        );
-    }
-
-    private reindexRegions(regions: Region[]): Region[] {
-        // Reindex regions to be sequential after lake removal
-        return regions.map((region, newIndex) => ({
-            ...region,
-            index: newIndex,
-            name: `Region ${newIndex + 1}`
-        }));
-    }
-
-    private updateNeighborConnections(regions: Region[]): void {
-        // Update neighbor connections to use new indices
-        const oldToNewIndex = new Map();
-        regions.forEach((region, newIndex) => {
-            oldToNewIndex.set(region.index, newIndex);
-        });
-
-        regions.forEach(region => {
-            // Find corresponding regions for each neighbor
-            region.neighbors = region.neighbors
-                .map(oldNeighborIndex => {
-                    // Find the region that was at this old index
-                    const neighborRegion = regions.find(r => {
-                        // Check if this region was originally at oldNeighborIndex
-                        return r.x === regions.find(original => original.index === oldNeighborIndex)?.x &&
-                            r.y === regions.find(original => original.index === oldNeighborIndex)?.y;
-                    });
-                    return neighborRegion ? neighborRegion.index : -1;
-                })
-                .filter(index => index !== -1); // Remove invalid references
-        });
-
-        // Rebuild connections based on distance for robustness
-        this.connectNeighbors(regions);
     }
 }

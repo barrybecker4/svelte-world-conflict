@@ -86,19 +86,12 @@
           // If pointing toward another region, create shared boundary
           if (angleDiff < Math.PI / 2) { // Within 90 degrees
             const influence = 1 - (angleDiff / (Math.PI / 2));
-            const sharedDistance = distanceToOther * (0.4 + influence * 0.1);
+            const sharedDistance = distanceToOther * (0.5 + influence * 0.1);
             distanceToEdge = Math.min(distanceToEdge, sharedDistance);
           }
         }
       }
 
-      // Add multiple layers of natural irregularity
-      const coastline = Math.sin(angle * 4) * baseRadius * 0.12; // Major coastal features
-      const bays = Math.sin(angle * 8) * baseRadius * 0.06;      // Bays and peninsulas
-      const details = Math.sin(angle * 16) * baseRadius * 0.03;  // Fine details
-      const noise = (Math.random() - 0.5) * baseRadius * 0.1;   // Random variation
-
-      distanceToEdge += coastline + bays + details + noise;
       distanceToEdge = Math.max(baseRadius * 0.2, Math.min(baseRadius * 1.4, distanceToEdge));
 
       const x = Math.max(5, Math.min(mapWidth - 5, region.x + Math.cos(angle) * distanceToEdge));
