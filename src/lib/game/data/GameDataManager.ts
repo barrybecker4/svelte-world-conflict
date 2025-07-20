@@ -1,4 +1,4 @@
-import { MapGenerator, type GeneratedRegion, type MapGenerationOptions } from './MapGenerator.js';
+import { MapGenerator, type GeneratedRegion, type MapGenerationOptions } from './map/MapGenerator.js';
 import { PLAYER_CONFIGS, UPGRADES } from '../constants/index.js';
 
 export class GameDataManager {
@@ -8,7 +8,7 @@ export class GameDataManager {
     public currentMap: GeneratedRegion[] = [];
 
     private constructor() {
-        this.mapGenerator = new MapGenerator();
+        this.mapGenerator = new MapGenerator(800, 600);
     }
 
     public static getInstance(): GameDataManager {
@@ -19,7 +19,13 @@ export class GameDataManager {
     }
 
     public generateNewMap(options: MapGenerationOptions): GeneratedRegion[] {
-        this.currentMap = this.mapGenerator.generateMap(options);
+        // Add playerCount if not provided (default to 4 for most games)
+        const enhancedOptions = {
+            ...options,
+            playerCount: options.playerCount || 4
+        };
+
+        this.currentMap = this.mapGenerator.generateMap(enhancedOptions);
         return this.currentMap;
     }
 
