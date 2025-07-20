@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import GameMap from './world-conflict/GameMap.svelte';
+  import GameMap from './GameMap.svelte';
   import { MapGenerator } from '$lib/game/data/MapGenerator';
 
   const dispatch = createEventDispatcher();
