@@ -4,7 +4,7 @@
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
-  export const currentPlayer: Player | null = null;
+  export let currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
 
@@ -12,224 +12,176 @@
   let mapWidth = 800;
   let mapHeight = 600;
 
-  // Adjust polygon size based on number of regions
-  $: baseRadius = calculateBaseRadius(regions.length);
-
   // Enhanced region interface with boundary data
   interface EnhancedRegion extends Region {
     boundary?: string;
   }
 
-  // Generate a realistic 30-region map that forms a connected landmass
-  const generateConnectedMap = (): Region[] => {
-    const regions: Region[] = [];
-    const gridWidth = 6;
-    const gridHeight = 5;
-    const cellWidth = mapWidth / (gridWidth + 1);
-    const cellHeight = mapHeight / (gridHeight + 1);
+  // Enhanced regions with boundary data
+  let enhancedRegions: EnhancedRegion[] = [];
 
-    // Create a grid-based layout with some randomization
-    for (let row = 0; row < gridHeight; row++) {
-      for (let col = 0; col < gridWidth; col++) {
-        const index = row * gridWidth + col;
+  // Generate more natural, organic region boundaries with lakes consideration
+  function generateOrganicVoronoi(
+    regions: Region[],
+    mapWidth: number,
+    mapHeight: number
+  ): Array<{region: Region, boundary: string}> {
+    const organicRegions: Array<{region: Region, boundary: string}> = [];
 
-        // Add some randomization to positions while keeping them roughly in grid
-        const baseX = (col + 1) * cellWidth;
-        const baseY = (row + 1) * cellHeight;
-        const offsetX = (Math.random() - 0.5) * cellWidth * 0.4;
-        const offsetY = (Math.random() - 0.5) * cellHeight * 0.4;
-
-        regions.push({
-          index,
-          name: generateRegionName(index),
-          x: Math.round(baseX + offsetX),
-          y: Math.round(baseY + offsetY),
-          neighbors: [],
-          hasTemple: Math.random() < 0.25 // 25% chance of temple
-        });
-      }
+    // For each region, create a more natural boundary
+    for (const region of regions) {
+      const cellBoundary = computeOrganicCell(region, regions, mapWidth, mapHeight);
+      organicRegions.push({
+        region,
+        boundary: cellBoundary
+      });
     }
 
-    // Connect neighbors based on proximity (grid-like but with some variation)
-    for (let i = 0; i < regions.length; i++) {
-      const region = regions[i];
-      const row = Math.floor(i / gridWidth);
-      const col = i % gridWidth;
-
-      // Add grid neighbors
-      const potentialNeighbors = [
-        (row - 1) * gridWidth + col,     // North
-        (row + 1) * gridWidth + col,     // South
-        row * gridWidth + (col - 1),     // West
-        row * gridWidth + (col + 1),     // East
-      ];
-
-      // Add diagonal neighbors sometimes for more interesting connections
-      if (Math.random() < 0.3) {
-        potentialNeighbors.push((row - 1) * gridWidth + (col - 1)); // NW
-      }
-      if (Math.random() < 0.3) {
-        potentialNeighbors.push((row - 1) * gridWidth + (col + 1)); // NE
-      }
-      if (Math.random() < 0.3) {
-        potentialNeighbors.push((row + 1) * gridWidth + (col - 1)); // SW
-      }
-      if (Math.random() < 0.3) {
-        potentialNeighbors.push((row + 1) * gridWidth + (col + 1)); // SE
-      }
-
-      for (const neighborIndex of potentialNeighbors) {
-        if (neighborIndex >= 0 && neighborIndex < regions.length && neighborIndex !== i) {
-          const neighbor = regions[neighborIndex];
-          const distance = Math.sqrt(
-            Math.pow(region.x - neighbor.x, 2) + Math.pow(region.y - neighbor.y, 2)
-          );
-
-          // Connect if close enough
-          if (distance < cellWidth * 1.5) {
-            if (!region.neighbors.includes(neighborIndex)) {
-              region.neighbors.push(neighborIndex);
-            }
-            if (!neighbor.neighbors.includes(i)) {
-              neighbor.neighbors.push(i);
-            }
-          }
-        }
-      }
-    }
-
-    return regions;
-  };
-
-  // Generate fantasy region names
-  const generateRegionName = (index: number): string => {
-    const prefixes = ['North', 'South', 'East', 'West', 'Upper', 'Lower', 'Great', 'Little', 'Old', 'New'];
-    const roots = ['haven', 'shire', 'moor', 'vale', 'burg', 'ford', 'ton', 'wood', 'fell', 'marsh', 'peak', 'ridge', 'glen', 'holm', 'gate'];
-    const suffixes = ['lands', 'heim', 'stad', 'mark', 'wick', 'thorpe', 'by', 'garth'];
-
-    // Some regions get single names, others get compound names
-    if (Math.random() < 0.3) {
-      return roots[index % roots.length].charAt(0).toUpperCase() + roots[index % roots.length].slice(1);
-    } else {
-      const prefix = prefixes[index % prefixes.length];
-      const suffix = Math.random() < 0.5 ? roots[index % roots.length] : suffixes[index % suffixes.length];
-      return `${prefix}${suffix}`;
-    }
-  };
-
-  // Calculate appropriate polygon size based on region count
-  function calculateBaseRadius(regionCount: number): number {
-    // Scale polygon size inversely with region count
-    if (regionCount <= 15) return 45;      // Small maps - larger regions
-    if (regionCount <= 20) return 40;      // Medium maps
-    return 35;                             // Large maps - smaller regions
+    return organicRegions;
   }
 
-  // Generate irregular boundaries using a more realistic approach
-  function generateIrregularBoundary(
+  function computeOrganicCell(
     region: Region,
     allRegions: Region[],
     mapWidth: number,
     mapHeight: number
   ): string {
-    const centerX = region.x;
-    const centerY = region.y;
+    // Find average distance to neighbors for sizing
+    const neighborDistances = region.neighbors
+      .map(nIndex => {
+        const neighbor = allRegions.find(r => r.index === nIndex);
+        return neighbor ? Math.sqrt(
+          Math.pow(neighbor.x - region.x, 2) + Math.pow(neighbor.y - region.y, 2)
+        ) : 100;
+      });
 
-    // Calculate appropriate radius based on regional density
-    const neighborDistances = region.neighbors.map(nIndex => {
-      const neighbor = allRegions.find(r => r.index === nIndex);
-      if (neighbor) {
-        return Math.sqrt(Math.pow(region.x - neighbor.x, 2) + Math.pow(region.y - neighbor.y, 2));
-      }
-      return 100;
-    });
-
-    const avgNeighborDistance = neighborDistances.length > 0
+    const avgDistance = neighborDistances.length > 0
       ? neighborDistances.reduce((a, b) => a + b, 0) / neighborDistances.length
       : 80;
 
-    const regionBaseRadius = Math.min(avgNeighborDistance * 0.45, baseRadius);
+    // Create more organic, irregular boundaries
+    const cellPoints: Array<{x: number, y: number}> = [];
+    const numSamples = 24; // Fewer samples for more angular, organic shapes
+    const baseRadius = Math.min(avgDistance * 0.4, 65); // Slightly larger for better coverage
 
-    // Create boundary points
-    const points: Array<{x: number, y: number}> = [];
-    const numPoints = 8 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < numSamples; i++) {
+      const angle = (i / numSamples) * Math.PI * 2;
 
-    for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * Math.PI * 2;
+      // Create more natural distance variation
+      let distanceToEdge = baseRadius;
 
-      // Vary radius for irregular shape
-      const radiusVariation = 0.7 + Math.random() * 0.6;
-      const radius = regionBaseRadius * radiusVariation;
+      // Check for neighboring regions and adjust boundary
+      for (const otherRegion of allRegions) {
+        if (otherRegion.index === region.index) continue;
 
-      // Add angular noise
-      const angleNoise = (Math.random() - 0.5) * 0.4;
-      const finalAngle = angle + angleNoise;
+        const dx = otherRegion.x - region.x;
+        const dy = otherRegion.y - region.y;
+        const distanceToOther = Math.sqrt(dx * dx + dy * dy);
 
-      let x = centerX + Math.cos(finalAngle) * radius;
-      let y = centerY + Math.sin(finalAngle) * radius;
+        if (distanceToOther > 0 && distanceToOther < baseRadius * 3) {
+          const angleToOther = Math.atan2(dy, dx);
+          let angleDiff = Math.abs(angle - angleToOther);
+          if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
 
-      // Keep within bounds
-      x = Math.max(20, Math.min(mapWidth - 20, x));
-      y = Math.max(20, Math.min(mapHeight - 20, y));
+          // If pointing toward another region, create shared boundary
+          if (angleDiff < Math.PI / 2) { // Within 90 degrees
+            const influence = 1 - (angleDiff / (Math.PI / 2));
+            const sharedDistance = distanceToOther * (0.4 + influence * 0.1);
+            distanceToEdge = Math.min(distanceToEdge, sharedDistance);
+          }
+        }
+      }
 
-      points.push({ x, y });
+      // Add multiple layers of natural irregularity
+      const coastline = Math.sin(angle * 4) * baseRadius * 0.12; // Major coastal features
+      const bays = Math.sin(angle * 8) * baseRadius * 0.06;      // Bays and peninsulas
+      const details = Math.sin(angle * 16) * baseRadius * 0.03;  // Fine details
+      const noise = (Math.random() - 0.5) * baseRadius * 0.1;   // Random variation
+
+      distanceToEdge += coastline + bays + details + noise;
+      distanceToEdge = Math.max(baseRadius * 0.2, Math.min(baseRadius * 1.4, distanceToEdge));
+
+      const x = Math.max(5, Math.min(mapWidth - 5, region.x + Math.cos(angle) * distanceToEdge));
+      const y = Math.max(5, Math.min(mapHeight - 5, region.y + Math.sin(angle) * distanceToEdge));
+
+      cellPoints.push({ x, y });
     }
 
-    // Create smooth path
-    if (points.length === 0) return '';
+    if (cellPoints.length < 3) {
+      // Fallback
+      return `M ${region.x + 30},${region.y} A 30,30 0 1,1 ${region.x + 29},${region.y} Z`;
+    }
 
+    // Create more irregular, organic boundary
+    return createIrregularOrganicPath(cellPoints);
+  }
+
+  function createIrregularOrganicPath(points: Array<{x: number, y: number}>): string {
+    if (points.length < 3) return '';
+
+    // Create more irregular path with varying curve types
     let path = `M ${points[0].x},${points[0].y}`;
 
     for (let i = 1; i < points.length; i++) {
+      const current = points[i];
       const prev = points[i - 1];
-      const curr = points[i];
       const next = points[(i + 1) % points.length];
 
-      const cp1x = prev.x + (curr.x - prev.x) * 0.5;
-      const cp1y = prev.y + (curr.y - prev.y) * 0.5;
+      // Randomly choose between different curve types for variety
+      const curveType = Math.random();
 
-      path += ` Q ${cp1x},${cp1y} ${curr.x},${curr.y}`;
+      if (curveType < 0.3) {
+        // Straight line (creates angular features)
+        path += ` L ${current.x},${current.y}`;
+      } else if (curveType < 0.7) {
+        // Quadratic curve (smooth curves)
+        const cpx = current.x + (Math.random() - 0.5) * 15;
+        const cpy = current.y + (Math.random() - 0.5) * 15;
+        path += ` Q ${cpx},${cpy} ${current.x},${current.y}`;
+      } else {
+        // Cubic curve (complex curves)
+        const cp1x = prev.x + (current.x - prev.x) * 0.3 + (Math.random() - 0.5) * 10;
+        const cp1y = prev.y + (current.y - prev.y) * 0.3 + (Math.random() - 0.5) * 10;
+        const cp2x = current.x + (next.x - current.x) * 0.3 + (Math.random() - 0.5) * 10;
+        const cp2y = current.y + (next.y - current.y) * 0.3 + (Math.random() - 0.5) * 10;
+        path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${current.x},${current.y}`;
+      }
     }
 
-    // Close path
+    // Close with organic curve back to start
     const first = points[0];
     const last = points[points.length - 1];
-    const cp1x = last.x + (first.x - last.x) * 0.5;
-    const cp1y = last.y + (first.y - last.y) * 0.5;
-
-    path += ` Q ${cp1x},${cp1y} ${first.x},${first.y} Z`;
+    const cpx = last.x + (first.x - last.x) * 0.5 + (Math.random() - 0.5) * 8;
+    const cpy = last.y + (first.y - last.y) * 0.5 + (Math.random() - 0.5) * 8;
+    path += ` Q ${cpx},${cpy} ${first.x},${first.y} Z`;
 
     return path;
   }
 
-  // Enhanced regions with boundary data
-  let enhancedRegions: EnhancedRegion[] = [];
-
-  onMount(() => {
-    if (regions.length === 0) {
-      regions = generateConnectedMap();
+  // Update enhanced regions when regions change - use organic Voronoi
+  $: {
+    if (regions.length > 0) {
+      const organicCells = generateOrganicVoronoi(regions, mapWidth, mapHeight);
+      enhancedRegions = organicCells.map(cell => ({
+        ...cell.region,
+        boundary: cell.boundary
+      }));
     }
-
-    // Generate boundaries for all regions
-    enhancedRegions = regions.map(region => ({
-      ...region,
-      boundary: generateIrregularBoundary(region, regions, mapWidth, mapHeight)
-    }));
-  });
+  }
 
   function getRegionOwner(regionIndex: number): Player | null {
     if (!gameState?.owners || gameState.owners[regionIndex] === undefined || gameState.owners[regionIndex] === -1) {
       return null;
     }
     const playerIndex = gameState.owners[regionIndex];
-    return gameState.players[playerIndex] || null;
+    return gameState.players?.[playerIndex] || null;
   }
 
   function getRegionColor(regionIndex: number): string {
     const owner = getRegionOwner(regionIndex);
     if (!owner) return '#6b7280'; // neutral gray for unoccupied regions
 
-    const playerColors = ['#dc2626', '#2563eb', '#16a34a', '#ca8a04'];
+    const playerColors = ['#dc2626', '#2563eb', '#8A2BE2', '#059669'];
     return playerColors[owner.index % playerColors.length];
   }
 
@@ -237,9 +189,9 @@
     // Handle both array format and object format
     const soldiers = gameState?.soldiersByRegion?.[regionIndex];
     if (Array.isArray(soldiers)) {
-      return soldiers.length || 1;
+      return soldiers.length || 0;
     }
-    return 1; // Default to 1 army if no data
+    return 0;
   }
 
   function handleRegionClick(region: Region) {
@@ -263,7 +215,7 @@
 </script>
 
 <div class="game-map" bind:this={mapContainer}>
-  <svg width={mapWidth} height={mapHeight} viewBox="0 0 {mapWidth} {mapHeight}">
+  <svg width="100%" height="100%" viewBox="0 0 {mapWidth} {mapHeight}">
     <!-- Background texture and gradients -->
     <defs>
       <pattern id="mapTexture" patternUnits="userSpaceOnUse" width="30" height="30">
@@ -293,124 +245,124 @@
     <rect width={mapWidth} height={mapHeight} fill="#1e3a8a"/>
     <rect width={mapWidth} height={mapHeight} fill="url(#mapTexture)"/>
 
-    <!-- Debug info (remove in production) -->
-    {#if enhancedRegions.length > 0}
-      <text x="10" y="25" fill="#94a3b8" font-size="12" font-family="monospace">
-        Regions: {enhancedRegions.length} | Occupied: {Object.keys(gameState?.owners || {}).length} | Neutral: {enhancedRegions.length - Object.keys(gameState?.owners || {}).length}
-      </text>
-    {/if}
-
-    <!-- Region connections (drawn behind regions) -->
-    <g opacity="0.4">
-      {#each enhancedRegions as region}
-        {#each region.neighbors as neighborIndex}
-          {@const neighbor = enhancedRegions.find(r => r.index === neighborIndex)}
-          {#if neighbor && neighborIndex > region.index}
-            <!-- Only draw each connection once by checking neighborIndex > region.index -->
-            <line
-              x1={region.x}
-              y1={region.y}
-              x2={neighbor.x}
-              y2={neighbor.y}
-              stroke="#374151"
-              stroke-width="1"
-              opacity="0.6"
-            />
-          {/if}
-        {/each}
-      {/each}
-    </g>
-
-    <!-- Region polygons -->
+    <!-- Voronoi regions with true shared borders - no connection lines needed -->
     {#if enhancedRegions.length > 0}
       {#each enhancedRegions as region}
         {@const owner = getRegionOwner(region.index)}
         {@const fillColor = owner ? `url(#regionGradient${region.index})` : 'url(#neutralGradient)'}
         {@const isSelected = isRegionSelected(region.index)}
         {@const isOccupied = isRegionOccupied(region.index)}
+        {@const armies = getRegionArmies(region.index)}
 
         <g>
-          <!-- Region boundary -->
+          <!-- Region boundary with shared borders -->
           <path
-            d={region.boundary}
+            d={region.boundary || ''}
             fill={fillColor}
-            stroke={isSelected ? '#fbbf24' : (isOccupied ? '#374151' : '#64748b')}
-            stroke-width={isSelected ? 3 : (isOccupied ? 2 : 1)}
+            stroke={isSelected ? '#fbbf24' : '#1e293b'}
+            stroke-width={isSelected ? 4 : 2}
+            stroke-linejoin="round"
+            opacity={isOccupied ? 1 : 0.8}
             class="region-path"
-            class:selected={isSelected}
-            class:neutral={!isOccupied}
             role="button"
             tabindex="0"
-            aria-label={`Region ${region.name}, armies: ${getRegionArmies(region.index)}, owner: ${owner?.name || 'neutral'}`}
             on:click={() => handleRegionClick(region)}
-            on:keydown={(event) => handleRegionKeydown(event, region)}
+            on:keydown={(e) => handleRegionKeydown(e, region)}
           />
 
-          <!-- Temple indicator -->
-          {#if region.hasTemple}
-            <g class="temple-indicator">
-              <circle
-                cx={region.x + 18}
-                cy={region.y - 18}
-                r="6"
-                fill="#fbbf24"
-                stroke="#92400e"
-                stroke-width="1"
-                aria-label="Temple site"
-              />
-              <text
-                x={region.x + 18}
-                y={region.y - 15}
-                text-anchor="middle"
-                font-size="8"
-                fill="#92400e"
-                font-weight="bold"
-              >
-                ⛩
-              </text>
-            </g>
+          <!-- Subtle highlight border for owned regions -->
+          {#if isOccupied}
+            <path
+              d={region.boundary || ''}
+              fill="none"
+              stroke={getRegionColor(region.index)}
+              stroke-width="1"
+              opacity="0.7"
+            />
           {/if}
 
-          <!-- Region name (smaller for many regions) -->
-          <text
-            x={region.x}
-            y={region.y - 25}
-            text-anchor="middle"
-            class="region-name"
-            fill="#f8fafc"
-            font-size="10"
-            font-weight="bold"
-          >
-            {region.name}
-          </text>
+          <!-- Region highlight for selection -->
+          {#if isSelected}
+            <path
+              d={region.boundary || ''}
+              fill="none"
+              stroke="#fbbf24"
+              stroke-width="4"
+              opacity="0.6"
+              stroke-dasharray="8,4"
+              class="selection-highlight"
+            />
+          {/if}
 
-          <!-- Army count circle and number -->
-          <circle
-            cx={region.x}
-            cy={region.y}
-            r="12"
-            fill="rgba(0,0,0,0.8)"
-            stroke={isOccupied ? "#fff" : "#94a3b8"}
-            stroke-width="1.5"
-            class="army-circle"
-          />
-          <text
-            x={region.x}
-            y={region.y + 3}
-            text-anchor="middle"
-            class="army-count"
-            fill="white"
-            font-size="11"
-            font-weight="bold"
-          >
-            {getRegionArmies(region.index)}
-          </text>
+          <!-- Home region indicator (for setup) -->
+          {#if isOccupied && armies >= 3}
+            <!-- Castle/fortress icon for home regions -->
+            <rect
+              x={region.x - 8}
+              y={region.y - 8}
+              width="16"
+              height="16"
+              fill="#2d3748"
+              stroke={getRegionColor(region.index)}
+              stroke-width="2"
+              rx="2"
+            />
+
+            <!-- Flag on castle -->
+            <polygon
+              points="{region.x + 4},{region.y - 8} {region.x + 4},{region.y - 4} {region.x + 8},{region.y - 6}"
+              fill={getRegionColor(region.index)}
+            />
+          {/if}
+
+          <!-- Army indicators -->
+          {#if armies > 0}
+            <!-- Soldier dots for small numbers -->
+            {#if armies <= 5}
+              {#each Array(armies) as _, i}
+                <circle
+                  cx={region.x - 6 + (i % 3) * 4}
+                  cy={region.y + 8 + Math.floor(i / 3) * 4}
+                  r="1.5"
+                  fill="white"
+                  stroke="#374151"
+                  stroke-width="0.5"
+                />
+              {/each}
+            {:else}
+              <!-- Number for large armies -->
+              <text
+                x={region.x}
+                y={region.y + 14}
+                text-anchor="middle"
+                fill="white"
+                font-size="10"
+                font-weight="bold"
+                stroke="#000"
+                stroke-width="0.5"
+              >
+                {armies}
+              </text>
+            {/if}
+          {/if}
+
+          <!-- Temple indicator for neutral regions -->
+          {#if region.hasTemple && !isOccupied}
+            <polygon
+              points="{region.x},{region.y-6} {region.x+4},{region.y+2} {region.x-4},{region.y+2}"
+              fill="#fbbf24"
+              stroke="#f59e0b"
+              stroke-width="1"
+            />
+          {/if}
         </g>
       {/each}
-    {:else}
-      <!-- Empty state -->
-      <text x={mapWidth/2} y={mapHeight/2} text-anchor="middle" fill="#94a3b8" font-size="16">
-        No regions loaded
+    {/if}
+
+    <!-- Map info overlay (debug info - can be removed) -->
+    {#if enhancedRegions.length > 0}
+      <text x="10" y="25" fill="#94a3b8" font-size="12" font-family="monospace">
+        Regions: {enhancedRegions.length}
       </text>
     {/if}
   </svg>
@@ -418,75 +370,44 @@
 
 <style>
   .game-map {
-    background: linear-gradient(135deg, #1e40af 0%, #3730a3 100%);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    background: #1e3a8a;
   }
 
   .region-path {
     cursor: pointer;
     transition: all 0.2s ease;
-    outline: none;
   }
 
-  .region-path:hover,
-  .region-path:focus {
+  .region-path:hover {
     stroke-width: 3;
-    filter: brightness(1.15);
-  }
-
-  .region-path.neutral:hover {
-    fill: #7c8694;
+    filter: brightness(1.1);
   }
 
   .region-path:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 1px;
+    outline: none;
+    stroke: #fbbf24;
+    stroke-width: 3;
   }
 
-  .region-path.selected {
-    animation: pulse 1.5s ease-in-out infinite;
-    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
-  }
-
-  .temple-indicator {
+  .selection-highlight {
     pointer-events: none;
-    animation: glow 3s ease-in-out infinite alternate;
+    animation: dash 2s linear infinite;
   }
 
-  .region-name {
-    pointer-events: none;
-    user-select: none;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.9);
-  }
-
-  .army-count, .army-circle {
-    pointer-events: none;
-    user-select: none;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.8;
-    }
-  }
-
-  @keyframes glow {
-    from {
-      filter: drop-shadow(0 0 1px #fbbf24);
-    }
+  @keyframes dash {
     to {
-      filter: drop-shadow(0 0 4px #fbbf24);
+      stroke-dashoffset: -24;
     }
   }
 
+  /* Responsive adjustments */
   @media (max-width: 768px) {
     .game-map {
-      padding: 0.5rem;
+      font-size: 0.8rem;
     }
   }
 </style>

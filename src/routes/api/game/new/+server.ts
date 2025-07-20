@@ -1,25 +1,26 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types.ts';
+import type { RequestHandler } from './$types';
 import {
     WorldConflictKVStorage,
-    WorldConflictGameStorage, type WorldConflictGameRecord,
-} from '$lib/storage/world-conflict/index.ts';
-import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
-import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils.ts";
+    WorldConflictGameStorage,
+    type WorldConflictGameRecord,
+} from '$lib/storage/world-conflict/index';
+import { WorldConflictGameState, type Player, type Region } from '$lib/game/WorldConflictGameState';
+import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 
 // Generate connected map based on the correct size configuration
 function generateConnectedMap(size: 'Small' | 'Medium' | 'Large'): Region[] {
-    // Correct region counts matching the original game
+    // Correct region counts as specified in requirements
     const regionCounts = {
-        'Small': 15,
-        'Medium': 20,
-        'Large': 25
+        'Small': 7,   // 5-7 regions
+        'Medium': 15, // 10-20 regions
+        'Large': 25   // 25-35 regions
     };
 
     const targetRegions = regionCounts[size];
     const regions: Region[] = [];
 
-    // Calculate grid dimensions based on target regions
+    // Calculate grid dimensions to prevent overlap
     const gridWidth = Math.ceil(Math.sqrt(targetRegions * 1.2)); // Slightly wider than square
     const gridHeight = Math.ceil(targetRegions / gridWidth);
 
@@ -28,29 +29,21 @@ function generateConnectedMap(size: 'Small' | 'Medium' | 'Large'): Region[] {
     const cellWidth = mapWidth / (gridWidth + 1);
     const cellHeight = mapHeight / (gridHeight + 1);
 
-    // Fantasy region names for immersion
-    const regionNames = [
-        'Northwind Keep', 'Ironforge', 'Silverpine', 'Goldmeadow', 'Stormhaven', 'Dragonspire',
-        'Thornwood', 'Mistmoor', 'Sunhallow', 'Darkfell', 'Brightwater', 'Shadowmere',
-        'Roseheart', 'Wolfsburg', 'Eaglecrest', 'Lionhold', 'Ravenshollow', 'Swiftwater',
-        'Ironwood', 'Goldhill', 'Silverbrook', 'Redstone', 'Greendale', 'Blackwater',
-        'Whitehaven', 'Greyrock', 'Bluewater', 'Fairwind', 'Stronghold', 'Freeport',
-        'Ravenscroft', 'Goldspire', 'Silverfall', 'Ironmoor', 'Greenhill'
-    ];
-
-    // Create exactly the target number of regions
+    // Create exactly the target number of regions in non-overlapping positions
     let regionIndex = 0;
     for (let row = 0; row < gridHeight && regionIndex < targetRegions; row++) {
         for (let col = 0; col < gridWidth && regionIndex < targetRegions; col++) {
-            // Add position variation to make it look natural
+            // Calculate base position in grid
             const baseX = (col + 1) * cellWidth;
             const baseY = (row + 1) * cellHeight;
+
+            // Add position variation to make it look natural while preventing overlap
             const offsetX = (Math.random() - 0.5) * cellWidth * 0.3;
             const offsetY = (Math.random() - 0.5) * cellHeight * 0.3;
 
             regions.push({
                 index: regionIndex,
-                name: regionNames[regionIndex] || `Region ${regionIndex + 1}`,
+                name: `Region ${regionIndex + 1}`, // Names not displayed, but kept for compatibility
                 x: Math.round(baseX + offsetX),
                 y: Math.round(baseY + offsetY),
                 neighbors: [],
@@ -61,232 +54,175 @@ function generateConnectedMap(size: 'Small' | 'Medium' | 'Large'): Region[] {
         }
     }
 
-    // Connect neighbors based on grid proximity
+    // Connect neighbors based on grid adjacency to ensure shared borders
     for (let i = 0; i < regions.length; i++) {
         const region = regions[i];
         const row = Math.floor(i / gridWidth);
         const col = i % gridWidth;
 
-        // Cardinal directions
-        const neighbors = [
-            row > 0 ? (row - 1) * gridWidth + col : -1,           // North
-            row < gridHeight - 1 ? (row + 1) * gridWidth + col : -1, // South
-            col > 0 ? row * gridWidth + (col - 1) : -1,           // West
-            col < gridWidth - 1 ? row * gridWidth + (col + 1) : -1   // East
+        // Add cardinal direction neighbors (ensuring adjacent regions share borders)
+        const potentialNeighbors = [
+            (row - 1) * gridWidth + col,     // North
+            (row + 1) * gridWidth + col,     // South
+            row * gridWidth + (col - 1),     // West
+            row * gridWidth + (col + 1),     // East
         ];
 
-        // Add some diagonal connections for variety (but not too many)
-        if (Math.random() < 0.3) {
-            if (row > 0 && col > 0 && (row - 1) * gridWidth + (col - 1) < regions.length) {
-                neighbors.push((row - 1) * gridWidth + (col - 1)); // NW
-            }
-        }
-        if (Math.random() < 0.3) {
-            if (row > 0 && col < gridWidth - 1 && (row - 1) * gridWidth + (col + 1) < regions.length) {
-                neighbors.push((row - 1) * gridWidth + (col + 1)); // NE
-            }
+        // Occasionally add diagonal neighbors for more interesting connectivity
+        if (Math.random() < 0.4) {
+            potentialNeighbors.push((row - 1) * gridWidth + (col - 1)); // NW
+            potentialNeighbors.push((row - 1) * gridWidth + (col + 1)); // NE
         }
 
-        // Add valid neighbors
-        for (const neighborIndex of neighbors) {
-            if (neighborIndex >= 0 && neighborIndex < regions.length) {
-                if (!region.neighbors.includes(neighborIndex)) {
-                    region.neighbors.push(neighborIndex);
-                }
-                // Ensure bidirectional connection
-                if (!regions[neighborIndex].neighbors.includes(i)) {
-                    regions[neighborIndex].neighbors.push(i);
+        if (Math.random() < 0.3) {
+            potentialNeighbors.push((row + 1) * gridWidth + (col - 1)); // SW
+            potentialNeighbors.push((row + 1) * gridWidth + (col + 1)); // SE
+        }
+
+        // Connect valid neighbors
+        for (const neighborIndex of potentialNeighbors) {
+            if (neighborIndex >= 0 && neighborIndex < regions.length && neighborIndex !== i) {
+                const neighbor = regions[neighborIndex];
+                const distance = Math.sqrt(
+                    Math.pow(region.x - neighbor.x, 2) + Math.pow(region.y - neighbor.y, 2)
+                );
+
+                // Connect if within reasonable distance (ensures adjacency)
+                if (distance < cellWidth * 1.4) {
+                    if (!region.neighbors.includes(neighborIndex)) {
+                        region.neighbors.push(neighborIndex);
+                    }
+                    if (!neighbor.neighbors.includes(i)) {
+                        neighbor.neighbors.push(i);
+                    }
                 }
             }
         }
     }
 
-    // Ensure minimum connectivity (each region should have at least 2 neighbors)
-    regions.forEach(region => {
-        if (region.neighbors.length < 2) {
-            // Find closest unconnected regions
-            const distances = regions
-                .map((other, idx) => ({
-                    index: idx,
-                    distance: Math.sqrt(
-                        Math.pow(region.x - other.x, 2) + Math.pow(region.y - other.y, 2)
-                    )
-                }))
-                .filter(d => d.index !== region.index && !region.neighbors.includes(d.index))
-                .sort((a, b) => a.distance - b.distance);
+    // Ensure all regions are connected (basic connectivity check)
+    const visited = new Set<number>();
+    const stack = [0]; // Start from first region
 
-            // Connect to closest regions until we have at least 2 neighbors
-            for (let i = 0; i < distances.length && region.neighbors.length < 3; i++) {
-                const newNeighbor = distances[i].index;
-                region.neighbors.push(newNeighbor);
-                regions[newNeighbor].neighbors.push(region.index);
+    while (stack.length > 0) {
+        const current = stack.pop()!;
+        if (visited.has(current)) continue;
+
+        visited.add(current);
+        const currentRegion = regions[current];
+
+        for (const neighborIndex of currentRegion.neighbors) {
+            if (!visited.has(neighborIndex)) {
+                stack.push(neighborIndex);
             }
         }
-    });
+    }
 
-    console.log(`🗺️  Generated ${size} map: ${regions.length} regions, avg ${(regions.reduce((sum, r) => sum + r.neighbors.length, 0) / regions.length).toFixed(1)} neighbors per region`);
+    // If not all regions are connected, add some random connections
+    if (visited.size < regions.length) {
+        const unconnected = regions.filter(r => !visited.has(r.index));
+
+        for (const region of unconnected) {
+            // Find closest connected region
+            let closestDistance = Infinity;
+            let closestConnected: Region | null = null;
+
+            for (const connectedIndex of visited) {
+                const connected = regions[connectedIndex];
+                const distance = Math.sqrt(
+                    Math.pow(region.x - connected.x, 2) + Math.pow(region.y - connected.y, 2)
+                );
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestConnected = connected;
+                }
+            }
+
+            // Connect to closest connected region
+            if (closestConnected) {
+                region.neighbors.push(closestConnected.index);
+                closestConnected.neighbors.push(region.index);
+                visited.add(region.index);
+            }
+        }
+    }
 
     return regions;
 }
 
-// Proper game state initialization with EXACTLY 1 home base per player
-function initializeWorldConflictGame(
-    gameId: string,
-    players: Player[],
-    regions: Region[]
-): any {
-    const numRegions = regions.length;
-    const numPlayers = players.length;
-
-    // Initialize all regions as neutral (-1 means unoccupied)
-    const owners: { [key: number]: number } = {};
-    const soldiersByRegion: { [key: number]: any[] } = {};
-    const cash: { [key: number]: number } = {};
-
-    // Initialize cash for each player
-    players.forEach((player, index) => {
-        cash[index] = 0;
-    });
-
-    // Give each player EXACTLY 1 starting region (home base)
-    const assignedRegions = new Set<number>();
-
-    players.forEach((player, playerIndex) => {
-        // Find regions with temples for home bases (more strategic)
-        const templeRegions = regions
-            .filter(region => region.hasTemple && !assignedRegions.has(region.index))
-            .sort(() => Math.random() - 0.5); // Randomize
-
-        // If not enough temple regions, use any available regions
-        const availableRegions = templeRegions.length > 0
-            ? templeRegions
-            : regions.filter(region => !assignedRegions.has(region.index));
-
-        // Assign EXACTLY 1 home base per player
-        if (availableRegions.length > 0) {
-            const homeRegion = availableRegions[0];
-            owners[homeRegion.index] = playerIndex;
-            assignedRegions.add(homeRegion.index);
-
-            // Give starting armies (typically 2-3)
-            const startingArmies = 2 + Math.floor(Math.random() * 2); // 2-3 armies
-            soldiersByRegion[homeRegion.index] = new Array(startingArmies).fill(null).map((_, idx) => ({
-                i: Math.floor(Math.random() * 1000000000000000) // Random ID like the original
-            }));
-
-            console.log(`🏰 Player ${player.name} starts at ${homeRegion.name} with ${startingArmies} armies`);
-        }
-    });
-
-    // All unoccupied regions get 1 neutral army and no owner
-    for (let i = 0; i < numRegions; i++) {
-        if (!owners.hasOwnProperty(i)) {
-            // Leave owners[i] undefined for neutral regions
-            soldiersByRegion[i] = [{
-                i: Math.floor(Math.random() * 1000000000000000) // Neutral army
-            }];
-        }
-    }
-
-    const occupiedCount = Object.keys(owners).length;
-    const neutralCount = numRegions - occupiedCount;
-
-    console.log(`📊 Game initialized: ${occupiedCount} player home bases, ${neutralCount} neutral regions`);
-    console.log(`📊 Expected: ${numPlayers} home bases (1 per player), ${numRegions - numPlayers} neutral regions`);
-
-    return {
-        turnIndex: 1,
-        playerIndex: 0,
-        movesRemaining: 3,
-        owners,
-        temples: {}, // Initialize empty temples object
-        soldiersByRegion,
-        cash,
-        id: Math.floor(Math.random() * 1000000000),
-        gameId,
-        players,
-        regions,
-        conqueredRegions: [],
-        floatingText: []
-    };
-}
-
 interface NewGameRequest {
-    playerName: string;
-    gameType?: 'MULTIPLAYER' | 'AI';
-    mapSize?: 'Small' | 'Medium' | 'Large';
+    players: Array<{
+        name: string;
+        type: string;
+        index: number;
+        isAI: boolean;
+    }>;
+    settings: {
+        aiDifficulty: string;
+        turns: number | string;
+        timeLimit: number | string;
+        mapSize: 'Small' | 'Medium' | 'Large';
+    };
+    regions?: Region[]; // Optional - we'll generate if not provided
 }
 
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
-        const { playerName, gameType = 'MULTIPLAYER', mapSize = 'Medium' } = await request.json() as NewGameRequest;
+        const requestData = await request.json() as NewGameRequest;
+        const { players: playerSetup, settings, regions: providedRegions } = requestData;
 
-        console.log(`🎯 NEW GAME REQUEST: Player "${playerName}" wants ${gameType} game (${mapSize} map)`);
+        console.log(`🎯 NEW GAME REQUEST: ${playerSetup.length} players, ${settings.mapSize} map`);
 
-        if (!playerName) {
-            return json({ error: 'Player name required' }, { status: 400 });
+        if (!playerSetup || playerSetup.length < 2) {
+            return json({ error: 'At least 2 players required' }, { status: 400 });
         }
 
         const kv = new WorldConflictKVStorage(platform!);
         const gameStorage = new WorldConflictGameStorage(kv);
 
-        // Generate connected map with correct size configuration
-        const regions = generateConnectedMap(mapSize);
+        // Generate or use provided regions
+        const regions = providedRegions || generateConnectedMap(settings.mapSize);
 
-        // Verify we got the right number of regions
-        const expectedCounts = { 'Small': 15, 'Medium': 20, 'Large': 25 };
-        const expectedCount = expectedCounts[mapSize];
-        console.log(`🗺️  Map generation: Expected ${expectedCount} regions, got ${regions.length}`);
+        console.log(`🗺️  Map: ${settings.mapSize} (${regions.length} regions)`);
 
-        // Create players
-        const players: Player[] = [
-            createPlayer(playerName, 0, false)
-        ];
-
-        // Add AI players for AI games
-        if (gameType === 'AI') {
-            players.push(
-                createPlayer('AI Warrior', 1, true),
-                createPlayer('AI Strategist', 2, true)
-            );
-        }
+        // Create players from setup
+        const players: Player[] = playerSetup.map(p => createPlayer(p.name, p.index, p.isAI));
 
         const gameId = generateGameId();
-        const status = gameType === 'AI' ? 'ACTIVE' : 'PENDING';
 
-        // Create proper initial game state
-        const worldConflictState = initializeWorldConflictGame(gameId, players, regions);
+        // Create proper initial game state using the correct method
+        const gameState = WorldConflictGameState.createInitialState(gameId, players, regions);
 
         const newGame: WorldConflictGameRecord = {
             gameId,
             players,
-            status: status as 'PENDING' | 'ACTIVE' | 'COMPLETED',
+            status: 'ACTIVE', // Start immediately with configured players
             createdAt: Date.now(),
             lastMoveAt: Date.now(),
             currentPlayerIndex: 0,
-            gameType: gameType as 'MULTIPLAYER' | 'AI', // Ensure this field exists
-            worldConflictState
+            gameType: 'MULTIPLAYER',
+            worldConflictState: gameState.toJSON() // Convert to plain object for storage
         };
 
         await gameStorage.saveGame(newGame);
 
-        console.log(`✅ Created new ${gameType} game ${gameId} for ${playerName}`);
-        console.log(`   Map: ${mapSize} (${regions.length} regions)`);
-        console.log(`   Players: ${players.length} (${Object.keys(worldConflictState.owners).length} home bases)`);
-        console.log(`   Neutral regions: ${regions.length - Object.keys(worldConflictState.owners).length}`);
+        // Return info for the human player (the one marked as 'Set')
+        const humanPlayer = playerSetup.find(p => p.type === 'Set');
+        const playerId = generatePlayerId();
+
+        console.log(`✅ Created new game ${gameId}`);
+        console.log(`   Players: ${players.length}`);
+        console.log(`   Human player: ${humanPlayer?.name} (index ${humanPlayer?.index})`);
+        console.log(`   Home regions assigned: ${Object.keys(gameState.owners).length}`);
 
         return json({
             success: true,
             gameId,
-            players: players.map(p => ({
-                name: p.name,
-                index: p.index,
-                color: p.color,
-                isAI: p.isAI
-            })),
-            playerIndex: 0,
-            status,
-            message: gameType === 'AI' ? 'Game started!' : 'Waiting for other players...'
+            playerId,
+            playerIndex: humanPlayer?.index || 0,
+            status: 'ACTIVE',
+            message: 'Game created successfully!'
         });
 
     } catch (error) {
