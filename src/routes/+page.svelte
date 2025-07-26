@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import GameInstructions from '$lib/components/world-conflict/GameInstructions.svelte';
   import GameLobby from '$lib/components/world-conflict/GameLobby.svelte';
   import GameConfiguration from '$lib/components/world-conflict/GameConfiguration.svelte';
@@ -45,6 +46,62 @@
     }
   }
 
+  async function handleGameCreated(event) {
+    const gameConfig = event.detail;
+    console.log('🎮 Game created with config:', gameConfig);
+
+    try {
+      // Extract the human player name from playerSlots
+      const humanPlayer = gameConfig.playerSlots.find(slot => slot.type === 'Set');
+      if (!humanPlayer) {
+        throw new Error('No human player found in game configuration');
+      }
+
+      console.log('📡 Creating World Conflict game...');
+
+      // Call the existing /api/game/new endpoint with correct parameters
+      const response = await fetch('/api/game/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerName: humanPlayer.name,
+          mapSize: gameConfig.mapSize,
+          aiDifficulty: gameConfig.aiDifficulty,
+          turns: gameConfig.turns,
+          timeLimit: gameConfig.timeLimit
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Game created successfully:', result);
+
+        // Store player info in localStorage for the game page to load
+        localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
+          gameId: result.gameId,
+          playerId: result.playerId,
+          playerIndex: result.playerIndex || 0,
+          playerName: humanPlayer.name
+        }));
+
+        console.log('🎯 Navigating to game:', result.gameId);
+
+        // Navigate to the game page!
+        await goto(`/game/${result.gameId}`);
+
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to create game:', error);
+      alert(`Failed to create game: ${error.message}`);
+    }
+  }
+
   function handleLobbyClose() {
     showLobby = false;
     showConfiguration = true; // Go to game configuration instead of buttons
@@ -65,5 +122,8 @@
 {/if}
 
 {#if showConfiguration}
-  <GameConfiguration on:close={handleConfigurationClose} />
+  <GameConfiguration
+    on:close={handleConfigurationClose}
+    on:gameCreated={handleGameCreated}
+  />
 {/if}

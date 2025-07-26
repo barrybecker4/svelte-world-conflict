@@ -28,10 +28,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const playerId = generatePlayerId();
 
         // Create human player
-        const humanPlayer = createPlayer(0, playerName.trim(), 'human');
+        const humanPlayer = createPlayer(playerName.trim(), 0, false);
 
         // For now, create a simple 2-player game (human + 1 AI)
-        const aiPlayer = createPlayer(1, 'AI Player', 'ai');
+        const aiPlayer = createPlayer('AI Player', 1, true);
         const players: Player[] = [humanPlayer, aiPlayer];
 
         // Generate map using the new GAS-style MapGenerator
@@ -83,26 +83,23 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const gameStorage = new WorldConflictGameStorage(storage);
 
         const gameRecord: WorldConflictGameRecord = {
-            id: gameId,
-            state: initialGameState.serialize(),
+            gameId: gameId,
+            status: 'ACTIVE',
             players: players.map(p => ({
-                id: p.id,
+                id: p.id || generatePlayerId(),
                 name: p.name,
-                type: p.type,
+                color: p.color,
+                isAI: p.isAI,
                 index: p.index
             })),
-            settings: {
-                mapSize,
-                aiDifficulty,
-                turns,
-                timeLimit
-            },
-            status: 'active',
+            worldConflictState: initialGameState.toJSON(),
             createdAt: Date.now(),
-            lastActivity: Date.now()
+            lastMoveAt: Date.now(),
+            currentPlayerIndex: 0,
+            gameType: 'AI'
         };
 
-        await gameStorage.createGame(gameRecord);
+        await gameStorage.saveGame(gameRecord);
 
         console.log(`Created game ${gameId} with ${players.length} players and ${regions.length} regions`);
 
@@ -110,7 +107,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             gameId,
             playerId,
             playerIndex: 0,
-            gameState: initialGameState.serialize(),
+            gameState: initialGameState.toJSON(),
             message: 'Game created successfully'
         });
 

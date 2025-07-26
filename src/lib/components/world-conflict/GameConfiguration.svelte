@@ -89,12 +89,20 @@
       return;
     }
 
-    // Set the first player slot to "Set" with the custom name
+    // Set the first player slot to "Set" with the custom namecreate
     playerSlots[0] = {
       ...playerSlots[0],
       type: 'Set',
       customName: playerName.trim()
     };
+
+    // Automatically add an AI opponent in the second slot
+    playerSlots[1] = {
+      ...playerSlots[1],
+      type: 'AI',
+    };
+
+    // Update the array to trigger reactivity
     playerSlots = [...playerSlots];
 
     showNameInput = false;
@@ -135,29 +143,38 @@
     creating = true;
     error = null;
 
-    const activeSlots = playerSlots.filter(slot => slot.type !== 'Off');
+    try {
+      const activeSlots = playerSlots.filter(slot => slot.type !== 'Off');
 
-    if (activeSlots.length < 2) {
-      error = 'At least 2 players are required';
+      if (activeSlots.length < 2) {
+        error = 'At least 2 players are required';
+        creating = false;
+        return;
+      }
+
+      const gameConfig = {
+        mapSize: gameSettings.mapSize,
+        aiDifficulty: gameSettings.aiDifficulty,
+        turns: gameSettings.turns,
+        timeLimit: gameSettings.timeLimit,
+        playerSlots: activeSlots.map(slot => ({
+          type: slot.type,
+          name: slot.type === 'Set' ? slot.customName : slot.defaultName,
+          color: slot.colorStart
+        }))
+      };
+
+      console.log('Creating game with config:', gameConfig);
+
+      // Dispatch the event - the parent component will handle it
+      dispatch('gameCreated', gameConfig);
+
+      // Note: Don't reset 'creating' here - let the parent component handle success/failure
+
+    } catch (err) {
+      error = `Failed to create game: ${err.message}`;
       creating = false;
-      return;
     }
-
-    const gameConfig = {
-      mapSize: gameSettings.mapSize,
-      aiDifficulty: gameSettings.aiDifficulty,
-      turns: gameSettings.turns,
-      timeLimit: gameSettings.timeLimit,
-      playerSlots: activeSlots.map(slot => ({
-        type: slot.type,
-        name: slot.type === 'Set' ? slot.customName : slot.defaultName,
-        color: slot.colorStart
-      }))
-    };
-
-    console.log('Creating game with config:', gameConfig);
-
-    dispatch('gameCreated', gameConfig);
   }
 
   // Load initial preview when component mounts
@@ -195,6 +212,28 @@
         <h2>Game Setup</h2>
 
         <div class="settings-section">
+
+          <div class="players-section">
+            <h3>Players</h3>
+            {#each playerSlots as slot, index}
+              <div class="player-slot">
+                <div class="player-color" style="background: {slot.colorStart}"></div>
+                <div class="player-info">
+                  <span class="player-name">
+                    {slot.type === 'Set' ? slot.customName : slot.defaultName}
+                  </span>
+                  <select
+                    value={slot.type}
+                    on:change={(e) => changeSlotType(index, e.target.value)}
+                  >
+                    {#each slotTypes as type}
+                      <option value={type}>{type}</option>
+                    {/each}
+                  </select>
+                </div>
+              </div>
+            {/each}
+          </div>
 
           <div class="setting">
             <label>Map Size:</label>
@@ -237,28 +276,6 @@
           </div>
         </div>
 
-        <div class="players-section">
-          <h3>Players</h3>
-          {#each playerSlots as slot, index}
-            <div class="player-slot">
-              <div class="player-color" style="background: {slot.colorStart}"></div>
-              <div class="player-info">
-                <span class="player-name">
-                  {slot.type === 'Set' ? slot.customName : slot.defaultName}
-                </span>
-                <select
-                  value={slot.type}
-                  on:change={(e) => changeSlotType(index, e.target.value)}
-                >
-                  {#each slotTypes as type}
-                    <option value={type}>{type}</option>
-                  {/each}
-                </select>
-              </div>
-            </div>
-          {/each}
-        </div>
-
         <div class="actions">
           <button
             on:click={createGame}
@@ -277,7 +294,6 @@
         {/if}
       </div>
 
-      <!-- Map Preview -->
       <div class="map-preview">
         {#if loadingPreview}
           <div class="loading">Generating map...</div>
@@ -359,6 +375,12 @@
     color: #f8fafc;
     margin-bottom: 16px;
   }
+
+  .config-panel h3 {
+      font-size: 20px;
+      color: #f8fafc;
+      margin-bottom: 8px;
+    }
 
   .settings-section, .players-section {
     margin-bottom: 24px;
