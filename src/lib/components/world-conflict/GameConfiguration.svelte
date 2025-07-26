@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import GameMap from './GameMap.svelte';
+  import PlayerNameInput from './PlayerNameInput.svelte';
   import { MapGenerator } from '$lib/game/data/map/MapGenerator';
 
   const dispatch = createEventDispatcher();
@@ -43,7 +44,6 @@
 
   // Player name input
   let playerName = '';
-
   const PLAYER_NAME_KEY = 'wc_player_name';
 
   // Player slot states - Off/Set/Open/AI as per original
@@ -84,6 +84,13 @@
     } catch (error) {
       console.warn('Failed to save player name:', error);
     }
+  }
+
+  // Handle player name submission from the PlayerNameInput component
+  function handleNameSubmitted(event) {
+    const { name } = event.detail;
+    playerName = name;
+    proceedWithName();
   }
 
   function proceedWithName() {
@@ -231,34 +238,28 @@
 
 <div class="game-configuration">
   {#if showNameInput}
-    <div class="name-input-section">
-      <h2>Enter Your Name</h2>
-      <input
-        type="text"
-        bind:value={playerName}
-        placeholder="Your name"
-        class="name-input"
-        maxlength="20"
-        on:keydown={(e) => e.key === 'Enter' && proceedWithName()}
-      />
-      <button
-        on:click={proceedWithName}
-        disabled={!playerName.trim()}
-        class="proceed-button"
-      >
-        Continue
-      </button>
-      {#if error}
-        <p class="error">{error}</p>
-      {/if}
-    </div>
+    <PlayerNameInput
+      initialName={playerName}
+      {error}
+      loading={creating}
+      on:nameSubmitted={handleNameSubmitted}
+    />
   {:else}
     <div class="configuration-main">
       <div class="config-panel">
         <h2>Game Setup</h2>
 
-        <div class="settings-section">
+        <div class="current-player-section">
+          <div class="current-player">
+            <span class="player-label">Playing as:</span>
+            <span class="player-name-display">{playerName}</span>
+            <button class="change-name-button" on:click={changeName}>
+              Change
+            </button>
+          </div>
+        </div>
 
+        <div class="settings-section">
           <div class="players-section">
             <h3>Players</h3>
             {#each playerSlots as slot, index}
@@ -359,6 +360,14 @@
 </div>
 
 <style>
+  .game-configuration {
+    max-width: none;
+    margin: 0;
+    padding: 20px;
+    height: 100vh;
+    box-sizing: border-box;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  }
 
   .current-player-section {
     margin-bottom: 1.5rem;
@@ -401,51 +410,11 @@
     border-color: rgba(255, 255, 255, 0.5);
   }
 
-  .game-configuration {
-    max-width: none; /* Remove max-width constraint */
-    margin: 0;
-    padding: 20px;
-    height: 100vh; /* Full viewport height */
-    box-sizing: border-box;
-  }
-
-  .name-input-section {
-    text-align: center;
-    max-width: 400px;
-    margin: 0 auto;
-  }
-
-  .name-input {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: 2px solid #374151;
-    border-radius: 6px;
-    font-size: 16px;
-    background: #374151;
-    color: white;
-  }
-
-  .proceed-button {
-    background: #2563eb;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-  }
-
-  .proceed-button:disabled {
-    background: #6b7280;
-    cursor: not-allowed;
-  }
-
   .configuration-main {
     display: grid;
-    grid-template-columns: 400px 1fr; /* Fixed width left panel, flexible right */
+    grid-template-columns: 400px 1fr;
     gap: 30px;
-    height: calc(100vh - 40px); /* Full height minus padding */
+    height: calc(100vh - 40px);
     width: 100%;
   }
 
@@ -453,9 +422,9 @@
     background: #1f2937;
     border-radius: 12px;
     padding: 24px;
-    overflow-y: auto; /* Allow scrolling if content overflows */
-    min-width: 400px; /* Ensure minimum width */
-    max-height: 100%; /* Don't exceed container height */
+    overflow-y: auto;
+    min-width: 400px;
+    max-height: 100%;
   }
 
   .config-panel h2 {
@@ -465,10 +434,10 @@
   }
 
   .config-panel h3 {
-      font-size: 20px;
-      color: #f8fafc;
-      margin-bottom: 8px;
-    }
+    font-size: 20px;
+    color: #f8fafc;
+    margin-bottom: 8px;
+  }
 
   .settings-section, .players-section {
     margin-bottom: 24px;
@@ -492,7 +461,6 @@
     border-radius: 4px;
     background: #374151;
     color: white;
-    /* Ensure proper focus states */
     transition: border-color 0.2s ease;
   }
 
@@ -501,14 +469,12 @@
     outline: none;
   }
 
-  /* Style the dropdown options */
   .setting select option {
     background: #374151;
     color: white;
     padding: 8px;
   }
 
-  /* For better browser compatibility, also style the select when opened */
   .setting select:focus option {
     background: #374151;
     color: white;
@@ -547,13 +513,11 @@
     padding: 8px;
   }
 
-  /* Ensure hover states work properly */
   .player-slot select option:hover {
     background: #60a5fa;
     color: white;
   }
 
-  /* For WebKit browsers (Chrome, Safari) */
   .setting select option:checked,
   .player-slot select option:checked {
     background: #60a5fa;
@@ -611,8 +575,8 @@
     background: #1f2937;
     border-radius: 12px;
     padding: 24px;
-    width: 100%; /* Take full width of grid column */
-    height: 100%; /* Take full height of grid row */
+    width: 100%;
+    height: 100%;
     min-height: 500px;
     display: flex;
     flex-direction: column;
@@ -629,15 +593,13 @@
     justify-content: center;
   }
 
-  /* Ensure the GameMap component fills the available space */
   .map-preview :global(.game-map) {
     flex: 1;
     width: 100%;
     height: 100%;
-    min-height: 0; /* Allow flex child to shrink */
+    min-height: 0;
   }
 
-  /* Ensure SVG or canvas elements in the map scale properly */
   .map-preview :global(svg),
   .map-preview :global(canvas) {
     width: 100% !important;
@@ -667,13 +629,13 @@
 
     .config-panel {
       min-width: auto;
-      max-height: 40vh; /* Limit height on mobile */
+      max-height: 40vh;
       overflow-y: auto;
     }
 
     .map-preview {
       height: auto;
-      min-height: 60vh; /* Ensure good height for map on mobile */
+      min-height: 60vh;
       flex: 1;
     }
   }
@@ -681,7 +643,7 @@
   /* For very large screens */
   @media (min-width: 1400px) {
     .configuration-main {
-      grid-template-columns: 450px 1fr; /* Slightly wider config panel */
+      grid-template-columns: 450px 1fr;
     }
   }
 </style>
