@@ -46,21 +46,6 @@ A real-time multiplayer strategy game built with SvelteKit and Cloudflare infras
 
 ## 🛠️ Development
 
-### Project Structure
-
-```
-src/
-├── routes/                 # SvelteKit pages
-├── lib/
-│   ├── components/        # Reusable Svelte components
-│   ├── game/             # Core game logic
-│   ├── multiplayer/      # Multiplayer framework (reusable)
-│   ├── stores/           # Svelte stores
-│   └── utils/            # Utility functions
-├── static/               # Static assets
-└── websocket-worker/     # Cloudflare WebSocket worker
-```
-
 ### Available Scripts
 
 ```bash
@@ -123,7 +108,7 @@ MIT License - feel free to use this project as a starting point for your own mul
 
 - Original World Conflict game by Jakub Wasilewski
 - Google Apps Script version by Barry Becker
-- SvelteKit port and modernization by Barry Becker
+- SvelteKit port and modernization by Barry Becker (with halp from Claude AI)
 
 ---
 

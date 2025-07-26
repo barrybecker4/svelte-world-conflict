@@ -194,9 +194,7 @@
       <div class="config-panel">
         <h2>Game Setup</h2>
 
-        <!-- Game Settings -->
         <div class="settings-section">
-          <h3>Game Settings</h3>
 
           <div class="setting">
             <label>Map Size:</label>
@@ -282,7 +280,6 @@
 
       <!-- Map Preview -->
       <div class="map-preview">
-        <h3>Map Preview</h3>
         {#if loadingPreview}
           <div class="loading">Generating map...</div>
         {:else if previewRegions.length > 0}
@@ -347,6 +344,12 @@
     background: #1f2937;
     border-radius: 12px;
     padding: 24px;
+  }
+
+  .config-panel h2 {
+    font-size: 24px;
+    color: #f8fafc;
+    margin-bottom: 16px;
   }
 
   .settings-section, .players-section {

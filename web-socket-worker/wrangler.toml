@@ -7,6 +7,6 @@ bindings = [
     { name = "WEBSOCKET_HIBERNATION_SERVER", class_name = "WebSocketHibernationServer" }
 ]
 
-[[durable_objects.migrations]]
+[[migrations]]
 tag = "v1"
-new_classes = ["WebSocketHibernationServer"]
+new_sqlite_classes = ["WebSocketHibernationServer"]

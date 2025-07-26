@@ -89,9 +89,23 @@
     <div class="tutorial-header">
       <h1>World Conflict
         <br/>
-        <span class="title-subheader">
-          Learn the rules of strategic conquest
-        </span>
+          <p class="text-xl md:text-2xl text-gray-300 mb-2">
+                A multiplayer strategy game inspired by Risk
+          </p>
+          <div class="text-sm text-gray-400 space-x-4">
+            <span>Version: 2.0.0</span>
+            <span>•</span>
+            <span>Up to 4 Players</span>
+            <span>•</span>
+            <a
+              href="https://github.com/barrybecker4/world-conflict/wiki/World-Conflict"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Credits
+            </a>
+          </div>
       </h1>
       <button class="close-button" on:click={close} aria-label="Close instructions">
         ×
@@ -161,7 +175,7 @@
 
   .tutorial-container {
     position: relative;
-    max-width: 600px;
+    max-width: 800px;
     width: 90%;
     padding: 2rem;
   }
@@ -191,19 +205,13 @@
   }
 
   .tutorial-header h1 {
-    font-size: 3rem;
+    font-size: 5rem;
     font-weight: bold;
     background: linear-gradient(135deg, #60a5fa, #a855f7, #ec4899);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
-  }
-
-  .title-subheader {
-    font-size: 1.2rem;
-    color: #94a3b8;
-    font-weight: normal;
   }
 
   .tutorial-content {

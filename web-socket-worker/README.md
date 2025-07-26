@@ -24,7 +24,25 @@ Game Client ←→ WebSocket Worker (Durable Object) ←→ Main App (SvelteKit)
 - `GET /websocket?gameId=<id>` - WebSocket upgrade
 - `POST /notify` - Send notifications to game sessions
 
-## Development
+## Setup Instructions
+
+### Deploy WebSocket Worker (One-time setup)
+
+The WebSocket worker handles real-time game coordination using Cloudflare Durable Objects:
+
+```bash
+# Navigate to websocket worker directory
+cd websocket-worker
+
+# Install dependencies
+npm install
+
+# Deploy the WebSocket worker to Cloudflare
+npm run deploy
+
+# Return to main directory
+cd ..
+```
 
 ```bash
 # Install dependencies
@@ -33,17 +51,23 @@ npm install
 # Start local development server
 npm run dev
 
-# Deploy to Cloudflare
-npm run deploy
-
 # View logs
 npm run tail
 ```
 
 ## Local Development
 
+For local development, use the simple setup:
+
+```bash
+cd websocket-worker
+npx wrangler dev --local --port 8787
+```
+Then in project root, run `npm run dev`
+
+This will connect to the local webSocket worker. It does not use Cloudflare, and it's very fast. 
+
 When running locally on port 8787:
-- WebSocket URL: `ws://localhost:8787/websocket?gameId=<gameId>`
 - Health check: `http://localhost:8787/health`
 
 ## Message Types
@@ -77,15 +101,4 @@ ws.onmessage = (event) => {
   const message = JSON.parse(event.data);
   console.log('Received:', message);
 };
-```
-
-## Deployment
-
-The worker is automatically referenced in the main app's `wrangler.toml`:
-
-```toml
-[env.production.durable_objects]
-bindings = [
-    { name = "WEBSOCKET_HIBERNATION_SERVER", class_name = "WebSocketHibernationServer", script_name = "svelte-world-conflict-websocket" }
-]
 ```
