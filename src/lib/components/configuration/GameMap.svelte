@@ -72,8 +72,22 @@
   }
 
   function getArmyCount(regionIndex: number): number {
-    if (!gameState?.armies?.[regionIndex]) return 0;
-    return gameState.armies[regionIndex].reduce((total, army) => total + army.strength, 0);
+    // The game state uses soldiersByRegion, not armies
+    if (!gameState?.soldiersByRegion?.[regionIndex]) return 0;
+    return gameState.soldiersByRegion[regionIndex].length;
+  }
+
+  function hasTemple(regionIndex: number): boolean {
+    return gameState?.temples?.[regionIndex] !== undefined;
+  }
+
+  function isNeutralRegion(regionIndex: number): boolean {
+    return gameState?.owners?.[regionIndex] === undefined;
+  }
+
+  function getTempleUpgradeLevel(regionIndex: number): number {
+    const temple = gameState?.temples?.[regionIndex];
+    return temple?.level || 0;
   }
 
   function isSelected(region: Region): boolean {
@@ -223,14 +237,145 @@
           {/if}
         {/if}
 
-        <!-- Temple indicator for neutral regions -->
-        {#if region.hasTemple && !isOccupied}
-          <polygon
-            points="{region.x},{region.y-6} {region.x+4},{region.y+2} {region.x-4},{region.y+2}"
-            fill="#fbbf24"
-            stroke="#f59e0b"
-            stroke-width="1"
-          />
+        <!-- 3D Temple rendering with upgrade levels -->
+        {#if hasTemple(region.index)}
+          {@const temple = gameState?.temples?.[region.index]}
+          {@const upgradeLevel = temple?.level || 0}
+          {@const isPlayerOwned = isOccupied}
+          {@const baseColor = isPlayerOwned ? "#f59e0b" : "#fbbf24"}
+          {@const darkColor = isPlayerOwned ? "#d97706" : "#f59e0b"}
+          {@const lightColor = isPlayerOwned ? "#fbbf24" : "#fde047"}
+
+          <g class="temple-group">
+            <!-- Temple shadow (for 3D effect) -->
+            <ellipse
+              cx={region.x + 1}
+              cy={region.y + 8}
+              rx="7"
+              ry="3"
+              fill="rgba(0,0,0,0.2)"
+            />
+
+            <!-- Main temple base (larger foundation) -->
+            <ellipse
+              cx={region.x}
+              cy={region.y + 6}
+              rx="6"
+              ry="2.5"
+              fill={darkColor}
+              stroke={darkColor}
+              stroke-width="0.5"
+            />
+
+            <!-- Temple main body -->
+            <polygon
+              points="{region.x-5},{region.y+6} {region.x-3},{region.y-4} {region.x+3},{region.y-4} {region.x+5},{region.y+6}"
+              fill={baseColor}
+              stroke={darkColor}
+              stroke-width="1"
+            />
+
+            <!-- Temple top highlight (3D lighting effect) -->
+            <polygon
+              points="{region.x-3},{region.y-4} {region.x-1},{region.y-6} {region.x+1},{region.y-6} {region.x+3},{region.y-4}"
+              fill={lightColor}
+              stroke={darkColor}
+              stroke-width="0.5"
+            />
+
+            <!-- Side highlight for 3D effect -->
+            <polygon
+              points="{region.x-5},{region.y+6} {region.x-3},{region.y-4} {region.x-1},{region.y-2} {region.x-3},{region.y+6}"
+              fill={lightColor}
+              opacity="0.6"
+            />
+
+            <!-- Upgrade level indicators (stacked disks) -->
+            {#if upgradeLevel > 0}
+              <!-- First upgrade disk -->
+              <ellipse
+                cx={region.x}
+                cy={region.y - 7}
+                rx="2.5"
+                ry="1"
+                fill="#10b981"
+                stroke="#047857"
+                stroke-width="0.5"
+              />
+              <!-- Highlight on first disk -->
+              <ellipse
+                cx={region.x - 0.5}
+                cy={region.y - 7.5}
+                rx="1.5"
+                ry="0.5"
+                fill="#34d399"
+                opacity="0.8"
+              />
+
+              {#if upgradeLevel > 1}
+                <!-- Second upgrade disk (smaller, on top) -->
+                <ellipse
+                  cx={region.x}
+                  cy={region.y - 9}
+                  rx="2"
+                  ry="0.8"
+                  fill="#8b5cf6"
+                  stroke="#7c3aed"
+                  stroke-width="0.5"
+                />
+                <!-- Highlight on second disk -->
+                <ellipse
+                  cx={region.x - 0.3}
+                  cy={region.y - 9.3}
+                  rx="1.2"
+                  ry="0.4"
+                  fill="#a78bfa"
+                  opacity="0.8"
+                />
+              {/if}
+            {/if}
+
+            <!-- Temple entrance (dark doorway) -->
+            <rect
+              x={region.x - 1}
+              y={region.y + 2}
+              width="2"
+              height="3"
+              fill={darkColor}
+              rx="1"
+            />
+          </g>
+        {/if}
+
+        <!-- Army count display (below temple) -->
+        {#if armies > 0}
+          {#if armies <= 6}
+            <!-- Show individual dots for small armies -->
+            {#each Array(armies) as _, i}
+              <circle
+                cx={region.x - 6 + (i % 3) * 4}
+                cy={region.y + 12 + Math.floor(i / 3) * 3}
+                r="1.5"
+                fill="white"
+                stroke="#374151"
+                stroke-width="0.5"
+              />
+            {/each}
+          {:else}
+            <!-- Number for large armies -->
+            <text
+              x={region.x}
+              y={region.y + 18}
+              text-anchor="middle"
+              fill="white"
+              font-size="10"
+              font-weight="bold"
+              stroke="#374151"
+              stroke-width="0.5"
+            >
+              {armies}
+            </text>
+          {/if}
         {/if}
       </g>
     {/each}
@@ -302,6 +447,43 @@
 
   .region-content {
     pointer-events: none;
+  }
+
+  .temple-group {
+    transition: all 0.2s ease;
+  }
+
+  .temple-group:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  /* Make temple upgrades glow slightly */
+  .temple-group ellipse[fill="#10b981"] {
+    filter: drop-shadow(0 0 2px #10b981);
+  }
+
+  .temple-group ellipse[fill="#8b5cf6"] {
+    filter: drop-shadow(0 0 2px #8b5cf6);
+  }
+
+  /* Enhance the region hover effects */
+  .region-path:hover .temple-group {
+    transform: scale(1.05);
+  }
+
+  .region-path.selected .temple-group {
+    filter: brightness(1.2) drop-shadow(0 0 4px #fbbf24);
+  }
+
+  /* Army count styling */
+  .region-content text {
+    font-family: 'Arial', sans-serif;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  }
+
+  .region-content circle {
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
   }
 
   @keyframes dash {

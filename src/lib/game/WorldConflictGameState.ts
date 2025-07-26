@@ -392,31 +392,112 @@ export class WorldConflictGameState {
     // ==================== INITIALIZATION ====================
 
     private initializeStartingPositions(): void {
-        // Give each player some starting regions and soldiers
-        const regionsPerPlayer = Math.floor(this.state.regions.length / this.state.players.length);
+        console.log('🎮 Initializing game starting positions...');
+
+        // Initialize cash for all players
+        this.state.players.forEach((player, playerIndex) => {
+            this.state.cash[player.index] = 100;
+        });
+
+        // IMPORTANT: Clear any existing soldiers - start fresh
+        this.state.soldiersByRegion = {};
+
+        // First, set up ALL temple regions (both neutral and player-owned)
+        this.state.regions.forEach(region => {
+            if (region.hasTemple) {
+                // Add temple structure
+                this.state.temples[region.index] = {
+                    regionIndex: region.index,
+                    level: 0
+                };
+
+                // Add exactly 3 soldiers to ALL temple regions
+                this.addSoldiers(region.index, 3);
+            }
+        });
+
+        // Find all temple regions for player assignment
+        const templeRegions = this.state.regions.filter(region => region.hasTemple);
+
+        if (templeRegions.length < this.state.players.length) {
+            console.warn(`⚠️  Not enough temple regions (${templeRegions.length}) for all players (${this.state.players.length})`);
+        }
+
+        // Assign ONE home region to each player (must be a temple region)
+        const assignedRegions: number[] = [];
 
         this.state.players.forEach((player, playerIndex) => {
-            // Assign starting regions
-            const startRegion = playerIndex * regionsPerPlayer;
-            const endRegion = Math.min((playerIndex + 1) * regionsPerPlayer, this.state.regions.length);
+            if (playerIndex < templeRegions.length) {
+                let homeRegion: Region | null = null;
 
-            for (let i = startRegion; i < endRegion; i++) {
-                this.state.owners[i] = player.index;
-                this.addSoldiers(i, 2); // Start with 2 soldiers per region
-            }
+                if (assignedRegions.length === 0) {
+                    // First player gets any temple region
+                    homeRegion = templeRegions[0];
+                } else {
+                    // Subsequent players get temple regions that are furthest from already assigned ones
+                    let maxDistance = 0;
+                    let bestRegion: Region | null = null;
 
-            // Give starting cash
-            this.state.cash[player.index] = 100;
+                    for (const candidateRegion of templeRegions) {
+                        if (assignedRegions.includes(candidateRegion.index)) continue;
 
-            // Add temples to regions with hasTemple = true
-            this.state.regions.forEach(region => {
-                if (region.hasTemple && this.state.owners[region.index] === player.index) {
-                    this.state.temples[region.index] = {
-                        regionIndex: region.index,
-                        level: 0
-                    };
+                        let minDistanceToAssigned = Infinity;
+                        for (const assignedIndex of assignedRegions) {
+                            const assignedRegion = this.state.regions[assignedIndex];
+                            const distance = Math.sqrt(
+                                Math.pow(candidateRegion.x - assignedRegion.x, 2) +
+                                Math.pow(candidateRegion.y - assignedRegion.y, 2)
+                            );
+                            minDistanceToAssigned = Math.min(minDistanceToAssigned, distance);
+                        }
+
+                        if (minDistanceToAssigned > maxDistance) {
+                            maxDistance = minDistanceToAssigned;
+                            bestRegion = candidateRegion;
+                        }
+                    }
+
+                    homeRegion = bestRegion || templeRegions.find(r => !assignedRegions.includes(r.index)) || null;
                 }
-            });
+
+                if (homeRegion) {
+                    // Assign ownership of the home region to this player
+                    this.state.owners[homeRegion.index] = player.index;
+                    assignedRegions.push(homeRegion.index);
+
+                    console.log(`✅ Player ${player.index} (${player.name}) assigned home region ${homeRegion.index} (${homeRegion.name}) with temple`);
+                } else {
+                    console.warn(`❌ Could not assign home region to player ${player.index} (${player.name})`);
+                }
+            } else {
+                console.warn(`❌ Not enough temple regions for player ${player.index} (${player.name})`);
+            }
+        });
+
+        // Validation logging
+        console.log('🏁 Game initialization complete:');
+        console.log(`   📍 Players with home regions: ${Object.keys(this.state.owners).length}`);
+        console.log(`   🏛️  Total temple regions: ${Object.keys(this.state.temples).length}`);
+        console.log(`   👑 Player-owned temples: ${Object.entries(this.state.owners).filter(([regionIndex]) =>
+            this.state.temples[parseInt(regionIndex)]
+        ).length}`);
+
+        // Log army distribution for debugging
+        const armyDistribution: {[key: number]: number} = {};
+        Object.entries(this.state.soldiersByRegion).forEach(([regionIndex, soldiers]) => {
+            const count = soldiers.length;
+            armyDistribution[count] = (armyDistribution[count] || 0) + 1;
+        });
+        console.log('   ⚔️  Army distribution:', armyDistribution);
+
+        // Ensure no non-temple regions have armies
+        this.state.regions.forEach(region => {
+            if (!region.hasTemple) {
+                const armyCount = this.soldiersAtRegion(region.index).length;
+                if (armyCount > 0) {
+                    console.error(`❌ ERROR: Non-temple region ${region.index} (${region.name}) has ${armyCount} armies!`);
+                }
+            }
         });
     }
 
