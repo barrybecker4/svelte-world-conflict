@@ -9,20 +9,20 @@
   const PLAYER_CONFIGS = [
     {
       index: 0,
-      defaultName: 'barrybecker4',
-      colorStart: '#dc2626',
-      colorEnd: '#991b1b'
+      defaultName: 'Amber',
+      colorStart: '#e3be2d',
+      colorEnd: '#e0b321'
     },
     {
       index: 1,
       defaultName: 'Crimson',
-      colorStart: '#2563eb',
-      colorEnd: '#1d4ed8'
+      colorStart: '#dc2626',
+      colorEnd: '#991b1b'
     },
     {
       index: 2,
-      defaultName: 'Purple',
-      colorStart: '#8A2BE2',
+      defaultName: 'Lavender',
+      colorStart: '#9A3BF2',
       colorEnd: '#7B68EE'
     },
     {
@@ -237,7 +237,6 @@
           </div>
         </div>
 
-        <!-- Player Slots -->
         <div class="players-section">
           <h3>Players</h3>
           {#each playerSlots as slot, index}
@@ -299,9 +298,11 @@
 
 <style>
   .game-configuration {
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: none; /* Remove max-width constraint */
+    margin: 0;
     padding: 20px;
+    height: 100vh; /* Full viewport height */
+    box-sizing: border-box;
   }
 
   .name-input-section {
@@ -317,6 +318,8 @@
     border: 2px solid #374151;
     border-radius: 6px;
     font-size: 16px;
+    background: #374151;
+    color: white;
   }
 
   .proceed-button {
@@ -336,14 +339,19 @@
 
   .configuration-main {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 400px 1fr; /* Fixed width left panel, flexible right */
     gap: 30px;
+    height: calc(100vh - 40px); /* Full height minus padding */
+    width: 100%;
   }
 
   .config-panel {
     background: #1f2937;
     border-radius: 12px;
     padding: 24px;
+    overflow-y: auto; /* Allow scrolling if content overflows */
+    min-width: 400px; /* Ensure minimum width */
+    max-height: 100%; /* Don't exceed container height */
   }
 
   .config-panel h2 {
@@ -365,12 +373,33 @@
 
   .setting label {
     font-weight: 500;
+    color: #f8fafc;
   }
 
   .setting select, .number-input {
     padding: 6px 10px;
     border: 1px solid #374151;
     border-radius: 4px;
+    background: #374151;
+    color: white;
+    /* Ensure proper focus states */
+    transition: border-color 0.2s ease;
+  }
+
+  .setting select:focus, .number-input:focus {
+    border-color: #60a5fa;
+    outline: none;
+  }
+
+  /* Style the dropdown options */
+  .setting select option {
+    background: #374151;
+    color: white;
+    padding: 8px;
+  }
+
+  /* For better browser compatibility, also style the select when opened */
+  .setting select:focus option {
     background: #374151;
     color: white;
   }
@@ -383,6 +412,42 @@
     padding: 8px;
     background: #374151;
     border-radius: 6px;
+  }
+
+  .player-slot select {
+    padding: 6px 10px;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    background: #475569;
+    color: white;
+    font-size: 0.9rem;
+    min-width: 80px;
+    transition: all 0.2s ease;
+  }
+
+  .player-slot select:focus {
+    border-color: #60a5fa;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+  }
+
+  .player-slot select option {
+    background: #475569;
+    color: white;
+    padding: 8px;
+  }
+
+  /* Ensure hover states work properly */
+  .player-slot select option:hover {
+    background: #60a5fa;
+    color: white;
+  }
+
+  /* For WebKit browsers (Chrome, Safari) */
+  .setting select option:checked,
+  .player-slot select option:checked {
+    background: #60a5fa;
+    color: white;
   }
 
   .player-color {
@@ -400,6 +465,7 @@
 
   .player-name {
     font-weight: 500;
+    color: #f8fafc;
   }
 
   .actions {
@@ -435,12 +501,39 @@
     background: #1f2937;
     border-radius: 12px;
     padding: 24px;
+    width: 100%; /* Take full width of grid column */
+    height: 100%; /* Take full height of grid row */
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
   }
 
   .loading, .no-map {
     text-align: center;
     color: #9ca3af;
     padding: 40px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure the GameMap component fills the available space */
+  .map-preview :global(.game-map) {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0; /* Allow flex child to shrink */
+  }
+
+  /* Ensure SVG or canvas elements in the map scale properly */
+  .map-preview :global(svg),
+  .map-preview :global(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
   }
 
   .error {
@@ -449,9 +542,36 @@
     text-align: center;
   }
 
+  /* Responsive design for mobile */
   @media (max-width: 768px) {
+    .game-configuration {
+      padding: 10px;
+      height: 100vh;
+    }
+
     .configuration-main {
       grid-template-columns: 1fr;
+      gap: 20px;
+      height: calc(100vh - 20px);
+    }
+
+    .config-panel {
+      min-width: auto;
+      max-height: 40vh; /* Limit height on mobile */
+      overflow-y: auto;
+    }
+
+    .map-preview {
+      height: auto;
+      min-height: 60vh; /* Ensure good height for map on mobile */
+      flex: 1;
+    }
+  }
+
+  /* For very large screens */
+  @media (min-width: 1400px) {
+    .configuration-main {
+      grid-template-columns: 450px 1fr; /* Slightly wider config panel */
     }
   }
 </style>
