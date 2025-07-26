@@ -1,7 +1,9 @@
+<!-- src/lib/components/configuration/GameConfiguration.svelte -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import GameMap from './GameMap.svelte';
   import PlayerNameInput from './PlayerNameInput.svelte';
+  import PlayerConfiguration from './PlayerConfiguration.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from './MapPreviewPanel.svelte';
 
@@ -54,8 +56,6 @@
     { ...PLAYER_CONFIGS[2], type: 'Off', customName: '' },
     { ...PLAYER_CONFIGS[3], type: 'Off', customName: '' }
   ];
-
-  const slotTypes = ['Off', 'Set', 'Open', 'AI'];
 
   // Game state
   let creating = false;
@@ -131,24 +131,10 @@
     showNameInput = true;
   }
 
-  function cycleSlotType(index) {
-    if (index === 0) return; // Can't change the main player slot
-
-    const currentTypeIndex = slotTypes.indexOf(playerSlots[index].type);
-    const nextTypeIndex = (currentTypeIndex + 1) % slotTypes.length;
-
-    playerSlots[index] = {
-      ...playerSlots[index],
-      type: slotTypes[nextTypeIndex],
-      customName: slotTypes[nextTypeIndex] === 'Set' ? '' : playerSlots[index].customName
-    };
-  }
-
-  function updateCustomName(index, event) {
-    playerSlots[index] = {
-      ...playerSlots[index],
-      customName: event.target.value
-    };
+  // Handle player slot updates from PlayerConfiguration components
+  function handleSlotUpdated(event) {
+    const { index, slot } = event.detail;
+    playerSlots[index] = { ...slot };
   }
 
   // Reactive statement to refresh map preview when map size changes
@@ -175,7 +161,9 @@
         playerSlots: playerSlots.map(slot => ({
           index: slot.index,
           type: slot.type, // Include the type so parent can find the human player
-          name: slot.type === 'Set' ? slot.customName : slot.defaultName,
+          name: slot.type === 'Set' ?
+            slot.customName || slot.defaultName :
+            slot.defaultName,
           color: slot.colorStart
         }))
       };
@@ -231,32 +219,12 @@
         <div class="players-section">
           <h3>Players</h3>
           {#each playerSlots as slot, index}
-            <div class="player-slot">
-              <div class="player-color" style="background: {slot.colorStart}"></div>
-              <div class="player-info">
-                <span class="player-name">
-                  {slot.type === 'Set' ? slot.customName || slot.defaultName : slot.defaultName}
-                  {slot.type === 'AI' ? ' (AI)' : ''}
-                  {slot.type === 'Open' ? ' (Open)' : ''}
-                </span>
-              </div>
-              {#if index > 0}
-                <select bind:value={slot.type} on:change={() => cycleSlotType(index)}>
-                  {#each slotTypes as type}
-                    <option value={type}>{type}</option>
-                  {/each}
-                </select>
-              {/if}
-              {#if slot.type === 'Set' && index > 0}
-                <input
-                  type="text"
-                  placeholder="Enter name"
-                  value={slot.customName}
-                  on:input={(e) => updateCustomName(index, e)}
-                  class="custom-name-input"
-                />
-              {/if}
-            </div>
+            <PlayerConfiguration
+              playerSlot={slot}
+              {index}
+              isMainPlayer={index === 0}
+              on:slotUpdated={handleSlotUpdated}
+            />
           {/each}
         </div>
 
@@ -363,80 +331,6 @@
 
   .players-section {
     margin-bottom: 24px;
-  }
-
-  .player-slot {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-    padding: 8px;
-    background: #374151;
-    border-radius: 6px;
-  }
-
-  .player-slot select {
-    padding: 6px 10px;
-    border: 1px solid #475569;
-    border-radius: 4px;
-    background: #475569;
-    color: white;
-    font-size: 0.9rem;
-    min-width: 80px;
-    transition: all 0.2s ease;
-  }
-
-  .player-slot select:focus {
-    border-color: #60a5fa;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-  }
-
-  .player-slot select option {
-    background: #475569;
-    color: white;
-    padding: 8px;
-  }
-
-  .player-slot select option:hover {
-    background: #60a5fa;
-    color: white;
-  }
-
-  .player-slot select option:checked {
-    background: #60a5fa;
-    color: white;
-  }
-
-  .player-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-  }
-
-  .player-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .player-name {
-    color: #f8fafc;
-    font-weight: 500;
-  }
-
-  .custom-name-input {
-    padding: 4px 8px;
-    border: 1px solid #475569;
-    border-radius: 4px;
-    background: #1f2937;
-    color: white;
-    font-size: 0.9rem;
-    width: 120px;
-  }
-
-  .custom-name-input:focus {
-    border-color: #60a5fa;
-    outline: none;
   }
 
   .create-game-section {
