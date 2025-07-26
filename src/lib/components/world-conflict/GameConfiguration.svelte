@@ -44,6 +44,8 @@
   // Player name input
   let playerName = '';
 
+  const PLAYER_NAME_KEY = 'wc_player_name';
+
   // Player slot states - Off/Set/Open/AI as per original
   let playerSlots = [
     { ...PLAYER_CONFIGS[0], type: 'Off', customName: '' },
@@ -61,6 +63,68 @@
   let previewRegions = [];
   let loadingPreview = false;
   const mapGenerator = new MapGenerator(800, 600);
+
+  function loadStoredPlayerName() {
+    try {
+      const storedName = localStorage.getItem(PLAYER_NAME_KEY);
+      if (storedName && storedName.trim()) {
+        playerName = storedName.trim();
+        showNameInput = false;
+        return true;
+      }
+    } catch (error) {
+      console.warn('Failed to load stored player name:', error);
+    }
+    return false;
+  }
+
+  function savePlayerName(name) {
+    try {
+      localStorage.setItem(PLAYER_NAME_KEY, name.trim());
+    } catch (error) {
+      console.warn('Failed to save player name:', error);
+    }
+  }
+
+  function proceedWithName() {
+    if (!playerName.trim()) {
+      error = 'Please enter a name';
+      return;
+    }
+
+    // Save the name to localStorage
+    savePlayerName(playerName);
+
+    initPlayerConfig(playerName);
+
+    // Hide the name input and show the main configuration
+    showNameInput = false;
+    error = null;
+  }
+
+  function initPlayerConfig(playerName) {
+    // Set the first player slot to "Set" with the custom name
+    playerSlots[0] = {
+      ...playerSlots[0],
+      type: 'Set',
+      customName: playerName.trim()
+    };
+
+    // Automatically add an AI opponent in the second slot
+    playerSlots[1] = {
+      ...playerSlots[1],
+      type: 'AI',
+    };
+
+    // Update the array to trigger reactivity
+    playerSlots = [...playerSlots];
+  }
+
+  function changeName() {
+    // Allow user to change their stored name
+    showNameInput = true;
+    error = null;
+  }
 
   // Count active players for map generation
   $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
@@ -81,32 +145,6 @@
     } finally {
       loadingPreview = false;
     }
-  }
-
-  function proceedWithName() {
-    if (!playerName.trim()) {
-      error = 'Please enter your name';
-      return;
-    }
-
-    // Set the first player slot to "Set" with the custom namecreate
-    playerSlots[0] = {
-      ...playerSlots[0],
-      type: 'Set',
-      customName: playerName.trim()
-    };
-
-    // Automatically add an AI opponent in the second slot
-    playerSlots[1] = {
-      ...playerSlots[1],
-      type: 'AI',
-    };
-
-    // Update the array to trigger reactivity
-    playerSlots = [...playerSlots];
-
-    showNameInput = false;
-    error = null;
   }
 
   function changeSlotType(slotIndex, newType) {
@@ -179,6 +217,14 @@
 
   // Load initial preview when component mounts
   onMount(() => {
+    // Try to load stored player name first
+    if (!loadStoredPlayerName()) {
+      // If no stored name, show the input
+      showNameInput = true;
+    } else {
+      initPlayerConfig(playerName);
+    }
+
     loadPreviewMap();
   });
 </script>
@@ -313,6 +359,48 @@
 </div>
 
 <style>
+
+  .current-player-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .current-player {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .player-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+  }
+
+  .player-name-display {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .change-name-button {
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .change-name-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
   .game-configuration {
     max-width: none; /* Remove max-width constraint */
     margin: 0;
