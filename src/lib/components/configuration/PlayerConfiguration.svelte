@@ -6,7 +6,6 @@
 
   export let playerSlot;
   export let index;
-  export let isMainPlayer = false;
 
   const slotTypes = ['Off', 'Set', 'Open', 'AI'];
 
@@ -38,35 +37,29 @@
 
   <div class="player-info">
     <span class="player-name">
-      {playerSlot.type === 'Set' ?
-        playerSlot.customName || playerSlot.defaultName :
-        playerSlot.defaultName}
-      {playerSlot.type === 'AI' ? ' (AI)' : ''}
-      {playerSlot.type === 'Open' ? ' (Open)' : ''}
+      {#if playerSlot.type === 'Set'}
+        {playerSlot.customName || playerSlot.defaultName}
+      {:else if playerSlot.type === 'Open'}
+        &lt;open&gt;
+      {:else if playerSlot.type === 'AI'}
+        {playerSlot.defaultName} (AI)
+      {:else}
+        {playerSlot.defaultName}
+      {/if}
     </span>
   </div>
 
-  {#if !isMainPlayer}
-    <select
-      value={playerSlot.type}
-      on:change={handleSlotTypeChange}
-      class="slot-type-select"
-    >
-      {#each slotTypes as type}
-        <option value={type}>{type}</option>
-      {/each}
-    </select>
-  {/if}
+  <select
+    value={playerSlot.type}
+    on:change={handleSlotTypeChange}
+    class="slot-type-select"
+  >
+    {#each slotTypes as type}
+      <option value={type}>{type}</option>
+    {/each}
+  </select>
 
-  {#if playerSlot.type === 'Set' && !isMainPlayer}
-    <input
-      type="text"
-      placeholder="Enter name"
-      value={playerSlot.customName || ''}
-      on:input={handleCustomNameChange}
-      class="custom-name-input"
-    />
-  {/if}
+  <!-- Remove the custom name input for Set slots since player can change name at top -->
 </div>
 
 <style>

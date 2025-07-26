@@ -134,7 +134,29 @@
   // Handle player slot updates from PlayerConfiguration components
   function handleSlotUpdated(event) {
     const { index, slot } = event.detail;
-    playerSlots[index] = { ...slot };
+
+    // If changing to "Set", we need to handle the current player switching
+    if (slot.type === 'Set') {
+      // Find the current "Set" slot and change it to "Off"
+      const currentSetIndex = playerSlots.findIndex(s => s.type === 'Set');
+      if (currentSetIndex !== -1 && currentSetIndex !== index) {
+        playerSlots[currentSetIndex] = {
+          ...playerSlots[currentSetIndex],
+          type: 'Off',
+          customName: ''
+        };
+      }
+
+      // Set the new slot to "Set" with the current player's name
+      playerSlots[index] = {
+        ...slot,
+        type: 'Set',
+        customName: playerName
+      };
+    } else {
+      // For other types, just update normally
+      playerSlots[index] = { ...slot };
+    }
   }
 
   // Reactive statement to refresh map preview when map size changes
