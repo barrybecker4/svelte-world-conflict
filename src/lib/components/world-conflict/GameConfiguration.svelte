@@ -2,7 +2,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import GameMap from './GameMap.svelte';
   import PlayerNameInput from './PlayerNameInput.svelte';
-  import { MapGenerator } from '$lib/game/data/map/MapGenerator';
+  import GameSettingsPanel from './GameSettingsPanel.svelte';
+  import MapPreviewPanel from './MapPreviewPanel.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -34,7 +35,7 @@
     }
   ];
 
-  // Game settings
+  // Game settings - now managed by GameSettingsPanel
   let gameSettings = {
     aiDifficulty: 'Nice',
     turns: 10,
@@ -60,9 +61,12 @@
   let creating = false;
   let error = null;
   let showNameInput = true;
-  let previewRegions = [];
-  let loadingPreview = false;
-  const mapGenerator = new MapGenerator(800, 600);
+
+  // Reference to MapPreviewPanel for triggering refreshes
+  let mapPreviewPanel;
+
+  // Count active players for map generation
+  $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
 
   function loadStoredPlayerName() {
     try {
@@ -112,98 +116,65 @@
   function initPlayerConfig(playerName) {
     // Set the first player slot to "Set" with the custom name
     playerSlots[0] = {
-      ...playerSlots[0],
+      ...PLAYER_CONFIGS[0],
       type: 'Set',
-      customName: playerName.trim()
+      customName: playerName
     };
 
-    // Automatically add an AI opponent in the second slot
-    playerSlots[1] = {
-      ...playerSlots[1],
-      type: 'AI',
-    };
-
-    // Update the array to trigger reactivity
-    playerSlots = [...playerSlots];
+    // Set some AI opponents by default
+    playerSlots[1] = { ...PLAYER_CONFIGS[1], type: 'AI', customName: '' };
+    playerSlots[2] = { ...PLAYER_CONFIGS[2], type: 'AI', customName: '' };
+    playerSlots[3] = { ...PLAYER_CONFIGS[3], type: 'Off', customName: '' };
   }
 
   function changeName() {
-    // Allow user to change their stored name
     showNameInput = true;
-    error = null;
   }
 
-  // Count active players for map generation
-  $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
+  function cycleSlotType(index) {
+    if (index === 0) return; // Can't change the main player slot
 
-  // Load preview map locally using MapGenerator
-  function loadPreviewMap() {
-    loadingPreview = true;
-    try {
-      // Generate map using the new GAS-style generator
-      previewRegions = mapGenerator.generateMap({
-        size: gameSettings.mapSize,
-        playerCount: Math.max(activePlayerCount, 2) // At least 2 players for preview
-      });
-      forceRandomizeAssignments(); // Randomize player assignments with new map
-    } catch (err) {
-      console.error('Error generating preview map:', err);
-      previewRegions = []; // Fallback to empty
-    } finally {
-      loadingPreview = false;
-    }
+    const currentTypeIndex = slotTypes.indexOf(playerSlots[index].type);
+    const nextTypeIndex = (currentTypeIndex + 1) % slotTypes.length;
+
+    playerSlots[index] = {
+      ...playerSlots[index],
+      type: slotTypes[nextTypeIndex],
+      customName: slotTypes[nextTypeIndex] === 'Set' ? '' : playerSlots[index].customName
+    };
   }
 
-  function changeSlotType(slotIndex, newType) {
-    // Only one "Set" player allowed
-    if (newType === 'Set') {
-      // Clear any existing "Set" players
-      playerSlots = playerSlots.map((slot, i) =>
-        i === slotIndex
-          ? { ...slot, type: 'Set' }
-          : slot.type === 'Set'
-            ? { ...slot, type: 'Off' }
-            : slot
-      );
-    } else {
-      playerSlots[slotIndex] = { ...playerSlots[slotIndex], type: newType };
-    }
-    playerSlots = [...playerSlots];
-
-    // Regenerate map when player count changes
-    if (previewRegions.length > 0) {
-      loadPreviewMap();
-    }
+  function updateCustomName(index, event) {
+    playerSlots[index] = {
+      ...playerSlots[index],
+      customName: event.target.value
+    };
   }
 
-  function forceRandomizeAssignments() {
-    // Randomize neutral region assignments for preview
-    previewRegions = previewRegions.map(region => ({
-      ...region,
-      owner: Math.random() < 0.7 ? null : Math.floor(Math.random() * activePlayerCount)
-    }));
+  // Reactive statement to refresh map preview when map size changes
+  $: if (mapPreviewPanel && gameSettings.mapSize) {
+    mapPreviewPanel.refreshPreview();
   }
 
-  function createGame() {
-    creating = true;
-    error = null;
+  async function createGame() {
+    if (creating) return;
 
     try {
-      const activeSlots = playerSlots.filter(slot => slot.type !== 'Off');
+      creating = true;
+      error = null;
 
-      if (activeSlots.length < 2) {
-        error = 'At least 2 players are required';
-        creating = false;
-        return;
+      // Validate at least one active player
+      const activePlayers = playerSlots.filter(slot => slot.type !== 'Off');
+      if (activePlayers.length < 2) {
+        throw new Error('At least 2 players are required');
       }
 
+      // Build the game configuration
       const gameConfig = {
-        mapSize: gameSettings.mapSize,
-        aiDifficulty: gameSettings.aiDifficulty,
-        turns: gameSettings.turns,
-        timeLimit: gameSettings.timeLimit,
-        playerSlots: activeSlots.map(slot => ({
-          type: slot.type,
+        settings: gameSettings,
+        playerSlots: playerSlots.map(slot => ({
+          index: slot.index,
+          type: slot.type, // Include the type so parent can find the human player
           name: slot.type === 'Set' ? slot.customName : slot.defaultName,
           color: slot.colorStart
         }))
@@ -222,7 +193,7 @@
     }
   }
 
-  // Load initial preview when component mounts
+  // Load initial setup when component mounts
   onMount(() => {
     // Try to load stored player name first
     if (!loadStoredPlayerName()) {
@@ -231,8 +202,6 @@
     } else {
       initPlayerConfig(playerName);
     }
-
-    loadPreviewMap();
   });
 </script>
 
@@ -259,167 +228,80 @@
           </div>
         </div>
 
-        <div class="settings-section">
-          <div class="players-section">
-            <h3>Players</h3>
-            {#each playerSlots as slot, index}
-              <div class="player-slot">
-                <div class="player-color" style="background: {slot.colorStart}"></div>
-                <div class="player-info">
-                  <span class="player-name">
-                    {slot.type === 'Set' ? slot.customName : slot.defaultName}
-                  </span>
-                  <select
-                    value={slot.type}
-                    on:change={(e) => changeSlotType(index, e.target.value)}
-                  >
-                    {#each slotTypes as type}
-                      <option value={type}>{type}</option>
-                    {/each}
-                  </select>
-                </div>
+        <div class="players-section">
+          <h3>Players</h3>
+          {#each playerSlots as slot, index}
+            <div class="player-slot">
+              <div class="player-color" style="background: {slot.colorStart}"></div>
+              <div class="player-info">
+                <span class="player-name">
+                  {slot.type === 'Set' ? slot.customName || slot.defaultName : slot.defaultName}
+                  {slot.type === 'AI' ? ' (AI)' : ''}
+                  {slot.type === 'Open' ? ' (Open)' : ''}
+                </span>
               </div>
-            {/each}
-          </div>
-
-          <div class="setting">
-            <label>Map Size:</label>
-            <select bind:value={gameSettings.mapSize} on:change={loadPreviewMap}>
-              <option value="Small">Small</option>
-              <option value="Medium">Medium</option>
-              <option value="Large">Large</option>
-            </select>
-          </div>
-
-          <div class="setting">
-            <label>AI Difficulty:</label>
-            <select bind:value={gameSettings.aiDifficulty}>
-              <option value="Nice">Nice</option>
-              <option value="Nasty">Nasty</option>
-              <option value="Evil">Evil</option>
-            </select>
-          </div>
-
-          <div class="setting">
-            <label>Turns:</label>
-            <input
-              type="number"
-              bind:value={gameSettings.turns}
-              min="5"
-              max="50"
-              class="number-input"
-            />
-          </div>
-
-          <div class="setting">
-            <label>Time Limit (seconds):</label>
-            <input
-              type="number"
-              bind:value={gameSettings.timeLimit}
-              min="10"
-              max="300"
-              class="number-input"
-            />
-          </div>
+              {#if index > 0}
+                <select bind:value={slot.type} on:change={() => cycleSlotType(index)}>
+                  {#each slotTypes as type}
+                    <option value={type}>{type}</option>
+                  {/each}
+                </select>
+              {/if}
+              {#if slot.type === 'Set' && index > 0}
+                <input
+                  type="text"
+                  placeholder="Enter name"
+                  value={slot.customName}
+                  on:input={(e) => updateCustomName(index, e)}
+                  class="custom-name-input"
+                />
+              {/if}
+            </div>
+          {/each}
         </div>
 
-        <div class="actions">
-          <button
-            on:click={createGame}
-            disabled={creating || activePlayerCount < 2}
-            class="create-button"
-          >
-            {creating ? 'Creating...' : 'Create Game'}
-          </button>
-          <button on:click={loadPreviewMap} class="regenerate-button">
-            Generate New Map
+        <!-- Use the extracted GameSettingsPanel component -->
+        <GameSettingsPanel bind:gameSettings />
+
+        <div class="create-game-section">
+          {#if error}
+            <div class="error-message">{error}</div>
+          {/if}
+          <button class="create-game-button" on:click={createGame} disabled={creating}>
+            {creating ? 'Creating Game...' : 'Create Game'}
           </button>
         </div>
-
-        {#if error}
-          <p class="error">{error}</p>
-        {/if}
       </div>
 
-      <div class="map-preview">
-        {#if loadingPreview}
-          <div class="loading">Generating map...</div>
-        {:else if previewRegions.length > 0}
-          <GameMap
-            regions={previewRegions}
-            gameState={null}
-            currentPlayer={null}
-            onRegionClick={() => {}}
-          />
-        {:else}
-          <div class="no-map">No map available</div>
-        {/if}
-      </div>
+      <!-- Use the extracted MapPreviewPanel component -->
+      <MapPreviewPanel bind:this={mapPreviewPanel} mapSize={gameSettings.mapSize} playerCount={Math.max(activePlayerCount, 2)} />
     </div>
   {/if}
 </div>
 
 <style>
   .game-configuration {
-    max-width: none;
-    margin: 0;
-    padding: 20px;
-    height: 100vh;
-    box-sizing: border-box;
+    min-height: 100vh;
     background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  }
-
-  .current-player-section {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .current-player {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-  }
-
-  .player-label {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 0.9rem;
-  }
-
-  .player-name-display {
-    color: white;
-    font-weight: 600;
-    font-size: 1rem;
-  }
-
-  .change-name-button {
-    padding: 0.25rem 0.75rem;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .change-name-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
+    justify-content: center;
+    padding: 20px;
   }
 
   .configuration-main {
-    display: grid;
-    grid-template-columns: 400px 1fr;
-    gap: 30px;
-    height: calc(100vh - 40px);
+    display: flex;
+    gap: 32px;
+    max-width: 1200px;
     width: 100%;
+    height: 80vh;
+    min-height: 600px;
   }
 
   .config-panel {
-    background: #1f2937;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid #475569;
     border-radius: 12px;
     padding: 24px;
     overflow-y: auto;
@@ -439,45 +321,48 @@
     margin-bottom: 8px;
   }
 
-  .settings-section, .players-section {
+  .current-player-section {
     margin-bottom: 24px;
+    padding: 16px;
+    background: #374151;
+    border-radius: 8px;
   }
 
-  .setting {
+  .current-player {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    gap: 12px;
   }
 
-  .setting label {
+  .player-label {
     font-weight: 500;
+    color: #94a3b8;
+  }
+
+  .player-name-display {
+    font-weight: 600;
     color: #f8fafc;
+    font-size: 1.1rem;
   }
 
-  .setting select, .number-input {
-    padding: 6px 10px;
-    border: 1px solid #374151;
+  .change-name-button {
+    padding: 4px 8px;
+    background: #475569;
+    color: #f8fafc;
+    border: 1px solid #64748b;
     border-radius: 4px;
-    background: #374151;
-    color: white;
-    transition: border-color 0.2s ease;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
   }
 
-  .setting select:focus, .number-input:focus {
-    border-color: #60a5fa;
-    outline: none;
+  .change-name-button:hover {
+    background: #64748b;
+    border-color: #94a3b8;
   }
 
-  .setting select option {
-    background: #374151;
-    color: white;
-    padding: 8px;
-  }
-
-  .setting select:focus option {
-    background: #374151;
-    color: white;
+  .players-section {
+    margin-bottom: 24px;
   }
 
   .player-slot {
@@ -518,7 +403,6 @@
     color: white;
   }
 
-  .setting select option:checked,
   .player-slot select option:checked {
     background: #60a5fa;
     color: white;
@@ -531,119 +415,70 @@
   }
 
   .player-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     flex: 1;
+    min-width: 0;
   }
 
   .player-name {
-    font-weight: 500;
     color: #f8fafc;
-  }
-
-  .actions {
-    display: flex;
-    gap: 12px;
-  }
-
-  .create-button, .regenerate-button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
     font-weight: 500;
   }
 
-  .create-button {
-    background: #059669;
-    color: white;
-  }
-
-  .create-button:disabled {
-    background: #6b7280;
-    cursor: not-allowed;
-  }
-
-  .regenerate-button {
-    background: #374151;
-    color: white;
-  }
-
-  .map-preview {
+  .custom-name-input {
+    padding: 4px 8px;
+    border: 1px solid #475569;
+    border-radius: 4px;
     background: #1f2937;
-    border-radius: 12px;
-    padding: 24px;
-    width: 100%;
-    height: 100%;
-    min-height: 500px;
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
+    color: white;
+    font-size: 0.9rem;
+    width: 120px;
   }
 
-  .loading, .no-map {
-    text-align: center;
-    color: #9ca3af;
-    padding: 40px;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .custom-name-input:focus {
+    border-color: #60a5fa;
+    outline: none;
   }
 
-  .map-preview :global(.game-map) {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
+  .create-game-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #475569;
   }
 
-  .map-preview :global(svg),
-  .map-preview :global(canvas) {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-  }
-
-  .error {
+  .error-message {
     color: #ef4444;
-    margin-top: 10px;
-    text-align: center;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
   }
 
-  /* Responsive design for mobile */
-  @media (max-width: 768px) {
-    .game-configuration {
-      padding: 10px;
-      height: 100vh;
-    }
-
-    .configuration-main {
-      grid-template-columns: 1fr;
-      gap: 20px;
-      height: calc(100vh - 20px);
-    }
-
-    .config-panel {
-      min-width: auto;
-      max-height: 40vh;
-      overflow-y: auto;
-    }
-
-    .map-preview {
-      height: auto;
-      min-height: 60vh;
-      flex: 1;
-    }
+  .create-game-button {
+    width: 100%;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 
-  /* For very large screens */
-  @media (min-width: 1400px) {
-    .configuration-main {
-      grid-template-columns: 450px 1fr;
-    }
+  .create-game-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .create-game-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 </style>
