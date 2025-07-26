@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { writable } from 'svelte/store';
-    import GameMap from '$lib/components/world-conflict/GameMap.svelte';
+    import GameMap from '$lib/components/configuration/GameMap.svelte';
     import type { WorldConflictStateData } from '$lib/game/WorldConflictGameState.ts';
     import type { Player, Region } from '$lib/game/WorldConflictGameState.ts';
 

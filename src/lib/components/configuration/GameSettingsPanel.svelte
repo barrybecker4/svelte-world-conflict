@@ -29,7 +29,7 @@
   </div>
 
   <div class="setting">
-    <label for="turns">Turns:</label>
+    <label for="turns">Turns:</label>F
     <input
       id="turns"
       type="number"

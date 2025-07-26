@@ -1,9 +1,9 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import GameInstructions from '$lib/components/world-conflict/GameInstructions.svelte';
-  import GameLobby from '$lib/components/world-conflict/GameLobby.svelte';
-  import GameConfiguration from '$lib/components/world-conflict/GameConfiguration.svelte';
+  import GameInstructions from '$lib/components/GameInstructions.svelte';
+  import GameLobby from '$lib/components/GameLobby.svelte';
+  import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
 
   let showInstructions = true; // Auto-show on load
   let showLobby = false;
