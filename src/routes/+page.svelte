@@ -59,7 +59,7 @@
 
       console.log('📡 Creating World Conflict game...');
 
-      // Call the existing /api/game/new endpoint with correct parameters
+      // Call the API with the FULL player configuration
       const response = await fetch('/api/game/new', {
         method: 'POST',
         headers: {
@@ -67,10 +67,11 @@
         },
         body: JSON.stringify({
           playerName: humanPlayer.name,
-          mapSize: gameConfig.mapSize,
-          aiDifficulty: gameConfig.aiDifficulty,
-          turns: gameConfig.turns,
-          timeLimit: gameConfig.timeLimit
+          mapSize: gameConfig.settings.mapSize,
+          aiDifficulty: gameConfig.settings.aiDifficulty,
+          turns: gameConfig.settings.turns,
+          timeLimit: gameConfig.settings.timeLimit,
+          playerSlots: gameConfig.playerSlots
         })
       });
 

@@ -12,7 +12,14 @@ import { MapGenerator } from '$lib/game/data/map/MapGenerator.ts';
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
         const body = await request.json();
-        const { mapSize = 'Medium', playerName, aiDifficulty = 'Nice', turns = 10, timeLimit = 30 } = body;
+        const { 
+            mapSize = 'Medium', 
+            playerName, 
+            aiDifficulty = 'Nice', 
+            turns = 10, 
+            timeLimit = 30,
+            playerSlots = [] // NEW: Accept player slots configuration
+        } = body;
 
         // Validate input
         if (!playerName?.trim()) {
@@ -26,57 +33,48 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         // Generate game ID and player ID
         const gameId = generateGameId();
         const playerId = generatePlayerId();
+        const players: Player[] = [];
+        
+        if (playerSlots && playerSlots.length > 0) {
+            // Process the configured player slots
+            const activeSlots = playerSlots.filter((slot: any) => slot.type !== 'Off');
+            
+            if (activeSlots.length < 2) {
+                return json({ error: 'At least 2 players are required' }, { status: 400 });
+            }
 
-        // Create human player
-        const humanPlayer = createPlayer(playerName.trim(), 0, false);
-
-        // For now, create a simple 2-player game (human + 1 AI)
-        const aiPlayer = createPlayer('AI Player', 1, true);
-        const players: Player[] = [humanPlayer, aiPlayer];
+            for (let i = 0; i < activeSlots.length; i++) {
+                const slot = activeSlots[i];
+                
+                if (slot.type === 'Set' || slot.type === 'Open') {
+                    // Human player
+                    players.push(createPlayer(slot.name, i, false));
+                } else if (slot.type === 'AI') {
+                    // AI player
+                    players.push(createPlayer(slot.name, i, true));
+                }
+            }
+            
+            console.log(`Created ${players.length} players from configuration:`, 
+                       players.map(p => `${p.name} (${p.isAI ? 'AI' : 'Human'})`));
+        } else {
+            // Fallback to 2-player game if no configuration provided
+            console.log('No player slots provided, creating default 2-player game');
+            const humanPlayer = createPlayer(playerName.trim(), 0, false);
+            const aiPlayer = createPlayer('AI Player', 1, true);
+            players.push(humanPlayer, aiPlayer);
+        }
 
         // Generate map using the new GAS-style MapGenerator
         const mapGenerator = new MapGenerator(800, 600);
         const regions = mapGenerator.generateMap({
             size: mapSize as 'Small' | 'Medium' | 'Large',
-            playerCount: players.length
+            playerCount: players.length // NOW uses actual player count!
         });
 
-        console.log(`Generated ${regions.length} regions for ${mapSize} map`);
+        console.log(`Generated ${regions.length} regions for ${mapSize} map with ${players.length} players`);
 
-        // Create initial game state
-        const initialGameState = new WorldConflictGameState({
-            gameId,
-            players,
-            regions,
-            currentPlayerIndex: 0,
-            turn: 1,
-            maxTurns: turns,
-            timeLimit,
-            status: 'active',
-            owners: {}, // No regions owned initially
-            armies: {}, // No armies initially
-            temples: {},
-            cash: players.reduce((acc, player) => {
-                acc[player.index] = 100; // Starting cash
-                return acc;
-            }, {} as Record<number, number>),
-            movesRemaining: 3,
-            lastActivity: Date.now()
-        });
-
-        // Assign starting regions to players
-        const startingRegionsPerPlayer = Math.floor(regions.length / players.length);
-        let regionIndex = 0;
-
-        for (let playerIndex = 0; playerIndex < players.length; playerIndex++) {
-            for (let i = 0; i < startingRegionsPerPlayer && regionIndex < regions.length; i++) {
-                initialGameState.state.owners[regionIndex] = playerIndex;
-                initialGameState.state.armies[regionIndex] = [
-                    { playerId: players[playerIndex].id, strength: 3 }
-                ];
-                regionIndex++;
-            }
-        }
+        const initialGameState = WorldConflictGameState.createInitialState(gameId, players, regions);
 
         // Store game in KV storage
         const storage = new WorldConflictKVStorage(platform);
