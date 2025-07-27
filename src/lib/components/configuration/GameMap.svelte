@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
+  import Temple from './Temple.svelte';
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
@@ -8,6 +9,8 @@
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
 
+  const MAX_INDIVIDUAL_ARMIES = 16;
+  const ARMIES_PER_ROW = 8;
   let mapContainer: HTMLDivElement;
   let mapWidth = 800;
   let mapHeight = 600;
@@ -175,45 +178,28 @@
     {#each regions as region (region.index)}
       {@const isOccupied = getRegionOwner(region.index) !== null}
       {@const armies = getArmyCount(region.index)}
-      {@const regionColor = getRegionColor(region.index)}
+      {@const temple = gameState?.temples?.[region.index]}
 
       <g class="region-content">
-        <!-- Region center point (for debugging) -->
-        <circle
-          cx={region.x}
-          cy={region.y}
-          r="2"
-          fill="#fff"
-          opacity="0.5"
-        />
-
-        <!-- Castle/stronghold for occupied regions -->
-        {#if isOccupied}
-          <rect
-            x={region.x - 5}
-            y={region.y - 8}
-            width="10"
-            height="8"
-            fill="#ffffff"
-            stroke="#374151"
-            stroke-width="1"
-            rx="1"
-          />
-          <!-- Flag on castle -->
-          <polygon
-            points="{region.x + 2},{region.y - 8} {region.x + 2},{region.y - 4} {region.x + 6},{region.y - 6}"
-            fill={regionColor}
+        <!-- Temple rendering (if region has temple) -->
+        {#if hasTemple(region.index)}
+          <Temple
+            x={region.x}
+            y={region.y - 6}
+            upgradeLevel={temple?.level || 0}
+            isPlayerOwned={isOccupied}
+            regionIndex={region.index}
           />
         {/if}
 
-        <!-- Army indicators -->
+        <!-- Army count display (below temple if present, otherwise at center) -->
         {#if armies > 0}
-          <!-- Soldier dots for small numbers -->
-          {#if armies <= 5}
+          {#if armies <= MAX_INDIVIDUAL_ARMIES}
+            <!-- Individual army dots for small armies -->
             {#each Array(armies) as _, i}
               <circle
-                cx={region.x - 6 + (i % 3) * 4}
-                cy={region.y + 8 + Math.floor(i / 3) * 4}
+                cx={region.x - 10 + (i % ARMIES_PER_ROW) * 4}
+                cy={region.y + 10 + Math.floor(i / ARMIES_PER_ROW) * 4}
                 r="1.5"
                 fill="white"
                 stroke="#374151"
@@ -221,157 +207,22 @@
               />
             {/each}
           {:else}
-            <!-- Number for large armies -->
-            <text
-              x={region.x}
-              y={region.y + 14}
-              text-anchor="middle"
-              fill="white"
-              font-size="10"
-              font-weight="bold"
-              stroke="#374151"
-              stroke-width="0.5"
-            >
-              {armies}
-            </text>
-          {/if}
-        {/if}
-
-        <!-- 3D Temple rendering with upgrade levels -->
-        {#if hasTemple(region.index)}
-          {@const temple = gameState?.temples?.[region.index]}
-          {@const upgradeLevel = temple?.level || 0}
-          {@const isPlayerOwned = isOccupied}
-          {@const baseColor = isPlayerOwned ? "#f59e0b" : "#fbbf24"}
-          {@const darkColor = isPlayerOwned ? "#d97706" : "#f59e0b"}
-          {@const lightColor = isPlayerOwned ? "#fbbf24" : "#fde047"}
-
-          <g class="temple-group">
-            <!-- Temple shadow (for 3D effect) -->
-            <ellipse
-              cx={region.x + 1}
-              cy={region.y + 8}
-              rx="7"
-              ry="3"
-              fill="rgba(0,0,0,0.2)"
-            />
-
-            <!-- Main temple base (larger foundation) -->
-            <ellipse
+            <!-- Army count text for larger armies -->
+            <circle
               cx={region.x}
-              cy={region.y + 6}
-              rx="6"
-              ry="2.5"
-              fill={darkColor}
-              stroke={darkColor}
-              stroke-width="0.5"
-            />
-
-            <!-- Temple main body -->
-            <polygon
-              points="{region.x-5},{region.y+6} {region.x-3},{region.y-4} {region.x+3},{region.y-4} {region.x+5},{region.y+6}"
-              fill={baseColor}
-              stroke={darkColor}
+              cy={region.y + (hasTemple(region.index) ? 15 : 0)}
+              r="10"
+              fill="rgba(0,0,0,0.7)"
+              stroke="#fbfbf4"
               stroke-width="1"
             />
-
-            <!-- Temple top highlight (3D lighting effect) -->
-            <polygon
-              points="{region.x-3},{region.y-4} {region.x-1},{region.y-6} {region.x+1},{region.y-6} {region.x+3},{region.y-4}"
-              fill={lightColor}
-              stroke={darkColor}
-              stroke-width="0.5"
-            />
-
-            <!-- Side highlight for 3D effect -->
-            <polygon
-              points="{region.x-5},{region.y+6} {region.x-3},{region.y-4} {region.x-1},{region.y-2} {region.x-3},{region.y+6}"
-              fill={lightColor}
-              opacity="0.6"
-            />
-
-            <!-- Upgrade level indicators (stacked disks) -->
-            {#if upgradeLevel > 0}
-              <!-- First upgrade disk -->
-              <ellipse
-                cx={region.x}
-                cy={region.y - 7}
-                rx="2.5"
-                ry="1"
-                fill="#10b981"
-                stroke="#047857"
-                stroke-width="0.5"
-              />
-              <!-- Highlight on first disk -->
-              <ellipse
-                cx={region.x - 0.5}
-                cy={region.y - 7.5}
-                rx="1.5"
-                ry="0.5"
-                fill="#34d399"
-                opacity="0.8"
-              />
-
-              {#if upgradeLevel > 1}
-                <!-- Second upgrade disk (smaller, on top) -->
-                <ellipse
-                  cx={region.x}
-                  cy={region.y - 9}
-                  rx="2"
-                  ry="0.8"
-                  fill="#8b5cf6"
-                  stroke="#7c3aed"
-                  stroke-width="0.5"
-                />
-                <!-- Highlight on second disk -->
-                <ellipse
-                  cx={region.x - 0.3}
-                  cy={region.y - 9.3}
-                  rx="1.2"
-                  ry="0.4"
-                  fill="#a78bfa"
-                  opacity="0.8"
-                />
-              {/if}
-            {/if}
-
-            <!-- Temple entrance (dark doorway) -->
-            <rect
-              x={region.x - 1}
-              y={region.y + 2}
-              width="2"
-              height="3"
-              fill={darkColor}
-              rx="1"
-            />
-          </g>
-        {/if}
-
-        <!-- Army count display (below temple) -->
-        {#if armies > 0}
-          {#if armies <= 6}
-            <!-- Show individual dots for small armies -->
-            {#each Array(armies) as _, i}
-              <circle
-                cx={region.x - 6 + (i % 3) * 4}
-                cy={region.y + 12 + Math.floor(i / 3) * 3}
-                r="1.5"
-                fill="white"
-                stroke="#374151"
-                stroke-width="0.5"
-              />
-            {/each}
-          {:else}
-            <!-- Number for large armies -->
             <text
               x={region.x}
-              y={region.y + 18}
+              y={region.y + (hasTemple(region.index) ? 18 : 3)}
               text-anchor="middle"
-              fill="white"
               font-size="10"
               font-weight="bold"
-              stroke="#374151"
-              stroke-width="0.5"
+              fill="#fbfbf4"
             >
               {armies}
             </text>
@@ -447,33 +298,6 @@
 
   .region-content {
     pointer-events: none;
-  }
-
-  .temple-group {
-    transition: all 0.2s ease;
-  }
-
-  .temple-group:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.1);
-  }
-
-  /* Make temple upgrades glow slightly */
-  .temple-group ellipse[fill="#10b981"] {
-    filter: drop-shadow(0 0 2px #10b981);
-  }
-
-  .temple-group ellipse[fill="#8b5cf6"] {
-    filter: drop-shadow(0 0 2px #8b5cf6);
-  }
-
-  /* Enhance the region hover effects */
-  .region-path:hover .temple-group {
-    transform: scale(1.05);
-  }
-
-  .region-path.selected .temple-group {
-    filter: brightness(1.2) drop-shadow(0 0 4px #fbbf24);
   }
 
   /* Army count styling */
