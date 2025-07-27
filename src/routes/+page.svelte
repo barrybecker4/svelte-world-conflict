@@ -84,7 +84,6 @@
     }
   }
 
-  // Call the API with the FULL player configuration
   async function createNewGame(gameConfig, humanPlayer) {
     return await fetch('/api/game/new', {
       method: 'POST',

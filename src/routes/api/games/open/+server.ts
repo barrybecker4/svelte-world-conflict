@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ platform }) => {
             timeRemaining: Math.max(0, TWENTY_MINUTES - (now - game.createdAt)) // Time until expiration
         }));
 
-        console.log(`📋 Returning ${openGames.length} valid games (filtered out ${expiredGames.length} expired games)`);
+        console.log(`📋 Returning ${openGames.length} open games (filtered out ${expiredGames.length} expired games)`);
 
         return json(openGames);
     } catch (error) {

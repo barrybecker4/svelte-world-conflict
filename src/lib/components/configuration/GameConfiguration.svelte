@@ -6,7 +6,7 @@
   import PlayerConfiguration from './PlayerConfiguration.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from './MapPreviewPanel.svelte';
-  import { getPlayerConfig } from '$lib/game/constants/playerColors';
+  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 
   const dispatch = createEventDispatcher();
 

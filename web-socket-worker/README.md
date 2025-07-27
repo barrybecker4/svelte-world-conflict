@@ -94,16 +94,7 @@ The WebSocket worker supports multiple development modes:
 
 Once both servers are running, test the WebSocket connection:
 
-```javascript
-// Open browser console at http://localhost:5173 and run:
-const ws = new WebSocket('ws://localhost:8787/websocket?gameId=test');
-ws.onopen = () => console.log('✅ WebSocket connected');
-ws.onmessage = (event) => console.log('📨 Message:', JSON.parse(event.data));
-ws.onerror = (err) => console.error('❌ WebSocket error:', err);
-
-// Subscribe to game updates
-ws.send(JSON.stringify({ type: 'subscribe', gameId: 'test' }));
-```
+Got to `http://localhost:5173/test-websocket`
 
 ## 🎮 How to Play
 

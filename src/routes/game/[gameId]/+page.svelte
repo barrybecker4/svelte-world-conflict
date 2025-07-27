@@ -42,17 +42,15 @@
     );
   }
 
-  // Change to const export since it's unused for external reference only
+  // const export since it's unused for external reference only
   export const data: PageData = {};
 
-  // Properly typed variables
   let gameId: string = $page.params.gameId || '';
   let playerId: string = '';
   let playerIndex: number = -1;
   let loading: boolean = true;
   let error: string | null = null;
 
-  // Helper function for safe error handling
   function getErrorMessage(err: unknown): string {
     if (err instanceof Error) {
       return err.message;
@@ -75,7 +73,7 @@
         return false;
       }
 
-      // For World Conflict, playerId is typically the string version of playerIndex
+      // For World Conflict, playerId is the string version of playerIndex
       playerId = playerInfo.playerId || playerInfo.playerIndex.toString();
       playerIndex = playerInfo.playerIndex;
       return true;
@@ -94,28 +92,11 @@
 
       // First, load player info from localStorage
       if (!loadPlayerInfo()) {
-        // Redirect to lobby if no valid player info
-        setTimeout(() => goto('/'), 2000);
+        setTimeout(() => goto('/'), 2000); // Redirect to lobby if no valid player info
         return;
       }
 
-      const response = await fetch(`/api/game/${gameId}`);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Game not found');
-        }
-        throw new Error(`Failed to load game: ${response.status}`);
-      }
-
-      const gameData: unknown = await response.json();
-
-      // Validate that the game data has the expected structure for World Conflict
-      if (!isWorldConflictGameResponse(gameData)) {
-        throw new Error('Invalid game data received from server - not a valid World Conflict game');
-      }
-
-      // At this point, gameData is properly typed as WorldConflictGameResponse
+      const gameData = getGameData(gameId);
       console.log('✅ Game data loaded successfully:', gameData.gameId);
 
     } catch (err) {
@@ -124,6 +105,24 @@
     } finally {
       loading = false;
     }
+  }
+
+  async function getGameData(gameId: string): Promise<WorldConflictGameResponse> {
+    const response = await fetch(`/api/game/${gameId}`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Game not found');
+      }
+      throw new Error(`Failed to load game: ${response.status}`);
+    }
+
+    const gameData =  await response.json();
+    if (!isWorldConflictGameResponse(gameData)) {
+      throw new Error('Invalid game data received from server - not a valid World Conflict game');
+    }
+
+    return gameData;
   }
 
   // Load data when component mounts

@@ -59,30 +59,6 @@ npm run format            # Format code
 npm run deploy            # Deploy to Cloudflare Pages
 ```
 
-## 🎯 Migration Status
-
-This project is migrating from Google Apps Script + Firestore to SvelteKit + Cloudflare:
-
-### ✅ Completed
-- [x] Basic SvelteKit setup
-- [x] Tailwind CSS configuration
-- [x] Project structure
-- [x] Landing page
-
-### 🚧 In Progress
-- [ ] WebSocket worker setup
-- [ ] Core game classes migration
-- [ ] KV storage implementation
-- [ ] Game UI components
-
-### 📋 Todo
-- [ ] Real-time gameplay
-- [ ] AI player implementation
-- [ ] Game map rendering
-- [ ] Player management
-- [ ] Move validation
-- [ ] End-to-end tests
-
 ## 🎮 How to Play
 
 World Conflict is a strategic multiplayer game where players:

@@ -1,9 +1,5 @@
 <script>
   import '../app.css';
-
-  // Global app state will go here eventually
-  // import { gameStore } from '$lib/stores/gameStore.js';
-  // import { multiplayerStore } from '$lib/stores/multiplayerStore.js';
 </script>
 
 <main>

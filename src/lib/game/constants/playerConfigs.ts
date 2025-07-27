@@ -5,62 +5,47 @@ export interface PlayerColorConfig {
   colorEnd: string;
   highlightStart: string;
   highlightEnd: string;
-  // These should match the colors used in map regions
-  mapColor: string;
-  mapHighlight: string;
 }
 
-export const PLAYER_COLOR_CONFIGS: PlayerColorConfig[] = [
+export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   {
     index: 0,
     defaultName: 'Amber',
-    colorStart: '#e3be2d',
-    colorEnd: '#e0b321',
-    //colorStart: '#ffee88',    // Vivid yellow-gold
-    //colorEnd: '#cc8811',      // Darker gold
-    highlightStart: '#ffdd88',
-    highlightEnd: '#aa8800',
-    mapHighlight: '#ffdd88'
+    colorStart: '#e6bf2d',  // Vivid yellow-gold
+    colorEnd: '#daab1a',    // Darker gold
+    highlightStart: '#f2db77',
+    highlightEnd: '#dfb020',
   },
   {
     index: 1,
     defaultName: 'Crimson',
-    colorStart: '#dc2626',
-    colorEnd: '#991b1b',
-    //colorStart: '#ff8888',    // Vivid red
-    //colorEnd: '#aa4444',      // Darker red
+    colorStart: '#dc2626', // Vivid red
+    colorEnd: '#991b1b', // Darker red
     highlightStart: '#ffaaaa',
     highlightEnd: '#994444',
-    mapHighlight: '#ffaaaa'
   },
   {
     index: 2,
     defaultName: 'Lavender',
-    colorStart: '#9A3BF2',
-    colorEnd: '#7B68EE',
-    //colorStart: '#dd99dd',    // Vivid purple
-    //colorEnd: '#883388',      // Darker purple
+    colorStart: '#9A3BF2', // Vivid purple
+    colorEnd: '#7B68EE', // Darker purple
     highlightStart: '#ffaaff',
     highlightEnd: '#775599',
-    mapHighlight: '#ffaaff'
   },
   {
     index: 3,
     defaultName: 'Emerald',
-    colorStart: '#059669',
-    colorEnd: '#047857',
-    //colorStart: '#99dd99',    // Vivid green
-   // colorEnd: '#228822',      // Darker green
+    colorStart: '#059669', // Vivid green
+    colorEnd: '#047857', // Darker green
     highlightStart: '#bbffbb',
     highlightEnd: '#44aa44',
-    mapHighlight: '#bbffbb'
   }
 ];
 
 
 // Helper functions
 export function getPlayerConfig(playerIndex: number): PlayerColorConfig {
-  return PLAYER_COLOR_CONFIGS[playerIndex % PLAYER_COLOR_CONFIGS.length];
+  return PLAYER_CONFIGS[playerIndex % PLAYER_CONFIGS.length];
 }
 
 export function getPlayerColor(playerIndex: number): string {

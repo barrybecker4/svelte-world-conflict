@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
   import Temple from './Temple.svelte';
-  import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerColors';
+  import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
@@ -226,14 +226,9 @@
     <!-- Debug info -->
     {#if regions.length > 0}
       {@const regionsWithPoints = regions.filter(r => (r as RegionWithPoints).points?.length > 0)}
-      <text x="10" y="25" fill="#94a3b8" font-size="12" font-family="monospace">
-        Regions: {regions.length} | With border points: {regionsWithPoints.length}
+      <text x="0" y="580" fill="#94a3b8" font-size="12" font-family="monospace">
+        Regions: {regions.length}
       </text>
-      {#if regionsWithPoints.length > 0}
-        <text x="10" y="45" fill="#94a3b8" font-size="10" font-family="monospace">
-          First region has {(regions[0] as RegionWithPoints).points?.length || 0} points
-        </text>
-      {/if}
     {/if}
   </svg>
 </div>
