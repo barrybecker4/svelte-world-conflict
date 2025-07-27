@@ -22,7 +22,7 @@
   // Debug logging when regions change
   $: {
     if (regions.length > 0) {
-      console.log('GameMap received regions:', regions.length);
+      console.log('Map received regions:', regions.length);
       console.log('First region:', regions[0]);
       console.log('First region points:', (regions[0] as RegionWithPoints).points?.length || 0);
     }

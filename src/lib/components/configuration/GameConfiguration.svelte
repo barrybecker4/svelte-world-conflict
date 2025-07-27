@@ -1,7 +1,7 @@
 <!-- src/lib/components/configuration/GameConfiguration.svelte -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
-  import GameMap from './GameMap.svelte';
+  import Map from './Map.svelte';
   import PlayerNameInput from './PlayerNameInput.svelte';
   import PlayerConfiguration from './PlayerConfiguration.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';

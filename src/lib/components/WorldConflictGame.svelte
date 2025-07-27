@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { writable } from 'svelte/store';
   import GameInfoPanel from './GameInfoPanel.svelte';
-  import GameMap from './configuration/GameMap.svelte';
+  import Map from './configuration/Map.svelte';
   import SoldierSelectionModal from './SoldierSelectionModal.svelte';
   import GameInstructions from './GameInstructions.svelte';
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
@@ -358,7 +358,7 @@
 
     <!-- Game Map -->
     <div class="map-container">
-      <GameMap
+      <Map
         {regions}
         gameState={$gameState}
         onRegionClick={handleRegionClick}

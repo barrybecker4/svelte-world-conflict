@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import GameMap from './GameMap.svelte';
+  import Map from './Map.svelte';
   import { MapGenerator } from '$lib/game/data/map/MapGenerator';
 
   export let mapSize = 'Large'; // Allow parent to control map size
@@ -11,7 +11,7 @@
   let loadingPreview = false;
   let mapGenerator = new MapGenerator(800, 600);
   let error = null;
-  let mapKey = 0; // Force re-render of GameMap component
+  let mapKey = 0; // Force re-render of Map component
 
   async function loadPreviewMap() {
     console.log('=== LOAD PREVIEW MAP STARTED ===');
@@ -50,7 +50,7 @@
       // Force Svelte reactivity update with completely new array
       previewRegions = [...(regions || [])];
 
-      // Increment map key to force GameMap re-render
+      // Increment map key to force Map re-render
       mapKey += 1;
 
       console.log(`=== MAP GENERATION SUCCESS ===`);
@@ -111,7 +111,7 @@
       </div>
     {:else}
       {#key mapKey}
-        <GameMap
+        <Map
           regions={previewRegions}
           interactive={false}
         />
