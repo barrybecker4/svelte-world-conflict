@@ -282,7 +282,7 @@
   .configuration-main {
     display: flex;
     gap: 32px;
-    max-width: 1200px;
+    /*max-width: 1200px;*/
     width: 100%;
     height: 80vh;
     min-height: 600px;

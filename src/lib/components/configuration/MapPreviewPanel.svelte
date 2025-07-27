@@ -24,13 +24,9 @@
       // Force a visual update
       previewRegions = [];
 
-      // Adjust map generator size based on mapSize setting
-      const dimensions = getMapDimensions(mapSize);
-      console.log('Map dimensions:', dimensions);
-
       // Force a completely new MapGenerator instance to avoid any caching
       console.log('Creating completely new MapGenerator instance...');
-      mapGenerator = new MapGenerator(dimensions.width, dimensions.height);
+      mapGenerator = new MapGenerator(800, 600);
 
       // Add some randomness to options to force different generation
       const randomSeed = Math.floor(Math.random() * 1000000);
@@ -76,16 +72,8 @@
     loadPreviewMap();
   }
 
-  function getMapDimensions(size) {
-    switch (size) {
-      case 'Small':
-        return { width: 600, height: 450 };
-      case 'Medium':
-        return { width: 700, height: 525 };
-      case 'Large':
-      default:
-        return { width: 800, height: 600 };
-    }
+  function handleRefreshClick() {
+    refreshPreview();
   }
 
   // Expose the load function so parent can trigger it if needed
@@ -125,8 +113,6 @@
       {#key mapKey}
         <GameMap
           regions={previewRegions}
-          width={getMapDimensions(mapSize).width}
-          height={getMapDimensions(mapSize).height}
           interactive={false}
         />
       {/key}
@@ -233,7 +219,7 @@
     align-items: center;
     margin-top: 12px;
     padding: 8px 0;
-    pointer-events: auto; /* Ensure the container allows clicks */
+    pointer-events: auto;
     z-index: 5;
     position: relative;
   }
@@ -253,8 +239,8 @@
     cursor: pointer;
     font-size: 0.9rem;
     transition: all 0.2s ease;
-    pointer-events: auto; /* Ensure clicks work */
-    z-index: 10; /* Ensure button is on top */
+    pointer-events: auto;
+    z-index: 10;
     position: relative;
   }
 

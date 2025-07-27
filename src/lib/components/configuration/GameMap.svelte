@@ -12,8 +12,6 @@
   const MAX_INDIVIDUAL_ARMIES = 16;
   const ARMIES_PER_ROW = 8;
   let mapContainer: HTMLDivElement;
-  let mapWidth = 800;
-  let mapHeight = 600;
 
   // Type for regions with border points
   interface RegionWithPoints extends Region {
@@ -120,15 +118,14 @@
 
 <div class="game-map" bind:this={mapContainer}>
   <svg
-    width={mapWidth}
-    height={mapHeight}
-    viewBox="0 0 {mapWidth} {mapHeight}"
+    viewBox="0 0 800 600"
     class="map-svg"
+    preserveAspectRatio="xMidYMid meet"
   >
     <!-- Background -->
     <rect
-      width={mapWidth}
-      height={mapHeight}
+      width="800"
+      height="600"
       fill="#1e3a8a"
     />
 
