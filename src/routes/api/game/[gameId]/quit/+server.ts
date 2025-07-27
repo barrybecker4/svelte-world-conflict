@@ -26,8 +26,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         const gameId = gameIdValidation.data;
-
-        // Get current game data
         const gameDataRaw = await kv.get(`game:${gameId}`);
 
         if (!gameDataRaw) {

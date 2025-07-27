@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import { getPlayerColor } from '$lib/game/constants/playerColors.js';
 
   export let gameState: WorldConflictGameStateData | null = null;
   export let players: Player[] = [];
@@ -14,11 +15,6 @@
     if (regionCount === 0) return 'Eliminated';
     if (gameState.playerIndex === player.index) return 'Active Turn';
     return 'Waiting';
-  }
-
-  function getPlayerColor(playerIndex: number): string {
-    const colors = ['#dc2626', '#2563eb', '#16a34a', '#ca8a04'];
-    return colors[playerIndex % colors.length];
   }
 
   $: turnNumber = gameState?.turnIndex || 1;

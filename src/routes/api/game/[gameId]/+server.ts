@@ -110,7 +110,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 await gameStorage.saveGame(updatedGame);
                 await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
-                console.log(`👋 Player ${player.name} left pending game ${gameId}`);
+                console.log(`Player ${player.name} left pending game ${gameId}`);
 
                 return json({
                     success: true,
@@ -131,7 +131,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             await gameStorage.saveGame(updatedGame);
             await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
-            console.log(`🚨 Player ${player.name} ${reason.toLowerCase()} from active game ${gameId}`);
+            console.log(`Player ${player.name} ${reason.toLowerCase()} from active game ${gameId}`);
 
             return json({
                 success: true,

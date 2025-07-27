@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        console.log(`🎮 Loading game ${gameId}:`, {
+        console.log(`Loading game ${gameId}:`, {
             status: game.status,
             players: game.players?.length,
             hasWorldConflictState: !!game.worldConflictState,

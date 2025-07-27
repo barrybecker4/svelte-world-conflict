@@ -7,6 +7,7 @@ import {
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { Player } from '$lib/game/WorldConflictGameState.ts';
+import { createPlayer } from '$lib/server/api-utils.js';
 
 interface JoinGameRequest {
     playerName: string;
@@ -29,26 +30,6 @@ function generatePlayerId(): string {
     return `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-/**
- * Create a proper World Conflict Player object
- */
-function createPlayer(name: string, index: number): Player {
-    const colors = [
-        { start: '#dc2626', end: '#991b1b' }, // Red
-        { start: '#2563eb', end: '#1d4ed8' }, // Blue
-        { start: '#16a34a', end: '#15803d' }, // Green
-        { start: '#ca8a04', end: '#a16207' }  // Yellow
-    ];
-
-    const color = colors[index % colors.length];
-
-    return {
-        index,
-        name: name.trim(),
-        color: color.start,
-        isAI: false
-    };
-}
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
