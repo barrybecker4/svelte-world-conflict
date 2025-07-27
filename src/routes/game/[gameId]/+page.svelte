@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import GameWaitingRoom from '$lib/components/GameWaitingRoom.svelte';
+  import WaitingRoom from '$lib/components/WaitingRoom.svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
 
   export let data;
@@ -55,7 +55,7 @@
     <p>Loading game...</p>
   </div>
 {:else if gameState === 'waiting'}
-  <GameWaitingRoom
+  <WaitingRoom
     gameId={$page.params.gameId}
     currentPlayer={currentPlayer}
   />

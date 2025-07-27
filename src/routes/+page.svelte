@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import GameInstructions from '$lib/components/GameInstructions.svelte';
-  import GameLobby from '$lib/components/GameLobby.svelte';
+  import Lobby from '$lib/components/Lobby.svelte';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
 
   let showInstructions = true; // Auto-show on load
@@ -125,7 +125,7 @@
 {/if}
 
 {#if showLobby}
-  <GameLobby gameMode="join" on:close={handleLobbyClose} />
+  <Lobby gameMode="join" on:close={handleLobbyClose} />
 {/if}
 
 {#if showConfiguration}

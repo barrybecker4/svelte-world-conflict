@@ -1,4 +1,3 @@
-<!-- src/lib/components/GameLobby.svelte -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { goto } from '$app/navigation';
