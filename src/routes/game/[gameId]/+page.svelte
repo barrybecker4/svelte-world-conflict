@@ -98,7 +98,6 @@
         return;
       }
 
-      // Fetch World Conflict game data
       const response = await fetch(`/api/game/${gameId}`);
 
       if (!response.ok) {

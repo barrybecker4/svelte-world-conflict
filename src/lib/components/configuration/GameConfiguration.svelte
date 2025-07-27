@@ -6,36 +6,9 @@
   import PlayerConfiguration from './PlayerConfiguration.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from './MapPreviewPanel.svelte';
+  import { getPlayerConfig } from '$lib/game/constants/playerColors';
 
   const dispatch = createEventDispatcher();
-
-  // Fixed player configurations matching original
-  const PLAYER_CONFIGS = [
-    {
-      index: 0,
-      defaultName: 'Amber',
-      colorStart: '#e3be2d',
-      colorEnd: '#e0b321'
-    },
-    {
-      index: 1,
-      defaultName: 'Crimson',
-      colorStart: '#dc2626',
-      colorEnd: '#991b1b'
-    },
-    {
-      index: 2,
-      defaultName: 'Lavender',
-      colorStart: '#9A3BF2',
-      colorEnd: '#7B68EE'
-    },
-    {
-      index: 3,
-      defaultName: 'Emerald',
-      colorStart: '#059669',
-      colorEnd: '#047857'
-    }
-  ];
 
   // Game settings - now managed by GameSettingsPanel
   let gameSettings = {
@@ -51,18 +24,15 @@
 
   // Player slot states - Off/Set/Open/AI as per original
   let playerSlots = [
-    { ...PLAYER_CONFIGS[0], type: 'Off', customName: '' },
-    { ...PLAYER_CONFIGS[1], type: 'Off', customName: '' },
-    { ...PLAYER_CONFIGS[2], type: 'Off', customName: '' },
-    { ...PLAYER_CONFIGS[3], type: 'Off', customName: '' }
+    { ...getPlayerConfig(0), type: 'Off', customName: '' },
+    { ...getPlayerConfig(1), type: 'Off', customName: '' },
+    { ...getPlayerConfig(2), type: 'Off', customName: '' },
+    { ...getPlayerConfig(3), type: 'Off', customName: '' }
   ];
 
-  // Game state
   let creating = false;
   let error = null;
   let showNameInput = true;
-
-  // Reference to MapPreviewPanel for triggering refreshes
   let mapPreviewPanel;
 
   // Count active players for map generation
@@ -116,15 +86,15 @@
   function initPlayerConfig(playerName) {
     // Set the first player slot to "Set" with the custom name
     playerSlots[0] = {
-      ...PLAYER_CONFIGS[0],
+      ...getPlayerConfig(0),
       type: 'Set',
       customName: playerName
     };
 
     // Set some AI opponents by default
-    playerSlots[1] = { ...PLAYER_CONFIGS[1], type: 'AI', customName: '' };
-    playerSlots[2] = { ...PLAYER_CONFIGS[2], type: 'AI', customName: '' };
-    playerSlots[3] = { ...PLAYER_CONFIGS[3], type: 'Off', customName: '' };
+    playerSlots[1] = { ...getPlayerConfig(1), type: 'AI', customName: '' };
+    playerSlots[2] = { ...getPlayerConfig(2), type: 'AI', customName: '' };
+    playerSlots[3] = { ...getPlayerConfig(3), type: 'Off', customName: '' };
   }
 
   function changeName() {

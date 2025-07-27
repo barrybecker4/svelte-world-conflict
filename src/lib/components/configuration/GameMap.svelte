@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
   import Temple from './Temple.svelte';
+  import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerColors';
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
@@ -59,17 +60,11 @@
   }
 
   function getRegionColor(regionIndex: number): string {
-    const owner = getRegionOwner(regionIndex);
-    if (!owner) return '#6b7280'; // Neutral gray
-
-    const playerColors = [
-      '#dc2626', // Red
-      '#2563eb', // Blue
-      '#8A2BE2', // Purple
-      '#059669'  // Green
-    ];
-
-    return playerColors[owner.index] || '#6b7280';
+    const owner = gameState?.owners?.[regionIndex];
+    if (owner !== undefined && owner !== null) {
+      return getPlayerMapColor(owner);
+    }
+    return '#6b7280'; // Gray for unowned
   }
 
   function getArmyCount(regionIndex: number): number {

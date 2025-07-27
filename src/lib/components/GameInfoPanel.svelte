@@ -1,4 +1,3 @@
-<!-- GameInfoPanel.svelte - Complete left panel matching original design -->
 <script lang="ts">
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
 
@@ -23,42 +22,42 @@
     MOVES: '➊' // &#10138;
   };
 
-  // Original pastel player colors from the GAS code
+  // Original colors - using full hex values for better contrast
   const PLAYER_CONFIGS = [
     {
       name: 'Amber',
-      colorStart: '#fe8',
-      colorEnd: '#c81',
-      highlightStart: '#fd8',
-      highlightEnd: '#a80'
+      colorStart: '#ffee88',  // More vivid than #fe8
+      colorEnd: '#cc8811',
+      highlightStart: '#ffdd88',
+      highlightEnd: '#aa8800'
     },
     {
       name: 'Crimson',
-      colorStart: '#f88',
-      colorEnd: '#a44',
-      highlightStart: '#faa',
-      highlightEnd: '#944'
+      colorStart: '#ff8888',  // More vivid than #f88
+      colorEnd: '#aa4444',
+      highlightStart: '#ffaaaa',
+      highlightEnd: '#994444'
     },
     {
       name: 'Lavender',
-      colorStart: '#d9d',
-      colorEnd: '#838',
-      highlightStart: '#faf',
-      highlightEnd: '#759'
+      colorStart: '#dd99dd',  // More vivid than #d9d
+      colorEnd: '#883388',
+      highlightStart: '#ffaaff',
+      highlightEnd: '#775599'
     },
     {
       name: 'Emerald',
-      colorStart: '#9d9',
-      colorEnd: '#282',
-      highlightStart: '#bfb',
-      highlightEnd: '#4a4'
+      colorStart: '#99dd99',  // More vivid than #9d9
+      colorEnd: '#228822',
+      highlightStart: '#bbffbb',
+      highlightEnd: '#44aa44'
     }
   ];
 
   $: currentPlayerIndex = gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
   $: turnNumber = gameState?.turnIndex ?? 1;
-  $: maxTurns = gameState?.maxTurns; // Assuming this exists in gameState
+  $: maxTurns = gameState?.maxTurns;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
   $: isMoving = moveMode !== 'IDLE';
   $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
@@ -91,220 +90,221 @@
     return getRegionCount(playerIndex) > 0;
   }
 
-  function isPlayerWinner(playerIndex: number): boolean {
-    return gameState?.endResult === playerIndex;
-  }
-
-  function getInstructionText(): string {
+  function getCurrentInstruction(): string {
     if (currentPlayer?.isAI) {
       return `${currentPlayer.name} is taking their turn.`;
     }
 
-    if (moveMode === 'BUILD') {
-      return 'Choose an upgrade to build.';
-    } else if (moveMode === 'MOVING_ARMY') {
-      return 'Click on this region again to choose how many to move.\nClick on a target region to move the army.';
-    } else if (moveMode === 'SELECT_SOURCE') {
-      return 'Click on a region to move or attack with its army.';
-    } else {
-      return `Click on a region to move or attack with its army.\nClick on a temple to buy soldiers or upgrades with ${SYMBOLS.FAITH}.`;
+    switch (moveMode) {
+      case 'SELECT_SOURCE':
+        return 'Click on a region to move or attack with its army.';
+      case 'ADJUST_SOLDIERS':
+        return 'Click on this region again to choose how many to move.\nClick on a target region to move the army.';
+      case 'SELECT_TARGET':
+        return 'Click on a target region to move the army.';
+      case 'BUILD':
+        return 'Click on a temple to buy soldiers or upgrades.';
+      default:
+        return 'Click on a region to move or attack with its army.\nClick on a temple to buy soldiers or upgrades.';
     }
   }
 </script>
 
 <div class="game-info-panel">
   <!-- Turn Information Section -->
-  <section class="turn-section">
-    <div class="turn-display">
+  <div class="turn-section">
+    <div class="turn-box">
+      <div class="turn-header">Turn <span class="turn-number">{turnNumber}</span></div>
       {#if maxTurns}
-        Turn <strong>{turnNumber}</strong> / {maxTurns}
-      {:else}
-        Turn <strong>{turnNumber}</strong>
+        <div class="turn-progress">of {maxTurns}</div>
       {/if}
     </div>
-  </section>
+  </div>
 
   <!-- Players Section -->
-  <section class="players-section">
+  <div class="players-section">
     {#each players as player, index}
       {@const isActive = index === currentPlayerIndex}
+      {@const isAlive = isPlayerAlive(index)}
       {@const regionCount = getRegionCount(index)}
       {@const faithCount = getFaithCount(index)}
-      {@const isAlive = isPlayerAlive(index)}
-      {@const isWinner = isPlayerWinner(index)}
-      {@const playerColor = getPlayerColor(index)}
-      {@const highlightColor = getPlayerHighlightColor(index)}
 
-      <div
-        class="player-box"
-        class:active={isActive}
-        class:highlighted={isActive}
-        style="background: {playerColor}; {isActive ? `box-shadow: 0 0 0 3px ${highlightColor};` : ''}"
-      >
-        <div class="player-name">{player.name}</div>
-        <div class="player-stats">
-          <div class="stat faith-stat">
-            {#if gameState?.endResult}
-              {#if isWinner}
-                <span class="symbol">{SYMBOLS.VICTORY}</span>
-              {/if}
-            {:else if isAlive}
-              <span class="value">{faithCount}</span><span class="symbol">{SYMBOLS.FAITH}</span>
-            {/if}
-          </div>
-          <div class="stat region-stat">
-            {#if isAlive}
-              <span class="value">{regionCount}</span><span class="symbol">{SYMBOLS.REGION}</span>
-            {:else}
-              <span class="symbol dead">{SYMBOLS.DEAD}</span>
+      <div class="player-box" class:active={isActive} class:inactive={!isActive}>
+        <div
+          class="player-color"
+          style="background: linear-gradient(135deg, {getPlayerColor(index)}, {getPlayerEndColor(index)});"
+        ></div>
+        <div class="player-info">
+          <div class="player-name">{player.name || PLAYER_CONFIGS[index].name}</div>
+          <div class="player-stats">
+            <div class="stat">
+              <span class="value">{regionCount}</span>
+              <span class="symbol">{@html SYMBOLS.REGION}</span>
+            </div>
+            <div class="stat">
+              <span class="value">{faithCount}</span>
+              <span class="symbol">{@html SYMBOLS.FAITH}</span>
+            </div>
+            {#if !isAlive}
+              <div class="stat">
+                <span class="symbol dead">{@html SYMBOLS.DEAD}</span>
+              </div>
             {/if}
           </div>
         </div>
       </div>
     {/each}
-  </section>
+  </div>
 
   <!-- Instructions Section -->
-  <section class="instructions-section">
-    <div
-      class="info-panel"
-      style="background: {currentPlayer ? getPlayerEndColor(currentPlayerIndex) : '#666'}"
-    >
+  <div class="instructions-section">
+    <div class="info-panel">
       <div class="instruction-text">
-        {getInstructionText()}
+        {getCurrentInstruction()}
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- Current Player Stats -->
-  <section class="player-stats-section">
+  <!-- Player Stats Section -->
+  <div class="player-stats-section">
     <div class="stat-display">
       <div class="stat-item">
-        <div class="stat-value">
-          <span class="value">{movesRemaining}</span>
-          <span class="symbol">{SYMBOLS.MOVES}</span>
-        </div>
+        <div class="stat-value">{movesRemaining} <span class="symbol">{@html SYMBOLS.MOVES}</span></div>
         <div class="stat-label">moves</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value">
-          <span class="value">{currentPlayer ? getFaithCount(currentPlayerIndex) : 0}</span>
-          <span class="symbol">{SYMBOLS.FAITH}</span>
-        </div>
+        <div class="stat-value">{getFaithCount(currentPlayerIndex)} <span class="symbol">{@html SYMBOLS.FAITH}</span></div>
         <div class="stat-label">faith</div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- Action Buttons -->
-  <section class="action-section">
+  <!-- Action Buttons Section -->
+  <div class="action-section">
     {#if showCancelButton}
       <button class="action-btn cancel-btn" on:click={onCancelMove}>
         Cancel Move
       </button>
+    {:else}
+      <button class="action-btn undo-btn" on:click={onUndo} disabled={movesRemaining >= 3}>
+        Undo
+      </button>
     {/if}
-    <button
-      class="action-btn end-turn-btn"
-      on:click={onEndTurn}
-      disabled={currentPlayer?.isAI}
-    >
-      End Turn
+
+    <button class="action-btn end-turn-btn" on:click={onEndTurn}>
+      END TURN
     </button>
-  </section>
+  </div>
 
   <!-- Bottom Action Icons -->
-  <section class="bottom-icons">
-    <button class="icon-btn" on:click={onUndo} title="Undo">
-      ↶
+  <div class="bottom-actions">
+    <button class="icon-btn" on:click={onToggleAudio} title="Toggle Audio">
+      {#if audioEnabled}🔊{:else}🔇{/if}
     </button>
-    <button
-      class="icon-btn"
-      on:click={onToggleAudio}
-      title="Toggle Audio"
-      class:active={audioEnabled}
-    >
-      {audioEnabled ? '🔊' : '🔇'}
-    </button>
-    <button class="icon-btn" on:click={onShowInstructions} title="Instructions">
-      ❓
-    </button>
-    <button class="icon-btn resign-btn" on:click={onResign} title="Resign">
-      🏳️
-    </button>
-  </section>
+    <button class="icon-btn" on:click={onShowInstructions} title="Instructions">❓</button>
+    <button class="icon-btn" on:click={onResign} title="Resign">🏳️</button>
+  </div>
 </div>
 
 <style>
   .game-info-panel {
     width: 280px;
     height: 100vh;
-    background: linear-gradient(to bottom, #2d3748, #1a202c);
+    background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
     color: white;
-    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
     border-right: 2px solid #4a5568;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
   }
 
   /* Turn Section */
   .turn-section {
-    text-align: center;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.3);
+    flex: 0 0 auto;
+    padding: 16px;
+    border-bottom: 1px solid #4a5568;
+  }
+
+  .turn-box {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1f2937;
+    padding: 12px 16px;
     border-radius: 8px;
-    border: 1px solid #4a5568;
-  }
-
-  .turn-display {
-    font-size: 1.1rem;
-    color: #e2e8f0;
-  }
-
-  .turn-display strong {
-    color: #fbbf24;
+    text-align: center;
     font-weight: bold;
+    border: 2px solid #d97706;
+  }
+
+  .turn-header {
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+  }
+
+  .turn-number {
+    font-size: 1.3rem;
+    font-weight: 900;
+  }
+
+  .turn-progress {
+    font-size: 0.85rem;
+    opacity: 0.8;
   }
 
   /* Players Section */
   .players-section {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid #4a5568;
   }
 
   .player-box {
-    margin-bottom: 4px;
-    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
     border-radius: 6px;
-    border: 1px solid #333;
+    border: 2px solid transparent;
     transition: all 0.2s ease;
-    position: relative;
-  }
-
-  .player-box.highlighted {
-    border: 2px solid #fbbf24;
-    transform: scale(1.02);
   }
 
   .player-box.active {
-    animation: pulse-glow 2s infinite;
+    border-color: #60a5fa;
+    background: rgba(96, 165, 250, 0.1);
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
   }
 
-  @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3); }
-    50% { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.6); }
+  .player-box.inactive {
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .player-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 2px solid #374151;
+    flex-shrink: 0;
+  }
+
+  .player-info {
+    flex: 1;
+    min-width: 0;
   }
 
   .player-name {
     font-weight: bold;
     font-size: 0.95rem;
     margin-bottom: 4px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    color: #f7fafc;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
   }
 
   .player-stats {
     display: flex;
+    gap: 8px;
     justify-content: space-between;
     font-size: 0.85rem;
   }
@@ -333,10 +333,13 @@
   /* Instructions Section */
   .instructions-section {
     flex: 0 0 auto;
+    padding: 16px;
+    border-bottom: 1px solid #4a5568;
   }
 
   .info-panel {
     padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
     border-radius: 6px;
     border: 1px solid #333;
     min-height: 60px;
@@ -355,6 +358,8 @@
   /* Player Stats Section */
   .player-stats-section {
     flex: 0 0 auto;
+    padding: 16px;
+    border-bottom: 1px solid #4a5568;
   }
 
   .stat-display {
@@ -398,9 +403,11 @@
   /* Action Section */
   .action-section {
     flex: 0 0 auto;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    border-bottom: 1px solid #4a5568;
   }
 
   .action-btn {
@@ -412,7 +419,6 @@
     cursor: pointer;
     transition: all 0.2s ease;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 
   .action-btn:disabled {
@@ -421,32 +427,48 @@
   }
 
   .cancel-btn {
-    background: #f59e0b;
-    color: #1f2937;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: 2px solid #b91c1c;
   }
 
   .cancel-btn:hover:not(:disabled) {
-    background: #d97706;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-1px);
+  }
+
+  .undo-btn {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: white;
+    border: 2px solid #374151;
+  }
+
+  .undo-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4b5563, #374151);
     transform: translateY(-1px);
   }
 
   .end-turn-btn {
-    background: #dc2626;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
     color: white;
+    border: 2px solid #991b1b;
+    font-size: 1rem;
+    padding: 14px 16px;
   }
 
-  .end-turn-btn:hover:not(:disabled) {
-    background: #b91c1c;
+  .end-turn-btn:hover {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
     transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
   }
 
-  /* Bottom Icons */
-  .bottom-icons {
-    flex: 1;
+  /* Bottom Actions */
+  .bottom-actions {
+    flex: 0 0 auto;
+    padding: 16px;
     display: flex;
-    justify-content: space-around;
-    align-items: flex-end;
-    padding: 1rem 0;
+    gap: 8px;
+    justify-content: center;
   }
 
   .icon-btn {
@@ -454,58 +476,20 @@
     height: 40px;
     border: none;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.4);
-    color: #a0aec0;
-    font-size: 1.2rem;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.2rem;
     border: 1px solid #4a5568;
   }
 
   .icon-btn:hover {
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    transform: translateY(-2px);
-  }
-
-  .icon-btn.active {
-    background: #10b981;
-    color: white;
-  }
-
-  .icon-btn.resign-btn:hover {
-    background: #dc2626;
-    color: white;
-  }
-
-  /* Responsive Design */
-  @media (max-width: 768px) {
-    .game-info-panel {
-      width: 100%;
-      height: auto;
-      max-height: 300px;
-      flex-direction: row;
-      overflow-x: auto;
-      border-right: none;
-      border-bottom: 2px solid #4a5568;
-    }
-
-    .players-section {
-      display: flex;
-      gap: 8px;
-      flex-wrap: nowrap;
-    }
-
-    .player-box {
-      min-width: 120px;
-      flex-shrink: 0;
-    }
-
-    .bottom-icons {
-      display: none;
-    }
+    background: rgba(96, 165, 250, 0.2);
+    border-color: #60a5fa;
+    transform: translateY(-1px);
   }
 </style>

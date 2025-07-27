@@ -11,20 +11,26 @@
   // Props
   export let gameId: string;
   export let playerId: string;
+  export let playerIndex: number;
 
   // Game state
   let gameState = writable<WorldConflictGameStateData | null>(null);
-  let regions: Region[] = [];
+  let regions: any[] = [];
   let players: Player[] = [];
   let loading = true;
   let error: string | null = null;
 
-  // Move system state
-  let moveMode: string = 'IDLE';
-  let selectedRegion: number | null = null;
-  let sourceRegion: number | null = null;
-  let isMoving = false;
-  let moveSystem: MoveSystem;
+  // Move system
+  let moveSystem: MoveSystem | null = null;
+  let moveState: MoveState = {
+    mode: 'IDLE',
+    sourceRegion: null,
+    targetRegion: null,
+    selectedSoldierCount: 0,
+    maxSoldiers: 0,
+    availableMoves: 3,
+    isMoving: false
+  };
 
   // UI state
   let showSoldierSelection = false;
@@ -35,13 +41,15 @@
     currentSelection: number;
   } | null = null;
 
-  // Player index for current user
-  let playerIndex = -1;
-
+  // Reactive values
   $: currentPlayerIndex = $gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
-  $: isMyTurn = currentPlayer?.id === playerId;
+  $: isMyTurn = currentPlayerIndex === playerIndex;
   $: movesRemaining = $gameState?.movesRemaining ?? 3;
+  $: moveMode = moveState.mode;
+  $: selectedRegion = moveState.sourceRegion;
+
+  let pollInterval: NodeJS.Timeout;
 
   onMount(async () => {
     await initializeGame();
@@ -52,35 +60,17 @@
     stopGamePolling();
   });
 
-  let pollInterval: NodeJS.Timeout;
-
   async function initializeGame() {
     try {
       await loadGameState();
 
-      // Initialize move system
+      // Initialize move system with proper callbacks
       if ($gameState) {
-        moveSystem = {
-          // MoveSystem implementation would go here
-          processAction: async (action: any) => {
-            // Handle move actions
-            await handleMoveAction(action);
-          },
-          handleRegionClick: async (regionIndex: number) => {
-            await handleRegionClick(regionIndex);
-          },
-          getState: () => ({
-            mode: moveMode,
-            sourceRegion,
-            selectedSoldierCount: 1,
-            maxSoldiers: 0,
-            availableMoves: movesRemaining,
-            isMoving
-          }),
-          canSelectRegion: (regionIndex: number) => canSelectRegion(regionIndex),
-          getRegionHighlight: (regionIndex: number) => getRegionHighlight(regionIndex),
-          getCurrentInstruction: () => getCurrentInstruction()
-        };
+        moveSystem = new MoveSystem(
+          $gameState,
+          handleMoveComplete,
+          handleMoveStateChange
+        );
       }
 
       loading = false;
@@ -99,11 +89,17 @@
 
       const data = await response.json();
       gameState.set(data.worldConflictState);
-      regions = data.worldConflictState.regions;
+      regions = data.worldConflictState.regions || [];
       players = data.worldConflictState.players || [];
 
-      // Find player index
-      playerIndex = players.findIndex(p => p.id === playerId);
+      // Update move system if it exists
+      if (moveSystem && $gameState) {
+        moveSystem = new MoveSystem(
+          $gameState,
+          handleMoveComplete,
+          handleMoveStateChange
+        );
+      }
 
     } catch (err) {
       throw new Error('Failed to load game state');
@@ -113,7 +109,11 @@
   function startGamePolling() {
     pollInterval = setInterval(async () => {
       if (!loading && !error) {
-        await loadGameState();
+        try {
+          await loadGameState();
+        } catch (err) {
+          console.warn('Failed to poll game state:', err);
+        }
       }
     }, 2000);
   }
@@ -124,75 +124,34 @@
     }
   }
 
-  // Enhanced move handling
-  async function handleMoveAction(action: any) {
-    switch (action.type) {
-      case 'RESET':
-        resetMoveState();
-        break;
-      case 'SELECT_SOURCE':
-        await selectSourceRegion(action.payload?.regionIndex);
-        break;
-      case 'CANCEL':
-        cancelMove();
-        break;
+  // Move system callbacks
+  function handleMoveStateChange(newState: MoveState) {
+    moveState = { ...newState };
+
+    // Handle soldier selection modal
+    if (newState.mode === 'ADJUST_SOLDIERS' && newState.maxSoldiers > 1) {
+      soldierSelectionData = {
+        maxSoldiers: newState.maxSoldiers,
+        currentSelection: newState.selectedSoldierCount
+      };
+      showSoldierSelection = true;
+    } else {
+      showSoldierSelection = false;
+      soldierSelectionData = null;
     }
   }
 
-  async function handleRegionClick(regionIndex: number) {
-    if (!isMyTurn || !$gameState) return;
-
-    switch (moveMode) {
-      case 'IDLE':
-      case 'SELECT_SOURCE':
-        await selectSourceRegion(regionIndex);
-        break;
-
-      case 'ADJUST_SOLDIERS':
-        if (regionIndex === sourceRegion) {
-          // Show soldier selection modal
-          const armyCount = getArmyCountAtRegion(regionIndex);
-          soldierSelectionData = {
-            maxSoldiers: Math.max(1, armyCount - 1),
-            currentSelection: Math.min(Math.max(1, armyCount - 1), armyCount - 1)
-          };
-          showSoldierSelection = true;
-        } else if (areRegionsAdjacent(sourceRegion!, regionIndex)) {
-          // Direct move to adjacent region
-          await executeMove(sourceRegion!, regionIndex, 1);
-        }
-        break;
-
-      case 'SELECT_TARGET':
-        if (areRegionsAdjacent(sourceRegion!, regionIndex)) {
-          await executeMove(sourceRegion!, regionIndex, soldierSelectionData?.currentSelection || 1);
-        }
-        break;
-    }
-  }
-
-  async function selectSourceRegion(regionIndex: number) {
-    if (!isPlayerRegion(regionIndex)) return;
-
-    const armyCount = getArmyCountAtRegion(regionIndex);
-    if (armyCount <= 1) return;
-
-    sourceRegion = regionIndex;
-    selectedRegion = regionIndex;
-    moveMode = 'ADJUST_SOLDIERS';
-    isMoving = true;
-  }
-
-  async function executeMove(fromRegion: number, toRegion: number, soldierCount: number) {
+  async function handleMoveComplete(from: number, to: number, soldiers: number) {
     try {
       const response = await fetch(`/api/game/${gameId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           playerId,
-          fromRegion,
-          toRegion,
-          soldierCount
+          moveType: 'ARMY_MOVE',
+          source: from,
+          destination: to,
+          count: soldiers
         })
       });
 
@@ -202,26 +161,43 @@
       }
 
       await loadGameState();
-      resetMoveState();
-
     } catch (err) {
       error = err instanceof Error ? err.message : 'Move failed';
+      throw err; // Re-throw so MoveSystem knows the move failed
     }
   }
 
-  function resetMoveState() {
-    moveMode = 'IDLE';
-    selectedRegion = null;
-    sourceRegion = null;
-    isMoving = false;
-    showSoldierSelection = false;
-    soldierSelectionData = null;
+  // Region click handler - this is the key fix for the move system
+  async function handleRegionClick(regionIndex: number) {
+    if (!isMyTurn || !moveSystem) return;
+
+    try {
+      await moveSystem.handleRegionClick(regionIndex);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Action failed';
+    }
   }
 
-  function cancelMove() {
-    resetMoveState();
+  // Soldier selection handler
+  function handleSoldierSelection(count: number) {
+    if (soldierSelectionData && moveSystem) {
+      soldierSelectionData.currentSelection = count;
+      showSoldierSelection = false;
+
+      // Update the move system with the selected soldier count
+      moveSystem.processAction({
+        type: 'ADJUST_SOLDIERS',
+        payload: { soldierCount: count }
+      });
+
+      // Move to target selection mode
+      moveSystem.processAction({
+        type: 'SELECT_TARGET'
+      });
+    }
   }
 
+  // Action handlers
   async function endTurn() {
     try {
       const response = await fetch(`/api/game/${gameId}/end-turn`, {
@@ -243,78 +219,25 @@
     }
   }
 
-  // Helper functions
-  function isPlayerRegion(regionIndex: number): boolean {
-    return $gameState?.owners?.[regionIndex] === playerIndex;
-  }
-
-  function getArmyCountAtRegion(regionIndex: number): number {
-    const soldiers = $gameState?.soldiersByRegion?.[regionIndex];
-    return soldiers ? soldiers.length : 0;
-  }
-
-  function areRegionsAdjacent(sourceIndex: number, targetIndex: number): boolean {
-    const sourceRegion = $gameState?.regions?.[sourceIndex];
-    return sourceRegion?.neighbors?.includes(targetIndex) ?? false;
-  }
-
-  function canSelectRegion(regionIndex: number): boolean {
-    switch (moveMode) {
-      case 'IDLE':
-      case 'SELECT_SOURCE':
-        return isPlayerRegion(regionIndex) && getArmyCountAtRegion(regionIndex) > 1;
-      case 'ADJUST_SOLDIERS':
-      case 'SELECT_TARGET':
-        return regionIndex === sourceRegion || areRegionsAdjacent(sourceRegion!, regionIndex);
-      default:
-        return false;
+  function resetMoveState() {
+    if (moveSystem) {
+      moveSystem.processAction({ type: 'RESET' });
     }
   }
 
-  function getRegionHighlight(regionIndex: number): 'source' | 'target' | 'available' | 'home' | 'none' {
-    // Highlight home region for current player
-    if (isCurrentPlayerHome(regionIndex)) return 'home';
-    if (regionIndex === sourceRegion) return 'source';
-    if (canSelectRegion(regionIndex)) return 'available';
-    return 'none';
-  }
-
-  function isCurrentPlayerHome(regionIndex: number): boolean {
-    // This would need to be tracked in game state - for now, highlight first owned region
-    if (!isMyTurn || !$gameState) return false;
-    const ownedRegions = Object.entries($gameState.owners || {})
-      .filter(([_, owner]) => owner === playerIndex)
-      .map(([region, _]) => parseInt(region));
-    return ownedRegions.length > 0 && regionIndex === ownedRegions[0];
-  }
-
-  function getCurrentInstruction(): string {
-    if (currentPlayer?.isAI) {
-      return `${currentPlayer.name} is taking their turn.`;
-    }
-
-    switch (moveMode) {
-      case 'SELECT_SOURCE':
-        return 'Click on a region to move or attack with its army.';
-      case 'ADJUST_SOLDIERS':
-        return 'Click on this region again to choose how many to move.\nClick on a target region to move the army.';
-      case 'SELECT_TARGET':
-        return 'Click on a target region to move the army.';
-      case 'BUILD':
-        return 'Click on a temple to buy soldiers or upgrades.';
-      default:
-        return 'Click on a region to move or attack with its army.\nClick on a temple to buy soldiers or upgrades.';
+  function cancelMove() {
+    if (moveSystem) {
+      moveSystem.processAction({ type: 'CANCEL' });
     }
   }
 
-  // Action handlers for the info panel
   function handleUndo() {
+    // For now, just cancel current move
     cancelMove();
   }
 
   function handleToggleAudio() {
     audioEnabled = !audioEnabled;
-    // Implement audio toggle logic
   }
 
   function handleShowInstructions() {
@@ -323,16 +246,44 @@
 
   function handleResign() {
     if (confirm('Are you sure you want to resign?')) {
-      // Implement resign logic
+      // TODO: Implement resign logic
+      console.log('Resign requested');
     }
   }
 
-  function handleSoldierSelection(count: number) {
-    if (soldierSelectionData) {
-      soldierSelectionData.currentSelection = count;
-      showSoldierSelection = false;
-      moveMode = 'SELECT_TARGET';
+  // Helper functions for highlighting
+  function getRegionHighlight(regionIndex: number): 'source' | 'target' | 'available' | 'home' | 'none' {
+    if (!moveSystem) return 'none';
+
+    const highlight = moveSystem.getRegionHighlight(regionIndex);
+
+    // Add home region highlighting for current player
+    if (highlight === 'none' && isCurrentPlayerHome(regionIndex)) {
+      return 'home';
     }
+
+    return highlight;
+  }
+
+  function isCurrentPlayerHome(regionIndex: number): boolean {
+    if (!isMyTurn || !$gameState) return false;
+
+    // Find the first owned region as "home"
+    const ownedRegions = Object.entries($gameState.owners || {})
+      .filter(([_, owner]) => owner === playerIndex)
+      .map(([region, _]) => parseInt(region));
+
+    return ownedRegions.length > 0 && regionIndex === ownedRegions[0];
+  }
+
+  function getCurrentInstruction(): string {
+    if (!moveSystem) return 'Loading...';
+
+    if (!isMyTurn) {
+      return `${currentPlayer?.name || 'Player'} is taking their turn.`;
+    }
+
+    return moveSystem.getCurrentInstruction();
   }
 </script>
 
@@ -371,10 +322,10 @@
         gameState={$gameState}
         onRegionClick={handleRegionClick}
         selectedRegion={selectedRegion}
-        highlightedRegions={$gameState?.regions?.map((_, index) => ({
+        highlightedRegions={regions.map((_, index) => ({
           index,
           type: getRegionHighlight(index)
-        })) || []}
+        }))}
         {moveMode}
       />
     </div>
@@ -413,20 +364,19 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
     width: 100%;
-    text-align: center;
-    padding: 2rem;
+    height: 100%;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   }
 
   .loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #475569;
-    border-top: 4px solid #3b82f6;
+    width: 48px;
+    height: 48px;
+    border: 4px solid #374151;
+    border-top: 4px solid #60a5fa;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
+    margin-bottom: 16px;
   }
 
   @keyframes spin {
@@ -434,46 +384,28 @@
     100% { transform: rotate(360deg); }
   }
 
-  .error-screen {
+  .error-screen h3 {
     color: #ef4444;
+    margin-bottom: 16px;
   }
 
   .retry-button {
-    margin-top: 1rem;
-    padding: 0.75rem 1.5rem;
-    background: #3b82f6;
+    padding: 8px 16px;
+    background: #60a5fa;
     color: white;
     border: none;
-    border-radius: 0.5rem;
+    border-radius: 4px;
     cursor: pointer;
-    font-weight: 600;
-    transition: background 0.2s;
+    margin-top: 16px;
   }
 
   .retry-button:hover {
-    background: #2563eb;
+    background: #3b82f6;
   }
 
   .map-container {
     flex: 1;
     position: relative;
     overflow: hidden;
-  }
-
-  /* Responsive design for mobile */
-  @media (max-width: 768px) {
-    .enhanced-game-container {
-      flex-direction: column;
-    }
-
-    .map-container {
-      height: calc(100vh - 300px);
-    }
-  }
-
-  @media (max-width: 480px) {
-    .enhanced-game-container {
-      font-size: 0.9rem;
-    }
   }
 </style>

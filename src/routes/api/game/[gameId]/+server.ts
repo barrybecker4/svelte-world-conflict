@@ -23,11 +23,6 @@ function getErrorMessage(error: unknown): string {
 }
 
 export const GET: RequestHandler = async ({ params, platform }) => {
-    console.log('🔍 GET /api/game/[gameId] called with:', {  // temp debugging
-      gameId: params.gameId,
-      hasPlatform: !!platform
-    });
-
     try {
         const gameId = params.gameId;
 
