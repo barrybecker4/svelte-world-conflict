@@ -42,7 +42,7 @@ export class WorldConflictGameStorage {
 
     async saveGame(game: WorldConflictGameRecord): Promise<void> {
         try {
-            console.log(`💾 Saving World Conflict game ${game.gameId} with status: ${game.status}`);
+            console.log(`Saving World Conflict game ${game.gameId} with status: ${game.status}`);
 
             await this.kv.put(`wc_game:${game.gameId}`, game);
 
@@ -129,10 +129,10 @@ export class WorldConflictGameStorage {
             game.players.push(player);
             game.lastMoveAt = Date.now();
 
-            // Start game if we have enough players
-            if (game.players.length >= 2) {
-                game.status = 'ACTIVE';
-            }
+            // Keep game PENDING until all slots filled or creator starts anyway
+            // Game only becomes ACTIVE when:
+            // 1. All open slots are filled with human players, OR
+            // 2. Creator clicks "Start anyway" (handled in separate endpoint)
 
             // Map player to game
             await this.kv.put(`wc_player:${player.index}:game`, gameId);

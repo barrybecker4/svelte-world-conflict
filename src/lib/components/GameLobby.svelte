@@ -60,10 +60,12 @@
         const player = result.player;
 
         localStorage.setItem(`wc_game_${gameId}`, JSON.stringify({
-          playerId: player.index.toString(),  // Use index as playerId
+          playerId: player.index.toString(),
           playerIndex: player.index,
           playerName: player.name
         }));
+
+        // Route to game page - it will show waiting room if status is PENDING
         goto(`/game/${gameId}`);
       } else {
         const errorData = await response.json();
@@ -99,6 +101,8 @@
           playerIndex: player.index,
           playerName: player.name
         }));
+
+        // Route to game page - it will show waiting room since new games start as PENDING
         goto(`/game/${result.gameId}`);
       } else {
         const errorData = await response.json();

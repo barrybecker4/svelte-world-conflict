@@ -48,17 +48,19 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
+        // Only allow joining PENDING games
         if (game.status !== 'PENDING') {
-            return json({ error: 'Game has already started' }, { status: 400 });
+            return json({ error: 'Game is no longer accepting new players' }, { status: 400 });
+        }
+
+        // Check if game is full
+        if (game.players.length >= 4) {
+            return json({ error: 'Game is full' }, { status: 400 });
         }
 
         // Check if player name is already taken in this game
         if (game.players.some((p: Player) => p.name === playerName.trim())) {
             return json({ error: 'Player name already taken in this game' }, { status: 400 });
-        }
-
-        if (game.players.length >= 4) {
-            return json({ error: 'Game is full' }, { status: 400 });
         }
 
         const newPlayer = createPlayer(playerName, game.players.length);
@@ -68,10 +70,12 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             ...game,
             players: updatedPlayers,
             lastMoveAt: Date.now()
+            // Keep status as 'PENDING' - don't auto-start!
+            // Game only starts when creator clicks "Start anyway" or all 4 slots filled
         };
 
-        // Check if game should start (has enough players)
-        if (updatedPlayers.length >= 2) {
+        // Only auto-start if all 4 slots are now filled with human players
+        if (updatedPlayers.length >= 4) {
             updatedGame.status = 'ACTIVE';
 
             // Initialize World Conflict game state
@@ -89,13 +93,18 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         return json({
             success: true,
-            game: updatedGame,
             player: newPlayer,
-            message: `${playerName} joined the game`
+            game: {
+                ...updatedGame,
+                playerCount: updatedGame.players.length
+            }
         });
 
     } catch (error) {
-        console.error('❌ Failed to join game:', error);
-        return json({ error: 'Failed to join game: ' + getErrorMessage(error) }, { status: 500 });
+        console.error('Error joining game:', error);
+        return json({
+            error: 'Failed to join game',
+            details: getErrorMessage(error)
+        }, { status: 500 });
     }
 };
