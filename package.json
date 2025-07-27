@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "dev:websocket": "cd web-socket-worker && npm run dev",
+    "dev:full": "concurrently \"npm run dev:websocket\" \"npm run dev\"",
+    "websocket:health": "curl http://localhost:8787/health",
     "build": "vite build",
     "preview": "wrangler pages dev dist",
     "prepare": "svelte-kit sync || echo ''",
@@ -16,8 +19,6 @@
     "test-e2e": "npm run test:unit -- --run && npm run test:e2e",
     "test:e2e": "playwright test",
     "deploy": "npm run build && wrangler pages deploy dist",
-    "dev:websocket": "cd websocket-worker && wrangler dev --port 8787",
-    "dev:full": "concurrently \"npm run dev:websocket\" \"npm run dev:wrangler\"",
     "dev:wrangler": "wrangler pages dev --port 8788 --proxy 5173 --service WEBSOCKET_SERVICE=svelte-world-conflict-websocket@localhost:8787",
     "deploy:websocket": "cd websocket-worker && wrangler deploy"
   },

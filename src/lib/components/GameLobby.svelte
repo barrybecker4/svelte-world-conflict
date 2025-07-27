@@ -49,7 +49,7 @@
       const takenSlots = game?.playerCount || 0;
       const playerName = FIXED_PLAYER_NAMES[takenSlots];
 
-      const response = await fetch(`/api/games/${gameId}/join`, {
+      const response = await fetch(`/api/game/${gameId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ playerName })
@@ -57,11 +57,12 @@
 
       if (response.ok) {
         const result = await response.json();
-        // Store player info for the game
+        const player = result.player;
+
         localStorage.setItem(`wc_game_${gameId}`, JSON.stringify({
-          playerId: result.playerId,
-          playerIndex: result.playerIndex,
-          playerName
+          playerId: player.index.toString(),  // Use index as playerId
+          playerIndex: player.index,
+          playerName: player.name
         }));
         goto(`/game/${gameId}`);
       } else {
@@ -91,11 +92,12 @@
 
       if (response.ok) {
         const result = await response.json();
-        // Store player info for the game
+        const player = result.player || { index: 0, name: playerName };
+
         localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
-          playerId: result.playerId,
-          playerIndex: result.playerIndex,
-          playerName
+          playerId: player.index.toString(),
+          playerIndex: player.index,
+          playerName: player.name
         }));
         goto(`/game/${result.gameId}`);
       } else {

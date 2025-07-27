@@ -44,45 +44,54 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        // Verify it's the player's turn
-        const currentPlayer = game.players[game.currentPlayerIndex];
-        if (!currentPlayer || currentPlayer.id !== playerId) {
+        // Parse playerId as integer to get player index
+        const playerIndex = parseInt(playerId);
+        if (isNaN(playerIndex) || playerIndex < 0 || playerIndex > 3) {
+            return json({ error: `Invalid player ID: ${playerId}` }, { status: 400 });
+        }
+
+        // Verify it's the player's turn using player index
+        if (game.currentPlayerIndex !== playerIndex) {
             return json({ error: 'Not your turn' }, { status: 400 });
+        }
+
+        // Verify the player exists in the game
+        const player = game.players.find(p => p.index === playerIndex);
+        if (!player) {
+            return json({ error: 'Player not found in game' }, { status: 400 });
         }
 
         // Create game state instance
         const gameState = new WorldConflictGameState(game.worldConflictState);
 
-        // Create and execute end turn command
-        const endTurnCommand = new EndTurnCommand();
+        const endTurnCommand = new EndTurnCommand(gameState, player);
         const commandProcessor = new CommandProcessor();
 
         // Execute the command
-        const result = commandProcessor.executeCommand(gameState, endTurnCommand);
+        const result = commandProcessor.process(endTurnCommand);
 
         if (!result.success) {
             return json({ error: result.error || 'Failed to end turn' }, { status: 400 });
         }
 
-        // Update the game record
+        // Update the game record with the new state
         const updatedGame = {
             ...game,
-            worldConflictState: gameState.getStateData(),
-            currentPlayerIndex: gameState.playerIndex,
+            worldConflictState: result.newState!.toJSON(),
+            currentPlayerIndex: result.newState!.playerIndex,
             lastMoveAt: Date.now()
         };
 
-        // Save the updated game
         await gameStorage.saveGame(updatedGame);
 
         // Notify other players via WebSocket
         await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!.env);
 
-        console.log(`Player ${playerId} ended their turn in game ${gameId}`);
+        console.log(`Player ${playerIndex} (${player.name}) ended their turn in game ${gameId}`);
 
         return json({
             success: true,
-            gameState: gameState.getStateData(),
+            gameState: result.newState!.toJSON(),
             message: 'Turn ended successfully'
         });
 

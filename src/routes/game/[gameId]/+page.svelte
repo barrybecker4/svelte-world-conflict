@@ -80,6 +80,7 @@
       playerIndex = playerInfo.playerIndex;
       return true;
     } catch (err) {
+      console.error('🔍 DEBUG - Error loading player info:', err);
       error = 'Failed to load player information';
       return false;
     }

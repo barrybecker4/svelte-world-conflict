@@ -23,7 +23,6 @@ export class WebSocketNotificationHelper {
     private static createMessage(gameState: WorldConflictGameRecord, type: string) {
         return {
             type,
-            gameId: gameState.gameId,
             data: {
                 ...gameState,
             },
@@ -64,18 +63,21 @@ export class WebSocketNotificationHelper {
     }
 
     /**
-     * Send notification to a specific worker URL
+     * Send notification to WebSocket worker
+     * FIXED: Match the format expected by the fixed worker
      */
     private static async sendToWorker(workerUrl: string, gameId: string, message: any): Promise<void> {
         const response = await fetch(`${workerUrl}/notify`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'svelte-ttt-server' // Help identify the source
+                'User-Agent': 'svelte-world-conflict-server'
             },
-            body: JSON.stringify({ gameId, message }),
-            // Add timeout for local development
-            signal: AbortSignal.timeout(4000)
+            body: JSON.stringify({
+                gameId,
+                message  // Worker expects { gameId, message }
+            }),
+            signal: AbortSignal.timeout(5000)
         });
 
         if (!response.ok) {
@@ -84,12 +86,12 @@ export class WebSocketNotificationHelper {
         }
 
         const result = await response.json().catch(() => ({ success: true }));
-        console.log(`✅ ${message.type} notification sent successfully to ${workerUrl}:`, result);
+        console.log(`✅ ${message.type} notification sent to ${workerUrl}:`, result);
     }
 
     private static logWarning(gameId: string) {
-        console.warn(`⚠️ Could not send WebSocket notification for game ${gameId}. WebSocket worker might not be running.`);
-        console.warn(`⚠️ Make sure WebSocket worker is running: cd websocket-worker && npm run dev`);
+        console.warn(`⚠️ Could not send WebSocket notification for game ${gameId}.`);
+        console.warn(`⚠️ Make sure WebSocket worker is running: npm run dev:websocket`);
     }
 
     /**

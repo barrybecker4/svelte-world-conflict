@@ -7,6 +7,7 @@
   import GameInstructions from './GameInstructions.svelte';
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
+  import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
 
   // Props
   export let gameId: string;
@@ -49,15 +50,15 @@
   $: moveMode = moveState.mode;
   $: selectedRegion = moveState.sourceRegion;
 
-  let pollInterval: NodeJS.Timeout;
+  let wsClient: GameWebSocketClient | null = null;
 
   onMount(async () => {
     await initializeGame();
-    startGamePolling();
+    await initializeWebSocket();
   });
 
   onDestroy(() => {
-    stopGamePolling();
+    cleanupWebSocket();
   });
 
   async function initializeGame() {
@@ -77,6 +78,57 @@
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to initialize game';
       loading = false;
+    }
+  }
+
+  async function initializeWebSocket() {
+    try {
+      wsClient = new GameWebSocketClient();
+
+      // Set up event handlers
+      wsClient.onGameUpdate((gameData) => {
+        console.log('🎮 Received game update via WebSocket');
+        // Update game state directly from WebSocket data
+        gameState.set(gameData.worldConflictState);
+        regions = gameData.worldConflictState.regions || [];
+        players = gameData.worldConflictState.players || [];
+
+        // Update move system if it exists
+        if (moveSystem && $gameState) {
+          moveSystem = new MoveSystem(
+            $gameState,
+            handleMoveComplete,
+            handleMoveStateChange
+          );
+        }
+      });
+
+      wsClient.onConnected(() => {
+        console.log('✅ Connected to game WebSocket');
+      });
+
+      wsClient.onDisconnected(() => {
+        console.log('🔌 Disconnected from game WebSocket');
+      });
+
+      wsClient.onError((error) => {
+        console.error('❌ WebSocket error:', error);
+        // Optionally fall back to manual refresh or show error to user
+      });
+
+      // Connect to the WebSocket for this specific game
+      await wsClient.connect(gameId);
+
+    } catch (error) {
+      console.error('Failed to initialize WebSocket:', error);
+      // Could optionally fall back to polling here if needed
+    }
+  }
+
+  function cleanupWebSocket() {
+    if (wsClient) {
+      wsClient.disconnect();
+      wsClient = null;
     }
   }
 
@@ -103,24 +155,6 @@
 
     } catch (err) {
       throw new Error('Failed to load game state');
-    }
-  }
-
-  function startGamePolling() {
-    pollInterval = setInterval(async () => {
-      if (!loading && !error) {
-        try {
-          await loadGameState();
-        } catch (err) {
-          console.warn('Failed to poll game state:', err);
-        }
-      }
-    }, 2000);
-  }
-
-  function stopGamePolling() {
-    if (pollInterval) {
-      clearInterval(pollInterval);
     }
   }
 
@@ -159,8 +193,7 @@
         const errorData = await response.json();
         throw new Error(errorData.error || 'Move failed');
       }
-
-      await loadGameState();
+      console.log('✅ Move completed, waiting for WebSocket update...');
     } catch (err) {
       error = err instanceof Error ? err.message : 'Move failed';
       throw err; // Re-throw so MoveSystem knows the move failed
@@ -200,6 +233,13 @@
   // Action handlers
   async function endTurn() {
     try {
+      // DEBUG: Log what we're actually sending
+      console.log('🔍 DEBUG - About to end turn with:');
+      console.log('gameId:', gameId);
+      console.log('playerId:', playerId);
+      console.log('playerIndex:', playerIndex);
+      console.log('typeof playerId:', typeof playerId);
+
       const response = await fetch(`/api/game/${gameId}/end-turn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -208,11 +248,12 @@
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ End turn failed:', errorData);
         throw new Error(errorData.error || 'Failed to end turn');
       }
 
-      await loadGameState();
       resetMoveState();
+      console.log('✅ Turn ended, waiting for WebSocket update...');
 
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to end turn';

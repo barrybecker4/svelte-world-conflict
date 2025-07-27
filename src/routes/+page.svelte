@@ -61,15 +61,17 @@
       if (response.ok) {
         const result = await response.json();
 
-        // Store player info in localStorage for the game page to load
+        // Find the human player in the result
+        const player = result.player || { index: 0, name: humanPlayer.name };
+
         localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
           gameId: result.gameId,
-          playerId: result.playerId,
-          playerIndex: result.playerIndex || 0,
-          playerName: humanPlayer.name
+          playerId: player.index.toString(),  // Use player index as string
+          playerIndex: player.index,
+          playerName: player.name
         }));
 
-        await goto(`/game/${result.gameId}`); // Navigate to game page
+        await goto(`/game/${result.gameId}`);
 
       } else {
         const errorData = await response.json().catch(() => ({}));

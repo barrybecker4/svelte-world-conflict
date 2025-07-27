@@ -7,7 +7,7 @@ export default {
 
         // Health check endpoint
         if (url.pathname === '/health') {
-            return new Response('WebSocket service is running', {
+            return new Response('WebSocket worker is healthy', {
                 status: 200,
                 headers: { 'Content-Type': 'text/plain' }
             });
@@ -28,16 +28,13 @@ export default {
 async function handleDurableObjectRequest(request, env) {
     const url = new URL(request.url);
 
-    // Extract gameId from query parameters or request body
+    // Extract gameId from query parameters only (don't read body)
     let gameId = url.searchParams.get('gameId');
 
+    // For POST requests, create a default gameId if not in URL
+    // Let the Durable Object read the body to get the actual gameId
     if (!gameId && request.method === 'POST') {
-        try {
-            const body = await request.json();
-            gameId = body.gameId;
-        } catch {
-            gameId = 'default';
-        }
+        gameId = 'default'; // Temporary, Durable Object will handle routing
     }
 
     if (!gameId) {
@@ -48,7 +45,7 @@ async function handleDurableObjectRequest(request, env) {
     const id = env.WEBSOCKET_HIBERNATION_SERVER.idFromName(gameId);
     const durableObject = env.WEBSOCKET_HIBERNATION_SERVER.get(id);
 
-    // Forward the request to the Durable Object
+    // FIXED: Pass request directly without consuming body
     return durableObject.fetch(request);
 }
 
@@ -124,26 +121,46 @@ export class WebSocketHibernationServer {
 
     /**
      * Handle HTTP notification requests (from the main app)
+     * FIXED: Proper error handling and response
      */
     async handleNotification(request) {
         try {
-            const { gameId, type, data } = await request.json();
+            const body = await request.json();
+            const { gameId, message } = body;
 
-            if (!gameId || !type) {
-                return new Response('Missing gameId or type', { status: 400 });
+            if (!gameId || !message) {
+                return new Response(JSON.stringify({
+                    error: 'Missing gameId or message'
+                }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
             }
 
             // Broadcast to all sessions subscribed to this game
-            this.broadcastToGame(gameId, {
-                type,
-                data,
+            const sentCount = this.broadcastToGame(gameId, {
+                type: message.type,
+                data: message.data,
                 timestamp: Date.now()
             });
 
-            return new Response('Notification sent', { status: 200 });
+            return new Response(JSON.stringify({
+                success: true,
+                sentCount
+            }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+
         } catch (error) {
             console.error('Error handling notification:', error);
-            return new Response('Error processing notification', { status: 500 });
+            return new Response(JSON.stringify({
+                error: 'Error processing notification',
+                details: error.message
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
     }
 
@@ -256,6 +273,7 @@ export class WebSocketHibernationServer {
         }
 
         console.log(`Broadcast to ${sentCount} sessions for game ${gameId}`);
+        return sentCount;
     }
 
     /**
