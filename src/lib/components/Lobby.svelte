@@ -41,7 +41,7 @@
       // Find next available player slot name
       const game = openGames.find(g => g.gameId === gameId);
       const takenSlots = game?.playerCount || 0;
-      const playerName = getPlayerConfig[takenSlots].defaultName;
+      const playerName = getPlayerConfig(takenSlots).defaultName;
 
       const response = await fetch(`/api/game/${gameId}/join`, {
         method: 'POST',
@@ -74,7 +74,7 @@
 
   async function createNewGame() {
     try {
-      const playerName = FIXED_PLAYER_NAMES[0]; // Always start as first player
+      const playerName = getPlayerConfig(0).defaultName; // Always start as first player
 
       const response = await fetch('/api/game/new', {
         method: 'POST',

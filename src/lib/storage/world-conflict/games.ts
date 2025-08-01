@@ -9,7 +9,19 @@ export interface WorldConflictGameRecord {
     createdAt: number;
     lastMoveAt: number;
     currentPlayerIndex: number;
-    gameType: 'MULTIPLAYER' | 'AI';  // Add this line
+    gameType: 'MULTIPLAYER' | 'AI';
+
+    // Optional configuration for PENDING games that need to be completed
+    pendingConfiguration?: {
+        playerSlots: Array<{
+            index: number;
+            type: 'Off' | 'Set' | 'Open' | 'AI';
+            name: string;
+            customName?: string;
+        }>;
+        mapSize: string;
+        aiDifficulty: string;
+    };
 }
 
 export interface OpenWorldConflictGamesList {
@@ -47,7 +59,7 @@ export class WorldConflictGameStorage {
             await this.kv.put(`wc_game:${game.gameId}`, game);
 
             // Update open games list if game status changed
-            if (game.status === 'COMPLETED') {
+            if (game.status === 'ACTIVE' || game.status === 'COMPLETED') {
                 await this.removeFromOpenGamesList(game.gameId);
             } else if (game.status === 'PENDING') {
                 await this.addToOpenGamesList(game);

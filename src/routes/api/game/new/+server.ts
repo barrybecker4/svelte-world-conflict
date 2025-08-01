@@ -9,14 +9,13 @@ import { WorldConflictGameState, type Player, type Region } from '$lib/game/Worl
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/data/map/MapGenerator.ts';
 
-// Updated game creation in src/routes/api/game/new/+server.ts
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
         const body = await request.json();
         const {
             mapSize = 'Medium',
             playerName,
-            gameType = 'MULTIPLAYER', // NEW: Add gameType parameter
+            gameType = 'MULTIPLAYER',
             maxPlayers = 4,
             aiDifficulty = 'Nice',
             turns = 10,
@@ -33,25 +32,53 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const gameId = generateGameId();
         const players: Player[] = [];
 
-        if (gameType === 'MULTIPLAYER' && playerSlots.length === 0) {
-            // Simple multiplayer lobby game - just create the creator
-            const creatorPlayer = createPlayer(playerName.trim(), 0, false);
-            players.push(creatorPlayer);
-        } else if (playerSlots && playerSlots.length > 0) {
-            // Configured game from GameConfiguration component
-            const activeSlots = playerSlots.filter((slot: any) => slot.type !== 'Off');
+        // Check if this should be a PENDING multiplayer lobby game
+        let hasOpenSlots = false;
+        let gameStatus: 'PENDING' | 'ACTIVE' = 'ACTIVE';
+        let finalGameType: 'MULTIPLAYER' | 'AI' = 'AI';
 
-            if (activeSlots.length < 2) {
-                return json({ error: 'At least 2 players are required' }, { status: 400 });
-            }
+        if (gameType === 'MULTIPLAYER') {
+            if (playerSlots.length === 0) {
+                // Simple multiplayer lobby game - just create the creator
+                const creatorPlayer = createPlayer(playerName.trim(), 0, false);
+                players.push(creatorPlayer);
+                gameStatus = 'PENDING';
+                finalGameType = 'MULTIPLAYER';
+            } else {
+                // Configured game from GameConfiguration component
+                const activeSlots = playerSlots.filter((slot: any) => slot.type !== 'Off');
 
-            for (let i = 0; i < activeSlots.length; i++) {
-                const slot = activeSlots[i];
+                if (activeSlots.length < 2) {
+                    return json({ error: 'At least 2 players are required' }, { status: 400 });
+                }
 
-                if (slot.type === 'Set' || slot.type === 'Open') {
-                    players.push(createPlayer(slot.name, i, false));
-                } else if (slot.type === 'AI') {
-                    players.push(createPlayer(slot.name, i, true));
+                // Check if ANY slots are "Open" - if so, game should be PENDING
+                hasOpenSlots = activeSlots.some((slot: any) => slot.type === 'Open');
+
+                if (hasOpenSlots) {
+                    gameStatus = 'PENDING';
+                    finalGameType = 'MULTIPLAYER';
+                } else {
+                    gameStatus = 'ACTIVE';
+                    finalGameType = 'AI'; // All slots are filled with Set/AI players
+                }
+
+                for (let i = 0; i < activeSlots.length; i++) {
+                    const slot = activeSlots[i];
+
+                    if (slot.type === 'Set') {
+                        // Human player
+                        players.push(createPlayer(slot.name, i, false));
+                    } else if (slot.type === 'Open') {
+                        // Open slot - don't add a player yet, they'll join later
+                        // We still need to track this slot exists for the total count
+                        continue;
+                    } else if (slot.type === 'AI') {
+                        // Only add AI players if the game is starting immediately (ACTIVE)
+                        if (gameStatus === 'ACTIVE') {
+                            players.push(createPlayer(slot.name, i, true));
+                        }
+                    }
                 }
             }
         } else {
@@ -59,6 +86,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             const humanPlayer = createPlayer(playerName.trim(), 0, false);
             const aiPlayer = createPlayer('AI Player', 1, true);
             players.push(humanPlayer, aiPlayer);
+            gameStatus = 'ACTIVE';
+            finalGameType = 'AI';
         }
 
         // Generate map using the new GAS-style MapGenerator
@@ -68,20 +97,29 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             playerCount: Math.max(players.length, 2) // Ensure at least 2 for map generation
         });
 
-        const initialGameState = WorldConflictGameState.createInitialState(gameId, players, regions);
+        // Only initialize full game state for ACTIVE games
+        let initialGameState;
+        if (gameStatus === 'ACTIVE') {
+            initialGameState = WorldConflictGameState.createInitialState(gameId, players, regions);
+        } else {
+            // For PENDING games, create minimal state
+            initialGameState = {
+                gameId,
+                regions,
+                players: [],
+                currentPlayerIndex: 0,
+                turnCount: 0,
+                gamePhase: 'SETUP'
+            };
+        }
 
         // Store game in KV storage
         const storage = new WorldConflictKVStorage(platform);
         const gameStorage = new WorldConflictGameStorage(storage);
 
-        // Determine game status and type
-        const isMultiplayerLobby = gameType === 'MULTIPLAYER' && playerSlots.length === 0;
-        const gameStatus = isMultiplayerLobby ? 'PENDING' : 'ACTIVE';
-        const finalGameType = isMultiplayerLobby ? 'MULTIPLAYER' : 'AI';
-
         const gameRecord: WorldConflictGameRecord = {
             gameId: gameId,
-            status: gameStatus, // PENDING for lobby games, ACTIVE for configured games
+            status: gameStatus, // PENDING for games with open slots, ACTIVE for complete games
             players: players.map(p => ({
                 id: p.id || generatePlayerId(),
                 name: p.name,
@@ -89,23 +127,29 @@ export const POST: RequestHandler = async ({ request, platform }) => {
                 isAI: p.isAI,
                 index: p.index
             })),
-            worldConflictState: initialGameState.toJSON(),
+            worldConflictState: gameStatus === 'ACTIVE' ? initialGameState.toJSON() : initialGameState,
             createdAt: Date.now(),
             lastMoveAt: Date.now(),
             currentPlayerIndex: 0,
-            gameType: finalGameType
+            gameType: finalGameType,
+            // Store configuration for PENDING games so we know how to complete setup
+            pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
+                playerSlots,
+                mapSize,
+                aiDifficulty
+            } : undefined
         };
 
         await gameStorage.saveGame(gameRecord);
 
-        console.log(`Created ${gameStatus} game ${gameId} with ${players.length} players`);
+        console.log(`Created ${gameStatus} game ${gameId} with ${players.length} players (hasOpenSlots: ${hasOpenSlots})`);
 
         return json({
             gameId,
             player: players[0], // Return the first player (creator)
             playerIndex: 0,
-            gameState: initialGameState.toJSON(),
-            message: 'Game created successfully'
+            gameState: gameStatus === 'ACTIVE' ? initialGameState.toJSON() : initialGameState,
+            message: `Game created successfully as ${gameStatus}`
         });
 
     } catch (error) {

@@ -15,36 +15,19 @@
   });
 
   async function handleInstructionsComplete() {
-    console.log('✅ Instructions complete - checking for open games');
+    console.log('✅ Instructions complete - showing lobby');
     showInstructions = false;
     loading = true;
 
     try {
-      checkForOpenGames();
+      // Always show the lobby first instead of checking for games
+      console.log('🏛️ Showing lobby for game selection');
+      showLobby = true;
     } catch (error) {
-      console.log('🆕 Network error - showing game configuration');
+      console.log('🆕 Error - showing game configuration as fallback');
       showConfiguration = true;
     } finally {
       loading = false;
-    }
-  }
-
-  async function checkForOpenGames() {
-    const response = await fetch('/api/games/open');
-    if (response.ok) {
-      const openGames = await response.json();
-      const hasOpenGames = openGames.length > 0;
-
-      if (hasOpenGames) {
-        console.log(`🎮 Found ${openGames.length} open games - showing lobby`);
-        showLobby = true;
-      } else {
-        console.log('🆕 No open games - showing game configuration');
-        showConfiguration = true;
-      }
-    } else {
-      console.log('🆕 API error - showing game configuration');
-      showConfiguration = true;
     }
   }
 
@@ -71,6 +54,7 @@
           playerName: player.name
         }));
 
+        // Navigate to game - will show WaitingRoom for PENDING games, WorldConflictGame for ACTIVE games
         await goto(`/game/${result.gameId}`);
 
       } else {
@@ -92,6 +76,7 @@
       },
       body: JSON.stringify({
         playerName: humanPlayer.name,
+        gameType: 'MULTIPLAYER', // Always create as multiplayer
         mapSize: gameConfig.settings.mapSize,
         aiDifficulty: gameConfig.settings.aiDifficulty,
         turns: gameConfig.settings.turns,
@@ -111,12 +96,12 @@
 
   function handleLobbyClose() {
     showLobby = false;
-    showConfiguration = true; // Go to game configuration instead of buttons
+    showConfiguration = true; // Go to game configuration when "New Game" is clicked
   }
 
   function handleConfigurationClose() {
     showConfiguration = false;
-    showInstructions = true; // Back to instructions
+    showLobby = true; // Go back to lobby instead of instructions
   }
 </script>
 

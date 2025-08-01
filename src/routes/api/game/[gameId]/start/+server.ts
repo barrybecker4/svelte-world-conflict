@@ -42,22 +42,67 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Only the game creator can start the game' }, { status: 403 });
         }
 
-        // Fill empty slots with AI players
-        const maxPlayers = 4;
-        const currentPlayerCount = game.players.length;
-        const aiPlayerNames = ['AI Easy', 'AI Normal', 'AI Hard', 'AI Expert'];
-        const aiLevels = [0, 1, 2, 3]; // Nice, Rude, Mean, Evil
+        // If we have pending configuration, use it to fill remaining slots
+        if (game.pendingConfiguration) {
+            const { playerSlots } = game.pendingConfiguration;
+            const maxSlots = playerSlots.filter(slot => slot.type !== 'Off').length;
+            
+            // Fill any "Open" slots that weren't filled by human players with AI
+            const aiPlayerNames = ['AI Easy', 'AI Normal', 'AI Hard', 'AI Expert'];
+            const aiLevels = [0, 1, 2, 3]; // Nice, Rude, Mean, Evil
+            
+            let playerIndex = game.players.length; // Start from next available index
+            
+            for (const slot of playerSlots) {
+                if (slot.type === 'Open') {
+                    // Check if this slot was already filled by a human player
+                    const existingPlayer = game.players.find(p => p.index === slot.index);
+                    if (!existingPlayer) {
+                        // Fill with AI
+                        const aiPlayer: Player = {
+                            id: `ai_${slot.index}_${Date.now()}`,
+                            name: aiPlayerNames[slot.index] || `AI Player ${slot.index + 1}`,
+                            color: getPlayerColor(slot.index),
+                            isAI: true,
+                            index: slot.index,
+                            aiLevel: aiLevels[slot.index % aiLevels.length]
+                        };
+                        game.players.push(aiPlayer);
+                    }
+                } else if (slot.type === 'AI') {
+                    // Add AI players that were configured but not yet added
+                    const existingPlayer = game.players.find(p => p.index === slot.index);
+                    if (!existingPlayer) {
+                        const aiPlayer: Player = {
+                            id: `ai_${slot.index}_${Date.now()}`,
+                            name: slot.name,
+                            color: getPlayerColor(slot.index),
+                            isAI: true,
+                            index: slot.index,
+                            aiLevel: aiLevels[slot.index % aiLevels.length]
+                        };
+                        game.players.push(aiPlayer);
+                    }
+                }
+            }
+        } else {
+            // Fallback: Fill empty slots with AI players up to 4 total
+            const maxPlayers = 4;
+            const currentPlayerCount = game.players.length;
+            const aiPlayerNames = ['AI Easy', 'AI Normal', 'AI Hard', 'AI Expert'];
+            const aiLevels = [0, 1, 2, 3]; // Nice, Rude, Mean, Evil
 
-        for (let i = currentPlayerCount; i < maxPlayers; i++) {
-            const aiPlayer: Player = {
-                id: `ai_${i}_${Date.now()}`,
-                name: aiPlayerNames[i] || `AI Player ${i + 1}`,
-                color: getPlayerColor(i),
-                isAI: true,
-                index: i,
-                aiLevel: aiLevels[i % aiLevels.length]
-            };
-            game.players.push(aiPlayer);
+            for (let i = currentPlayerCount; i < maxPlayers; i++) {
+                const aiPlayer: Player = {
+                    id: `ai_${i}_${Date.now()}`,
+                    name: aiPlayerNames[i] || `AI Player ${i + 1}`,
+                    color: getPlayerColor(i),
+                    isAI: true,
+                    index: i,
+                    aiLevel: aiLevels[i % aiLevels.length]
+                };
+                game.players.push(aiPlayer);
+            }
         }
 
         // Change status to ACTIVE
@@ -73,6 +118,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         game.worldConflictState = gameState.toJSON();
 
+        // Clear pending configuration since game is now active
+        delete game.pendingConfiguration;
+
         await gameStorage.saveGame(game);
 
         // Notify all connected players that the game has started
@@ -81,10 +129,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return json({
             success: true,
             game: {
-                gameId: game.gameId,
-                status: game.status,
-                players: game.players,
-                message: 'Game started with AI players filling empty slots'
+                ...game,
+                playerCount: game.players.length
             }
         });
 
@@ -92,15 +138,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         console.error('Error starting game:', error);
         return json({
             error: 'Failed to start game',
-            details: error instanceof Error ? error.message : 'Unknown error'
+            details: getErrorMessage(error)
         }, { status: 500 });
     }
 };
-
-/**
- * Helper function to get player colors
- */
-function getPlayerColor(index: number): string {
-    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12']; // Red, Blue, Green, Orange
-    return colors[index] || '#95a5a6'; // Default gray
-}

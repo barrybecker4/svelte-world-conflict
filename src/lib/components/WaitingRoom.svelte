@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Spinner from '$lib/components/ui/Spinner.svelte';
 
   export let gameId;
   export let currentPlayer; // The current user's player info

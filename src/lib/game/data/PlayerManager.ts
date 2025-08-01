@@ -1,5 +1,6 @@
-import { PLAYER_CONFIGS, PLAYER_TYPES, AI_LEVELS, AI_PERSONALITIES, type PlayerType, type AiLevel, type PlayerConfig }
+import { PLAYER_TYPES, AI_LEVELS, AI_PERSONALITIES, type PlayerType, type AiLevel, type PlayerConfig }
     from '../constants/index.js';
+import { getPlayerConfig } from '../constants/playerConfigs.js';
 
 export interface PlayerSetup {
     index: number;
@@ -38,7 +39,7 @@ export class PlayerManager {
 
         for (let i = 0; i < 4; i++) { // Always create 4 player slots
             const config = playerConfigs.find(p => p.index === i);
-            const baseConfig = PLAYER_CONFIGS[i];
+            const baseConfig = getPlayerConfig(i);
 
             if (config && config.type !== PLAYER_TYPES.OFF) {
                 players.push({
@@ -128,7 +129,7 @@ export class PlayerManager {
      * Get default player configuration
      */
     public getDefaultPlayerConfig(index: number): PlayerConfig | null {
-        return PLAYER_CONFIGS[index] || null;
+        return getPlayerConfig(index) || null;
     }
 
     /**
