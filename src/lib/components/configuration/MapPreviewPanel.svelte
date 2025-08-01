@@ -162,7 +162,7 @@
           assignedRegions.push(homeRegion.index);
 
           // Add extra soldiers to home base
-          mockGameState.soldiersByRegion[homeRegion.index] = [1, 2, 3, 4, 5]; // 5 soldiers for home base
+          mockGameState.soldiersByRegion[homeRegion.index] = [1, 2, 3]; // soldiers for home base
 
           console.log(`Assigned home base ${homeRegion.index} to player ${player.index} (${player.name})`);
         }
@@ -188,17 +188,6 @@
 </script>
 
 <div class="map-preview-panel">
-  <div class="panel-header">
-    <h3>Map Preview</h3>
-    <button
-      class="refresh-button"
-      on:click={loadPreviewMap}
-      disabled={loadingPreview}
-      title="Generate new map"
-    >
-      {loadingPreview ? 'Generating...' : 'New Map'}
-    </button>
-  </div>
 
   <div class="map-container">
     {#if loadingPreview}
@@ -230,14 +219,14 @@
     {/if}
   </div>
 
-  <div class="map-info">
-    <p><strong>Size:</strong> {mapSize}</p>
-    <p><strong>Players:</strong> {playerCount}</p>
-    {#if previewRegions.length > 0}
-      <p><strong>Regions:</strong> {previewRegions.length}</p>
-      <p><strong>Temples:</strong> {previewRegions.filter(r => r.hasTemple).length}</p>
-    {/if}
-  </div>
+  <button
+    class="refresh-button"
+    on:click={loadPreviewMap}
+    disabled={loadingPreview}
+    title="Generate new map"
+  >
+    {loadingPreview ? 'Generating...' : 'New Map'}
+  </button>
 </div>
 
 <style>
@@ -254,18 +243,6 @@
     min-height: 0;
   }
 
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .panel-header h3 {
-    font-size: 20px;
-    color: #f8fafc;
-    margin: 0;
-  }
-
   .refresh-button {
     padding: 6px 12px;
     background: #374151;
@@ -278,6 +255,7 @@
     pointer-events: auto;
     z-index: 10;
     position: relative;
+    width: 100px;
   }
 
   .refresh-button:hover:not(:disabled) {
