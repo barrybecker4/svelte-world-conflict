@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { WorldConflictGameState, Player } from '$lib/game/WorldConflictGameState';
-  import Button from '$lib/components/buttons/Button.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   export let gameState: WorldConflictGameState | null = null;
   export let currentPlayer: Player | null = null;

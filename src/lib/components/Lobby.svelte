@@ -1,7 +1,8 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import Button from '$lib/components/buttons/Button.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Spinner from '$lib/components/ui/Spinner.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 
   const dispatch = createEventDispatcher();
@@ -152,8 +153,7 @@
 
       {#if loading}
         <div class="loading">
-          <div class="loading-spinner"></div>
-          <p>Loading available games...</p>
+          <Spinner size="lg" color="blue" text="Loading available games..." />
         </div>
       {:else}
         <div class="games-panel">
@@ -288,20 +288,6 @@
     justify-content: center;
     height: 200px;
     gap: 1rem;
-  }
-
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #374151;
-    border-top: 3px solid #60a5fa;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
 
   .no-games {

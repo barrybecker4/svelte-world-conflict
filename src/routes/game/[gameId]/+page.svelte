@@ -3,7 +3,8 @@
   import { page } from '$app/stores';
   import WaitingRoom from '$lib/components/WaitingRoom.svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
-  import Button from '$lib/components/buttons/Button.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Spinner from '$lib/components/ui/Spinner.svelte';
 
   export let data;
 
@@ -52,8 +53,7 @@
 
 {#if gameState === 'loading'}
   <div class="loading-container">
-    <div class="loading-spinner"></div>
-    <p>Loading game...</p>
+    <Spinner size="lg" color="teal" text="Loading game..." />
   </div>
 {:else if gameState === 'waiting'}
   <WaitingRoom
@@ -83,22 +83,7 @@
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    background: #1a1a1a;
+    background: #1a1a1a;F
     color: white;
-  }
-
-  .loading-spinner {
-    border: 4px solid #333;
-    border-left: 4px solid #3498db;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
 </style>

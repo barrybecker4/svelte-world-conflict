@@ -100,8 +100,7 @@
 
     {#if loading}
       <div class="loading">
-        <div class="loading-spinner"></div>
-        <p>Loading game...</p>
+        <Spinner size="lg" color="teal" text="Loading game..." />
       </div>
     {:else if error}
       <div class="error-message">
@@ -338,21 +337,6 @@
   .loading {
     text-align: center;
     padding: 40px;
-  }
-
-  .loading-spinner {
-    border: 4px solid #34495e;
-    border-left: 4px solid #3498db;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 20px auto;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
 
   .error-message {

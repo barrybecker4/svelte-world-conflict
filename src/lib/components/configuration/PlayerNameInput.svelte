@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/buttons/Button.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   export let initialName = '';
   export let error = '';

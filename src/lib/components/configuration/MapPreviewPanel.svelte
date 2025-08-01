@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import Map from './Map.svelte';
   import { MapGenerator } from '$lib/game/data/map/MapGenerator';
-  import Button from '$lib/components/buttons/Button.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Spinner from '$lib/components/ui/Spinner.svelte';
 
   export let mapSize = 'Large';
   export let playerCount = 4;
@@ -193,8 +194,7 @@
   <div class="map-container">
     {#if loadingPreview}
       <div class="loading-state">
-        <div class="spinner"></div>
-        <p>Generating map...</p>
+        <Spinner size="md" color="blue" text="Generating map..." />
       </div>
     {:else if error}
       <div class="error-state">
@@ -262,15 +262,6 @@
     height: 100%;
     color: #94a3b8;
     gap: 12px;
-  }
-
-  .spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid #475569;
-    border-top: 3px solid #60a5fa;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
   }
 
   .map-preview-panel :global(.btn-sm) {

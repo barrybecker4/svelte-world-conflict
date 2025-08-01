@@ -8,7 +8,8 @@
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
-  import Button from '$lib/components/buttons/Button.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import Spinner from '$lib/components/ui/Spinner.svelte';
 
   // Props
   export let gameId: string;
@@ -332,8 +333,7 @@
 <div class="enhanced-game-container">
   {#if loading}
     <div class="loading-screen">
-      <div class="loading-spinner"></div>
-      <p>Loading World Conflict...</p>
+      <Spinner size="xl" color="blue" text="Loading World Conflict..." />
     </div>
   {:else if error}
     <div class="error-screen">
@@ -409,21 +409,6 @@
     width: 100%;
     height: 100%;
     background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  }
-
-  .loading-spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid #374151;
-    border-top: 4px solid #60a5fa;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 16px;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
 
   .error-screen h3 {
