@@ -9,6 +9,7 @@
   export let currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
+  export let isPreviewMode = false; // New prop to indicate preview mode
 
   const MAX_INDIVIDUAL_ARMIES = 16;
   const ARMIES_PER_ROW = 8;
@@ -19,12 +20,19 @@
     points?: Array<{x: number, y: number}>;
   }
 
+  // Auto-detect preview mode if currentPlayer is null but gameState exists
+  $: detectedPreviewMode = !currentPlayer && gameState !== null;
+  $: effectivePreviewMode = isPreviewMode || detectedPreviewMode;
+
   // Debug logging when regions change
   $: {
     if (regions.length > 0) {
       console.log('Map received regions:', regions.length);
-      console.log('First region:', regions[0]);
-      console.log('First region points:', (regions[0] as RegionWithPoints).points?.length || 0);
+      console.log('Preview mode:', effectivePreviewMode);
+      if (gameState) {
+        console.log('Game state players:', gameState.players?.length || 0);
+        console.log('Owned regions:', Object.keys(gameState.owners || {}).length);
+      }
     }
   }
 
@@ -74,7 +82,8 @@
   }
 
   function hasTemple(regionIndex: number): boolean {
-    return gameState?.temples?.[regionIndex] !== undefined;
+    // Check both game state temples and region hasTemple property
+    return gameState?.temples?.[regionIndex] !== undefined || regions[regionIndex]?.hasTemple === true;
   }
 
   function isNeutralRegion(regionIndex: number): boolean {
@@ -96,14 +105,24 @@
   }
 
   function canMoveFrom(regionIndex: number): boolean {
+    // In preview mode, no regions are moveable
+    if (effectivePreviewMode) return false;
     return isOwnedByCurrentPlayer(regionIndex) && getArmyCount(regionIndex) > 0;
   }
 
+  function isPlayerHomeBase(regionIndex: number): boolean {
+    // A region is a home base if it's owned by a player and has a temple
+    return getRegionOwner(regionIndex) !== null && hasTemple(regionIndex);
+  }
+
   function handleRegionClick(region: Region): void {
+    // Don't allow clicks in preview mode
+    if (effectivePreviewMode) return;
     onRegionClick(region);
   }
 
   function handleKeyDown(event: KeyboardEvent, region: Region): void {
+    if (effectivePreviewMode) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       handleRegionClick(region);
@@ -132,6 +151,7 @@
       {@const regionColor = getRegionColor(region.index)}
       {@const selected = isSelected(region)}
       {@const canMove = canMoveFrom(region.index)}
+      {@const isHomeBase = isPlayerHomeBase(region.index)}
       {@const regionPath = regionWithPoints.points ? pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
 
       <!-- Region fill using pre-calculated border points -->
@@ -144,8 +164,10 @@
         class="region-path"
         class:selected
         class:can-move={canMove}
+        class:home-base={isHomeBase}
+        class:preview-mode={effectivePreviewMode}
         role="button"
-        tabindex="0"
+        tabindex={effectivePreviewMode ? -1 : 0}
         aria-label="Region {region.index + 1} - {armies} armies"
         on:click={() => handleRegionClick(region)}
         on:keydown={(e) => handleKeyDown(e, region)}
@@ -161,6 +183,20 @@
           stroke-dasharray="8,4"
           stroke-linejoin="round"
           class="selection-highlight"
+          pointer-events="none"
+        />
+      {/if}
+
+      <!-- Home base highlight -->
+      {#if isHomeBase && effectivePreviewMode}
+        <path
+          d={regionPath}
+          fill="none"
+          stroke="#10b981"
+          stroke-width="2"
+          stroke-dasharray="6,3"
+          stroke-linejoin="round"
+          class="home-base-highlight"
           pointer-events="none"
         />
       {/if}
@@ -227,7 +263,7 @@
     {#if regions.length > 0}
       {@const regionsWithPoints = regions.filter(r => (r as RegionWithPoints).points?.length > 0)}
       <text x="0" y="580" fill="#94a3b8" font-size="12" font-family="monospace">
-        Regions: {regions.length}
+        Regions: {regions.length} {effectivePreviewMode ? '(Preview)' : ''}
       </text>
     {/if}
   </svg>
@@ -253,12 +289,16 @@
     transition: all 0.2s ease;
   }
 
-  .region-path:hover {
+  .region-path.preview-mode {
+    cursor: default;
+  }
+
+  .region-path:hover:not(.preview-mode) {
     stroke-width: 2;
     filter: brightness(1.15);
   }
 
-  .region-path:focus {
+  .region-path:focus:not(.preview-mode) {
     outline: none;
     stroke: #fbbf24;
     stroke-width: 3;
@@ -278,9 +318,18 @@
     stroke-width: 2;
   }
 
+  .region-path.home-base {
+    filter: brightness(1.1);
+  }
+
   .selection-highlight {
     pointer-events: none;
     animation: dash 2s linear infinite;
+  }
+
+  .home-base-highlight {
+    pointer-events: none;
+    animation: dash 3s linear infinite;
   }
 
   .region-content {

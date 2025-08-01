@@ -1,4 +1,3 @@
-<!-- src/lib/components/configuration/GameConfiguration.svelte -->
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import Map from './Map.svelte';
@@ -95,6 +94,9 @@
     playerSlots[1] = { ...getPlayerConfig(1), type: 'AI', customName: '' };
     playerSlots[2] = { ...getPlayerConfig(2), type: 'AI', customName: '' };
     playerSlots[3] = { ...getPlayerConfig(3), type: 'Off', customName: '' };
+
+    // Trigger reactivity
+    playerSlots = [...playerSlots];
   }
 
   function changeName() {
@@ -127,6 +129,9 @@
       // For other types, just update normally
       playerSlots[index] = { ...slot };
     }
+
+    // Trigger reactivity - this is crucial for the map preview to update
+    playerSlots = [...playerSlots];
   }
 
   // Reactive statement to refresh map preview when map size changes
@@ -153,33 +158,27 @@
         playerSlots: playerSlots.map(slot => ({
           index: slot.index,
           type: slot.type, // Include the type so parent can find the human player
-          name: slot.type === 'Set' ?
-            slot.customName || slot.defaultName :
-            slot.defaultName,
-          color: slot.colorStart
+          name: slot.type === 'Set' ? slot.customName : slot.defaultName,
+          customName: slot.customName
         }))
       };
 
       console.log('Creating game with config:', gameConfig);
 
-      // Dispatch the event - the parent component will handle it
+      // Dispatch to parent
       dispatch('gameCreated', gameConfig);
 
-      // Note: Don't reset 'creating' here - let the parent component handle success/failure
-
     } catch (err) {
-      error = `Failed to create game: ${err.message}`;
+      console.error('Error creating game:', err);
+      error = err.message || 'Failed to create game';
+    } finally {
       creating = false;
     }
   }
 
-  // Load initial setup when component mounts
+  // Initialize player name on mount
   onMount(() => {
-    // Try to load stored player name first
-    if (!loadStoredPlayerName()) {
-      // If no stored name, show the input
-      showNameInput = true;
-    } else {
+    if (loadStoredPlayerName()) {
       initPlayerConfig(playerName);
     }
   });
@@ -187,18 +186,21 @@
 
 <div class="game-configuration">
   {#if showNameInput}
-    <PlayerNameInput
-      initialName={playerName}
-      {error}
-      loading={creating}
-      on:nameSubmitted={handleNameSubmitted}
-    />
+    <div class="name-input-container">
+      <PlayerNameInput
+        initialName={playerName}
+        on:nameSubmitted={handleNameSubmitted}
+        {error}
+      />
+    </div>
   {:else}
     <div class="configuration-main">
       <div class="config-panel">
         <h2>Game Setup</h2>
 
+        <!-- Current Player Section -->
         <div class="current-player-section">
+          <h3>Current Player</h3>
           <div class="current-player">
             <span class="player-label">Playing as:</span>
             <span class="player-name-display">{playerName}</span>
@@ -208,33 +210,44 @@
           </div>
         </div>
 
+        <!-- Players Section -->
         <div class="players-section">
           <h3>Players</h3>
-          {#each playerSlots as slot, index}
+          {#each playerSlots as slot, index (slot.index)}
             <PlayerConfiguration
               playerSlot={slot}
               {index}
-              isMainPlayer={index === 0}
               on:slotUpdated={handleSlotUpdated}
             />
           {/each}
         </div>
 
-        <!-- Use the extracted GameSettingsPanel component -->
+        <!-- Game Settings -->
         <GameSettingsPanel bind:gameSettings />
 
+        <!-- Create Game Section -->
         <div class="create-game-section">
           {#if error}
             <div class="error-message">{error}</div>
           {/if}
-          <button class="create-game-button" on:click={createGame} disabled={creating}>
+
+          <button
+            class="create-game-button"
+            disabled={creating || activePlayerCount < 2}
+            on:click={createGame}
+          >
             {creating ? 'Creating Game...' : 'Create Game'}
           </button>
         </div>
       </div>
 
-      <!-- Use the extracted MapPreviewPanel component -->
-      <MapPreviewPanel bind:this={mapPreviewPanel} mapSize={gameSettings.mapSize} playerCount={Math.max(activePlayerCount, 2)} />
+      <!-- Pass playerSlots to MapPreviewPanel so it can show home bases -->
+      <MapPreviewPanel
+        bind:this={mapPreviewPanel}
+        mapSize={gameSettings.mapSize}
+        playerCount={Math.max(activePlayerCount, 2)}
+        {playerSlots}
+      />
     </div>
   {/if}
 </div>
