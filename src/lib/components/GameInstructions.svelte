@@ -2,9 +2,12 @@
   import { createEventDispatcher } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
 
   const dispatch = createEventDispatcher();
+
   let currentCard = 0;
+  let isOpen = true;
   const totalCards = 5;
 
   const tutorialCards = [
@@ -74,76 +77,44 @@
   }
 
   function complete() {
-    console.log('📖 Got it! button clicked');
+    console.log('📖 Got it! - Instructions complete');
     dispatch('complete');
+    isOpen = false;
   }
 
-  function close() {
-    console.log('❌ Close button clicked');
-    dispatch('complete'); // Same action as "Got it!"
+  function handleClose() {
+    complete();
   }
+
+  $: currentTutorial = tutorialCards[currentCard];
 </script>
 
-<div class="tutorial-overlay">
+<Modal
+  {isOpen}
+  showHeader={false}
+  maxWidth="1000px"
+  on:close={handleClose}
+>
   <div class="tutorial-container">
     <div class="tutorial-header">
-      <h1>World Conflict
-        <br/>
-          <p class="text-xl md:text-2xl text-gray-300 mb-2">
-                A multiplayer strategy game inspired by Risk
-          </p>
-          <div class="text-sm text-gray-400 space-x-4">
-            <span>Version: 2.0.0</span>
-            <span>•</span>
-            <span>Up to 4 Players</span>
-            <span>•</span>
-            <a
-              href="https://github.com/barrybecker4/world-conflict/wiki/World-Conflict"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              Credits
-            </a>
-          </div>
-      </h1>
+      <h1>World Conflict</h1>
+
       <div class="close-button-wrapper">
-        <IconButton
-          variant="default"
-          size="md"
-          title="Close instructions"
-          on:click={close}
-        >
-          ×
+        <IconButton variant="default" size="lg" title="Close" on:click={handleClose}>
+          ✕
         </IconButton>
       </div>
     </div>
 
-    <div class="tutorial-content">
-      <div class="tutorial-card">
-        <div class="card-header">
-          <h2>{tutorialCards[currentCard].title}</h2>
-          <div class="icon">{tutorialCards[currentCard].icon}</div>
-        </div>
-
-        <ul class="card-content">
-          {#each tutorialCards[currentCard].content as item}
-            <li>{@html item}</li>
-          {/each}
-        </ul>
-      </div>
-    </div>
-
-    <!-- Navigation arrows -->
     <div class="nav-button-wrapper prev">
       <IconButton
         variant="primary"
         size="lg"
         disabled={currentCard === 0}
-        title="Previous tutorial card"
+        title="Previous"
         on:click={prevCard}
       >
-        «
+        ‹
       </IconButton>
     </div>
 
@@ -152,42 +123,48 @@
         variant="primary"
         size="lg"
         disabled={currentCard === totalCards - 1}
-        title="Next tutorial card"
+        title="Next"
         on:click={nextCard}
       >
-        »
+        ›
       </IconButton>
     </div>
 
+    <div class="tutorial-content">
+      <div class="tutorial-card">
+        <div class="card-header">
+          <h2>{currentTutorial.title}</h2>
+          <div class="icon">{currentTutorial.icon}</div>
+        </div>
+
+        <ul class="card-content">
+          {#each currentTutorial.content as item}
+            <li>{@html item}</li>
+          {/each}
+        </ul>
+      </div>
+    </div>
+
     <div class="bottom-box">
-      <Button variant="success" size="lg" on:click={complete}>
-        Got it!
-      </Button>
+      {#if currentCard === totalCards - 1}
+        <Button variant="success" size="lg" on:click={complete}>
+          Got it!
+        </Button>
+      {:else}
+        <Button variant="primary" size="lg" on:click={nextCard}>
+          Next →
+        </Button>
+      {/if}
     </div>
   </div>
-</div>
+</Modal>
 
 <style>
-  .tutorial-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    color: white;
-    font-family: system-ui, sans-serif;
-  }
-
   .tutorial-container {
     position: relative;
-    max-width: 800px;
     width: 90%;
     padding: 2rem;
+    left: 50px;
   }
 
   .tutorial-header {
@@ -284,22 +261,22 @@
   }
 
   .nav-button-wrapper.prev {
-    left: -70px;
+    left: -40px;
   }
 
   .nav-button-wrapper.next {
-    right: -70px;
+    right: -40px;
   }
 
   .nav-button-wrapper :global(.icon-btn) {
     background: rgba(59, 130, 246, 0.8);
     backdrop-filter: blur(10px);
-    font-size: 1.5rem;
+    font-size: 2rem;
   }
 
   .nav-button-wrapper :global(.icon-btn:hover:not(.icon-btn-disabled)) {
     background: rgba(59, 130, 246, 1);
-    transform: scale(1.1);
+    transform: scale(1.5);
   }
 
   /* Mobile responsive adjustments */
@@ -308,14 +285,6 @@
       width: 40px;
       height: 40px;
       font-size: 1.2rem;
-    }
-
-    .nav-button-wrapper.prev {
-      left: -50px;
-    }
-
-    .nav-button-wrapper.next {
-      right: -50px;
     }
   }
 
