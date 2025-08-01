@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
   import Button from '$lib/components/ui/Button.svelte';
-  import Spinner from '$lib/components/ui/Spinner.svelte';
+  import LoadingState from '$lib/components/ui/LoadingState.svelte';
 
   export let gameId;
   export let currentPlayer; // The current user's player info
@@ -38,6 +38,8 @@
         if (game.status === 'ACTIVE') {
           goto(`/game/${gameId}`);
         }
+
+        error = null; // Clear any previous errors on successful load
       } else {
         error = 'Failed to load game state';
       }
@@ -77,6 +79,12 @@
     goto('/');
   }
 
+  function handleRetry() {
+    loading = true;
+    error = null;
+    loadGameState();
+  }
+
   function getSlotDisplay(index) {
     if (game && index < game.players.length) {
       const player = game.players[index];
@@ -100,15 +108,21 @@
       <h1>Player {currentPlayer.playerName} Setup</h1>
     </div>
 
-    {#if loading}
-      <div class="loading">
-        <Spinner size="lg" color="teal" text="Loading game..." />
-      </div>
-    {:else if error}
-      <div class="error-message">
-        ⚠️ {error}
-      </div>
-    {:else}
+    <LoadingState
+      {loading}
+      {error}
+      loadingText="Loading game..."
+      containerClass="card"
+      showRetry={true}
+      on:retry={handleRetry}
+    >
+      <svelte:fragment slot="error-actions">
+        <Button variant="secondary" on:click={leaveGame}>
+          Leave Game
+        </Button>
+      </svelte:fragment>
+
+      <!-- Game Setup Content -->
       <div class="game-setup">
         <!-- Player Slots -->
         <div class="player-slots">
@@ -117,7 +131,7 @@
             <div class="player-slot" style="background-color: {slot.color}">
               <div class="player-name">{slot.name}</div>
               <div class="player-controls">
-                <button class="slot-button {slot.type === 'Open' ? 'active' : ''}" disabled>
+                <button class="slot-button {slot.type === 'Off' ? 'active' : ''}" disabled>
                   Off
                 </button>
                 <button class="slot-button {slot.type === 'Set' ? 'active' : ''}" disabled>
@@ -196,7 +210,7 @@
           </div>
         </div>
       </div>
-    {/if}
+    </LoadingState>
   </div>
 </div>
 
@@ -334,19 +348,5 @@
   .action-buttons :global(.btn-lg) {
     padding: 12px 24px;
     font-size: 1em;
-  }
-
-  .loading {
-    text-align: center;
-    padding: 40px;
-  }
-
-  .error-message {
-    background: #e74c3c;
-    color: white;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    text-align: center;
   }
 </style>

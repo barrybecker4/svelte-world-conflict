@@ -3,8 +3,8 @@
   import { page } from '$app/stores';
   import WaitingRoom from '$lib/components/WaitingRoom.svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
+  import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import Spinner from '$lib/components/ui/Spinner.svelte';
 
   export let data;
 
@@ -12,17 +12,23 @@
   let game = null;
   let currentPlayer = null;
   let error = null;
+  let loading = true;
 
   onMount(async () => {
+    await loadGameData();
+  });
+
+  async function loadGameData() {
     try {
+      loading = true;
+      error = null;
+
       // Get player info from localStorage
       const gameId = $page.params.gameId;
       const playerData = localStorage.getItem(`wc_game_${gameId}`);
 
       if (!playerData) {
-        error = 'Player data not found. Please rejoin the game.';
-        gameState = 'error';
-        return;
+        throw new Error('Player data not found. Please rejoin the game.');
       }
 
       currentPlayer = JSON.parse(playerData);
@@ -37,53 +43,52 @@
         } else if (game.status === 'ACTIVE') {
           gameState = 'playing';
         } else {
-          error = `Game status: ${game.status}`;
-          gameState = 'error';
+          throw new Error(`Unexpected game status: ${game.status}`);
         }
       } else {
-        error = 'Failed to load game';
-        gameState = 'error';
+        throw new Error('Failed to load game');
       }
     } catch (err) {
-      error = 'Error loading game: ' + err.message;
+      error = err.message;
       gameState = 'error';
+    } finally {
+      loading = false;
     }
-  });
+  }
+
+  function handleRetry() {
+    loadGameData();
+  }
+
+  function handleReturnHome() {
+    window.location.href = '/';
+  }
 </script>
 
-{#if gameState === 'loading'}
-  <div class="loading-container">
-    <Spinner size="lg" color="teal" text="Loading game..." />
-  </div>
-{:else if gameState === 'waiting'}
-  <WaitingRoom
-    gameId={$page.params.gameId}
-    currentPlayer={currentPlayer}
-  />
-{:else if gameState === 'playing'}
-  <WorldConflictGame
-    gameId={$page.params.gameId}
-    initialGame={game}
-    currentPlayer={currentPlayer}
-  />
-{:else if gameState === 'error'}
-  <div class="error-container">
-    <h2>Error</h2>
-    <p>{error}</p>
-    <Button variant="primary" on:click={() => window.location.href = '/'}>
+<LoadingState
+  {loading}
+  {error}
+  loadingText="Loading game..."
+  containerClass="fullscreen"
+  showRetry={true}
+  on:retry={handleRetry}
+>
+  <svelte:fragment slot="error-actions">
+    <Button variant="primary" on:click={handleReturnHome}>
       Return to Home
     </Button>
-  </div>
-{/if}
+  </svelte:fragment>
 
-<style>
-  .loading-container, .error-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: #1a1a1a;F
-    color: white;
-  }
-</style>
+  {#if gameState === 'waiting'}
+    <WaitingRoom
+      gameId={$page.params.gameId}
+      currentPlayer={currentPlayer}
+    />
+  {:else if gameState === 'playing'}
+    <WorldConflictGame
+      gameId={$page.params.gameId}
+      playerId={currentPlayer.playerId}
+      playerIndex={currentPlayer.playerIndex}
+    />
+  {/if}
+</LoadingState>

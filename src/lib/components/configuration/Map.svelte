@@ -258,14 +258,6 @@
         {/if}
       </g>
     {/each}
-
-    <!-- Debug info -->
-    {#if regions.length > 0}
-      {@const regionsWithPoints = regions.filter(r => (r as RegionWithPoints).points?.length > 0)}
-      <text x="0" y="580" fill="#94a3b8" font-size="12" font-family="monospace">
-        Regions: {regions.length} {effectivePreviewMode ? '(Preview)' : ''}
-      </text>
-    {/if}
   </svg>
 </div>
 

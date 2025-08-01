@@ -1,9 +1,8 @@
 <script>
-  import { onMount } from 'svelte';
   import Map from './Map.svelte';
   import { MapGenerator } from '$lib/game/data/map/MapGenerator';
   import Button from '$lib/components/ui/Button.svelte';
-  import Spinner from '$lib/components/ui/Spinner.svelte';
+  import LoadingState from '$lib/components/ui/LoadingState.svelte';
 
   export let mapSize = 'Large';
   export let playerCount = 4;
@@ -91,133 +90,90 @@
       .filter(slot => slot.type !== 'Off')
       .map((slot, index) => ({
         index: slot.index,
-        name: slot.type === 'Set' ? slot.customName : slot.defaultName,
-        type: slot.type
+        name: slot.type === 'Set' ? slot.name : `AI ${index + 1}`,
+        color: slot.color,
+        isAI: slot.type === 'AI'
       }));
 
-    console.log('Active players for preview:', activePlayers);
+    if (activePlayers.length === 0) {
+      previewGameState = null;
+      return;
+    }
 
-    // Find all temple regions
-    const templeRegions = previewRegions.filter(region => region.hasTemple);
-    console.log('Temple regions found:', templeRegions.length);
-
-    // Create mock game state
-    const mockGameState = {
-      regions: previewRegions,
+    // Create minimal game state for preview
+    previewGameState = {
+      id: 0,
+      gameId: 'preview',
+      turnIndex: 1,
+      playerIndex: 0,
+      movesRemaining: 3,
+      owners: {},
+      temples: {},
+      soldiersByRegion: {},
+      cash: {},
       players: activePlayers,
-      owners: {}, // Region ownership by player index
-      temples: {}, // Temple data by region index
-      soldiersByRegion: {}, // Soldiers by region index
-      currentPlayerIndex: 0,
-      turn: 1
+      regions: previewRegions
     };
 
-    // Set up temples for all temple regions
-    templeRegions.forEach(region => {
-      mockGameState.temples[region.index] = {
-        regionIndex: region.index,
-        level: 0 // Base temple level
-      };
-      // Add some soldiers to temple regions
-      mockGameState.soldiersByRegion[region.index] = [1, 2, 3]; // 3 soldiers
-    });
+    // Assign some regions to players for preview
+    previewRegions.forEach((region, index) => {
+      const playerIndex = index % activePlayers.length;
+      previewGameState.owners[region.index] = playerIndex;
 
-    // Assign home bases to active players
-    const assignedRegions = [];
-    activePlayers.forEach((player, playerIndex) => {
-      if (playerIndex < templeRegions.length) {
-        let homeRegion = null;
+      // Add some soldiers for visual interest
+      previewGameState.soldiersByRegion[region.index] = [
+        { i: index * 10 + 1 },
+        { i: index * 10 + 2 }
+      ];
 
-        if (assignedRegions.length === 0) {
-          // First player gets any temple region
-          homeRegion = templeRegions[0];
-        } else {
-          // Subsequent players get temple regions furthest from already assigned ones
-          let maxDistance = 0;
-          let bestRegion = null;
-
-          for (const candidateRegion of templeRegions) {
-            if (assignedRegions.includes(candidateRegion.index)) continue;
-
-            let minDistanceToAssigned = Infinity;
-            for (const assignedIndex of assignedRegions) {
-              const assignedRegion = previewRegions[assignedIndex];
-              const distance = Math.sqrt(
-                Math.pow(candidateRegion.x - assignedRegion.x, 2) +
-                Math.pow(candidateRegion.y - assignedRegion.y, 2)
-              );
-              minDistanceToAssigned = Math.min(minDistanceToAssigned, distance);
-            }
-
-            if (minDistanceToAssigned > maxDistance) {
-              maxDistance = minDistanceToAssigned;
-              bestRegion = candidateRegion;
-            }
-          }
-
-          homeRegion = bestRegion || templeRegions.find(r => !assignedRegions.includes(r.index));
-        }
-
-        if (homeRegion) {
-          // Assign ownership
-          mockGameState.owners[homeRegion.index] = player.index;
-          assignedRegions.push(homeRegion.index);
-
-          // Add extra soldiers to home base
-          mockGameState.soldiersByRegion[homeRegion.index] = [1, 2, 3]; // soldiers for home base
-
-          console.log(`Assigned home base ${homeRegion.index} to player ${player.index} (${player.name})`);
-        }
+      // Add temples occasionally
+      if (region.hasTemple) {
+        previewGameState.temples[region.index] = {
+          regionIndex: region.index,
+          level: 1
+        };
       }
     });
 
-    previewGameState = mockGameState;
-    console.log('Preview game state updated:', previewGameState);
+    // Initialize player cash
+    activePlayers.forEach(player => {
+      previewGameState.cash[player.index] = 10;
+    });
 
-    // Force map re-render
-    mapKey++;
+    console.log('Preview game state created:', previewGameState);
   }
 
-  // Public method for parent component to trigger refresh
   export function refreshPreview() {
     loadPreviewMap();
   }
-
-  // Initialize on mount
-  onMount(() => {
-    loadPreviewMap();
-  });
 </script>
 
 <div class="map-preview-panel">
-
   <div class="map-container">
-    {#if loadingPreview}
-      <div class="loading-state">
-        <Spinner size="md" color="blue" text="Generating map..." />
-      </div>
-    {:else if error}
-      <div class="error-state">
-        <p>❌ {error}</p>
-        <Button variant="danger" size="sm" on:click={loadPreviewMap}>
-          Try Again
-        </Button>
-      </div>
-    {:else if previewRegions.length > 0}
-      {#key mapKey}
-        <Map
-          regions={previewRegions}
-          gameState={previewGameState}
-          currentPlayer={null}
-          onRegionClick={() => {}}
-          selectedRegion={null}
-        />
-      {/key}
-    {:else}
-      <div class="empty-state">
-        <p>No map generated</p>
-      </div>
-    {/if}
+    <LoadingState
+      loading={loadingPreview}
+      {error}
+      loadingText="Generating map..."
+      containerClass=""
+      showRetry={true}
+      on:retry={loadPreviewMap}
+    >
+      {#if previewRegions.length > 0}
+        {#key mapKey}
+          <Map
+            regions={previewRegions}
+            gameState={previewGameState}
+            currentPlayer={null}
+            onRegionClick={() => {}}
+            selectedRegion={null}
+          />
+        {/key}
+      {:else}
+        <div class="empty-state">
+          <p>No map generated</p>
+        </div>
+      {/if}
+    </LoadingState>
   </div>
 
   <Button
@@ -254,7 +210,7 @@
     background: #1e3a8a;
   }
 
-  .loading-state, .error-state, .empty-state {
+  .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -269,80 +225,5 @@
     position: relative;
     z-index: 10;
     pointer-events: auto;
-  }
-
-  .map-legend {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: rgba(30, 41, 59, 0.9);
-    backdrop-filter: blur(10px);
-    border: 1px solid #475569;
-    border-radius: 8px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: #f8fafc;
-    min-width: 120px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .legend-symbol {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .legend-symbol.temple {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    border: 1px solid #d97706;
-  }
-
-  .legend-symbol.player-home {
-    border: 2px solid #fff;
-  }
-
-  .map-info {
-    background: #374151;
-    border-radius: 8px;
-    padding: 12px;
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-
-  .map-info p {
-    margin: 0;
-    color: #d1d5db;
-    font-size: 0.9rem;
-  }
-
-  .map-info strong {
-    color: #f8fafc;
-  }
-
-  /* Responsive design */
-  @media (max-width: 768px) {
-    .map-preview-panel {
-      padding: 16px;
-    }
-
-    .map-info {
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .map-legend {
-      position: static;
-      margin-top: 12px;
-    }
   }
 </style>
