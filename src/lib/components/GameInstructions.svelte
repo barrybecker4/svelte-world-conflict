@@ -84,7 +84,6 @@
   }
 </script>
 
-<!-- Full screen overlay matching GAS styling -->
 <div class="tutorial-overlay">
   <div class="tutorial-container">
     <div class="tutorial-header">

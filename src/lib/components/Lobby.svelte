@@ -72,43 +72,6 @@
     }
   }
 
-  async function createNewGame() {
-    try {
-      const playerName = getPlayerConfig(0).defaultName; // Always start as first player
-
-      const response = await fetch('/api/game/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerName,
-          gameType: 'MULTIPLAYER',
-          maxPlayers: 4
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const player = result.player || { index: 0, name: playerName };
-
-        localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
-          playerId: player.index.toString(),
-          playerIndex: player.index,
-          playerName: player.name
-        }));
-
-        // Route to game page - it will show waiting room since new games start as PENDING
-        goto(`/game/${result.gameId}`);
-      } else {
-        const errorData = await response.json();
-        error = errorData.error || 'Failed to create game';
-        setTimeout(() => error = null, 3000);
-      }
-    } catch (err) {
-      error = 'Network error: ' + err.message;
-      setTimeout(() => error = null, 3000);
-    }
-  }
-
   function close() {
     dispatch('close');
   }
@@ -203,7 +166,7 @@
     </div>
 
     <div class="bottom-box">
-      <Button variant="primary" size="lg" on:click={createNewGame}>
+      <Button variant="primary" size="lg" on:click={close}>
         New Game
       </Button>
 

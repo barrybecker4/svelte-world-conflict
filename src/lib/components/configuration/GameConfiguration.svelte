@@ -10,7 +10,6 @@
 
   const dispatch = createEventDispatcher();
 
-  // Game settings - now managed by GameSettingsPanel
   let gameSettings = {
     aiDifficulty: 'Nice',
     turns: 10,

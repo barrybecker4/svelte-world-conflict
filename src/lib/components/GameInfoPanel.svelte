@@ -2,6 +2,7 @@
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
+  import { getPlayerConfig, getPlayerColor, getPlayerEndColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs.js';
 
   export let gameState: WorldConflictGameStateData | null = null;
   export let players: Player[] = [];
@@ -24,38 +25,6 @@
     MOVES: '➊' // &#10138;
   };
 
-  // Original colors - using full hex values for better contrast
-  const PLAYER_CONFIGS = [
-    {
-      name: 'Amber',
-      colorStart: '#ffee88',  // More vivid than #fe8
-      colorEnd: '#cc8811',
-      highlightStart: '#ffdd88',
-      highlightEnd: '#aa8800'
-    },
-    {
-      name: 'Crimson',
-      colorStart: '#ff8888',  // More vivid than #f88
-      colorEnd: '#aa4444',
-      highlightStart: '#ffaaaa',
-      highlightEnd: '#994444'
-    },
-    {
-      name: 'Lavender',
-      colorStart: '#dd99dd',  // More vivid than #d9d
-      colorEnd: '#883388',
-      highlightStart: '#ffaaff',
-      highlightEnd: '#775599'
-    },
-    {
-      name: 'Emerald',
-      colorStart: '#99dd99',  // More vivid than #9d9
-      colorEnd: '#228822',
-      highlightStart: '#bbffbb',
-      highlightEnd: '#44aa44'
-    }
-  ];
-
   $: currentPlayerIndex = gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
   $: turnNumber = gameState?.turnIndex ?? 1;
@@ -63,21 +32,6 @@
   $: movesRemaining = gameState?.movesRemaining ?? 3;
   $: isMoving = moveMode !== 'IDLE';
   $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
-
-  function getPlayerColor(playerIndex: number) {
-    const config = PLAYER_CONFIGS[playerIndex % PLAYER_CONFIGS.length];
-    return config.colorStart;
-  }
-
-  function getPlayerHighlightColor(playerIndex: number) {
-    const config = PLAYER_CONFIGS[playerIndex % PLAYER_CONFIGS.length];
-    return config.highlightStart;
-  }
-
-  function getPlayerEndColor(playerIndex: number) {
-    const config = PLAYER_CONFIGS[playerIndex % PLAYER_CONFIGS.length];
-    return config.colorEnd;
-  }
 
   function getRegionCount(playerIndex: number): number {
     if (!gameState?.owners) return 0;
@@ -158,7 +112,6 @@
     {/each}
   </div>
 
-  <!-- Instructions Section -->
   <div class="instructions-section">
     <div class="info-panel">
       <div class="instruction-text">
@@ -167,7 +120,6 @@
     </div>
   </div>
 
-  <!-- Player Stats Section -->
   <div class="player-stats-section">
     <div class="stat-display">
       <div class="stat-item">
@@ -181,7 +133,6 @@
     </div>
   </div>
 
-  <!-- Action Buttons Section -->
   <div class="action-section">
     {#if showCancelButton}
       <Button variant="danger" uppercase on:click={onCancelMove}>
@@ -332,7 +283,6 @@
     font-size: 1rem;
   }
 
-  /* Instructions Section */
   .instructions-section {
     flex: 0 0 auto;
     padding: 16px;
@@ -402,7 +352,6 @@
     text-transform: lowercase;
   }
 
-  /* Action Section */
   .action-section {
     flex: 0 0 auto;
     padding: 16px;
