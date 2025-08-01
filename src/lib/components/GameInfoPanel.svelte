@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import Button from '$lib/components/buttons/Button.svelte';
+  import IconButton from '$lib/components/buttons/IconButton.svelte';
 
   export let gameState: WorldConflictGameStateData | null = null;
   export let players: Player[] = [];
@@ -182,27 +184,27 @@
   <!-- Action Buttons Section -->
   <div class="action-section">
     {#if showCancelButton}
-      <button class="action-btn cancel-btn" on:click={onCancelMove}>
+      <Button variant="danger" uppercase on:click={onCancelMove}>
         Cancel Move
-      </button>
+      </Button>
     {:else}
-      <button class="action-btn undo-btn" on:click={onUndo} disabled={movesRemaining >= 3}>
+      <Button variant="secondary" uppercase disabled={movesRemaining >= 3} on:click={onUndo}>
         Undo
-      </button>
+      </Button>
     {/if}
 
-    <button class="action-btn end-turn-btn" on:click={onEndTurn}>
+    <Button variant="danger" size="lg" uppercase on:click={onEndTurn}>
       END TURN
-    </button>
+    </Button>
   </div>
 
   <!-- Bottom Action Icons -->
   <div class="bottom-actions">
-    <button class="icon-btn" on:click={onToggleAudio} title="Toggle Audio">
+    <IconButton title="Toggle Audio" on:click={onToggleAudio}>
       {#if audioEnabled}🔊{:else}🔇{/if}
-    </button>
-    <button class="icon-btn" on:click={onShowInstructions} title="Instructions">❓</button>
-    <button class="icon-btn" on:click={onResign} title="Resign">🏳️</button>
+    </IconButton>
+    <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
+    <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
   </div>
 </div>
 
@@ -410,58 +412,6 @@
     border-bottom: 1px solid #4a5568;
   }
 
-  .action-btn {
-    padding: 12px 16px;
-    border: none;
-    border-radius: 6px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-  }
-
-  .action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .cancel-btn {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    border: 2px solid #b91c1c;
-  }
-
-  .cancel-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    transform: translateY(-1px);
-  }
-
-  .undo-btn {
-    background: linear-gradient(135deg, #6b7280, #4b5563);
-    color: white;
-    border: 2px solid #374151;
-  }
-
-  .undo-btn:hover:not(:disabled) {
-    background: linear-gradient(135deg, #4b5563, #374151);
-    transform: translateY(-1px);
-  }
-
-  .end-turn-btn {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    color: white;
-    border: 2px solid #991b1b;
-    font-size: 1rem;
-    padding: 14px 16px;
-  }
-
-  .end-turn-btn:hover {
-    background: linear-gradient(135deg, #b91c1c, #991b1b);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
-  }
-
   /* Bottom Actions */
   .bottom-actions {
     flex: 0 0 auto;
@@ -469,27 +419,5 @@
     display: flex;
     gap: 8px;
     justify-content: center;
-  }
-
-  .icon-btn {
-    width: 40px;
-    height: 40px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.3);
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    border: 1px solid #4a5568;
-  }
-
-  .icon-btn:hover {
-    background: rgba(96, 165, 250, 0.2);
-    border-color: #60a5fa;
-    transform: translateY(-1px);
   }
 </style>

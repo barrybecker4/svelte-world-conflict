@@ -1,4 +1,7 @@
 <script lang="ts">
+  import Button from '$lib/components/ui/Button.svelte';
+  import IconButton from '$lib/components/ui/IconButton.svelte';
+
   export let maxSoldiers: number;
   export let currentSelection: number;
   export let onConfirm: (count: number) => void;
@@ -35,9 +38,9 @@
   <div class="modal-container" on:click|stopPropagation role="dialog" aria-labelledby="modal-title">
     <div class="modal-header">
       <h2 id="modal-title">Select Soldiers to Move</h2>
-      <button class="close-button" on:click={handleCancel} aria-label="Close">
+      <IconButton variant="default" size="sm" title="Close"on:click={handleCancel}>
         ✕
-      </button>
+      </IconButton>
     </div>
 
     <div class="modal-content">
@@ -70,14 +73,15 @@
 
       <div class="controls">
         <div class="count-controls">
-          <button
-            class="count-btn"
-            on:click={() => adjustCount(-1)}
+          <IconButton
+            variant="default"
+            size="md"
             disabled={selectedCount <= 1}
-            aria-label="Decrease count"
+            title="Decrease count"
+            on:click={() => adjustCount(-1)}
           >
             −
-          </button>
+          </IconButton>
 
           <input
             type="number"
@@ -88,49 +92,50 @@
             aria-label="Number of soldiers"
           />
 
-          <button
-            class="count-btn"
-            on:click={() => adjustCount(1)}
+          <IconButton
+            variant="default"
+            size="md"
             disabled={selectedCount >= maxSoldiers}
-            aria-label="Increase count"
+            title="Increase count"
+            on:click={() => adjustCount(1)}
           >
             +
-          </button>
+          </IconButton>
         </div>
 
-        <div class="quick-select">
-          <button
-            class="quick-btn"
+        <div class="quick-select-wrapper">
+          <Button
+            variant={selectedCount === 1 ? 'primary' : 'ghost'}
+            size="sm"
             on:click={() => selectedCount = 1}
-            class:active={selectedCount === 1}
           >
             1
-          </button>
-          <button
-            class="quick-btn"
+          </Button>
+          <Button
+            variant={selectedCount === Math.floor(maxSoldiers / 2) ? 'primary' : 'ghost'}
+            size="sm"
             on:click={() => selectedCount = Math.floor(maxSoldiers / 2)}
-            class:active={selectedCount === Math.floor(maxSoldiers / 2)}
           >
             Half
-          </button>
-          <button
-            class="quick-btn"
+          </Button>
+          <Button
+            variant={selectedCount === maxSoldiers ? 'primary' : 'ghost'}
+            size="sm"
             on:click={() => selectedCount = maxSoldiers}
-            class:active={selectedCount === maxSoldiers}
           >
             All
-          </button>
+          </Button>
         </div>
       </div>
     </div>
 
     <div class="modal-footer">
-      <button class="cancel-btn" on:click={handleCancel}>
+      <Button variant="secondary" on:click={handleCancel}>
         Cancel
-      </button>
-      <button class="confirm-btn" on:click={handleConfirm}>
+      </Button>
+      <Button variant="success" on:click={handleConfirm}>
         Move {selectedCount} Soldier{selectedCount === 1 ? '' : 's'}
-      </button>
+      </Button>
     </div>
   </div>
 </div>
@@ -175,22 +180,6 @@
     margin: 0;
     font-size: 1.2rem;
     color: #f7fafc;
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    color: #a0aec0;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0.25rem;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-
-  .close-button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
   }
 
   .modal-content {
@@ -311,29 +300,6 @@
     gap: 0.5rem;
   }
 
-  .count-btn {
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: #4a5568;
-    color: white;
-    border-radius: 50%;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .count-btn:hover:not(:disabled) {
-    background: #64748b;
-    transform: scale(1.1);
-  }
-
-  .count-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
   .count-input {
     width: 60px;
     height: 40px;
@@ -351,32 +317,15 @@
     border-color: #10b981;
   }
 
-  .quick-select {
+  .quick-select-wrapper {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
   }
 
-  .quick-btn {
-    padding: 0.5rem 1rem;
-    border: 1px solid #4a5568;
-    background: rgba(71, 85, 105, 0.3);
-    color: #cbd5e1;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
+  .quick-select-wrapper :global(.btn-sm) {
     font-size: 0.85rem;
-  }
-
-  .quick-btn:hover {
-    background: #4a5568;
-    color: white;
-  }
-
-  .quick-btn.active {
-    background: #10b981;
-    border-color: #10b981;
-    color: white;
+    min-width: 60px;
   }
 
   .modal-footer {
@@ -388,36 +337,36 @@
     gap: 1rem;
   }
 
-  .cancel-btn, .confirm-btn {
+  .modal-footer :global(.btn-base) {
     flex: 1;
     padding: 0.75rem 1rem;
+  }
+
+  .modal-header :global(.icon-btn) {
+    background: none;
     border: none;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    color: #a0aec0;
+    font-size: 1.5rem;
   }
 
-  .cancel-btn {
-    background: #64748b;
+  .modal-header :global(.icon-btn:hover) {
+    background: rgba(255, 255, 255, 0.1);
     color: white;
   }
 
-  .cancel-btn:hover {
+  .count-controls :global(.icon-btn) {
     background: #4a5568;
-  }
-
-  .confirm-btn {
-    background: #10b981;
     color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
   }
 
-  .confirm-btn:hover {
-    background: #059669;
-    transform: translateY(-1px);
+  .count-controls :global(.icon-btn:hover:not(.icon-btn-disabled)) {
+    background: #64748b;
+    transform: scale(1.1);
   }
 
-  /* Mobile responsive */
+  /* Mobile responsive updates */
   @media (max-width: 480px) {
     .modal-container {
       width: 95%;
@@ -439,6 +388,14 @@
 
     .modal-footer {
       flex-direction: column;
+    }
+
+    .modal-footer :global(.btn-base) {
+      width: 100%;
+    }
+
+    .quick-select-wrapper {
+      flex-wrap: wrap;
     }
   }
 </style>

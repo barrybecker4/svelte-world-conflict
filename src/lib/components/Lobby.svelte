@@ -1,6 +1,8 @@
 <script>
   import { createEventDispatcher, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import Button from '$lib/components/buttons/Button.svelte';
+  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 
   const dispatch = createEventDispatcher();
 
@@ -9,14 +11,6 @@
   let openGames = [];
   let loading = true;
   let error = null;
-
-  // Fixed player names like the GAS version
-  const FIXED_PLAYER_NAMES = [
-    'Red Baron',
-    'Blue Thunder',
-    'Green Dragon',
-    'Yellow Storm'
-  ];
 
   onMount(() => {
     loadOpenGames();
@@ -46,7 +40,7 @@
       // Find next available player slot name
       const game = openGames.find(g => g.gameId === gameId);
       const takenSlots = game?.playerCount || 0;
-      const playerName = FIXED_PLAYER_NAMES[takenSlots];
+      const playerName = getPlayerConfig[takenSlots].defaultName;
 
       const response = await fetch(`/api/game/${gameId}/join`, {
         method: 'POST',
@@ -192,13 +186,14 @@
                       </span>
                     </div>
                   </div>
-                  <button
-                    class="join-button"
-                    on:click={() => joinGame(game.gameId)}
+                  <Button
+                    variant="success"
+                    size="sm"
                     disabled={game.playerCount >= game.maxPlayers}
+                    on:click={() => joinGame(game.gameId)}
                   >
                     {game.playerCount >= game.maxPlayers ? 'Full' : 'Join'}
-                  </button>
+                  </Button>
                 </div>
               {/each}
             </div>
@@ -207,15 +202,14 @@
       {/if}
     </div>
 
-    <!-- Bottom actions -->
     <div class="bottom-box">
-      <button class="new-game-button" on:click={createNewGame}>
+      <Button variant="primary" size="lg" on:click={createNewGame}>
         New Game
-      </button>
+      </Button>
 
-      <button class="cancel-button" on:click={close}>
+      <Button variant="ghost" size="lg" on:click={close}>
         Back
-      </button>
+      </Button>
     </div>
   </div>
 </div>
@@ -378,27 +372,6 @@
     font-weight: 500;
   }
 
-  .join-button {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .join-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, #059669, #047857);
-    transform: translateY(-1px);
-  }
-
-  .join-button:disabled {
-    background: #6b7280;
-    cursor: not-allowed;
-  }
-
   .bottom-box {
     display: flex;
     justify-content: center;
@@ -406,39 +379,13 @@
     margin-top: 1.5rem;
   }
 
-  .new-game-button {
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    color: white;
-    border: none;
+  .game-row :global(.btn-sm) {
+    min-width: 100px;
+  }
+
+  /* Ensure the bottom buttons maintain their layout: */
+  .bottom-box :global(.btn-lg) {
     padding: 1rem 2rem;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .new-game-button:hover {
-    background: linear-gradient(135deg, #1d4ed8, #1e40af);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-  }
-
-  .cancel-button {
-    background: transparent;
-    color: #94a3b8;
-    border: 1px solid #475569;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .cancel-button:hover {
-    color: white;
-    border-color: #60a5fa;
   }
 
   /* Mobile responsiveness */
@@ -461,7 +408,8 @@
       gap: 1rem;
     }
 
-    .join-button {
+    /* Update to target the Button component instead of .join-button */
+    .game-row :global(.btn-sm) {
       align-self: center;
       width: 100px;
     }
@@ -470,9 +418,10 @@
       flex-direction: column;
     }
 
-    .new-game-button,
-    .cancel-button {
+    /* Update to target the Button components instead of old button classes */
+    .bottom-box :global(.btn-lg) {
       width: 100%;
+      font-size: 1.1rem;
     }
   }
 </style>

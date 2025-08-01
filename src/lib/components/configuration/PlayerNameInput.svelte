@@ -1,6 +1,6 @@
-<!-- PlayerNameInput.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import Button from '$lib/components/buttons/Button.svelte';
 
   export let initialName = '';
   export let error = '';
@@ -35,13 +35,15 @@
     on:keydown={handleKeydown}
     disabled={loading}
   />
-  <button
+  <Button
+    variant="primary"
+    size="lg"
+    disabled={!playerName.trim()}
+    loading={loading}
     on:click={handleProceed}
-    disabled={!playerName.trim() || loading}
-    class="proceed-button"
   >
-    {loading ? 'Processing...' : 'Continue'}
-  </button>
+    Continue
+  </Button>
   {#if error}
     <p class="error">{error}</p>
   {/if}
@@ -58,6 +60,11 @@
     font-size: 24px;
     color: #f8fafc;
     margin-bottom: 16px;
+  }
+
+  .name-input-section :global(.btn-lg) {
+    width: 100%;
+    font-size: 16px;
   }
 
   .name-input {
@@ -79,26 +86,6 @@
 
   .name-input:disabled {
     opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .proceed-button {
-    background: #2563eb;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s;
-  }
-
-  .proceed-button:hover:not(:disabled) {
-    background: #1d4ed8;
-  }
-
-  .proceed-button:disabled {
-    background: #6b7280;
     cursor: not-allowed;
   }
 

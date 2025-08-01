@@ -6,6 +6,7 @@
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from './MapPreviewPanel.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+  import Button from '$lib/components/buttons/Button.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -204,9 +205,9 @@
           <div class="current-player">
             <span class="player-label">Playing as:</span>
             <span class="player-name-display">{playerName}</span>
-            <button class="change-name-button" on:click={changeName}>
+            <Button variant="ghost" size="sm" on:click={changeName}>
               Change
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -231,13 +232,15 @@
             <div class="error-message">{error}</div>
           {/if}
 
-          <button
-            class="create-game-button"
-            disabled={creating || activePlayerCount < 2}
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={activePlayerCount < 2}
+            loading={creating}
             on:click={createGame}
           >
-            {creating ? 'Creating Game...' : 'Create Game'}
-          </button>
+            Create Game
+          </Button>
         </div>
       </div>
 
@@ -318,22 +321,6 @@
     font-size: 1.1rem;
   }
 
-  .change-name-button {
-    padding: 4px 8px;
-    background: #475569;
-    color: #f8fafc;
-    border: 1px solid #64748b;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: all 0.2s ease;
-  }
-
-  .change-name-button:hover {
-    background: #64748b;
-    border-color: #94a3b8;
-  }
-
   .players-section {
     margin-bottom: 24px;
   }
@@ -354,30 +341,7 @@
     font-size: 0.9rem;
   }
 
-  .create-game-button {
+  .create-game-section :global(.btn-lg) {
     width: 100%;
-    padding: 12px 24px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  }
-
-  .create-game-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-    transform: translateY(-1px);
-  }
-
-  .create-game-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
   }
 </style>

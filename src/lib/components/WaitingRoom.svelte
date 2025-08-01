@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-    import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+  import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 
   export let gameId;
   export let currentPlayer; // The current user's player info
@@ -185,13 +185,13 @@
 
           <div class="action-buttons">
             {#if isCreator}
-              <button class="start-button" on:click={startGame}>
+              <Button variant="success" size="lg" on:click={startGame}>
                 Start anyway
-              </button>
+              </Button>
             {/if}
-            <button class="leave-button" on:click={leaveGame}>
+            <Button variant="danger" size="lg" on:click={leaveGame}>
               Leave
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -330,31 +330,9 @@
     justify-content: center;
   }
 
-  .start-button, .leave-button {
+  .action-buttons :global(.btn-lg) {
     padding: 12px 24px;
-    border: none;
-    border-radius: 4px;
     font-size: 1em;
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  .start-button {
-    background: #27ae60;
-    color: white;
-  }
-
-  .start-button:hover {
-    background: #2ecc71;
-  }
-
-  .leave-button {
-    background: #e74c3c;
-    color: white;
-  }
-
-  .leave-button:hover {
-    background: #c0392b;
   }
 
   .loading {

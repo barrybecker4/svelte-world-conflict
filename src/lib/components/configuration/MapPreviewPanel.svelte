@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Map from './Map.svelte';
   import { MapGenerator } from '$lib/game/data/map/MapGenerator';
+  import Button from '$lib/components/buttons/Button.svelte';
 
   export let mapSize = 'Large';
   export let playerCount = 4;
@@ -198,9 +199,9 @@
     {:else if error}
       <div class="error-state">
         <p>❌ {error}</p>
-        <button class="retry-button" on:click={loadPreviewMap}>
+        <Button variant="danger" size="sm" on:click={loadPreviewMap}>
           Try Again
-        </button>
+        </Button>
       </div>
     {:else if previewRegions.length > 0}
       {#key mapKey}
@@ -219,14 +220,15 @@
     {/if}
   </div>
 
-  <button
-    class="refresh-button"
-    on:click={loadPreviewMap}
-    disabled={loadingPreview}
+  <Button
+    variant="secondary"
+    size="sm"
+    loading={loadingPreview}
     title="Generate new map"
+    on:click={loadPreviewMap}
   >
-    {loadingPreview ? 'Generating...' : 'New Map'}
-  </button>
+    New Map
+  </Button>
 </div>
 
 <style>
@@ -241,40 +243,6 @@
     flex-direction: column;
     gap: 16px;
     min-height: 0;
-  }
-
-  .refresh-button {
-    padding: 6px 12px;
-    background: #374151;
-    color: #f8fafc;
-    border: 1px solid #475569;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-    pointer-events: auto;
-    z-index: 10;
-    position: relative;
-    width: 100px;
-  }
-
-  .refresh-button:hover:not(:disabled) {
-    background: #64748b;
-    border-color: #94a3b8;
-  }
-
-  .refresh-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .refresh-button:disabled {
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
   }
 
   .map-container {
@@ -305,18 +273,11 @@
     animation: spin 1s linear infinite;
   }
 
-  .retry-button {
-    padding: 8px 16px;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-
-  .retry-button:hover {
-    background: #dc2626;
+  .map-preview-panel :global(.btn-sm) {
+    width: 100px;
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
   }
 
   .map-legend {

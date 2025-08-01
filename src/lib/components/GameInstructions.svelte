@@ -1,6 +1,7 @@
-<!-- src/lib/components/GameInstructions.svelte -->
 <script>
   import { createEventDispatcher } from 'svelte';
+  import Button from '$lib/components/buttons/Button.svelte';
+  import IconButton from '$lib/components/buttons/IconButton.svelte';
 
   const dispatch = createEventDispatcher();
   let currentCard = 0;
@@ -107,9 +108,16 @@
             </a>
           </div>
       </h1>
-      <button class="close-button" on:click={close} aria-label="Close instructions">
-        ×
-      </button>
+      <div class="close-button-wrapper">
+        <IconButton
+          variant="default"
+          size="md"
+          title="Close instructions"
+          on:click={close}
+        >
+          ×
+        </IconButton>
+      </div>
     </div>
 
     <div class="tutorial-content">
@@ -128,31 +136,34 @@
     </div>
 
     <!-- Navigation arrows -->
-    <button
-      class="nav-button prev"
-      class:disabled={currentCard === 0}
-      on:click={prevCard}
-      disabled={currentCard === 0}
-      aria-label="Previous tutorial card"
-    >
-      «
-    </button>
+    <div class="nav-button-wrapper prev">
+      <IconButton
+        variant="primary"
+        size="lg"
+        disabled={currentCard === 0}
+        title="Previous tutorial card"
+        on:click={prevCard}
+      >
+        «
+      </IconButton>
+    </div>
 
-    <button
-      class="nav-button next"
-      class:disabled={currentCard === totalCards - 1}
-      on:click={nextCard}
-      disabled={currentCard === totalCards - 1}
-      aria-label="Next tutorial card"
-    >
-      »
-    </button>
+    <div class="nav-button-wrapper next">
+      <IconButton
+        variant="primary"
+        size="lg"
+        disabled={currentCard === totalCards - 1}
+        title="Next tutorial card"
+        on:click={nextCard}
+      >
+        »
+      </IconButton>
+    </div>
 
-    <!-- Bottom action -->
     <div class="bottom-box">
-      <button class="got-it-button" on:click={complete}>
+      <Button variant="success" size="lg" on:click={complete}>
         Got it!
-      </button>
+      </Button>
     </div>
   </div>
 </div>
@@ -184,24 +195,6 @@
     text-align: center;
     margin-bottom: 2rem;
     position: relative;
-  }
-
-  .close-button {
-    position: absolute;
-    top: 0;
-    right: 0;
-    background: none;
-    border: none;
-    color: #94a3b8;
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    line-height: 1;
-    transition: color 0.2s;
-  }
-
-  .close-button:hover {
-    color: #f8fafc;
   }
 
   .tutorial-header h1 {
@@ -266,103 +259,70 @@
     font-weight: bold;
   }
 
-  .nav-button {
+  .close-button-wrapper {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5rem;
+  }
+
+  .close-button-wrapper :global(.icon-btn) {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 2rem;
+  }
+
+  .close-button-wrapper :global(.icon-btn:hover) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+  }
+
+  .nav-button-wrapper {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(59, 130, 246, 0.8);
-    color: white;
-    border: none;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    font-size: 1.5rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-    backdrop-filter: blur(10px);
   }
 
-  .nav-button:hover:not(.disabled) {
-    background: rgba(59, 130, 246, 1);
-    transform: translateY(-50%) scale(1.1);
-  }
-
-  .nav-button.disabled {
-    background: rgba(75, 85, 99, 0.5);
-    cursor: not-allowed;
-    color: #6b7280;
-  }
-
-  .nav-button.prev {
+  .nav-button-wrapper.prev {
     left: -70px;
   }
 
-  .nav-button.next {
+  .nav-button-wrapper.next {
     right: -70px;
   }
 
-  .bottom-box {
-    text-align: center;
-    margin-top: 2rem;
+  .nav-button-wrapper :global(.icon-btn) {
+    background: rgba(59, 130, 246, 0.8);
+    backdrop-filter: blur(10px);
+    font-size: 1.5rem;
   }
 
-  .got-it-button {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    border: none;
-    padding: 1rem 3rem;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    display: inline-block;
+  .nav-button-wrapper :global(.icon-btn:hover:not(.icon-btn-disabled)) {
+    background: rgba(59, 130, 246, 1);
+    transform: scale(1.1);
   }
 
-  .got-it-button:hover {
-    background: linear-gradient(135deg, #059669, #047857);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  }
-
-  /* Mobile responsiveness */
+  /* Mobile responsive adjustments */
   @media (max-width: 768px) {
-    .tutorial-container {
-      width: 95%;
-      padding: 1rem;
-    }
-
-    .tutorial-header h1 {
-      font-size: 2rem;
-    }
-
-    .tutorial-content {
-      padding: 1.5rem;
-      min-height: 250px;
-    }
-
-    .nav-button {
+    .nav-button-wrapper :global(.icon-btn-lg) {
       width: 40px;
       height: 40px;
       font-size: 1.2rem;
     }
 
-    .nav-button.prev {
+    .nav-button-wrapper.prev {
       left: -50px;
     }
 
-    .nav-button.next {
+    .nav-button-wrapper.next {
       right: -50px;
     }
+  }
 
-    .card-header h2 {
-      font-size: 1.2rem;
-    }
-
-    .icon {
-      font-size: 2rem;
-    }
+  .bottom-box {
+    font-size: 1.2rem;
+    padding: 1rem 3rem;
+    text-align: center;
   }
 </style>

@@ -8,6 +8,7 @@
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
+  import Button from '$lib/components/buttons/Button.svelte';
 
   // Props
   export let gameId: string;
@@ -338,7 +339,7 @@
     <div class="error-screen">
       <h3>Game Error</h3>
       <p>{error}</p>
-      <button on:click={() => error = null} class="retry-button">Retry</button>
+      <Button variant="primary" on:click={() => error = null}>Retry</Button>
     </div>
   {:else}
     <!-- Enhanced Game Info Panel -->
@@ -428,20 +429,6 @@
   .error-screen h3 {
     color: #ef4444;
     margin-bottom: 16px;
-  }
-
-  .retry-button {
-    padding: 8px 16px;
-    background: #60a5fa;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 16px;
-  }
-
-  .retry-button:hover {
-    background: #3b82f6;
   }
 
   .map-container {

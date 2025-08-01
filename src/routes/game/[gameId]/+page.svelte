@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import WaitingRoom from '$lib/components/WaitingRoom.svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
+  import Button from '$lib/components/buttons/Button.svelte';
 
   export let data;
 
@@ -69,9 +70,9 @@
   <div class="error-container">
     <h2>Error</h2>
     <p>{error}</p>
-    <button on:click={() => window.location.href = '/'}>
+    <Button variant="primary" on:click={() => window.location.href = '/'}>
       Return to Home
-    </button>
+    </Button>
   </div>
 {/if}
 
@@ -99,19 +100,5 @@
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-  }
-
-  button {
-    padding: 10px 20px;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 20px;
-  }
-
-  button:hover {
-    background: #2980b9;
   }
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { WorldConflictGameState, Player } from '$lib/game/WorldConflictGameState';
+  import Button from '$lib/components/buttons/Button.svelte';
 
   export let gameState: WorldConflictGameState | null = null;
   export let currentPlayer: Player | null = null;
@@ -23,29 +24,29 @@
   </div>
 
   <div class="action-buttons">
-    <button
-      class="btn btn-primary"
-      on:click={onBuyArmies}
+    <Button
+      variant="primary"
       disabled={!isPlayerTurn || playerFaith < 10}
+      on:click={onBuyArmies}
     >
       Buy Armies (10 Faith)
-    </button>
+    </Button>
 
-    <button
-      class="btn btn-secondary"
-      on:click={onUpgradeTemple}
+    <Button
+      variant="secondary"
       disabled={!isPlayerTurn || playerFaith < 50}
+      on:click={onUpgradeTemple}
     >
       Upgrade Temple (50 Faith)
-    </button>
+    </Button>
 
-    <button
-      class="btn btn-success"
-      on:click={onEndTurn}
+    <Button
+      variant="success"
       disabled={!canEndTurn || !isPlayerTurn}
+      on:click={onEndTurn}
     >
       End Turn
-    </button>
+    </Button>
   </div>
 </div>
 
@@ -82,53 +83,12 @@
     flex-wrap: wrap;
   }
 
-  .btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: #2563eb;
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: #1d4ed8;
-  }
-
-  .btn-secondary {
-    background: #7c3aed;
-    color: white;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: #6d28d9;
-  }
-
-  .btn-success {
-    background: #16a34a;
-    color: white;
-  }
-
-  .btn-success:hover:not(:disabled) {
-    background: #15803d;
-  }
-
   @media (max-width: 768px) {
     .action-buttons {
       flex-direction: column;
     }
 
-    .btn {
+    .action-buttons :global(.btn-base) {
       width: 100%;
     }
   }
