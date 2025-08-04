@@ -15,11 +15,6 @@
   const ARMIES_PER_ROW = 8;
   let mapContainer: HTMLDivElement;
 
-  // Type for regions with border points
-  interface RegionWithPoints extends Region {
-    points?: Array<{x: number, y: number}>;
-  }
-
   // Auto-detect preview mode if currentPlayer is null but gameState exists
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
   $: effectivePreviewMode = isPreviewMode || detectedPreviewMode;
@@ -147,7 +142,7 @@
         <rect width="100%" height="100%" fill="white"/>
         <!-- Subtract all regions (black areas where regions exist) -->
         {#each regions as region (region.index)}
-          {@const regionWithPoints = region as RegionWithPoints}
+          {@const regionWithPoints = region}
           {@const regionPath = regionWithPoints.points ?
             pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
           <path
@@ -165,7 +160,7 @@
 
     <!-- First pass: render all regions without shadows -->
     {#each regions as region (region.index)}
-      {@const regionWithPoints = region as RegionWithPoints}
+      {@const regionWithPoints = region}
       {@const regionPath = regionWithPoints.points ?
         pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
       {@const regionColor = getRegionColor(region.index)}
@@ -187,7 +182,6 @@
         class:home-base={isHomeBase}
         class:preview-mode={effectivePreviewMode}
         role="button"
-        tabindex={effectivePreviewMode ? -1 : 0}
         aria-label="Region {region.index + 1} - {armies} armies"
         on:click={() => handleRegionClick(region)}
         on:keydown={(e) => handleKeyDown(e, region)}
@@ -197,7 +191,7 @@
 
     <!-- Second pass: render shadow layer that only affects ocean areas -->
     {#each regions as region (region.index)}
-      {@const regionWithPoints = region as RegionWithPoints}
+      {@const regionWithPoints = region}
       {@const regionPath = regionWithPoints.points ?
         pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
       {@const regionColor = getRegionColor(region.index)}
@@ -229,7 +223,7 @@
             upgradeLevel={temple?.level || 0}
             isPlayerOwned={isOccupied}
             regionIndex={region.index}
-          />
+          />F
         {/if}
 
         <!-- Army count display (below temple if present, otherwise at center) -->
@@ -331,7 +325,6 @@
     pointer-events: none;
   }
 
-  /* Army count styling */
   .region-content text {
     font-family: 'Arial', sans-serif;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
