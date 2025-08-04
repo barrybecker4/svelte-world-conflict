@@ -138,30 +138,43 @@
 </script>
 
 <div class="game-map" bind:this={mapContainer}>
-  <svg
-    viewBox="0 0 800 600"
-    class="map-svg"
-    preserveAspectRatio="xMidYMid meet"
-  >
-    <!-- Background ocean -->
-    <rect
-      width="800"
-      height="600"
-      fill="var(--map-ocean-color)"
-    />
+  <svg class="map-svg" viewBox="0 0 800 600">
+    <!-- Create a definition for our shadow filter that only affects ocean areas -->
+    <defs>
+      <!-- Create a mask for the ocean (everything not covered by regions) -->
+      <mask id="oceanMask">
+        <!-- Start with white background (ocean areas) -->
+        <rect width="100%" height="100%" fill="white"/>
+        <!-- Subtract all regions (black areas where regions exist) -->
+        {#each regions as region (region.index)}
+          {@const regionWithPoints = region as RegionWithPoints}
+          {@const regionPath = regionWithPoints.points ?
+            pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
+          <path
+            d={regionPath}
+            fill="black"
+          />
+        {/each}
+      </mask>
 
-    <!-- Regions using pre-calculated border points -->
+      <!-- Shadow filter that only applies to ocean areas -->
+      <filter id="oceanShadow">
+        <feDropShadow dx="5" dy="5" stdDeviation="1" flood-color="rgba(0,0,0,0.7)"/>
+      </filter>
+    </defs>
+
+    <!-- First pass: render all regions without shadows -->
     {#each regions as region (region.index)}
       {@const regionWithPoints = region as RegionWithPoints}
-      {@const isOccupied = getRegionOwner(region.index) !== null}
-      {@const armies = getArmyCount(region.index)}
+      {@const regionPath = regionWithPoints.points ?
+        pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
       {@const regionColor = getRegionColor(region.index)}
-      {@const selected = isSelected(region)}
-      {@const canMove = canMoveFrom(region.index)}
-      {@const isHomeBase = isPlayerHomeBase(region.index)}
-      {@const regionPath = regionWithPoints.points ? pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
+      {@const selected = selectedRegion?.index === region.index}
+      {@const canMove = currentPlayer && canPlayerMoveToRegion(currentPlayer, region)}
+      {@const isHomeBase = currentPlayer && region.index === currentPlayer.homeRegion}
+      {@const armies = getArmyCount(region.index)}
 
-      <!-- Region fill using pre-calculated border points -->
+      <!-- Region fill without shadows -->
       <path
         d={regionPath}
         fill={regionColor}
@@ -173,12 +186,31 @@
         class:can-move={canMove}
         class:home-base={isHomeBase}
         class:preview-mode={effectivePreviewMode}
-        style="filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.6));"
         role="button"
         tabindex={effectivePreviewMode ? -1 : 0}
         aria-label="Region {region.index + 1} - {armies} armies"
         on:click={() => handleRegionClick(region)}
         on:keydown={(e) => handleKeyDown(e, region)}
+      />
+    {/each}
+
+
+    <!-- Second pass: render shadow layer that only affects ocean areas -->
+    {#each regions as region (region.index)}
+      {@const regionWithPoints = region as RegionWithPoints}
+      {@const regionPath = regionWithPoints.points ?
+        pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
+      {@const regionColor = getRegionColor(region.index)}
+
+      <!-- Shadow version of region that only shows over ocean -->
+      <path
+        d={regionPath}
+        fill={regionColor}
+        stroke="none"
+        mask="url(#oceanMask)"
+        filter="url(#oceanShadow)"
+        pointer-events="none"
+        opacity="0.8"
       />
     {/each}
 
@@ -268,7 +300,7 @@
 
   .region-path:hover:not(.preview-mode) {
     stroke-width: 2;
-    filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.6)) brightness(1.15);
+    filter: brightness(1.45);
   }
 
   .region-path:focus:not(.preview-mode) {
@@ -292,7 +324,7 @@
   }
 
   .region-path.home-base {
-    filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.6)) brightness(1.1);
+    filter: brightness(1.3);
   }
 
   .region-content {
