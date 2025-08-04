@@ -63,14 +63,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         switch (moveData.moveType) {
             case 'ARMY_MOVE':
                 if (moveData.source === undefined || moveData.destination === undefined || moveData.count === undefined) {
-                    return json({ error: 'Missing army move parameters' }, { status: 400 });
+                    return json({ error: 'Missing army move parameters: ', moveData }, { status: 400 });
                 }
                 command = new ArmyMoveCommand(
                     worldConflictState,
                     player,
                     moveData.source,
                     moveData.destination,
-                    moveData.count
+                    moveData.soldiers
                 );
                 break;
 
@@ -91,7 +91,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 break;
 
             default:
-                return json({ error: 'Invalid move type' }, { status: 400 });
+                return json({ error: 'Invalid move type: ' +  moveData.moveType }, { status: 400 });
         }
 
         // Process command

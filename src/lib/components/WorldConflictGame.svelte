@@ -184,9 +184,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           playerId,
-          from,
-          to,
-          soldiers
+          source: from,
+          destination: to,
+          count: soldiers,
+          moveType: 'ARMY_MOVE'
         })
       });
 
@@ -258,11 +259,7 @@
 
   function handleRegionClick(region: Region) {
     if (!isMyTurn || !moveSystem) return;
-
-    moveSystem.processAction({
-      type: 'SELECT_SOURCE',
-      payload: { regionIndex: region.index }
-    });
+    moveSystem.handleRegionClick(region.index);
   }
 </script>
 

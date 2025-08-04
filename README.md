@@ -41,7 +41,11 @@ A real-time multiplayer strategy game built with SvelteKit and Cloudflare infras
    npm run dev
    ```
 
-3. **View in browser:**
+3. **Start local websocket server:**
+   ```bash
+   npm run dev
+   ```
+4**View in browser:**
    Open [http://localhost:5173](http://localhost:5173)
 
 ## 🛠️ Development
