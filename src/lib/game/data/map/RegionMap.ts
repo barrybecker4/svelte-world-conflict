@@ -1,5 +1,5 @@
-import type {Region} from "$lib/game/WorldConflictGameState.ts";
-import {GRID_WIDTH, GRID_HEIGHT} from "./mapConstants.ts";
+import type { Region } from "$lib/game/WorldConflictGameState.ts";
+import { GRID_WIDTH, GRID_HEIGHT } from "./mapConstants.ts";
 
 /**
  * RegionMap class - ported from original RegionMap.gs

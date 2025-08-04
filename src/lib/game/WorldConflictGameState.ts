@@ -426,8 +426,8 @@ export class WorldConflictGameState {
         // Assign ONE home region to each player (must be a temple region)
         const assignedRegions: number[] = [];
 
-        this.state.players.forEach((player, playerIndex) => {
-            if (playerIndex < templeRegions.length) {
+        this.state.players.forEach((player) => {
+            if (templeRegions.length > assignedRegions.length) {
                 let homeRegion: Region | null = null;
 
                 if (assignedRegions.length === 0) {
@@ -439,24 +439,32 @@ export class WorldConflictGameState {
                     let bestRegion: Region | null = null;
 
                     for (const candidateRegion of templeRegions) {
+                        // Skip already assigned regions
                         if (assignedRegions.includes(candidateRegion.index)) continue;
 
+                        // Find minimum distance to any already assigned home base
                         let minDistanceToAssigned = Infinity;
                         for (const assignedIndex of assignedRegions) {
                             const assignedRegion = this.state.regions[assignedIndex];
+
+                            // Calculate Euclidean distance between candidate and assigned region
                             const distance = Math.sqrt(
                                 Math.pow(candidateRegion.x - assignedRegion.x, 2) +
                                 Math.pow(candidateRegion.y - assignedRegion.y, 2)
                             );
+
+                            // Track the closest assigned region to this candidate
                             minDistanceToAssigned = Math.min(minDistanceToAssigned, distance);
                         }
 
+                        // If this candidate is further from all assigned regions than our current best
                         if (minDistanceToAssigned > maxDistance) {
                             maxDistance = minDistanceToAssigned;
                             bestRegion = candidateRegion;
                         }
                     }
 
+                    // Use the best region found, or fallback to any unassigned temple region
                     homeRegion = bestRegion || templeRegions.find(r => !assignedRegions.includes(r.index)) || null;
                 }
 
@@ -475,10 +483,10 @@ export class WorldConflictGameState {
         });
 
         // Validation logging
-        console.log('🏁 Game initialization complete:');
-        console.log(`   📍 Players with home regions: ${Object.keys(this.state.owners).length}`);
-        console.log(`   🏛️  Total temple regions: ${Object.keys(this.state.temples).length}`);
-        console.log(`   👑 Player-owned temples: ${Object.entries(this.state.owners).filter(([regionIndex]) =>
+        console.log('Game initialization complete:');
+        console.log(`   Players with home regions: ${Object.keys(this.state.owners).length}`);
+        console.log(`   Total temple regions: ${Object.keys(this.state.temples).length}`);
+        console.log(`   Player-owned temples: ${Object.entries(this.state.owners).filter(([regionIndex]) =>
             this.state.temples[parseInt(regionIndex)]
         ).length}`);
 
@@ -488,14 +496,14 @@ export class WorldConflictGameState {
             const count = soldiers.length;
             armyDistribution[count] = (armyDistribution[count] || 0) + 1;
         });
-        console.log('   ⚔️  Army distribution:', armyDistribution);
+        console.log('   Army distribution:', armyDistribution);
 
         // Ensure no non-temple regions have armies
         this.state.regions.forEach(region => {
             if (!region.hasTemple) {
                 const armyCount = this.soldiersAtRegion(region.index).length;
                 if (armyCount > 0) {
-                    console.error(`❌ ERROR: Non-temple region ${region.index} (${region.name}) has ${armyCount} armies!`);
+                    console.error(`ERROR: Non-temple region ${region.index} (${region.name}) has ${armyCount} armies!`);
                 }
             }
         });

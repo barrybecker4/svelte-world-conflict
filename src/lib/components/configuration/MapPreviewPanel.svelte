@@ -3,7 +3,7 @@
   import Map from './Map.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
-  import type { PlayerSlot } from '$lib/game/types/PlayerSlot';
+  import type { PlayerSlot } from '$lib/game/classes/PlayerSlot';
   import type { WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
   import type { Region } from '$lib/game/WorldConflictGameState';
   import { MapGenerator } from '$lib/game/data/map/MapGenerator';

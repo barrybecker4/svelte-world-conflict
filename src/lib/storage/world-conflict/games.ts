@@ -1,6 +1,6 @@
 import type { WorldConflictKVStorage } from './kv.ts';
 import type { Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState.ts';
-import type { PlayerSlotType } from '$lib/game/types/PlayerSlot.ts';
+import type { PlayerSlotType } from '$lib/game/classes/PlayerSlot.ts';
 
 export interface WorldConflictGameRecord {
     gameId: string;
