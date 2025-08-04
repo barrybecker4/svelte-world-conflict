@@ -7,8 +7,6 @@ export class WorldConflictGameState {
 
     constructor(data: WorldConflictGameStateData) {
         this.state = { ...data };
-
-        // Ensure arrays are properly initialized
         if (!this.state.players) this.state.players = [];
         if (!this.state.regions) this.state.regions = [];
         if (!this.state.owners) this.state.owners = {};
@@ -16,8 +14,6 @@ export class WorldConflictGameState {
         if (!this.state.soldiersByRegion) this.state.soldiersByRegion = {};
         if (!this.state.cash) this.state.cash = {};
     }
-
-    // ==================== FACTORY METHODS ====================
 
     static createInitialState(gameId: string, players: Player[], regions: Region[]): WorldConflictGameState {
         const initialState: WorldConflictGameStateData = {
@@ -34,7 +30,6 @@ export class WorldConflictGameState {
             regions: [...regions]
         };
 
-        // Initialize starting positions and resources
         const gameState = new WorldConflictGameState(initialState);
         gameState.initializeStartingPositions();
 
@@ -44,13 +39,6 @@ export class WorldConflictGameState {
     static fromJSON(data: WorldConflictGameStateData): WorldConflictGameState {
         return new WorldConflictGameState(data);
     }
-
-    // Backward compatibility - same as fromJSON
-    static fromGameStateData(data: WorldConflictGameStateData): WorldConflictGameState {
-        return new WorldConflictGameState(data);
-    }
-
-    // ==================== ACCESSORS ====================
 
     get turnIndex(): number { return this.state.turnIndex; }
     get playerIndex(): number { return this.state.playerIndex; }
@@ -76,8 +64,6 @@ export class WorldConflictGameState {
     set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
     set floatingText(value: FloatingText[] | undefined) { this.state.floatingText = value; }
     set conqueredRegions(value: number[] | undefined) { this.state.conqueredRegions = value; }
-
-    // ==================== GAME LOGIC METHODS ====================
 
     owner(regionIndex: number): Player | null {
         const playerIndex = this.state.owners[regionIndex];
@@ -190,48 +176,6 @@ export class WorldConflictGameState {
     }
 
     /**
-     * Get the raw upgrade level (temple level + 1) for specified player and upgrade type
-     * This is used for checking upgrade prerequisites
-     */
-    rawUpgradeLevel(player: Player | null, upgradeTypeName: string): number {
-        if (!player) {
-            return 0;
-        }
-
-        const upgradeTypeMap: Record<string, any> = {
-            'DEFENSE': UPGRADES.EARTH,
-            'FIRE': UPGRADES.FIRE,
-            'WATER': UPGRADES.WATER,
-            'AIR': UPGRADES.AIR,
-            'EARTH': UPGRADES.EARTH,
-            'SOLDIER': UPGRADES.SOLDIER,
-            'REBUILD': UPGRADES.REBUILD
-        };
-
-        const upgradeType = upgradeTypeMap[upgradeTypeName];
-        if (!upgradeType) {
-            return 0;
-        }
-
-        let maxLevel = 0;
-
-        // Get all temples for this player
-        for (const region of this.state.regions) {
-            const temple = this.state.temples[region.index];
-
-            if (temple && this.isOwnedBy(region.index, player)) {
-                if (temple.upgradeIndex &&
-                    temple.upgradeIndex === upgradeType.index) {
-                    const level = (temple.level || 0) + 1;
-                    maxLevel = Math.max(maxLevel, level);
-                }
-            }
-        }
-
-        return maxLevel;
-    }
-
-    /**
      * Get players array (for compatibility with existing code)
      */
     getPlayers(): Player[] {
@@ -335,7 +279,6 @@ export class WorldConflictGameState {
             }
         });
 
-        // Use the extracted home base assignment utility
         const homeBaseAssignments = assignHomeBaseRegions(this.state.players, this.state.regions);
         
         // Apply the assignments to game state

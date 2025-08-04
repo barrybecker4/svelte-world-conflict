@@ -14,7 +14,7 @@ export class WebSocketNotificationHelper {
      * Send a game update notification
      */
     static async sendGameUpdate(gameState: WorldConflictGameRecord, platform: App.Platform): Promise<void> {
-        console.log(`🔔 Sending gameUpdate notification for game ${gameState.gameId}`);
+        console.log(`Sending gameUpdate notification for game ${gameState.gameId}`);
 
         const message = this.createMessage(gameState, 'gameUpdate');
         await this.sendNotification(gameState.gameId, message, platform);

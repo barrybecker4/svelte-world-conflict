@@ -101,7 +101,8 @@ export class Region {
             neighbors: [...this.neighbors],
             x: this.x,
             y: this.y,
-            hasTemple: this.hasTemple
+            hasTemple: this.hasTemple,
+            points: this.points
         });
     }
 
@@ -115,7 +116,8 @@ export class Region {
             neighbors: [...this.neighbors],
             x: this.x,
             y: this.y,
-            hasTemple: this.hasTemple
+            hasTemple: this.hasTemple,
+            points: this.points || []
         };
     }
 
