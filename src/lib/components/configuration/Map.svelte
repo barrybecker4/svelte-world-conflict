@@ -146,6 +146,47 @@
     return getRegionOwner(regionIndex) !== null && hasTemple(regionIndex);
   }
 
+  /**
+   * Check if a player can move to a specific region from any of their owned regions
+   * This determines visual feedback in the UI (like highlighting clickable regions)
+   */
+  function canPlayerMoveToRegion(player: Player, region: Region): boolean {
+    // In preview mode, no moves are allowed
+    if (effectivePreviewMode) return false;
+
+    // Player must exist
+    if (!player || !gameState) return false;
+
+    // Check if this region is owned by the current player and has armies to move
+    const isOwnedByPlayer = gameState.owners?.[region.index] === player.index;
+    const hasArmies = getArmyCount(region.index) > 1; // Need more than 1 to move (leave 1 defender)
+
+    if (isOwnedByPlayer && hasArmies) {
+      // Check if this region hasn't already moved this turn
+      const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
+      return !hasMovedThisTurn;
+    }
+
+    // If not owned by player, check if it's adjacent to any region the player can move from
+    if (!isOwnedByPlayer) {
+      // Find all regions owned by the player that can move
+      const playerOwnedRegions = regions.filter(r => {
+        const regionOwnedByPlayer = gameState.owners?.[r.index] === player.index;
+        const regionHasArmies = getArmyCount(r.index) > 1;
+        const regionHasNotMoved = !(gameState.conqueredRegions?.includes(r.index) ?? false);
+
+        return regionOwnedByPlayer && regionHasArmies && regionHasNotMoved;
+      });
+
+      // Check if any of these regions are neighbors to the target region
+      return playerOwnedRegions.some(ownedRegion =>
+        ownedRegion.neighbors.includes(region.index)
+      );
+    }
+
+    return false;
+  }
+
   function handleRegionClick(region: Region): void {
     // Don't allow clicks in preview mode
     if (effectivePreviewMode) return;

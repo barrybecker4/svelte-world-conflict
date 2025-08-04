@@ -256,12 +256,12 @@
     // Implement resign logic
   }
 
-  function handleRegionClick(regionIndex: number) {
+  function handleRegionClick(region: Region) {
     if (!isMyTurn || !moveSystem) return;
 
     moveSystem.processAction({
       type: 'SELECT_SOURCE',
-      payload: { regionIndex }
+      payload: { regionIndex: region.index }
     });
   }
 </script>
@@ -304,6 +304,7 @@
         {selectedRegion}
         onRegionClick={handleRegionClick}
         playerIndex={playerIndex}
+        currentPlayer={currentPlayer}
       />
     </div>
 
