@@ -4,7 +4,6 @@ import { Bounds } from '$lib/game/data/map/Bounds.ts';
 import { PositionSet } from '$lib/game/data/map/PositionSet.ts';
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants.ts';
 
-// Map generation interface for compatibility
 export interface MapGenerationOptions {
     size: 'Small' | 'Medium' | 'Large';
     mapWidth?: number;
@@ -16,9 +15,6 @@ export interface MapGenerationOptions {
 // For backward compatibility
 export interface GeneratedRegion extends Region {}
 
-
-
-// Map generation constants (from original GAS)
 const MIN_REGION_SIZE_MAP = { Small: 7, Medium: 4, Large: 3 };
 const MAX_REGION_SIZE_MAP = { Small: 16, Medium: 12, Large: 10 };
 const BASE_NUM_REGIONS_MAP = { Small: 3, Medium: 14, Large: 36 };
@@ -27,7 +23,6 @@ const REGIONS_PER_PLAYER_ALLOCATION_MAP = { Small: 2, Medium: 3, Large: 4 };
 // Perturb constant for consistent randomization
 let perturbConst: number | null = null;
 const PERTURB_SCALE = 0.4;
-
 
 type MapSize = 'Small' | 'Medium' | 'Large';
 

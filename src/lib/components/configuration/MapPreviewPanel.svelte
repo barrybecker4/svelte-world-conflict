@@ -1,84 +1,77 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { MapGenerator } from '$lib/game/data/map/MapGenerator';
   import Map from './Map.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
-  import type { PlayerSlot } from '$lib/game/classes/PlayerSlot';
-  import type { WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
-  import type { Region } from '$lib/game/WorldConflictGameState';
-  import { MapGenerator } from '$lib/game/data/map/MapGenerator';
+  import type { Region } from '$lib/game/classes/Region';
+  import type { WorldConflictGameStateData, Player, PlayerSlot } from '$lib/game/gameTypes';
+  import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/data/map/homeBasePlacement';
 
-  export let mapSize: string = 'Medium';
-  export let playerCount: number = 2;
+  export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
+  export let playerCount = 4;
   export let playerSlots: PlayerSlot[] = [];
 
   let previewRegions: Region[] = [];
   let previewGameState: WorldConflictGameStateData | null = null;
   let loadingPreview = false;
-  let mapGenerator = new MapGenerator(800, 600);
-  let error: string | null = null;
+  let error = '';
   let mapKey = 0; // Force re-render when map changes
 
-  $: {
-    // Regenerate map when parameters change
-    if (mapSize || playerCount) {
-      loadPreviewMap();
-    }
-  }
+  const mapGenerator = new MapGenerator();
 
   onMount(() => {
     loadPreviewMap();
   });
 
-  async function loadPreviewMap() {
-    if (loadingPreview) return;
+  $: {
+    // Regenerate preview when settings change
+    if (mapSize || playerCount) {
+      loadPreviewMap();
+    }
+  }
 
+  async function loadPreviewMap(): Promise<void> {
     loadingPreview = true;
-    error = null;
+    error = '';
+    mapKey++; // Force re-render
 
     try {
-      console.log(`Generating preview map: ${mapSize}, ${playerCount} players`);
+      console.log(`Generating ${mapSize} map for ${playerCount} players...`);
 
       // Generate new regions
-      mapGenerator = new MapGenerator(800, 600);
-
-      const generateOptions = {
+      previewRegions = mapGenerator.generateMap({
         size: mapSize,
-        playerCount: Math.max(playerCount, 2),
-        seed: Math.floor(Math.random() * 1000000),
-        timestamp: Date.now()
-      };
-      previewRegions = mapGenerator.generateMap(generateOptions);
+        playerCount: playerCount
+      });
 
-      if (!previewRegions || previewRegions.length === 0) {
-        throw new Error('Failed to generate regions');
-      }
+      console.log(`Generated ${previewRegions.length} regions, ${previewRegions.filter(r => r.hasTemple).length} with temples`);
 
-      console.log(`Generated ${previewRegions.length} regions for preview`);
-      assignSomeRegionsToPlayers();
-
-      // Force component re-render
-      mapKey++;
+      // Create preview game state with proper home base placement
+      createPreviewGameState();
 
     } catch (err) {
-      console.error('Failed to load preview map:', err);
+      console.error('Error generating preview map:', err);
       error = err instanceof Error ? err.message : 'Failed to generate map';
-      previewRegions = [];
       previewGameState = null;
     } finally {
       loadingPreview = false;
     }
   }
 
-  function assignSomeRegionsToPlayers() {
-    // Get active players from slots
-    const activePlayers = playerSlots
+  function createPreviewGameState(): void {
+    if (previewRegions.length === 0) {
+      previewGameState = null;
+      return;
+    }
+
+    // Create players from slots
+    const activePlayers: Player[] = playerSlots
       .filter(slot => slot.type !== 'Empty')
       .slice(0, playerCount)
       .map((slot, index) => ({
         index,
-        name: slot.name || slot.type === 'Human' ?
-          slot.name : `AI ${index + 1}`,
+        name: slot.type === 'Human' ? slot.name : `AI ${index + 1}`,
         color: slot.color,
         isAI: slot.type === 'AI'
       }));
@@ -88,6 +81,10 @@
       return;
     }
 
+    // Use distance-based home base assignment
+    const homeBaseAssignments = assignHomeBaseRegions(activePlayers, previewRegions);
+    const owners = createOwnerAssignments(homeBaseAssignments);
+
     // Create minimal game state for preview
     previewGameState = {
       id: 0,
@@ -95,7 +92,7 @@
       turnIndex: 1,
       playerIndex: 0,
       movesRemaining: 3,
-      owners: {},
+      owners,
       temples: {},
       soldiersByRegion: {},
       cash: {},
@@ -103,41 +100,47 @@
       regions: previewRegions
     };
 
-    // Find temple regions (home bases)
-    const templeRegions = previewRegions.filter(region => region.hasTemple);
+    // Set up temples and soldiers for assigned home bases
+    homeBaseAssignments.forEach(assignment => {
+      const regionIndex = assignment.regionIndex;
 
-    // ONLY assign temple regions to players as home bases
-    // Leave all other regions unowned (neutral/gray)
-    activePlayers.forEach((player, playerIndex) => {
-      if (playerIndex < templeRegions.length) {
-        const homeRegion = templeRegions[playerIndex];
+      // Add temple structure
+      previewGameState!.temples[regionIndex] = {
+        regionIndex,
+        level: 1
+      };
 
-        // Assign ownership to this player's home base only
-        previewGameState.owners[homeRegion.index] = playerIndex;
+      // Add soldiers for visual interest
+      previewGameState!.soldiersByRegion[regionIndex] = [
+        { i: assignment.playerIndex * 10 + 1 },
+        { i: assignment.playerIndex * 10 + 2 },
+        { i: assignment.playerIndex * 10 + 3 }
+      ];
+    });
 
-        // Add some soldiers to the home base
-        previewGameState.soldiersByRegion[homeRegion.index] = [
-          { i: playerIndex * 10 + 1 },
-          { i: playerIndex * 10 + 2 },
-          { i: playerIndex * 10 + 3 }
-        ];
-
-        // Add temple to the home base
-        previewGameState.temples[homeRegion.index] = {
-          regionIndex: homeRegion.index,
-          level: 1
+    // Add temples to remaining temple regions (neutral)
+    previewRegions.forEach(region => {
+      if (region.hasTemple && !previewGameState!.temples[region.index]) {
+        previewGameState!.temples[region.index] = {
+          regionIndex: region.index,
+          level: 0
         };
+
+        // Add some neutral soldiers
+        previewGameState!.soldiersByRegion[region.index] = [
+          { i: region.index * 10 + 1 },
+          { i: region.index * 10 + 2 }
+        ];
       }
     });
 
     // Initialize player cash
     activePlayers.forEach(player => {
-      previewGameState.cash[player.index] = 100;
+      previewGameState!.cash[player.index] = 100;
     });
 
-    console.log('Preview game state created:', previewGameState);
-    console.log('Temple regions assigned as home bases:', templeRegions.length);
-    console.log('Owned regions:', Object.keys(previewGameState.owners));
+    console.log('Preview game state created with distance-based home bases:', previewGameState);
+    console.log('Home base assignments:', homeBaseAssignments.map(a => `Player ${a.playerIndex} -> Region ${a.regionIndex}`));
   }
 
   export function refreshPreview() {

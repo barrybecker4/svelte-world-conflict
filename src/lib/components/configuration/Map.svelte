@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
+  import type { Region, Player, WorldConflictGameStateData } from '$lib/game/gameTypes';
   import Temple from './Temple.svelte';
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
 

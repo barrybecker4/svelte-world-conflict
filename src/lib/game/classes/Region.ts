@@ -8,6 +8,7 @@ export interface RegionData {
     x: number;
     y: number;
     hasTemple?: boolean;
+    points: Array<{ x: number; y: number }> | undefined; // Optional points for visual representation
 }
 
 export class Region {
@@ -25,6 +26,7 @@ export class Region {
         this.x = data.x;
         this.y = data.y;
         this.hasTemple = data.hasTemple || false;
+        this.points = data.points;
     }
 
     /**
@@ -171,16 +173,6 @@ export class Region {
      */
     isCentralRegion(averageNeighbors: number = 4): boolean {
         return this.neighbors.length > averageNeighbors;
-    }
-
-    /**
-     * Get Euclidean distance to another region
-     * This is the primary method used for home base placement
-     */
-    getDistanceTo(other: Region): number {
-        const dx = this.x - other.x;
-        const dy = this.y - other.y;
-        return Math.sqrt(dx * dx + dy * dy);
     }
 
     /**

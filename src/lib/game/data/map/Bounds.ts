@@ -1,6 +1,6 @@
-import type { Region } from "$lib/game/WorldConflictGameState.ts";
-import { RegionMap } from "$lib/game/data/map/RegionMap.ts";
-import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants.ts";
+import { Region } from "$lib/game/classes/Region";
+import { RegionMap } from "$lib/game/data/map/RegionMap";
+import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants";
 
 // Bitmap for overlapping parts
 const TOP_OVERLAP = 1;
@@ -129,7 +129,7 @@ export class Bounds {
         const pixelX = Math.round((left + width / 2) * (mapWidth / GRID_WIDTH));
         const pixelY = Math.round((top + height / 2) * (mapHeight / GRID_HEIGHT));
 
-        return {
+        return Region.fromJSON({
             index,
             name: `Region ${index + 1}`,
             x: pixelX,
@@ -137,7 +137,7 @@ export class Bounds {
             neighbors: [],
             hasTemple: Math.random() < 0.4, // 40% chance
             points: pixelPoints
-        };
+        });
     }
 
     /**
