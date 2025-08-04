@@ -1,5 +1,4 @@
-<!-- src/lib/components/configuration/PlayerConfiguration.svelte -->
-<script>
+<script lang="ts">
   import { createEventDispatcher } from 'svelte';
 
   const dispatch = createEventDispatcher();

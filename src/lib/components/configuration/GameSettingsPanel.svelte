@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   export let gameSettings;
 
   const difficultyOptions = ['Nice', 'Normal', 'Hard'];

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import Button from '$lib/components/ui/Button.svelte';

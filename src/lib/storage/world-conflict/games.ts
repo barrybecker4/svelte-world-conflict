@@ -1,5 +1,6 @@
 import type { WorldConflictKVStorage } from './kv.ts';
 import type { Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState.ts';
+import type { PlayerSlotType } from '$lib/game/types/PlayerSlot.ts';
 
 export interface WorldConflictGameRecord {
     gameId: string;
@@ -15,7 +16,7 @@ export interface WorldConflictGameRecord {
     pendingConfiguration?: {
         playerSlots: Array<{
             index: number;
-            type: 'Off' | 'Set' | 'Open' | 'AI';
+            type: PlayerSlotType;
             name: string;
             customName?: string;
         }>;

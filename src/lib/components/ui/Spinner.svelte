@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   export let size = 'md'; // xs, sm, md, lg, xl
   export let color = 'primary'; // primary, blue, teal, white
   export let text = '';
