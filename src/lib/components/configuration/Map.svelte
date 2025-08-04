@@ -61,6 +61,35 @@
     return `M ${region.x + radius},${region.y} A ${radius},${radius} 0 1,1 ${region.x + radius - 0.1},${region.y} Z`;
   }
 
+  /**
+   * Create a lighter version of a hex color for selection borders
+   */
+  function getLighterColor(hexColor: string): string {
+    // Remove # if present
+    const color = hexColor.replace('#', '');
+
+    // Convert hex to RGB
+    const r = parseInt(color.slice(0, 2), 16);
+    const g = parseInt(color.slice(2, 4), 16);
+    const b = parseInt(color.slice(4, 6), 16);
+
+    // Make it lighter by adding to each component (but not too much to avoid white)
+    const lighterR = Math.min(255, Math.floor(r + (255 - r) * 0.4));
+    const lighterG = Math.min(255, Math.floor(g + (255 - g) * 0.4));
+    const lighterB = Math.min(255, Math.floor(b + (255 - b) * 0.4));
+
+    // Convert back to hex
+    return `#${lighterR.toString(16).padStart(2, '0')}${lighterG.toString(16).padStart(2, '0')}${lighterB.toString(16).padStart(2, '0')}`;
+  }
+
+  /**
+   * Get the selection border color for a region
+   */
+  function getSelectionBorderColor(regionIndex: number): string {
+    const regionColor = getRegionColor(regionIndex);
+    return getLighterColor(regionColor);
+  }
+
   function getRegionOwner(regionIndex: number): Player | null {
     if (!gameState?.owners || gameState.owners[regionIndex] === undefined || gameState.owners[regionIndex] === -1) {
       return null;
@@ -169,12 +198,12 @@
       {@const isHomeBase = currentPlayer && region.index === currentPlayer.homeRegion}
       {@const armies = getArmyCount(region.index)}
 
-      <!-- Region fill without shadows -->
+      <!-- Region fill with dynamic border colors -->
       <path
         d={regionPath}
         fill={regionColor}
-        stroke="#1e293b"
-        stroke-width="1"
+        stroke={selected ? getSelectionBorderColor(region.index) : "#1e293b"}
+        stroke-width={selected ? "4" : "1"}
         stroke-linejoin="round"
         class="region-path"
         class:selected
@@ -187,7 +216,6 @@
         on:keydown={(e) => handleKeyDown(e, region)}
       />
     {/each}
-
 
     <!-- Second pass: render shadow layer that only affects ocean areas -->
     {#each regions as region (region.index)}
@@ -223,7 +251,7 @@
             upgradeLevel={temple?.level || 0}
             isPlayerOwned={isOccupied}
             regionIndex={region.index}
-          />F
+          />
         {/if}
 
         <!-- Army count display (below temple if present, otherwise at center) -->
@@ -297,15 +325,14 @@
     filter: brightness(1.45);
   }
 
+  /* Remove browser focus outline and use our dynamic border system */
   .region-path:focus:not(.preview-mode) {
     outline: none;
-    stroke: #fbbf24;
-    stroke-width: 3;
   }
 
+  /* Remove the static .selected styling since we use dynamic stroke colors */
   .region-path.selected {
-    stroke: #fbbf24;
-    stroke-width: 3;
+    /* Border is now handled dynamically in the SVG stroke attribute */
   }
 
   .region-path.can-move {
@@ -325,6 +352,7 @@
     pointer-events: none;
   }
 
+  /* Army count styling */
   .region-content text {
     font-family: 'Arial', sans-serif;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
@@ -332,10 +360,6 @@
 
   .region-content circle {
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
-  }
-
-  .region-path.home-base {
-      filter: brightness(1.3);
   }
 
   /* Responsive adjustments */
