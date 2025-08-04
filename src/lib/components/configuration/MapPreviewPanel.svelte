@@ -207,7 +207,7 @@
     min-height: 400px;
     border-radius: 8px;
     overflow: hidden;
-    background: #1e3a8a;
+    background: #ee22ff;
   }
 
   .empty-state {

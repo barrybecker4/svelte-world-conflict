@@ -11,37 +11,36 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   {
     index: 0,
     defaultName: 'Amber',
-    colorStart: '#e6bf2d',  // Vivid yellow-gold
-    colorEnd: '#daab1a',    // Darker gold
-    highlightStart: '#f2db77',
-    highlightEnd: '#dfb020',
+    colorStart: '#ffcc46',  // Muted dark goldenrod (was #e6bf2d)
+    colorEnd: '#daab1a',    // Darker muted gold (was #daab1a)
+    highlightStart: '#daa520',
+    highlightEnd: '#b8860b',
   },
   {
     index: 1,
     defaultName: 'Crimson',
-    colorStart: '#dc2626', // Vivid red
-    colorEnd: '#991b1b', // Darker red
-    highlightStart: '#ffaaaa',
-    highlightEnd: '#994444',
+    colorStart: '#bf4f42', // Muted red (was #dc2626)
+    colorEnd: '#7a2727',   // Darker muted red (was #991b1b)
+    highlightStart: '#cd5c5c',
+    highlightEnd: '#a83232',
   },
   {
     index: 2,
     defaultName: 'Lavender',
-    colorStart: '#9A3BF2', // Vivid purple
-    colorEnd: '#7B68EE', // Darker purple
-    highlightStart: '#ffaaff',
-    highlightEnd: '#775599',
+    colorStart: '#8b61ba', // Muted purple (was #9A3BF2)
+    colorEnd: '#5d4e75',   // Darker muted purple (was #7B68EE)
+    highlightStart: '#9370db',
+    highlightEnd: '#7b68aa',
   },
   {
     index: 3,
     defaultName: 'Emerald',
-    colorStart: '#059669', // Vivid green
-    colorEnd: '#047857', // Darker green
-    highlightStart: '#bbffbb',
-    highlightEnd: '#44aa44',
+    colorStart: '#2e8b57', // Muted sea green (was #059669)
+    colorEnd: '#1e5631',   // Darker muted green (was #047857)
+    highlightStart: '#3cb371',
+    highlightEnd: '#2e8b57',
   }
 ];
-
 
 // Helper functions
 export function getPlayerConfig(playerIndex: number): PlayerColorConfig {

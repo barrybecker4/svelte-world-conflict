@@ -24,12 +24,19 @@
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
   $: effectivePreviewMode = isPreviewMode || detectedPreviewMode;
 
+  // Additional check for preview mode based on gameState
+  $: isCreationMode = gameState?.gameId === 'preview' || currentPlayer === null;
+
   // Debug logging when regions change
   $: {
     if (regions.length > 0) {
       console.log('Map received regions:', regions.length);
       console.log('Preview mode:', effectivePreviewMode);
+      console.log('Creation mode:', isCreationMode);
+      console.log('Current player:', currentPlayer);
+      console.log('Selected region:', selectedRegion);
       if (gameState) {
+        console.log('Game state ID:', gameState.gameId);
         console.log('Game state players:', gameState.players?.length || 0);
         console.log('Owned regions:', Object.keys(gameState.owners || {}).length);
       }
@@ -136,11 +143,11 @@
     class="map-svg"
     preserveAspectRatio="xMidYMid meet"
   >
-    <!-- Background -->
+    <!-- Background ocean -->
     <rect
       width="800"
       height="600"
-      fill="#1e3a8a"
+      fill="var(--map-ocean-color)"
     />
 
     <!-- Regions using pre-calculated border points -->
@@ -166,40 +173,13 @@
         class:can-move={canMove}
         class:home-base={isHomeBase}
         class:preview-mode={effectivePreviewMode}
+        style="filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.6));"
         role="button"
         tabindex={effectivePreviewMode ? -1 : 0}
         aria-label="Region {region.index + 1} - {armies} armies"
         on:click={() => handleRegionClick(region)}
         on:keydown={(e) => handleKeyDown(e, region)}
       />
-
-      <!-- Selection highlight -->
-      {#if selected}
-        <path
-          d={regionPath}
-          fill="none"
-          stroke="#fbbf24"
-          stroke-width="3"
-          stroke-dasharray="8,4"
-          stroke-linejoin="round"
-          class="selection-highlight"
-          pointer-events="none"
-        />
-      {/if}
-
-      <!-- Home base highlight -->
-      {#if isHomeBase && effectivePreviewMode}
-        <path
-          d={regionPath}
-          fill="none"
-          stroke="#10b981"
-          stroke-width="2"
-          stroke-dasharray="6,3"
-          stroke-linejoin="round"
-          class="home-base-highlight"
-          pointer-events="none"
-        />
-      {/if}
     {/each}
 
     <!-- Region content (centers, armies, etc.) -->
@@ -263,11 +243,12 @@
 
 <style>
   .game-map {
+    --map-ocean-color: #7fb2e3; /* Define ocean color once as CSS custom property */
     width: 100%;
     height: 100%;
     position: relative;
     overflow: hidden;
-    background: #1e3a8a;
+    background: var(--map-ocean-color);
     border-radius: 8px;
   }
 
@@ -287,7 +268,7 @@
 
   .region-path:hover:not(.preview-mode) {
     stroke-width: 2;
-    filter: brightness(1.15);
+    filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.6)) brightness(1.15);
   }
 
   .region-path:focus:not(.preview-mode) {
@@ -311,17 +292,7 @@
   }
 
   .region-path.home-base {
-    filter: brightness(1.1);
-  }
-
-  .selection-highlight {
-    pointer-events: none;
-    animation: dash 2s linear infinite;
-  }
-
-  .home-base-highlight {
-    pointer-events: none;
-    animation: dash 3s linear infinite;
+    filter: drop-shadow(3px 3px 4px rgba(0, 0, 0, 0.6)) brightness(1.1);
   }
 
   .region-content {
@@ -336,12 +307,6 @@
 
   .region-content circle {
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
-  }
-
-  @keyframes dash {
-    to {
-      stroke-dashoffset: -24;
-    }
   }
 
   /* Responsive adjustments */
