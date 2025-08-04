@@ -341,6 +341,10 @@
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
   }
 
+  .region-path.home-base {
+      filter: brightness(1.3);
+  }
+
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .game-map {

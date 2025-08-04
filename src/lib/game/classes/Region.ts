@@ -172,4 +172,39 @@ export class Region {
     isCentralRegion(averageNeighbors: number = 4): boolean {
         return this.neighbors.length > averageNeighbors;
     }
+
+    /**
+     * Get Euclidean distance to another region
+     * This is the primary method used for home base placement
+     */
+    getDistanceTo(other: Region): number {
+        const dx = this.x - other.x;
+        const dy = this.y - other.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Get Manhattan distance to another region (alternative distance metric)
+     */
+    getManhattanDistanceTo(other: Region): number {
+        return Math.abs(this.x - other.x) + Math.abs(this.y - other.y);
+    }
+
+    /**
+     * Check if a point is within a certain distance of this region
+     * Useful for proximity checks
+     */
+    isWithinDistance(x: number, y: number, maxDistance: number): boolean {
+        const dx = this.x - x;
+        const dy = this.y - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= maxDistance;
+    }
+
+    /**
+     * Check if this region can support a temple (and thus be a home base)
+     */
+    canHaveTemple(): boolean {
+        return this.hasTemple;
+    }
 }
