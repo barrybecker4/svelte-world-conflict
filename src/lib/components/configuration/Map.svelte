@@ -106,7 +106,7 @@
     return '#6b7280'; // Gray for unowned
   }
 
-  function getArmyCount(regionIndex: number): number {
+  function getSoldierCount(regionIndex: number): number {
     // The game state uses soldiersByRegion, not armies
     if (!gameState?.soldiersByRegion?.[regionIndex]) return 0;
     return gameState.soldiersByRegion[regionIndex].length;
@@ -138,7 +138,7 @@
   function canMoveFrom(regionIndex: number): boolean {
     // In preview mode, no regions are moveable
     if (effectivePreviewMode) return false;
-    return isOwnedByCurrentPlayer(regionIndex) && getArmyCount(regionIndex) > 0;
+    return isOwnedByCurrentPlayer(regionIndex) && getSoldierCount(regionIndex) > 0;
   }
 
   function isPlayerHomeBase(regionIndex: number): boolean {
@@ -159,7 +159,7 @@
 
     // Check if this region is owned by the current player and has armies to move
     const isOwnedByPlayer = gameState.owners?.[region.index] === player.index;
-    const hasArmies = getArmyCount(region.index) > 1; // Need more than 1 to move (leave 1 defender)
+    const hasArmies = getSoldierCount(region.index) > 1; // Need more than 1 to move (leave 1 defender)
 
     if (isOwnedByPlayer && hasArmies) {
       // Check if this region hasn't already moved this turn
@@ -172,7 +172,7 @@
       // Find all regions owned by the player that can move
       const playerOwnedRegions = regions.filter(r => {
         const regionOwnedByPlayer = gameState.owners?.[r.index] === player.index;
-        const regionHasArmies = getArmyCount(r.index) > 1;
+        const regionHasArmies = getSoldierCount(r.index) > 1;
         const regionHasNotMoved = !(gameState.conqueredRegions?.includes(r.index) ?? false);
 
         return regionOwnedByPlayer && regionHasArmies && regionHasNotMoved;
@@ -237,7 +237,7 @@
       {@const selected = selectedRegion?.index === region.index}
       {@const canMove = currentPlayer && canPlayerMoveToRegion(currentPlayer, region)}
       {@const isHomeBase = currentPlayer && region.index === currentPlayer.homeRegion}
-      {@const armies = getArmyCount(region.index)}
+      {@const armies = getSoldierCount(region.index)}
 
       <!-- Region fill with dynamic border colors -->
       <path
@@ -280,7 +280,7 @@
     <!-- Region content (centers, armies, etc.) -->
     {#each regions as region (region.index)}
       {@const isOccupied = getRegionOwner(region.index) !== null}
-      {@const armies = getArmyCount(region.index)}
+      {@const armies = getSoldierCount(region.index)}
       {@const temple = gameState?.temples?.[region.index]}
 
       <g class="region-content">

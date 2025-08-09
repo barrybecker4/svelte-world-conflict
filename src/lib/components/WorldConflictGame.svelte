@@ -184,12 +184,17 @@
   function handleMoveStateChange(newState: MoveState) {
     moveState = { ...newState };
 
-    if (newState.mode === 'ADJUST_SOLDIERS') {
+    // Show soldier selection modal when we need to select soldiers
+    if (newState.mode === 'ADJUST_SOLDIERS' && newState.targetRegion !== null) {
       soldierSelectionData = {
         maxSoldiers: newState.maxSoldiers,
         currentSelection: newState.selectedSoldierCount
       };
       showSoldierSelection = true;
+    } else {
+      // Hide modal if not in soldier selection mode
+      showSoldierSelection = false;
+      soldierSelectionData = null;
     }
   }
 
@@ -223,12 +228,21 @@
 
   function handleSoldierSelection(count: number) {
     if (moveSystem) {
+      // Update the soldier count
       moveSystem.processAction({
         type: 'ADJUST_SOLDIERS',
         payload: { soldierCount: count }
       });
+
+      // After soldier selection, if we have a target, execute the move
+      const currentState = moveSystem.getState();
+      if (currentState.targetRegion !== null) {
+        // Execute the move immediately since we have both source, target, and soldier count
+        moveSystem.processAction({ type: 'CONFIRM_MOVE' });
+      }
     }
     showSoldierSelection = false;
+    soldierSelectionData = null;
   }
 
   // Game action handlers

@@ -113,10 +113,10 @@ export class MoveSystem {
       case 'ADJUST_SOLDIERS':
         // Clicking the same region opens soldier adjustment
         if (regionIndex === this.state.sourceRegion) {
-          // This would trigger a modal/popup for soldier selection
+          // Trigger soldier selection modal - this should be handled by the UI
           this.notifyNeedsSoldierSelection();
         } else {
-          // Clicking different region = target selection
+          // Clicking different region = set target and wait for soldier confirmation
           await this.processAction({
             type: 'SELECT_TARGET',
             payload: { regionIndex }
@@ -125,6 +125,7 @@ export class MoveSystem {
         break;
 
       case 'SELECT_TARGET':
+        // In this mode, we're waiting for target selection
         await this.processAction({
           type: 'SELECT_TARGET',
           payload: { regionIndex }
@@ -159,8 +160,8 @@ export class MoveSystem {
     }
 
     // Validate that region has armies to move
-    const armyCount = this.getArmyCountAtRegion(regionIndex);
-    if (armyCount <= 1) {
+    const soldierCount = this.getSoldierCountAtRegion(regionIndex);
+    if (soldierCount <= 1) {
       console.warn('Region must have more than 1 army to move');
       return;
     }
@@ -172,8 +173,8 @@ export class MoveSystem {
     }
 
     this.state.sourceRegion = regionIndex;
-    this.state.maxSoldiers = Math.max(1, armyCount);
-    this.state.selectedSoldierCount = Math.min(this.state.maxSoldiers, armyCount - 1);
+    this.state.maxSoldiers = Math.max(1, soldierCount);
+    this.state.selectedSoldierCount = Math.min(this.state.maxSoldiers, Math.floor(soldierCount / 2));
     this.state.mode = 'ADJUST_SOLDIERS';
     this.state.isMoving = true;
   }
@@ -182,27 +183,41 @@ export class MoveSystem {
     if (soldierCount === undefined) return;
 
     this.state.selectedSoldierCount = Math.max(1, Math.min(soldierCount, this.state.maxSoldiers));
+
+    // After soldier adjustment, move to target selection mode
+    this.state.mode = 'SELECT_TARGET';
   }
 
   private async handleTargetSelection(regionIndex?: number): Promise<void> {
     if (regionIndex === undefined || this.state.sourceRegion === null) return;
 
-    // Validate target is adjacent
-    if (!this.areRegionsAdjacent(this.state.sourceRegion, regionIndex)) {
-      console.warn('Target region must be adjacent to source');
+    // If we're in ADJUST_SOLDIERS mode and clicking a different region, set it as target
+    if (this.state.mode === 'ADJUST_SOLDIERS') {
+      // Validate target is adjacent
+      if (!this.areRegionsAdjacent(this.state.sourceRegion, regionIndex)) {
+        console.warn('Target region must be adjacent to source');
+        return;
+      }
+
+      // Set target and trigger soldier selection
+      this.state.targetRegion = regionIndex;
+      this.notifyNeedsSoldierSelection();
       return;
     }
 
-    // Same region clicked = confirm soldier count and proceed
-    if (regionIndex === this.state.sourceRegion) {
-      this.state.mode = 'SELECT_TARGET';
-      return;
+    // If we're in SELECT_TARGET mode, execute the move
+    if (this.state.mode === 'SELECT_TARGET') {
+      // Validate target is adjacent
+      if (!this.areRegionsAdjacent(this.state.sourceRegion, regionIndex)) {
+        console.warn('Target region must be adjacent to source');
+        return;
+      }
+
+      this.state.targetRegion = regionIndex;
+
+      // Execute the move immediately
+      await this.executeMove();
     }
-
-    this.state.targetRegion = regionIndex;
-
-    // Execute the move
-    await this.executeMove();
   }
 
   private handleCancel(): void {
@@ -225,11 +240,24 @@ export class MoveSystem {
   private async executeMove(): Promise<void> {
     if (this.state.sourceRegion === null ||
         this.state.targetRegion === null ||
+        this.state.selectedSoldierCount <= 0 ||
         !this.onMoveComplete) {
+      console.warn('Cannot execute move: invalid state', {
+        sourceRegion: this.state.sourceRegion,
+        targetRegion: this.state.targetRegion,
+        selectedSoldierCount: this.state.selectedSoldierCount,
+        hasCallback: !!this.onMoveComplete
+      });
       return;
     }
 
     try {
+      console.log('Executing move:', {
+        from: this.state.sourceRegion,
+        to: this.state.targetRegion,
+        soldiers: this.state.selectedSoldierCount
+      });
+
       await this.onMoveComplete(
         this.state.sourceRegion,
         this.state.targetRegion,
@@ -251,7 +279,7 @@ export class MoveSystem {
     return this.gameState?.owners?.[regionIndex] === currentPlayerIndex;
   }
 
-  private getArmyCountAtRegion(regionIndex: number): number {
+  private getSoldierCountAtRegion(regionIndex: number): number {
     const soldiers = this.gameState?.soldiersByRegion?.[regionIndex];
     return soldiers ? soldiers.length : 0;
   }
@@ -267,10 +295,10 @@ export class MoveSystem {
   }
 
   private notifyNeedsSoldierSelection(): void {
-    // This would trigger a UI component to show soldier selection
-    // For now, just set a default selection
-    if (this.state.maxSoldiers > 1) {
-      this.state.selectedSoldierCount = Math.floor(this.state.maxSoldiers / 2);
+    // Trigger the soldier selection modal through state change
+    // The UI component will detect this mode and show the modal
+    if (this.onStateChange) {
+      this.onStateChange(this.state);
     }
   }
 
@@ -280,13 +308,15 @@ export class MoveSystem {
       case 'IDLE':
       case 'SELECT_SOURCE':
         return this.isPlayerRegion(regionIndex) &&
-               this.getArmyCountAtRegion(regionIndex) > 1 &&
+               this.getSoldierCountAtRegion(regionIndex) > 1 &&
                !this.hasRegionMovedThisTurn(regionIndex);
 
       case 'ADJUST_SOLDIERS':
-      case 'SELECT_TARGET':
         return regionIndex === this.state.sourceRegion ||
                this.areRegionsAdjacent(this.state.sourceRegion!, regionIndex);
+
+      case 'SELECT_TARGET':
+        return this.areRegionsAdjacent(this.state.sourceRegion!, regionIndex);
 
       default:
         return false;

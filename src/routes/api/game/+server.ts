@@ -15,14 +15,57 @@ interface QuitGameRequest {
     reason?: 'RESIGN' | 'TIMEOUT' | 'DISCONNECT';
 }
 
-/**
- * Helper function to safely get error message
- */
 function getErrorMessage(error: unknown): string {
     if (error instanceof Error) {
         return error.message;
     }
     return String(error);
+}
+
+async function getGame(gameId: string, platform: App.Platform): Promise<WorldConflictGameRecord | null> {
+    const kv = new WorldConflictKVStorage(platform);
+    const gameStorage = new WorldConflictGameStorage(kv);
+    return await gameStorage.getGame(gameId);
+}
+
+function getResponse(game: WorldConflictGameRecord) {
+    console.log(`Loading game ${game.gameId}:`, {
+        status: game.status,
+        players: game.players?.length,
+        hasWorldConflictState: !!game.worldConflictState,
+        hasGameType: !!game.gameType,
+        worldConflictStateKeys: game.worldConflictState ? Object.keys(game.worldConflictState) : []
+    });
+
+    const response = {
+        gameId: game.gameId,
+        status: game.status || 'ACTIVE',
+        players: game.players || [],
+        worldConflictState: game.worldConflictState || {},
+        createdAt: game.createdAt || Date.now(),
+        lastMoveAt: game.lastMoveAt || Date.now(),
+        currentPlayerIndex: game.currentPlayerIndex || 0,
+        gameType: game.gameType || 'AI' // Default to AI if not specified
+    };
+
+    if (!response.worldConflictState.regions) {
+         console.error(`❌ Game ${gameId} missing regions in worldConflictState`);
+         return json({ error: 'Game data is corrupted - missing regions' }, { status: 500 });
+    }
+
+     if (!response.worldConflictState.players) {
+         console.error(`❌ Game ${gameId} missing players in worldConflictState`);
+         return json({ error: 'Game data is corrupted - missing players' }, { status: 500 });
+     }
+
+     console.log(`✅ Returning game data for ${gameId}:`, {
+         regions: response.worldConflictState.regions?.length,
+         players: response.worldConflictState.players?.length,
+         owners: Object.keys(response.worldConflictState.owners || {}).length,
+         soldiers: Object.keys(response.worldConflictState.soldiersByRegion || {}).length
+     });
+
+    return response;
 }
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -34,52 +77,12 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             return json({ error: 'Game ID is required' }, { status: 400 });
         }
 
-        const kv = new WorldConflictKVStorage(platform!);
-        const gameStorage = new WorldConflictGameStorage(kv);
-
-        const game = await gameStorage.getGame(gameId);
+        const game = await getGame(gameId, platform);
         if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        console.log(`Loading game ${gameId}:`, {
-            status: game.status,
-            players: game.players?.length,
-            hasWorldConflictState: !!game.worldConflictState,
-            hasGameType: !!game.gameType,
-            worldConflictStateKeys: game.worldConflictState ? Object.keys(game.worldConflictState) : []
-        });
-
-        // Ensure all required fields exist with proper defaults
-        const response = {
-            gameId: game.gameId,
-            status: game.status || 'ACTIVE',
-            players: game.players || [],
-            worldConflictState: game.worldConflictState || {},
-            createdAt: game.createdAt || Date.now(),
-            lastMoveAt: game.lastMoveAt || Date.now(),
-            currentPlayerIndex: game.currentPlayerIndex || 0,
-            gameType: game.gameType || 'AI' // Default to AI if not specified
-        };
-
-        // Validate that worldConflictState has the basic structure
-        if (!response.worldConflictState.regions) {
-            console.error(`❌ Game ${gameId} missing regions in worldConflictState`);
-            return json({ error: 'Game data is corrupted - missing regions' }, { status: 500 });
-        }
-
-        if (!response.worldConflictState.players) {
-            console.error(`❌ Game ${gameId} missing players in worldConflictState`);
-            return json({ error: 'Game data is corrupted - missing players' }, { status: 500 });
-        }
-
-        console.log(`✅ Returning game data for ${gameId}:`, {
-            regions: response.worldConflictState.regions?.length,
-            players: response.worldConflictState.players?.length,
-            owners: Object.keys(response.worldConflictState.owners || {}).length,
-            soldiers: Object.keys(response.worldConflictState.soldiersByRegion || {}).length
-        });
-
+        const response = getResponse(game);
         return json(response);
 
     } catch (error) {
@@ -101,10 +104,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Player ID is required' }, { status: 400 });
         }
 
-        const kv = new WorldConflictKVStorage(platform!.env.WORLD_CONFLICT_KV);
-        const gameStorage = new WorldConflictGameStorage(kv);
-
-        const game = await gameStorage.getGame(gameId);
+        const game = await getGame(gameId, platform!);
         if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
@@ -120,7 +120,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         // Notify other players via WebSocket
         await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
-
         console.log(`Player ${playerId} quit game ${gameId} (${reason})`);
 
         return json({
