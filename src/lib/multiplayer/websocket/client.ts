@@ -201,7 +201,7 @@ export class GameWebSocketClient {
             if (this.gameId) {
                 this.reconnectAttempts++;
                 this.connect(this.gameId).catch(error => {
-                    console.error('❌ Reconnection failed:', error);
+                    console.error('Reconnection failed:', error);
                 });
             }
         }, delay);
@@ -216,18 +216,22 @@ export class GameWebSocketClient {
         }
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-
-        // Check if we're running locally
-        const isLocal = window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
         const host = isLocal
-            ? 'localhost:8787'  // Local WebSocket worker
-            : 'svelte-world-conflict-websocket.YOUR_USERNAME.workers.dev'; // Update with your worker URL
+            ? 'localhost:8787'
+            : 'svelte-world-conflict-websocket.YOUR_USERNAME.workers.dev';
 
         const wsUrl = `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
 
-        console.log(`🌐 WebSocket URL (${isLocal ? 'LOCAL' : 'DEPLOYED'}):`, wsUrl);
+        console.log(`🌐 Attempting WebSocket connection:`, {
+            protocol,
+            isLocal,
+            host,
+            wsUrl,
+            gameId
+        });
+
         return wsUrl;
     }
 

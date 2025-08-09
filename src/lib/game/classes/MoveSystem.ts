@@ -133,6 +133,22 @@ export class MoveSystem {
     }
   }
 
+  /**
+   * Update the game state without resetting the move system state
+   * This is called when receiving WebSocket updates
+   */
+  updateGameState(newGameState: any): void {
+      this.gameState = newGameState;
+
+      // Update available moves from the new game state
+      this.state.availableMoves = newGameState?.movesRemaining ?? this.state.availableMoves;
+
+      // Notify of state change to update UI
+      if (this.onStateChange) {
+          this.onStateChange(this.state);
+      }
+  }
+
   private async handleSourceSelection(regionIndex?: number): Promise<void> {
     if (regionIndex === undefined) return;
 
@@ -156,7 +172,7 @@ export class MoveSystem {
     }
 
     this.state.sourceRegion = regionIndex;
-    this.state.maxSoldiers = Math.max(1, armyCount - 1); // Always leave 1 defender
+    this.state.maxSoldiers = Math.max(1, armyCount);
     this.state.selectedSoldierCount = Math.min(this.state.maxSoldiers, armyCount - 1);
     this.state.mode = 'ADJUST_SOLDIERS';
     this.state.isMoving = true;

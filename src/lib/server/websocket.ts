@@ -16,7 +16,7 @@ export async function notifyGameUpdate(
     data: any
 ): Promise<void> {
     try {
-        const websocketUrl = getWebSocketNotifyUrl();
+        const websocketUrl = `${getWebSocketNotifyUrl()}?gameId=${encodeURIComponent(gameId)}`;
 
         const notification: GameUpdateNotification = {
             gameId,

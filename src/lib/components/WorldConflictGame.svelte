@@ -51,6 +51,13 @@
   $: movesRemaining = $gameState?.movesRemaining ?? 3;
   $: moveMode = moveState.mode;
   $: selectedRegion = moveState.sourceRegion;
+  $: console.log('WebSocket status:', {
+    wsClient: !!wsClient,
+    isConnected: wsClient?.isConnected(),
+    gameId,
+    playerId,
+    playerIndex
+  });
 
   let wsClient: GameWebSocketClient | null = null;
 
@@ -87,20 +94,29 @@
     try {
       wsClient = new GameWebSocketClient();
 
-      // Set up event handlers
       wsClient.onGameUpdate((gameData) => {
-        console.log('🎮 Received game update via WebSocket');
-        gameState.set(gameData.worldConflictState);
-        regions = gameData.worldConflictState.regions || [];
-        players = gameData.worldConflictState.players || [];
+        console.log('🎮 Received game update via WebSocket:', gameData);
 
-        // Update move system if it exists
-        if (moveSystem && $gameState) {
-          moveSystem = new MoveSystem(
-            $gameState,
-            handleMoveComplete,
-            handleMoveStateChange
-          );
+        const worldConflictState = gameData.worldConflictState;
+        if (worldConflictState) {
+          // Update the reactive game state
+          gameState.set(worldConflictState);
+          regions = worldConflictState.regions || [];
+          players = worldConflictState.players || [];
+
+          // Update the existing move system instead of recreating it
+          if (moveSystem) {
+              moveSystem.updateGameState(worldConflictState);
+          } else {
+              // Only create new MoveSystem if it doesn't exist
+              moveSystem = new MoveSystem(
+                  worldConflictState,
+                  handleMoveComplete,
+                  handleMoveStateChange
+              );
+          }
+        } else {
+            console.error('❌ No worldConflictState found in gameData:', gameData);
         }
       });
 

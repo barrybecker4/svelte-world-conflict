@@ -31,11 +31,17 @@ async function handleDurableObjectRequest(request, env) {
     // Extract gameId from query parameters only (don't read body)
     let gameId = url.searchParams.get('gameId');
 
-    // For POST requests, create a default gameId if not in URL
-    // Let the Durable Object read the body to get the actual gameId
-    if (!gameId && request.method === 'POST') {
-        gameId = 'default'; // Temporary, Durable Object will handle routing
-    }
+    // For POST requests (notifications), get gameId from body
+      if (!gameId && request.method === 'POST' && url.pathname === '/notify') {
+          try {
+              // Clone the request to read the body
+              const clonedRequest = request.clone();
+              const body = await clonedRequest.json();
+              gameId = body.gameId;
+          } catch (error) {
+              console.error('Error reading gameId from notification body:', error);
+          }
+      }
 
     if (!gameId) {
         gameId = 'default';
