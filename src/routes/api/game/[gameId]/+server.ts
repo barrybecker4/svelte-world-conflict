@@ -6,22 +6,17 @@ import {
 } from '$lib/storage/world-conflict/index.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { Player } from '$lib/game/WorldConflictGameState.ts';
+import { getErrorMessage } from '$lib/server/api-utils.ts';
 
 interface QuitGameRequest {
     playerId: string;
     reason?: 'RESIGN' | 'TIMEOUT' | 'DISCONNECT';
 }
 
-/**
- * Helper function to safely get error message
- */
-function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    return String(error);
-}
 
+/**
+ * Get game given gameId
+ */
 export const GET: RequestHandler = async ({ params, platform }) => {
     try {
         const gameId = params.gameId;
@@ -56,6 +51,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     }
 };
 
+/**
+ * Quit a game - either resigning or leaving a pending game
+ */
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
@@ -142,7 +140,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
     } catch (error) {
-        console.error('❌ Error in quit game:', error);
+        console.error('Error in quit game:', error);
         return json({
             error: 'Failed to quit game: ' + getErrorMessage(error)
         }, { status: 500 });

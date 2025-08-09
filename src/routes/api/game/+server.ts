@@ -5,6 +5,7 @@ import {
     WorldConflictGameStorage
 } from '$lib/storage/world-conflict/index.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
+import { getErrorMessage } from '$lib/server/api-utils.ts';
 
 interface RouteParams {
     gameId: string;
@@ -13,13 +14,6 @@ interface RouteParams {
 interface QuitGameRequest {
     playerId: string;
     reason?: 'RESIGN' | 'TIMEOUT' | 'DISCONNECT';
-}
-
-function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    return String(error);
 }
 
 async function getGame(gameId: string, platform: App.Platform): Promise<WorldConflictGameRecord | null> {

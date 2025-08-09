@@ -8,24 +8,12 @@ import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { Player } from '$lib/game/WorldConflictGameState.ts';
 import { createPlayer } from '$lib/server/api-utils.js';
+import { getErrorMessage } from '$lib/server/api-utils.ts';
 
 interface JoinGameRequest {
     playerName: string;
 }
 
-/**
- * Helper function to safely get error message
- */
-function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    return String(error);
-}
-
-/**
- * Generate a unique player ID
- */
 function generatePlayerId(): string {
     return `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }

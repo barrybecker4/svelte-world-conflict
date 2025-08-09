@@ -9,7 +9,9 @@ import { WorldConflictGameState, type Player, type Region } from '$lib/game/Worl
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/data/map/MapGenerator.ts';
 
-// Create a new game
+/**
+ * Create a new game
+ */
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
         const body = await request.json();

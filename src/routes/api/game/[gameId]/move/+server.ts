@@ -8,6 +8,7 @@ import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { WorldConflictGameRecord } from '$lib/storage/world-conflict/games.ts';
+import { getErrorMessage } from '$lib/server/api-utils.ts';
 
 interface MoveRequest {
     playerId: string;
@@ -24,15 +25,10 @@ interface MoveRequest {
 }
 
 /**
- * Helper function to safely get error message
+  * Handle player moves in World Conflict game
+  * This endpoint processes player moves such as army movements, building, and ending turns.
+  * It validates the move, applies the command, updates the game state, and sends notifications.
  */
-function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    return String(error);
-}
-
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;

@@ -7,20 +7,12 @@ import {
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
+import { getErrorMessage } from '$lib/server/api-utils.ts';
 
 interface EndTurnRequest {
     playerId: string;
 }
 
-/**
- * Helper function to safely get error message
- */
-function getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    return String(error);
-}
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
