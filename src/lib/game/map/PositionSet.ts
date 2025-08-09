@@ -2,9 +2,6 @@ import { Bounds } from "./Bounds.ts";
 import { RegionMap } from "./RegionMap.ts";
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants.ts";
 
-/**
- * PositionSet class - ported from original PositionSet.gs
- */
 export class PositionSet {
     private positions: Array<[number, number]> = [];
 

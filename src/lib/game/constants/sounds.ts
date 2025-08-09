@@ -1,4 +1,5 @@
 export const SOUNDS = {
+    START: 'start',
     MOVE: 'move',
     ATTACK: 'attack',
     VICTORY: 'victory',

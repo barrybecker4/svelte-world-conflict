@@ -1,5 +1,5 @@
 import { Region } from "$lib/game/classes/Region";
-import { RegionMap } from "$lib/game/data/map/RegionMap";
+import { RegionMap } from "$lib/game/map/RegionMap";
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants";
 
 // Bitmap for overlapping parts

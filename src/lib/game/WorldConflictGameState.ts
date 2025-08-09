@@ -1,4 +1,4 @@
-import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/data/map/homeBasePlacement';
+import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, WorldConflictGameStateData } from '$lib/game/gameTypes';
 
 export class WorldConflictGameState {

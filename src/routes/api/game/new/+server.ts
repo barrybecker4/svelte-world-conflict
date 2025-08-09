@@ -7,7 +7,7 @@ import {
 } from '$lib/storage/index';
 import { WorldConflictGameState, type Player, type Region } from '$lib/game/WorldConflictGameState';
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
-import { MapGenerator } from '$lib/game/data/map/MapGenerator.ts';
+import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
 
 /**
  * Create a new game

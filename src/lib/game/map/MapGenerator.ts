@@ -1,7 +1,7 @@
 import type { Region } from '$lib/game/WorldConflictGameState.ts';
-import { RegionMap } from '$lib/game/data/map/RegionMap.ts';
-import { Bounds } from '$lib/game/data/map/Bounds.ts';
-import { PositionSet } from '$lib/game/data/map/PositionSet.ts';
+import { RegionMap } from '$lib/game/map/RegionMap.ts';
+import { Bounds } from '$lib/game/map/Bounds.ts';
+import { PositionSet } from '$lib/game/map/PositionSet.ts';
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants.ts';
 
 export interface MapGenerationOptions {

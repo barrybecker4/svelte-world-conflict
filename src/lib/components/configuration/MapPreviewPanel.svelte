@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { MapGenerator } from '$lib/game/data/map/MapGenerator';
+  import { MapGenerator } from '$lib/game/map/MapGenerator';
   import Map from './Map.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/classes/Region';
   import type { WorldConflictGameStateData, Player, PlayerSlot } from '$lib/game/gameTypes';
-  import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/data/map/homeBasePlacement';
+  import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 
   export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
   export let playerCount = 4;
