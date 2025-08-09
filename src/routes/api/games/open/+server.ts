@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { WorldConflictGameStorage, WorldConflictKVStorage } from '$lib/storage/world-conflict/index.ts';
+import { WorldConflictGameStorage, WorldConflictKVStorage } from '$lib/storage/index.ts';
 
 export const GET: RequestHandler = async ({ platform }) => {
     const kv = new WorldConflictKVStorage(platform!);

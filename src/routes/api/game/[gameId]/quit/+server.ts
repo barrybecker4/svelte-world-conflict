@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { validateGameId } from '$lib/server/validation';
 import { GameNotifications } from '$lib/server/websocket';
-import { WorldConflictKVStorage } from '$lib/storage/world-conflict';
+import { WorldConflictKVStorage } from '$lib/storage';
 
 interface QuitGameRequest {
     playerId: string;

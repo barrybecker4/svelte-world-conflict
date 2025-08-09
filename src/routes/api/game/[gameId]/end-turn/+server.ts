@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import {
     WorldConflictKVStorage,
     WorldConflictGameStorage,
-} from '$lib/storage/world-conflict/index.ts';
+} from '$lib/storage/index.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';

@@ -3,11 +3,11 @@ import type { RequestHandler } from './$types.ts';
 import {
     WorldConflictKVStorage,
     WorldConflictGameStorage,
-} from '$lib/storage/world-conflict/index.ts';
+} from '$lib/storage/index.ts';
 import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { WorldConflictGameRecord } from '$lib/storage/world-conflict/games.ts';
+import type { WorldConflictGameRecord } from '$lib/storage/games.ts';
 import { getErrorMessage } from '$lib/server/api-utils.ts';
 
 interface MoveRequest {
