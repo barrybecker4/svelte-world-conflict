@@ -2,7 +2,9 @@
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
-  import { getPlayerConfig, getPlayerColor, getPlayerEndColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs.js';
+  import Panel from '$lib/components/ui/Panel.svelte';
+  import Section from '$lib/components/ui/Section.svelte';
+  import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs.js';
 
   export let gameState: WorldConflictGameStateData | null = null;
   export let players: Player[] = [];
@@ -18,11 +20,11 @@
 
   // Unicode symbols matching original game
   const SYMBOLS = {
-    FAITH: '☧', // &#9775;
-    DEAD: '☠', // &#9760;
-    VICTORY: '♛', // &#9819;
-    REGION: '★', // &#9733;
-    MOVES: '➊' // &#10138;
+    FAITH: '☧',
+    DEAD: '☠',
+    VICTORY: '♛',
+    REGION: '★',
+    MOVES: '➊'
   };
 
   $: currentPlayerIndex = gameState?.playerIndex ?? 0;
@@ -66,32 +68,33 @@
   }
 </script>
 
-<div class="game-info-panel">
-  <!-- Turn Information Section -->
-  <div class="turn-section">
+<Panel variant="glass" padding={false} customClass="game-info-panel">
+
+  <!-- Turn Section -->
+  <Section title="" customClass="turn-section">
     <div class="turn-box">
       <div class="turn-header">Turn <span class="turn-number">{turnNumber}</span></div>
       {#if maxTurns}
         <div class="turn-progress">of {maxTurns}</div>
       {/if}
     </div>
-  </div>
+  </Section>
 
   <!-- Players Section -->
-  <div class="players-section">
+  <Section title="" flex={true} flexDirection="column" gap="8px" customClass="flex-1">
     {#each players as player, index}
       {@const isActive = index === currentPlayerIndex}
       {@const isAlive = isPlayerAlive(index)}
       {@const regionCount = getRegionCount(index)}
       {@const faithCount = getFaithCount(index)}
 
-      <div class="player-box" class:active={isActive} class:inactive={!isActive}>
+      <div class="player-box" class:active={isActive}>
         <div
           class="player-color"
           style="background: linear-gradient(135deg, {getPlayerColor(index)}, {getPlayerEndColor(index)});"
         ></div>
         <div class="player-info">
-          <div class="player-name">{player.name || PLAYER_CONFIGS[index].name}</div>
+          <div class="player-name">{player.name || getPlayerConfig(index).defaultName}</div>
           <div class="player-stats">
             <div class="stat">
               <span class="value">{regionCount}</span>
@@ -110,17 +113,17 @@
         </div>
       </div>
     {/each}
-  </div>
+  </Section>
 
-  <div class="instructions-section">
+  <Section title="">
     <div class="info-panel">
       <div class="instruction-text">
         {getCurrentInstruction()}
       </div>
     </div>
-  </div>
+  </Section>
 
-  <div class="player-stats-section">
+  <Section title="">
     <div class="stat-display">
       <div class="stat-item">
         <div class="stat-value">{movesRemaining} <span class="symbol">{@html SYMBOLS.MOVES}</span></div>
@@ -131,9 +134,9 @@
         <div class="stat-label">faith</div>
       </div>
     </div>
-  </div>
+  </Section>
 
-  <div class="action-section">
+  <Section title="" flex={true} flexDirection="column" gap="8px">
     {#if showCancelButton}
       <Button variant="danger" uppercase on:click={onCancelMove}>
         Cancel Move
@@ -147,98 +150,87 @@
     <Button variant="danger" size="lg" uppercase on:click={onEndTurn}>
       END TURN
     </Button>
-  </div>
+  </Section>
 
-  <!-- Bottom Action Icons -->
-  <div class="bottom-actions">
-    <IconButton title="Toggle Audio" on:click={onToggleAudio}>
-      {#if audioEnabled}🔊{:else}🔇{/if}
-    </IconButton>
-    <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
-    <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
-  </div>
-</div>
+  <!-- Bottom Actions -->
+  <Section title="" borderBottom={false}>
+    <div class="icon-actions">
+      <IconButton title="Toggle Audio" on:click={onToggleAudio}>
+        {#if audioEnabled}🔊{:else}🔇{/if}
+      </IconButton>
+      <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
+      <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
+    </div>
+  </Section>
+
+</Panel>
 
 <style>
-  .game-info-panel {
+  /* Main container uses Panel component, just override sizing */
+  :global(.game-info-panel) {
     width: 280px;
     height: 100vh;
-    background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
-    color: white;
-    display: flex;
-    flex-direction: column;
-    border-right: 2px solid #4a5568;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    border-right: 2px solid var(--border-light, #4a5568);
+    font-family: system-ui, sans-serif;
     overflow-y: auto;
+    flex-direction: column;
+    display: flex;
   }
 
-  /* Turn Section */
-  .turn-section {
-    flex: 0 0 auto;
-    padding: 16px;
-    border-bottom: 1px solid #4a5568;
+  /* Turn box - component-specific styling */
+  .turn-section :global(.section-content) {
+    display: flex;
+    justify-content: center;
   }
 
   .turn-box {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    color: #1f2937;
-    padding: 12px 16px;
-    border-radius: 8px;
+    background: linear-gradient(135deg, var(--color-warning, #fbbf24), #f59e0b);
+    color: var(--color-gray-900, #1f2937);
+    padding: var(--space-3, 12px) var(--space-4, 16px);
+    border-radius: var(--radius-lg, 8px);
     text-align: center;
-    font-weight: bold;
+    font-weight: var(--font-bold, bold);
     border: 2px solid #d97706;
   }
 
   .turn-header {
-    font-size: 1.1rem;
+    font-size: var(--text-lg, 1.1rem);
     margin-bottom: 2px;
   }
 
   .turn-number {
-    font-size: 1.3rem;
-    font-weight: 900;
+    font-size: var(--text-xl, 1.3rem);
+    font-weight: var(--font-extrabold, 900);
   }
 
   .turn-progress {
-    font-size: 0.85rem;
+    font-size: var(--text-sm, 0.85rem);
     opacity: 0.8;
   }
 
-  /* Players Section */
-  .players-section {
-    flex: 1 1 auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border-bottom: 1px solid #4a5568;
-  }
-
+  /* Player cards */
   .player-box {
+    background: var(--bg-panel-light, rgba(30, 41, 59, 0.6));
+    border: 2px solid transparent;
+    border-radius: var(--radius-md, 6px);
+    padding: var(--space-3, 10px);
+    transition: var(--transition-normal, all 0.2s ease);
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 6px;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
+    gap: var(--space-3, 10px);
   }
 
   .player-box.active {
-    border-color: #60a5fa;
+    border-color: var(--border-accent, #60a5fa);
     background: rgba(96, 165, 250, 0.1);
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
-  }
-
-  .player-box.inactive {
-    background: rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-glow-accent, 0 0 8px rgba(96, 165, 250, 0.3));
   }
 
   .player-color {
     width: 24px;
     height: 24px;
-    border-radius: 4px;
-    border: 2px solid #374151;
+    border-radius: var(--radius-sm, 4px);
+    border: 2px solid var(--border-medium, #374151);
     flex-shrink: 0;
   }
 
@@ -248,18 +240,18 @@
   }
 
   .player-name {
-    font-weight: bold;
-    font-size: 0.95rem;
+    font-weight: var(--font-bold, bold);
+    font-size: var(--text-sm, 0.95rem);
     margin-bottom: 4px;
-    color: #f7fafc;
+    color: var(--text-primary, #f7fafc);
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
   }
 
   .player-stats {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2, 8px);
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: var(--text-sm, 0.85rem);
   }
 
   .stat {
@@ -269,64 +261,53 @@
   }
 
   .stat .value {
-    font-weight: bold;
-    color: #f7fafc;
+    font-weight: var(--font-bold, bold);
+    color: var(--text-primary, #f7fafc);
   }
 
   .stat .symbol {
-    font-size: 0.8rem;
+    font-size: var(--text-xs, 0.8rem);
     opacity: 0.9;
   }
 
   .stat .symbol.dead {
-    color: #ef4444;
-    font-size: 1rem;
+    color: var(--color-error, #ef4444);
+    font-size: var(--text-base, 1rem);
   }
 
-  .instructions-section {
-    flex: 0 0 auto;
-    padding: 16px;
-    border-bottom: 1px solid #4a5568;
-  }
-
+  /* Info panel */
   .info-panel {
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
-    border: 1px solid #333;
+    background: var(--bg-panel-light, rgba(0, 0, 0, 0.3));
+    border: 1px solid var(--border-dark, #333);
+    border-radius: var(--radius-md, 6px);
+    padding: var(--space-3, 12px);
     min-height: 60px;
     display: flex;
     align-items: center;
   }
 
   .instruction-text {
-    font-size: 0.9rem;
+    font-size: var(--text-sm, 0.9rem);
     line-height: 1.4;
-    color: white;
+    color: var(--text-primary, white);
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
     white-space: pre-line;
   }
 
-  /* Player Stats Section */
-  .player-stats-section {
-    flex: 0 0 auto;
-    padding: 16px;
-    border-bottom: 1px solid #4a5568;
-  }
-
+  /* Stats display */
   .stat-display {
     display: flex;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
-    border: 1px solid #4a5568;
+    background: var(--bg-panel-light, rgba(0, 0, 0, 0.3));
+    border: 1px solid var(--border-light, #4a5568);
+    border-radius: var(--radius-md, 6px);
     overflow: hidden;
   }
 
   .stat-item {
     flex: 1;
-    padding: 10px;
+    padding: var(--space-3, 10px);
     text-align: center;
-    border-right: 1px solid #4a5568;
+    border-right: 1px solid var(--border-light, #4a5568);
   }
 
   .stat-item:last-child {
@@ -334,39 +315,28 @@
   }
 
   .stat-value {
-    font-size: 1.1rem;
-    font-weight: bold;
+    font-size: var(--text-lg, 1.1rem);
+    font-weight: var(--font-bold, bold);
     margin-bottom: 2px;
-    color: #fbbf24;
+    color: var(--color-warning, #fbbf24);
   }
 
   .stat-value .symbol {
-    font-size: 0.9rem;
+    font-size: var(--text-sm, 0.9rem);
     margin-left: 2px;
     opacity: 0.8;
   }
 
   .stat-label {
-    font-size: 0.75rem;
-    color: #a0aec0;
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-tertiary, #a0aec0);
     text-transform: lowercase;
   }
 
-  .action-section {
-    flex: 0 0 auto;
-    padding: 16px;
+  /* Icon actions */
+  .icon-actions {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    border-bottom: 1px solid #4a5568;
-  }
-
-  /* Bottom Actions */
-  .bottom-actions {
-    flex: 0 0 auto;
-    padding: 16px;
-    display: flex;
-    gap: 8px;
+    gap: var(--space-2, 8px);
     justify-content: center;
   }
 </style>
