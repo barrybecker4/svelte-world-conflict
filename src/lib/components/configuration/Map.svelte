@@ -13,6 +13,7 @@
 
   const MAX_INDIVIDUAL_ARMIES = 16;
   const ARMIES_PER_ROW = 8;
+  const NEUTRAL_COLOR = '#8b92a0'; // Gray for neutral regions
   let mapContainer: HTMLDivElement;
 
   // Auto-detect preview mode if currentPlayer is null but gameState exists
@@ -103,7 +104,7 @@
     if (owner !== undefined && owner !== null) {
       return getPlayerMapColor(owner);
     }
-    return '#6b7280'; // Gray for unowned
+    return NEUTRAL_COLOR;
   }
 
   function getSoldierCount(regionIndex: number): number {
