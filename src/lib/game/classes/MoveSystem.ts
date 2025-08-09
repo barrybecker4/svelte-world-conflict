@@ -45,12 +45,10 @@ export class MoveSystem {
     };
   }
 
-  // Get current state
   getState(): MoveState {
     return { ...this.state };
   }
 
-  // Process move actions
   async processAction(action: MoveAction): Promise<void> {
     const prevState = { ...this.state };
 

@@ -148,7 +148,6 @@
           {/each}
         </div>
 
-        <!-- Game Settings Display -->
         <div class="game-settings">
           <div class="setting-row">
             <span class="setting-label">AI</span>
@@ -190,7 +189,6 @@
           </div>
         </div>
 
-        <!-- Status and Actions -->
         <div class="status-section">
           {#if game && game.players.length < 4}
             <p class="waiting-text">Waiting for players to join open slots...</p>
