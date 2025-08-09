@@ -67,7 +67,4 @@ export class StorageAdapter {
         await this.put(key, serialized);
     }
 
-    isUsingMemoryStorage(): boolean {
-        return this.isMemory;
-    }
 }

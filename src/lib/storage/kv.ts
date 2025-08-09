@@ -3,6 +3,10 @@
 const memoryStorage = new Map<string, string>();
 let hasWarnedAboutMemoryStorage = false;
 
+/**
+ * Persists game state in Cloudflare KV or memory storage.
+ * When running in production, uses Cloudflare KV.
+ */
 export class WorldConflictKVStorage {
     private kv: any;
     private isMemoryMode: boolean;
@@ -36,7 +40,6 @@ export class WorldConflictKVStorage {
 
             if (!value) return null;
 
-            // Try to parse as JSON, fallback to string
             try {
                 return JSON.parse(value) as T;
             } catch {
@@ -91,13 +94,6 @@ export class WorldConflictKVStorage {
             console.error(`Error listing keys with prefix ${prefix}:`, error);
             return { keys: [] };
         }
-    }
-
-    /**
-     * Check if we're using memory storage (development mode)
-     */
-    isUsingMemoryStorage(): boolean {
-        return this.isMemoryMode;
     }
 
     /**

@@ -1,3 +1,5 @@
+import { WORKER_URL } from '$lib/server/api-utils.ts';
+
 /**
  * WebSocket notification utilities for server-side use
  */
@@ -68,9 +70,7 @@ function getWebSocketNotifyUrl(): string {
         return 'http://localhost:8787/notify';
     }
 
-    // Production WebSocket worker
-    // TODO: Replace YOUR_USERNAME with your actual Cloudflare username
-    return 'https://svelte-world-conflict-websocket.YOUR_USERNAME.workers.dev/notify';
+    return WORKER_URL;
 }
 
 /**
@@ -95,33 +95,19 @@ export async function checkWebSocketHealth(): Promise<boolean> {
  * Common game notification helpers
  */
 export const GameNotifications = {
-    /**
-     * Notify when a player joins a game
-     */
+
     playerJoined: (gameId: string, player: any, gameData: any) =>
         notifyGameUpdate(gameId, 'playerJoined', { player, gameData }),
 
-    /**
-     * Notify when a player leaves a game
-     */
     playerLeft: (gameId: string, playerId: string, gameData: any) =>
         notifyGameUpdate(gameId, 'playerLeft', { playerId, gameData }),
 
-    /**
-     * Notify when game state changes (moves, turn changes, etc.)
-     */
     gameStateChanged: (gameId: string, gameData: any, lastMove?: any) =>
         notifyGameUpdate(gameId, 'gameUpdate', { gameData, lastMove }),
 
-    /**
-     * Notify when a game starts
-     */
     gameStarted: (gameId: string, gameData: any) =>
         notifyGameUpdate(gameId, 'gameStarted', { gameData }),
 
-    /**
-     * Notify when a game ends
-     */
     gameEnded: (gameId: string, gameData: any, winner?: any) =>
         notifyGameUpdate(gameId, 'gameEnded', { gameData, winner })
 };

@@ -1,7 +1,5 @@
-import type {WorldConflictGameRecord} from "$lib/storage/world-conflict";
-
-// Update with your deployed worker URL
-const WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
+import type { WorldConflictGameRecord } from "$lib/storage/world-conflict";
+import { WORKER_URL } from '$lib/server/api-utils.ts';
 
 const LOCAL_URLS = [
     'http://localhost:8787',
