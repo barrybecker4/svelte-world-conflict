@@ -2,7 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import Button from '$lib/components/ui/Button.svelte';
-  import Spinner from '$lib/components/ui/Spinner.svelte';
+  import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 
   const dispatch = createEventDispatcher();
@@ -25,6 +25,12 @@
       const response = await fetch('/api/games/open');
       if (response.ok) {
         openGames = await response.json();
+
+        // If no games available, automatically go to game configuration
+        if (openGames.length === 0 && !loading) {
+          dispatch('close'); // This will trigger the parent to show configuration
+          return;
+        }
       } else {
         openGames = [];
       }
@@ -33,6 +39,9 @@
       openGames = [];
     } finally {
       loading = false;
+      if (openGames.length === 0) {
+        dispatch('close');
+      }
     }
   }
 
@@ -91,9 +100,9 @@
   }
 </script>
 
-<!-- Full screen overlay matching GAS styling -->
 <div class="lobby-overlay">
   <div class="lobby-container">
+
     <div class="lobby-header">
       <h1>Select Game
         <br/>
@@ -114,66 +123,60 @@
         </div>
       {/if}
 
-      {#if loading}
-        <div class="loading">
-          <Spinner size="lg" color="blue" text="Loading available games..." />
-        </div>
-      {:else}
-        <div class="games-panel">
-          {#if openGames.length === 0}
-            <div class="no-games">
-              <div class="no-games-icon">🎮</div>
-              <h3>No open games available</h3>
-              <p>Be the first to start a new World Conflict battle!</p>
-            </div>
-          {:else}
-            <div class="games-list">
-              <h3>Available Games ({openGames.length})</h3>
-              {#each openGames as game}
-                <div class="game-row">
-                  <div class="game-info">
-                    <div class="game-title">
-                      {game.creator}'s Game
-                    </div>
-                    <div class="game-details">
-                      <span class="player-count">
-                        {game.playerCount}/{game.maxPlayers} players
-                      </span>
-                      <span class="separator">•</span>
-                      <span class="game-age">
-                        {formatTimeAgo(game.createdAt)}
-                      </span>
-                      <span class="separator">•</span>
-                      <span class="game-type">
-                        {game.gameType}
-                      </span>
-                    </div>
+      <LoadingState
+        {loading}
+        loadingText="Loading available games..."
+        showRetry={true}
+        on:retry={loadOpenGames}
+      >
+        <!-- Games List (only shown if there are games) -->
+        {#if openGames.length > 0}
+          <div class="games-list">
+            <h3>Available Games ({openGames.length})</h3>
+            {#each openGames as game}
+              <div class="game-row">
+                <div class="game-info">
+                  <div class="game-title">
+                    {game.creator}'s Game
                   </div>
-                  <Button
-                    variant="success"
-                    size="sm"
-                    disabled={game.playerCount >= game.maxPlayers}
-                    on:click={() => joinGame(game.gameId)}
-                  >
-                    {game.playerCount >= game.maxPlayers ? 'Full' : 'Join'}
-                  </Button>
+                  <div class="game-details">
+                    <span class="player-count">
+                      {game.playerCount}/{game.maxPlayers} players
+                    </span>
+                    <span class="separator">•</span>
+                    <span class="game-age">
+                      {formatTimeAgo(game.createdAt)}
+                    </span>
+                    <span class="separator">•</span>
+                    <span class="game-type">
+                      {game.gameType}
+                    </span>
+                  </div>
                 </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
+                <Button
+                  variant={game.playerCount >= game.maxPlayers ? 'secondary' : 'success'}
+                  size="sm"
+                  disabled={game.playerCount >= game.maxPlayers}
+                  on:click={() => joinGame(game.gameId)}
+                >
+                  {game.playerCount >= game.maxPlayers ? 'Full' : 'Join'}
+                </Button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </LoadingState>
     </div>
 
     <div class="bottom-box">
       <Button variant="primary" size="lg" on:click={close}>
         New Game
       </Button>
-
       <Button variant="ghost" size="lg" on:click={close}>
         Back
       </Button>
     </div>
+
   </div>
 </div>
 
@@ -184,12 +187,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    background: linear-gradient(135deg, var(--color-gray-800, #1e293b) 0%, var(--color-gray-700, #334155) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-    color: white;
+    z-index: var(--z-modal, 1000);
+    color: var(--text-primary, white);
     font-family: system-ui, sans-serif;
   }
 
@@ -209,7 +212,7 @@
   .lobby-header h1 {
     font-size: 3rem;
     font-weight: bold;
-    background: linear-gradient(135deg, #60a5fa, #a855f7, #ec4899);
+    background: linear-gradient(135deg, var(--color-primary-400, #60a5fa), #a855f7, #ec4899);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -218,13 +221,13 @@
 
   .title-subheader {
     font-size: 1.2rem;
-    color: #94a3b8;
+    color: var(--text-tertiary, #94a3b8);
     font-weight: normal;
   }
 
   .lobby-content {
-    background: rgba(15, 23, 42, 0.8);
-    border: 2px solid #475569;
+    background: var(--bg-panel-glass, rgba(31, 41, 55, 0.9));
+    border: 2px solid var(--border-light, #475569);
     border-radius: 12px;
     padding: 2rem;
     min-height: 300px;
@@ -235,65 +238,37 @@
   }
 
   .error-message {
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid #ef4444;
-    border-radius: 8px;
+    background: var(--bg-error, rgba(239, 68, 68, 0.2));
+    border: 1px solid var(--color-error, #ef4444);
+    border-radius: var(--radius-lg, 8px);
     padding: 1rem;
     margin-bottom: 1rem;
     text-align: center;
     color: #fecaca;
   }
 
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    gap: 1rem;
-  }
-
-  .no-games {
-    text-align: center;
-    padding: 3rem 1rem;
-  }
-
-  .no-games-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-  }
-
-  .no-games h3 {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: #f8fafc;
-  }
-
-  .no-games p {
-    color: #94a3b8;
-  }
-
   .games-list h3 {
     margin-bottom: 1.5rem;
-    color: #f8fafc;
+    color: var(--text-primary, #f8fafc);
     font-size: 1.3rem;
   }
 
+  /* Game row - reuse existing game-card pattern */
   .game-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid #475569;
-    border-radius: 8px;
+    background: var(--bg-panel-light, rgba(30, 41, 59, 0.6));
+    border: 1px solid var(--border-light, #475569);
+    border-radius: var(--radius-lg, 8px);
     padding: 1rem;
     margin-bottom: 0.75rem;
     transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .game-row:hover {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: #60a5fa;
+    background: var(--bg-panel-medium, rgba(30, 41, 59, 0.8));
+    border-color: var(--border-accent, #60a5fa);
   }
 
   .game-info {
@@ -303,13 +278,13 @@
   .game-title {
     font-weight: 600;
     font-size: 1.1rem;
-    color: #f8fafc;
+    color: var(--text-primary, #f8fafc);
     margin-bottom: 0.25rem;
   }
 
   .game-details {
     font-size: 0.9rem;
-    color: #94a3b8;
+    color: var(--text-tertiary, #94a3b8);
   }
 
   .separator {
@@ -317,24 +292,16 @@
   }
 
   .player-count {
-    color: #60a5fa;
+    color: var(--text-accent, #60a5fa);
     font-weight: 500;
   }
 
+  /* Bottom actions */
   .bottom-box {
     display: flex;
     justify-content: center;
     gap: 1rem;
     margin-top: 1.5rem;
-  }
-
-  .game-row :global(.btn-sm) {
-    min-width: 100px;
-  }
-
-  /* Ensure the bottom buttons maintain their layout: */
-  .bottom-box :global(.btn-lg) {
-    padding: 1rem 2rem;
   }
 
   /* Mobile responsiveness */
@@ -357,7 +324,6 @@
       gap: 1rem;
     }
 
-    /* Update to target the Button component instead of .join-button */
     .game-row :global(.btn-sm) {
       align-self: center;
       width: 100px;
@@ -367,7 +333,6 @@
       flex-direction: column;
     }
 
-    /* Update to target the Button components instead of old button classes */
     .bottom-box :global(.btn-lg) {
       width: 100%;
       font-size: 1.1rem;
