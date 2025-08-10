@@ -76,6 +76,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             updatedGame.worldConflictState = gameState.toJSON();
         }
 
+        console.log("saveGame after join. gameId: " + updatedGame.gameId);
         await gameStorage.saveGame(updatedGame);
         await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 

@@ -5,7 +5,9 @@ import {
     WorldConflictGameStorage,
     type WorldConflictGameRecord,
 } from '$lib/storage/index';
-import { WorldConflictGameState, type Player, type Region } from '$lib/game/WorldConflictGameState';
+import { WorldConflictGameState } from '$lib/game/WorldConflictGameState';
+import { Region } from '$lib/game/classes/Region';
+import type { Player } from '$lib/game/classes/Player';
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
 
@@ -17,6 +19,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const body = await request.json();
 
         const gameRecord = createGameRecord(body, platform);
+        console.log("gameRecord gameId = ", gameRecord);
         await save(gameRecord, platform);
 
         return json({
@@ -45,7 +48,9 @@ function createGameRecord(body: any, platform: App.Platform): WorldConflictGameR
       aiDifficulty = 'Nice',
       turns = 10,
       timeLimit = 30,
-      playerSlots = [] // For configured games (from GameConfiguration)
+      playerSlots = [], // For configured games (from GameConfiguration)
+      settings,
+      selectedMapRegions
   } = body;
 
   if (!playerName?.trim()) {
@@ -53,57 +58,77 @@ function createGameRecord(body: any, platform: App.Platform): WorldConflictGameR
   }
 
   const gameId = generateGameId();
-  const players: Player[] = [];
 
-  // Check if this should be a PENDING multiplayer lobby game
+  const players: Player[] = [];
   const { hasOpenSlots, gameStatus, finalGameType } = determineGameAttributes(gameType, playerSlots, playerName, players);
 
-  const mapGenerator = new MapGenerator(800, 600);
-  const regions = mapGenerator.generateMap({
-      size: mapSize as 'Small' | 'Medium' | 'Large',
-      playerCount: Math.max(players.length, 2) // Ensure at least 2 for map generation
-  });
+  // Use the selected map regions instead of generating new ones
+  const regions = calculateRegions(selectedMapRegions, settings);
 
   // Only initialize full game state for ACTIVE games
   let initialGameState;
   if (gameStatus === 'ACTIVE') {
-      initialGameState = WorldConflictGameState.createInitialState(gameId, players, regions);
+    initialGameState = WorldConflictGameState.createInitialState(gameId, players, regions);
   } else {
-      // For PENDING games, create minimal state
-      initialGameState = {
-          gameId,
-          regions,
-          players: [],
-          currentPlayerIndex: 0,
-          turnCount: 0,
-          gamePhase: 'SETUP'
-      };
+    // For PENDING games, use the selected map
+    initialGameState = {
+      gameId,
+      regions,
+      players: [],
+      currentPlayerIndex: 0,
+      turnCount: 0,
+      gamePhase: 'SETUP'
+    };
   }
 
   return {
-      gameId: gameId,
-      status: gameStatus, // PENDING for games with open slots, ACTIVE for complete games
-      players: players.map(p => ({
-          id: p.id || generatePlayerId(),
-          name: p.name,
-          color: p.color,
-          isAI: p.isAI,
-          index: p.index
-      })),
-      worldConflictState: gameStatus === 'ACTIVE' ? initialGameState.toJSON() : initialGameState,
-      createdAt: Date.now(),
-      lastMoveAt: Date.now(),
-      currentPlayerIndex: 0,
-      gameType: finalGameType,
-      // Store configuration for PENDING games so we know how to complete setup
-      pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
-          playerSlots,
-          mapSize,
-          aiDifficulty
-      } : undefined
-  } as WorldConflictGameRecord;
+    gameId,
+    status: gameStatus,
+    players: players.map(p => ({
+      id: p.id || generatePlayerId(),
+      name: p.name,
+      color: p.color,
+      isAI: p.isAI,
+      index: p.index
+    })),
+    worldConflictState: gameStatus === 'ACTIVE' ? initialGameState.toJSON() : initialGameState,
+    createdAt: Date.now(),
+    lastMoveAt: Date.now(),
+    currentPlayerIndex: 0,
+    gameType: finalGameType,
+    pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
+      settings,
+      playerSlots,
+      selectedMapRegions // Store the selected map for pending games too
+    } : undefined
+  };
 }
 
+function calculateRegions(selectedMapRegions, settings): Region[] {
+  let regions: Region[];
+
+  if (selectedMapRegions && selectedMapRegions.length > 0) {
+    console.log('Using selected map from configuration with', selectedMapRegions.length, 'regions');
+    // Reconstruct Region objects from the serialized data
+    regions = selectedMapRegions.map((regionData: any) => {
+      return new Region(regionData);
+    });
+  } else {
+    console.log('No selected map found, generating new map');
+    // Fallback to generating a new map if none provided
+    const mapSize = settings?.mapSize || 'Medium';
+    const mapGenerator = new MapGenerator(800, 600);
+    regions = mapGenerator.generateMap({
+      size: mapSize as 'Small' | 'Medium' | 'Large',
+      playerCount: Math.max(players.length, 2)
+    });
+  }
+  return regions;
+}
+
+/**
+ * Determines player attributes and initialize players in the process
+ */
 function determineGameAttributes(gameType: string, playerSlots: any[], playerName: string, players: Player[]) {
     let hasOpenSlots = false;
     let gameStatus: 'PENDING' | 'ACTIVE' = 'ACTIVE';
@@ -119,6 +144,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
         } else {
             // Configured game from GameConfiguration component
             const activeSlots = playerSlots.filter((slot: any) => slot.type !== 'Off');
+            console.log("activeSlots = ", activeSlots);
 
             if (activeSlots.length < 2) {
                 return json({ error: 'At least 2 players are required' }, { status: 400 });
@@ -168,6 +194,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
 async function save(gameRecord: WorldConflictGameRecord, platform: App.Platform): void {
     const storage = new WorldConflictKVStorage(platform!);
     const gameStorage = new WorldConflictGameStorage(storage);
+    console.log("saveGame after new. gameId: " + gameRecord.gameId);
     await gameStorage.saveGame(gameRecord);
     console.log(`Created and saved game: ${gameRecord.status} gameId: ${gameRecord.gameId} with ${gameRecord.players.length} players`);
 }

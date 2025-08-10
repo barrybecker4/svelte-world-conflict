@@ -146,6 +146,18 @@
   export function refreshPreview() {
     loadPreviewMap();
   }
+
+  export function getCurrentPreviewRegions(): Region[] {
+    return previewRegions;
+  }
+
+  export function getCurrentPreviewState(): WorldConflictGameStateData | null {
+    return previewGameState;
+  }
+
+  export function hasValidPreview(): boolean {
+    return previewRegions.length > 0 && !loadingPreview && !error;
+  }
 </script>
 
 <div class="map-preview-panel">

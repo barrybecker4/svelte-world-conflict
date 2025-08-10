@@ -105,6 +105,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     lastMoveAt: Date.now()
                 };
 
+                 console.log("saveGame after removing player. gameId: " + updatedGame.gameId);
                 await gameStorage.saveGame(updatedGame);
                 await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
@@ -126,6 +127,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 endedBy: player.index
             };
 
+            console.log("saveGame after resign. gameId: " + updatedGame.gameId);
             await gameStorage.saveGame(updatedGame);
             await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 

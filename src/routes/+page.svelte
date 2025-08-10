@@ -81,7 +81,10 @@
         aiDifficulty: gameConfig.settings.aiDifficulty,
         turns: gameConfig.settings.turns,
         timeLimit: gameConfig.settings.timeLimit,
-        playerSlots: gameConfig.playerSlots
+        playerSlots: gameConfig.playerSlots,
+        selectedMapRegions: gameConfig.selectedMapRegions,
+        selectedMapState: gameConfig.selectedMapState,
+        settings: gameConfig.settings
       })
     });
   }
