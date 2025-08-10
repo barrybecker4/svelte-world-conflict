@@ -104,19 +104,19 @@
           regions = worldConflictState.regions || [];
           players = worldConflictState.players || [];
 
-          // Update the existing move system instead of recreating it
+          // Update the existing move system with new game state
           if (moveSystem) {
-              moveSystem.updateGameState(worldConflictState);
+            moveSystem.updateGameState(worldConflictState);
           } else {
-              // Only create new MoveSystem if it doesn't exist
-              moveSystem = new MoveSystem(
-                  worldConflictState,
-                  handleMoveComplete,
-                  handleMoveStateChange
-              );
+            // Only create new MoveSystem if it doesn't exist
+            moveSystem = new MoveSystem(
+              worldConflictState,
+              handleMoveComplete,
+              handleMoveStateChange
+            );
           }
         } else {
-            console.error('❌ No worldConflictState found in gameData:', gameData);
+          console.error('❌ No worldConflictState found in gameData:', gameData);
         }
       });
 
@@ -182,6 +182,7 @@
 
   // Move system callbacks
   function handleMoveStateChange(newState: MoveState) {
+    console.log('Move state changed:', newState);
     moveState = { ...newState };
 
     // Show soldier selection modal when we need to select soldiers
@@ -200,6 +201,8 @@
 
   async function handleMoveComplete(from: number, to: number, soldiers: number) {
     try {
+      console.log('Sending move request:', { from, to, soldiers });
+
       const response = await fetch(`/api/game/${gameId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -213,20 +216,29 @@
       });
 
       if (!response.ok) {
-        throw new Error('Move failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Move failed');
       }
 
+      const result = await response.json();
+      console.log('Move completed successfully:', result);
+
+      // Clear any modal state
       showSoldierSelection = false;
       soldierSelectionData = null;
 
       // Game state will be updated via WebSocket
+      // The MoveSystem will reset itself when it receives the update
+
     } catch (err) {
       console.error('Move failed:', err);
-      error = 'Move failed. Please try again.';
+      error = err.message || 'Move failed. Please try again.';
     }
   }
 
   function handleSoldierSelection(count: number) {
+    console.log('Soldier selection:', count);
+
     if (moveSystem) {
       // Update the soldier count
       moveSystem.processAction({

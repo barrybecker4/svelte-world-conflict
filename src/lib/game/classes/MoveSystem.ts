@@ -21,7 +21,7 @@ export interface MoveAction {
 
 export class MoveSystem {
   private state: MoveState;
-  private gameState: any; // WorldConflictGameStateData
+  private gameState: any;
   private onMoveComplete?: (from: number, to: number, soldiers: number) => Promise<void>;
   private onStateChange?: (state: MoveState) => void;
 
@@ -132,22 +132,6 @@ export class MoveSystem {
     }
   }
 
-  /**
-   * Update the game state without resetting the move system state
-   * This is called when receiving WebSocket updates
-   */
-  updateGameState(newGameState: any): void {
-      this.gameState = newGameState;
-
-      // Update available moves from the new game state
-      this.state.availableMoves = newGameState?.movesRemaining ?? this.state.availableMoves;
-
-      // Notify of state change to update UI
-      if (this.onStateChange) {
-          this.onStateChange(this.state);
-      }
-  }
-
   private async handleSourceSelection(regionIndex?: number): Promise<void> {
     if (regionIndex === undefined) return;
 
@@ -230,10 +214,82 @@ export class MoveSystem {
     };
   }
 
-  private async handleConfirmMove(): Promise<void> {
-    if (this.state.sourceRegion === null || this.state.targetRegion === null) return;
-    await this.executeMove();
-  }
+   private async handleConfirmMove(): Promise<void> {
+      if (this.state.sourceRegion === null ||
+          this.state.targetRegion === null ||
+          !this.onMoveComplete) {
+        console.error('Cannot confirm move - missing data or callback');
+        return;
+      }
+
+      try {
+        console.log('Executing move:', {
+          from: this.state.sourceRegion,
+          to: this.state.targetRegion,
+          soldiers: this.state.selectedSoldierCount
+        });
+
+        // Execute the move
+        await this.onMoveComplete(
+          this.state.sourceRegion,
+          this.state.targetRegion,
+          this.state.selectedSoldierCount
+        );
+
+        // Move completed successfully - reset to idle state
+        this.resetToIdle();
+
+      } catch (error) {
+        console.error('Move failed:', error);
+        // Reset state even on error to prevent UI from getting stuck
+        this.resetToIdle();
+      }
+    }
+
+    private resetToIdle(): void {
+      // Explicitly reset all state to idle
+      this.state = {
+        mode: 'IDLE',
+        sourceRegion: null,
+        targetRegion: null,
+        selectedSoldierCount: 0,
+        maxSoldiers: 0,
+        availableMoves: this.gameState?.movesRemaining ?? this.state.availableMoves,
+        isMoving: false
+      };
+
+      // Notify UI of the state change
+      if (this.onStateChange) {
+        this.onStateChange(this.state);
+      }
+    }
+
+    private handleCancel(): void {
+      this.resetToIdle();
+    }
+
+    /**
+     * Update the game state and handle post-move cleanup
+     * This is called when receiving WebSocket updates
+     */
+    updateGameState(newGameState: any): void {
+      this.gameState = newGameState;
+      this.state.availableMoves = newGameState?.movesRemaining ?? this.state.availableMoves;
+
+      // If we were in the middle of a move and the game state updated,
+      // it likely means our move was processed successfully
+      // Reset to idle state to allow new moves
+      if (this.state.isMoving && this.state.mode === 'SELECT_TARGET') {
+        console.log('Move appears to have been processed, resetting to idle');
+        this.resetToIdle();
+        return; // Don't call onStateChange again since resetToIdle already did
+      }
+
+      // Notify of state change to update UI
+      if (this.onStateChange) {
+        this.onStateChange(this.state);
+      }
+    }
 
   private async executeMove(): Promise<void> {
     if (this.state.sourceRegion === null ||

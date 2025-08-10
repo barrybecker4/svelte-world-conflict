@@ -46,7 +46,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const worldConflictState = new WorldConflictGameState(game.worldConflictState);
 
         // Find player by matching playerId with player index or name
-        // Since WC Player type uses index, we need to convert playerId to index
         const playerIndex = parseInt(moveData.playerId);
         const player = worldConflictState.getPlayers().find(p => p.index === playerIndex);
 
@@ -59,14 +58,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         switch (moveData.moveType) {
             case 'ARMY_MOVE':
                 if (moveData.source === undefined || moveData.destination === undefined || moveData.count === undefined) {
-                    return json({ error: 'Missing army move parameters: ', moveData }, { status: 400 });
+                    return json({ error: 'Missing army move parameters', moveData }, { status: 400 });
                 }
                 command = new ArmyMoveCommand(
                     worldConflictState,
                     player,
                     moveData.source,
                     moveData.destination,
-                    moveData.soldiers
+                    moveData.count
                 );
                 break;
 
@@ -87,7 +86,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 break;
 
             default:
-                return json({ error: 'Invalid move type: ' +  moveData.moveType }, { status: 400 });
+                return json({ error: 'Invalid move type: ' + moveData.moveType }, { status: 400 });
         }
 
         // Process command
