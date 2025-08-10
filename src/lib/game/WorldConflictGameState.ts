@@ -189,6 +189,43 @@ export class WorldConflictGameState {
         return this.regions;
     }
 
+
+    /**
+     * Get all regions owned by a specific player
+     */
+    getRegionsOwnedByPlayer(playerIndex: number): Region[] {
+        return this.state.regions.filter(region =>
+            this.state.owners[region.index] === playerIndex
+        );
+    }
+
+    /**
+     * Get all region indices owned by a specific player
+     */
+    getRegionIndicesOwnedByPlayer(playerIndex: number): number[] {
+        return Object.keys(this.state.owners)
+            .map(key => parseInt(key))
+            .filter(regionIndex => this.state.owners[regionIndex] === playerIndex);
+    }
+
+    /**
+     * Check if the game is complete (has an end result)
+     */
+    isGameComplete(): boolean {
+        return this.state.endResult !== null && this.state.endResult !== undefined;
+    }
+
+    /**
+     * Get regions owned by a player that have soldiers available to move
+     */
+    getMovableRegionsForPlayer(playerIndex: number): Region[] {
+        return this.getRegionsOwnedByPlayer(playerIndex).filter(region => {
+            const soldierCount = this.soldierCount(region.index);
+            const hasMovedThisTurn = this.state.conqueredRegions?.includes(region.index) ?? false;
+            return soldierCount > 1 && !hasMovedThisTurn; // Need more than 1 soldier and haven't moved this turn
+        });
+    }
+
     // ==================== STATE MUTATIONS ====================
 
     setOwner(regionIndex: number, player: Player): void {

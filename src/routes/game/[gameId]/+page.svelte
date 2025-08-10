@@ -6,8 +6,6 @@
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import Button from '$lib/components/ui/Button.svelte';
 
-  export let data;
-
   let gameState = 'loading'; // 'loading', 'waiting', 'playing', 'error'
   let game = null;
   let currentPlayer = null;
