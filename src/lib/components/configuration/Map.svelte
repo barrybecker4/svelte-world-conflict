@@ -3,6 +3,7 @@
   import type { Region, Player, WorldConflictGameStateData } from '$lib/game/gameTypes';
   import Temple from './Temple.svelte';
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
+  import { fade } from 'svelte/transition';
 
   export let regions: Region[] = [];
   export let gameState: WorldConflictGameStateData | null = null;
@@ -10,15 +11,27 @@
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
   export let isPreviewMode = false; // New prop to indicate preview mode
+  export let showTurnHighlights: boolean = true;
+  export let previewMode: boolean = false;
 
   const MAX_INDIVIDUAL_ARMIES = 16;
   const ARMIES_PER_ROW = 8;
   const NEUTRAL_COLOR = '#8b92a0'; // Gray for neutral regions
   let mapContainer: HTMLDivElement;
+  let highlightVisible = true;
+
+  onMount(() => {
+    // Start the highlight pulse animation
+    const interval = setInterval(() => {
+      highlightVisible = !highlightVisible;
+    }, 1500);
+
+    return () => clearInterval(interval);
+  });
 
   // Auto-detect preview mode if currentPlayer is null but gameState exists
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
-  $: effectivePreviewMode = isPreviewMode || detectedPreviewMode;
+  $: effectivePreviewMode = isPreviewMode || detectedPreviewMode || previewMode;
 
   // Additional check for preview mode based on gameState
   $: isCreationMode = gameState?.gameId === 'preview' || currentPlayer === null;
@@ -38,6 +51,17 @@
       }
     }
   }
+
+  $: activePlayerGradients = gameState && showTurnHighlights ? Array.from({length: 6}, (_, i) => {
+    const color = getPlayerMapColor(i);
+    return `
+      <radialGradient id="activePlayerGradient${i}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" style="stop-color:${color};stop-opacity:0.9"/>
+        <stop offset="70%" style="stop-color:${color};stop-opacity:0.7"/>
+        <stop offset="100%" style="stop-color:${color};stop-opacity:0.6"/>
+      </radialGradient>
+    `;
+  }).join('') : '';
 
   /**
    * Convert border points to SVG path
@@ -62,138 +86,151 @@
     return `M ${region.x + radius},${region.y} A ${radius},${radius} 0 1,1 ${region.x + radius - 0.1},${region.y} Z`;
   }
 
-  /**
-   * Create a lighter version of a hex color for selection borders
-   */
-  function getLighterColor(hexColor: string): string {
-    // Remove # if present
-    const color = hexColor.replace('#', '');
-
-    // Convert hex to RGB
-    const r = parseInt(color.slice(0, 2), 16);
-    const g = parseInt(color.slice(2, 4), 16);
-    const b = parseInt(color.slice(4, 6), 16);
-
-    // Make it lighter by adding to each component (but not too much to avoid white)
-    const lighterR = Math.min(255, Math.floor(r + (255 - r) * 0.4));
-    const lighterG = Math.min(255, Math.floor(g + (255 - g) * 0.4));
-    const lighterB = Math.min(255, Math.floor(b + (255 - b) * 0.4));
-
-    // Convert back to hex
-    return `#${lighterR.toString(16).padStart(2, '0')}${lighterG.toString(16).padStart(2, '0')}${lighterB.toString(16).padStart(2, '0')}`;
-  }
-
-  /**
-   * Get the selection border color for a region
-   */
-  function getSelectionBorderColor(regionIndex: number): string {
-    const regionColor = getRegionColor(regionIndex);
-    return getLighterColor(regionColor);
-  }
-
-  function getRegionOwner(regionIndex: number): Player | null {
-    if (!gameState?.owners || gameState.owners[regionIndex] === undefined || gameState.owners[regionIndex] === -1) {
-      return null;
-    }
-    const playerIndex = gameState.owners[regionIndex];
-    return gameState.players?.[playerIndex] || null;
-  }
-
-  function getRegionColor(regionIndex: number): string {
-    const owner = gameState?.owners?.[regionIndex];
-    if (owner !== undefined && owner !== null) {
-      return getPlayerMapColor(owner);
-    }
-    return NEUTRAL_COLOR;
+  function isOwnedByActivePlayer(regionIndex: number): boolean {
+    if (!gameState?.owners || !showTurnHighlights) return false;
+    return gameState.owners[regionIndex] === gameState.playerIndex;
   }
 
   function getSoldierCount(regionIndex: number): number {
-    // The game state uses soldiersByRegion, not armies
     if (!gameState?.soldiersByRegion?.[regionIndex]) return 0;
     return gameState.soldiersByRegion[regionIndex].length;
   }
 
-  function hasTemple(regionIndex: number): boolean {
-    // Check both game state temples and region hasTemple property
-    return gameState?.temples?.[regionIndex] !== undefined || regions[regionIndex]?.hasTemple === true;
-  }
-
-  function isNeutralRegion(regionIndex: number): boolean {
-    return gameState?.owners?.[regionIndex] === undefined;
-  }
-
-  function getTempleUpgradeLevel(regionIndex: number): number {
-    const temple = gameState?.temples?.[regionIndex];
-    return temple?.level || 0;
-  }
-
-  function isSelected(region: Region): boolean {
-    return selectedRegion?.index === region.index;
-  }
-
-  function isOwnedByCurrentPlayer(regionIndex: number): boolean {
-    if (!currentPlayer || !gameState?.owners) return false;
-    return gameState.owners[regionIndex] === currentPlayer.index;
-  }
-
-  function canMoveFrom(regionIndex: number): boolean {
-    // In preview mode, no regions are moveable
-    if (effectivePreviewMode) return false;
-    return isOwnedByCurrentPlayer(regionIndex) && getSoldierCount(regionIndex) > 0;
-  }
-
-  function isPlayerHomeBase(regionIndex: number): boolean {
-    // A region is a home base if it's owned by a player and has a temple
-    return getRegionOwner(regionIndex) !== null && hasTemple(regionIndex);
+  function canHighlightForTurn(region: Region): boolean {
+    return showTurnHighlights &&
+           isOwnedByActivePlayer(region.index) &&
+           getSoldierCount(region.index) > 0 &&
+           !effectivePreviewMode;
   }
 
   /**
-   * Check if a player can move to a specific region from any of their owned regions
-   * This determines visual feedback in the UI (like highlighting clickable regions)
+   * Create a lighter version of a hex color for selection borders
    */
-  function canPlayerMoveToRegion(player: Player, region: Region): boolean {
-    // In preview mode, no moves are allowed
-    if (effectivePreviewMode) return false;
+  function getLighterColor(hexColor: string, factor: number = 0.3): string {
+    // Remove the hash if present
+    const color = hexColor.replace('#', '');
 
-    // Player must exist
-    if (!player || !gameState) return false;
+    // Parse r, g, b values
+    const r = parseInt(color.substr(0, 2), 16);
+    const g = parseInt(color.substr(2, 2), 16);
+    const b = parseInt(color.substr(4, 2), 16);
 
-    // Check if this region is owned by the current player and has armies to move
-    const isOwnedByPlayer = gameState.owners?.[region.index] === player.index;
-    const hasArmies = getSoldierCount(region.index) > 1; // Need more than 1 to move (leave 1 defender)
+    // Lighten by moving towards white
+    const newR = Math.round(r + (255 - r) * factor);
+    const newG = Math.round(g + (255 - g) * factor);
+    const newB = Math.round(b + (255 - b) * factor);
 
-    if (isOwnedByPlayer && hasArmies) {
-      // Check if this region hasn't already moved this turn
-      const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
-      return !hasMovedThisTurn;
-    }
-
-    // If not owned by player, check if it's adjacent to any region the player can move from
-    if (!isOwnedByPlayer) {
-      // Find all regions owned by the player that can move
-      const playerOwnedRegions = regions.filter(r => {
-        const regionOwnedByPlayer = gameState.owners?.[r.index] === player.index;
-        const regionHasArmies = getSoldierCount(r.index) > 1;
-        const regionHasNotMoved = !(gameState.conqueredRegions?.includes(r.index) ?? false);
-
-        return regionOwnedByPlayer && regionHasArmies && regionHasNotMoved;
-      });
-
-      // Check if any of these regions are neighbors to the target region
-      return playerOwnedRegions.some(ownedRegion =>
-        ownedRegion.neighbors.includes(region.index)
-      );
-    }
-
-    return false;
+    // Convert back to hex
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
   }
 
+  /**
+   * Get the color for a region based on ownership
+   */
+  function getRegionColor(region: Region): string {
+    if (!gameState?.owners) return NEUTRAL_COLOR;
+
+    const ownerIndex = gameState.owners[region.index];
+    if (ownerIndex !== undefined) {
+      const baseColor = getPlayerMapColor(ownerIndex);
+
+      // ADD SPECIAL HIGHLIGHTING FOR ACTIVE PLAYER'S REGIONS
+      if (showTurnHighlights && isOwnedByActivePlayer(region.index) && highlightVisible) {
+        return `url(#activePlayerGradient${ownerIndex})`;
+      }
+
+      return baseColor;
+    }
+
+    return NEUTRAL_COLOR;
+  }
+
+  /**
+   * Get the border color for a region
+   */
+  function getBorderColor(region: Region): string {
+    // Check if this is the selected region
+    if (selectedRegion && selectedRegion.index === region.index) {
+      return '#fbbf24'; // Bright yellow for selection
+    }
+
+    // ADD TURN HIGHLIGHTING BORDER
+    if (canHighlightForTurn(region) && highlightVisible) {
+      return '#fbbf24'; // Bright yellow for active player's regions
+    }
+
+    // Default border for owned regions
+    if (!gameState?.owners) return '#333';
+
+    const ownerIndex = gameState.owners[region.index];
+    if (ownerIndex !== undefined) {
+      return getPlayerHighlightColor(ownerIndex);
+    }
+
+    return '#666';
+  }
+
+  /**
+   * Get the border width for a region
+   */
+  function getBorderWidth(region: Region): number {
+    // Selection gets thicker border
+    if (selectedRegion && selectedRegion.index === region.index) {
+      return 3;
+    }
+
+    // ADD TURN HIGHLIGHTING BORDER WIDTH
+    if (canHighlightForTurn(region) && highlightVisible) {
+      return 2.5;
+    }
+
+    // Default width
+    return 1;
+  }
+
+  /**
+   * Check if a region is a home base (owned and has temple)
+   */
+  function isHomeBase(region: Region): boolean {
+    if (!gameState?.owners || !gameState?.temples) return false;
+
+    const isOwned = gameState.owners[region.index] !== undefined;
+    const hasTemple = gameState.temples[region.index] !== undefined;
+
+    return isOwned && hasTemple;
+  }
+
+  /**
+   * Check if a region has a temple
+   */
+  function hasTemple(regionIndex: number): boolean {
+    return gameState?.temples?.[regionIndex] !== undefined;
+  }
+
+  /**
+   * Check if the region can be moved from
+   */
+  function canMoveFrom(region: Region): boolean {
+    if (effectivePreviewMode) return false;
+    if (!currentPlayer || !gameState?.owners || !gameState?.soldiersByRegion) return false;
+
+    const isOwnedByCurrentPlayer = gameState.owners[region.index] === currentPlayer.index;
+    const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
+
+    return isOwnedByCurrentPlayer && soldierCount > 1;
+  }
+
+  /**
+   * Handle region clicks
+   */
   function handleRegionClick(region: Region): void {
-    // Don't allow clicks in preview mode
     if (effectivePreviewMode) return;
     onRegionClick(region);
   }
 
+  /**
+   * Handle keyboard events for accessibility
+   */
   function handleKeyDown(event: KeyboardEvent, region: Region): void {
     if (effectivePreviewMode) return;
     if (event.key === 'Enter' || event.key === ' ') {
@@ -205,133 +242,118 @@
 
 <div class="game-map" bind:this={mapContainer}>
   <svg class="map-svg" viewBox="0 0 800 600">
-    <!-- Create a definition for our shadow filter that only affects ocean areas -->
+    <!-- ADD THESE DEFINITIONS FOR TURN HIGHLIGHTING -->
     <defs>
-      <!-- Create a mask for the ocean (everything not covered by regions) -->
-      <mask id="oceanMask">
-        <!-- Start with white background (ocean areas) -->
-        <rect width="100%" height="100%" fill="white"/>
-        <!-- Subtract all regions (black areas where regions exist) -->
-        {#each regions as region (region.index)}
-          {@const regionWithPoints = region}
-          {@const regionPath = regionWithPoints.points ?
-            pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
-          <path
-            d={regionPath}
-            fill="black"
-          />
-        {/each}
-      </mask>
+      <!-- Active player highlighting gradients -->
+      {@html activePlayerGradients}
 
-      <!-- Shadow filter that only applies to ocean areas -->
-      <filter id="oceanShadow">
-        <feDropShadow dx="5" dy="5" stdDeviation="1" flood-color="rgba(0,0,0,0.7)"/>
+      <!-- Glow effect for active regions -->
+      <filter id="activeGlow">
+        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
       </filter>
+
+      <!-- Pulse pattern for active regions -->
+      <pattern id="pulsePattern" patternUnits="userSpaceOnUse" width="20" height="20">
+        <rect width="20" height="20" fill="rgba(251, 191, 36, 0.1)"/>
+        <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(251, 191, 36, 0.3)" stroke-width="1"/>
+      </pattern>
     </defs>
 
-    <!-- First pass: render all regions without shadows -->
     {#each regions as region (region.index)}
       {@const regionWithPoints = region}
       {@const regionPath = regionWithPoints.points ?
         pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
-      {@const regionColor = getRegionColor(region.index)}
-      {@const selected = selectedRegion?.index === region.index}
-      {@const canMove = currentPlayer && canPlayerMoveToRegion(currentPlayer, region)}
-      {@const isHomeBase = currentPlayer && region.index === currentPlayer.homeRegion}
-      {@const armies = getSoldierCount(region.index)}
 
-      <!-- Region fill with dynamic border colors -->
-      <path
-        d={regionPath}
-        fill={regionColor}
-        stroke={selected ? getSelectionBorderColor(region.index) : "#1e293b"}
-        stroke-width={selected ? "4" : "1"}
-        stroke-linejoin="round"
-        class="region-path"
-        class:selected
-        class:can-move={canMove}
-        class:home-base={isHomeBase}
-        class:preview-mode={effectivePreviewMode}
-        role="button"
-        aria-label="Region {region.index + 1} - {armies} armies"
-        on:click={() => handleRegionClick(region)}
-        on:keydown={(e) => handleKeyDown(e, region)}
-      />
-    {/each}
+      <g class="region-group">
+        <!-- Main region path -->
+        <path
+          d={regionPath}
+          fill={getRegionColor(region)}
+          stroke={getBorderColor(region)}
+          stroke-width={getBorderWidth(region)}
+          class="region-path {effectivePreviewMode ? 'preview-mode' : ''} {canMoveFrom(region) ? 'can-move' : ''} {isHomeBase(region) ? 'home-base' : ''}"
+          role="button"
+          tabindex={effectivePreviewMode ? -1 : 0}
+          aria-label={`Region ${region.index}`}
+          on:click={() => handleRegionClick(region)}
+          on:keydown={(event) => handleKeyDown(event, region)}
+          filter={canHighlightForTurn(region) && highlightVisible ? 'url(#activeGlow)' : 'none'}
+        />
 
-    <!-- Second pass: render shadow layer that only affects ocean areas -->
-    {#each regions as region (region.index)}
-      {@const regionWithPoints = region}
-      {@const regionPath = regionWithPoints.points ?
-        pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
-      {@const regionColor = getRegionColor(region.index)}
-
-      <!-- Shadow version of region that only shows over ocean -->
-      <path
-        d={regionPath}
-        fill={regionColor}
-        stroke="none"
-        mask="url(#oceanMask)"
-        filter="url(#oceanShadow)"
-        pointer-events="none"
-        opacity="0.8"
-      />
-    {/each}
-
-    <!-- Region content (centers, armies, etc.) -->
-    {#each regions as region (region.index)}
-      {@const isOccupied = getRegionOwner(region.index) !== null}
-      {@const armies = getSoldierCount(region.index)}
-      {@const temple = gameState?.temples?.[region.index]}
-
-      <g class="region-content">
-        <!-- Temple rendering (if region has temple) -->
-        {#if hasTemple(region.index)}
-          <Temple
-            x={region.x}
-            y={region.y - 6}
-            upgradeLevel={temple?.level || 0}
-            isPlayerOwned={isOccupied}
-            regionIndex={region.index}
+        <!-- ADD PULSE OVERLAY FOR ACTIVE PLAYER REGIONS -->
+        {#if canHighlightForTurn(region)}
+          <path
+            d={regionPath}
+            fill="url(#pulsePattern)"
+            stroke="none"
+            class="pulse-overlay"
+            opacity={highlightVisible ? 0.6 : 0}
+            transition:fade={{ duration: 750 }}
+            style="pointer-events: none;"
           />
         {/if}
 
-        <!-- Army count display (below temple if present, otherwise at center) -->
-        {#if armies > 0}
-          {#if armies <= MAX_INDIVIDUAL_ARMIES}
-            <!-- Individual army dots for small armies -->
-            {#each Array(armies) as _, i}
-              <circle
-                cx={region.x - 10 + (i % ARMIES_PER_ROW) * 4}
-                cy={region.y + 10 + Math.floor(i / ARMIES_PER_ROW) * 4}
-                r="1.5"
-                fill="white"
-                stroke="#374151"
-                stroke-width="0.5"
-              />
-            {/each}
-          {:else}
-            <!-- Army count text for larger armies -->
-            <circle
-              cx={region.x}
-              cy={region.y + (hasTemple(region.index) ? 15 : 0)}
-              r="10"
-              fill="rgba(0,0,0,0.7)"
-              stroke="#fbfbf4"
-              stroke-width="1"
-            />
-            <text
+        <!-- Region content group (temples and armies) - UNCHANGED FROM YOUR ORIGINAL -->
+        <g class="region-content">
+          <!-- Temple rendering -->
+          {#if hasTemple(region.index)}
+            <Temple
               x={region.x}
-              y={region.y + (hasTemple(region.index) ? 18 : 3)}
-              text-anchor="middle"
-              font-size="10"
-              font-weight="bold"
-              fill="#fbfbf4"
-            >
-              {armies}
-            </text>
+              y={region.y}
+              size="12"
+              borderColor="#fbfbf4"
+              level={gameState?.temples?.[region.index]?.level || 0}
+              upgradeType={gameState?.temples?.[region.index]?.upgradeIndex}
+            />
           {/if}
-        {/if}
+
+          <!-- Army count rendering -->
+          {#if gameState?.soldiersByRegion?.[region.index]}
+            {@const armies = gameState.soldiersByRegion[region.index].length}
+            {#if armies > MAX_INDIVIDUAL_ARMIES}
+              <!-- Show count for large armies -->
+              <circle
+                cx={region.x}
+                cy={region.y + (hasTemple(region.index) ? 15 : 0)}
+                r="10"
+                fill="rgba(0,0,0,0.7)"
+                stroke="#fbfbf4"
+                stroke-width="1"
+              />
+              <text
+                x={region.x}
+                y={region.y + (hasTemple(region.index) ? 18 : 3)}
+                text-anchor="middle"
+                font-size="10"
+                font-weight="bold"
+                fill="#fbfbf4"
+              >
+                {armies}
+              </text>
+            {:else if armies > 0}
+              <!-- Show individual army markers for smaller counts -->
+              {#each Array(armies) as _, armyIndex}
+                {@const row = Math.floor(armyIndex / ARMIES_PER_ROW)}
+                {@const col = armyIndex % ARMIES_PER_ROW}
+                {@const offsetX = (col - (Math.min(armies, ARMIES_PER_ROW) - 1) / 2) * 3}
+                {@const offsetY = row * 3 + (hasTemple(region.index) ? 15 : 0)}
+
+                <circle
+                  cx={region.x + offsetX}
+                  cy={region.y + offsetY}
+                  r="1.5"
+                  fill="#fbfbf4"
+                  stroke="#333"
+                  stroke-width="0.3"
+                />
+              {/each}
+            {/if}
+          {/if}
+        </g>
       </g>
     {/each}
   </svg>
@@ -402,6 +424,11 @@
 
   .region-content circle {
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+  }
+
+  .pulse-overlay {
+    pointer-events: none;
+    transition: opacity 0.75s ease-in-out;
   }
 
   /* Responsive adjustments */

@@ -84,7 +84,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return json({
             success: true,
             gameState: result.newState!.toJSON(),
-            message: 'Turn ended successfully'
+            message: 'Turn ended successfully',
+            turnTransition: true
         });
 
     } catch (error) {

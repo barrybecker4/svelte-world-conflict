@@ -143,7 +143,7 @@ export class MoveSystem {
 
     // Validate that region has armies to move
     const soldierCount = this.getSoldierCountAtRegion(regionIndex);
-    if (soldierCount <= 1) {
+    if (!soldierCount) {
       console.warn('Region must have more than 1 army to move');
       return;
     }

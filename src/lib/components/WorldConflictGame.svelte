@@ -7,6 +7,9 @@
   import GameInstructions from './GameInstructions.svelte';
   import LoadingState from './ui/LoadingState.svelte';
   import Button from './ui/Button.svelte';
+  import Banner from './ui/Banner.svelte';
+  import { turnManager } from '$lib/game/TurnManager';
+
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
@@ -44,13 +47,22 @@
     currentSelection: number;
   } | null = null;
 
-  // Reactive values
+
+  $: turnState = turnManager.state;
+  $: currentPlayerFromTurnManager = turnManager.currentPlayer;
+  $: shouldShowBanner = turnManager.shouldShowBanner;
+  $: shouldHighlightRegions = turnManager.shouldHighlightRegions;
+  $: gameStateFromTurnManager = turnManager.gameData;
   $: currentPlayerIndex = $gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
   $: isMyTurn = currentPlayerIndex === playerIndex;
   $: movesRemaining = $gameState?.movesRemaining ?? 3;
   $: moveMode = moveState.mode;
   $: selectedRegion = moveState.sourceRegion;
+  $: showBanner = $shouldShowBanner;
+  $: highlightRegions = $shouldHighlightRegions;
+  $: currentPlayerForBanner = $currentPlayerFromTurnManager;
+
   $: console.log('WebSocket status:', {
     wsClient: !!wsClient,
     isConnected: wsClient?.isConnected(),
@@ -68,6 +80,7 @@
 
   onDestroy(() => {
     cleanupWebSocket();
+    turnManager.reset();
   });
 
   async function initializeGame() {
@@ -81,6 +94,8 @@
           handleMoveComplete,
           handleMoveStateChange
         );
+
+        turnManager.initialize($gameState, players);
       }
 
       loading = false;
@@ -99,10 +114,21 @@
 
         const worldConflictState = gameData.worldConflictState;
         if (worldConflictState) {
+          const previousState = $gameState;
+          const isNewTurn = previousState && worldConflictState.playerIndex !== previousState.playerIndex;
+
           // Update the reactive game state
           gameState.set(worldConflictState);
           regions = worldConflictState.regions || [];
           players = worldConflictState.players || [];
+
+          if (isNewTurn) {
+            // New player's turn - show banner and transition
+            turnManager.transitionToPlayer(worldConflictState.playerIndex, worldConflictState);
+          } else {
+            // Same player, just update state
+            turnManager.updateGameState(worldConflictState);
+          }
 
           // Update the existing move system with new game state
           if (moveSystem) {
@@ -180,20 +206,23 @@
     await initializeGame();
   }
 
+  function handleBannerComplete(): void {
+    turnManager.onBannerComplete();
+  }
+
   // Move system callbacks
   function handleMoveStateChange(newState: MoveState) {
     console.log('Move state changed:', newState);
     moveState = { ...newState };
 
     // Show soldier selection modal when we need to select soldiers
-    if (newState.mode === 'ADJUST_SOLDIERS' && newState.targetRegion !== null) {
+    if (newState.mode === 'ADJUST_SOLDIERS' && newState.sourceRegion !== null) {
       soldierSelectionData = {
         maxSoldiers: newState.maxSoldiers,
         currentSelection: newState.selectedSoldierCount
       };
       showSoldierSelection = true;
     } else {
-      // Hide modal if not in soldier selection mode
       showSoldierSelection = false;
       soldierSelectionData = null;
     }
@@ -202,7 +231,6 @@
   async function handleMoveComplete(from: number, to: number, soldiers: number) {
     try {
       console.log('Sending move request:', { from, to, soldiers });
-
       const response = await fetch(`/api/game/${gameId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -215,168 +243,262 @@
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Move failed');
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Move executed successfully:', result);
+
+        // Reset move state
+        moveState = {
+          mode: 'IDLE',
+          sourceRegion: null,
+          targetRegion: null,
+          selectedSoldierCount: 0,
+          maxSoldiers: 0,
+          availableMoves: 3,
+          isMoving: false
+        };
+      } else {
+        const error = await response.json();
+        console.error('❌ Move failed:', error);
+        alert(error.message || 'Move failed');
       }
-
-      const result = await response.json();
-      console.log('Move completed successfully:', result);
-
-      // Clear any modal state
-      showSoldierSelection = false;
-      soldierSelectionData = null;
-
-      // Game state will be updated via WebSocket
-      // The MoveSystem will reset itself when it receives the update
-
-    } catch (err) {
-      console.error('Move failed:', err);
-      error = err.message || 'Move failed. Please try again.';
+    } catch (error) {
+      console.error('❌ Network error during move:', error);
+      alert('Network error: ' + error.message);
     }
   }
 
-  function handleSoldierSelection(count: number) {
-    console.log('Soldier selection:', count);
+  function handleRegionClick(region: any) {
+    console.log('Region clicked:', region);
+
+    // Prevent actions during turn transition
+    if ($turnState.isTransitioning) {
+      console.log('Ignoring click during turn transition');
+      return;
+    }
+
+    if (!isMyTurn) {
+      console.log('Not my turn, ignoring click');
+      return;
+    }
 
     if (moveSystem) {
-      // Update the soldier count
-      moveSystem.processAction({
-        type: 'ADJUST_SOLDIERS',
-        payload: { soldierCount: count }
-      });
-
-      // After soldier selection, if we have a target, execute the move
-      const currentState = moveSystem.getState();
-      if (currentState.targetRegion !== null) {
-        // Execute the move immediately since we have both source, target, and soldier count
-        moveSystem.processAction({ type: 'CONFIRM_MOVE' });
-      }
+      moveSystem.handleRegionClick(region.index);
     }
+  }
+
+  function handleSoldierSelectionConfirm(soldierCount: number) {
+    //const { soldierCount } = event.detail;
+    console.log('Soldier selection:', soldierCount);
+
+
+    if (moveSystem) {
+      moveSystem.handleSoldierAdjustment(soldierCount);
+    }
+
     showSoldierSelection = false;
     soldierSelectionData = null;
   }
 
-  // Game action handlers
+  function handleSoldierSelectionCancel() {
+    console.log('Soldier selection cancelled');
+
+    if (moveSystem) {
+      moveSystem.cancelMove();
+    }
+
+    showSoldierSelection = false;
+    soldierSelectionData = null;
+  }
+
   async function handleEndTurn() {
+    console.log('Ending turn...');
+
     try {
       const response = await fetch(`/api/game/${gameId}/end-turn`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerId: playerId
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to end turn');
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Turn ended successfully:', result);
+
+        // Reset move state
+        moveState = {
+          mode: 'IDLE',
+          sourceRegion: null,
+          targetRegion: null,
+          selectedSoldierCount: 0,
+          maxSoldiers: 0,
+          availableMoves: 3,
+          isMoving: false
+        };
+      } else {
+        const error = await response.json();
+        console.error('❌ Failed to end turn:', error);
+        alert(error.message || 'Failed to end turn');
       }
-    } catch (err) {
-      console.error('End turn failed:', err);
-      error = 'Failed to end turn. Please try again.';
+    } catch (error) {
+      console.error('❌ Network error ending turn:', error);
+      alert('Network error: ' + error.message);
+    }
+  }
+
+  function handleUndo() {
+    console.log('Undo requested');
+    if (moveSystem) {
+      moveSystem.undo();
     }
   }
 
   function handleCancelMove() {
+    console.log('Cancel move requested');
     if (moveSystem) {
-      moveSystem.processAction({ type: 'CANCEL' });
+      moveSystem.cancelMove();
     }
-    showSoldierSelection = false;
-    soldierSelectionData = null;
-  }
-
-  function handleUndo() {
-    // Implement undo logic
-  }
-
-  function handleToggleAudio() {
-    audioEnabled = !audioEnabled;
   }
 
   function handleShowInstructions() {
     showInstructions = true;
   }
 
-  function handleResign() {
-    // Implement resign logic
+  function handleToggleAudio() {
+    audioEnabled = !audioEnabled;
+    console.log('Audio toggled:', audioEnabled);
   }
 
-  function handleRegionClick(region: Region) {
-    if (!isMyTurn || !moveSystem) return;
-    moveSystem.handleRegionClick(region.index);
+  function handleResign() {
+    const confirmed = confirm('Are you sure you want to resign from this game?');
+    if (confirmed) {
+      console.log('Player resigned');
+      // TODO: Implement resignation logic
+    }
   }
 </script>
 
-<div class="enhanced-game-container">
-  <LoadingState
-    {loading}
-    {error}
-    loadingText="Loading World Conflict..."
-    containerClass="fullscreen"
-    showRetry={true}
-    on:retry={handleRetry}
-  >
-    <svelte:fragment slot="error-actions">
-      <Button variant="secondary" on:click={() => window.location.href = '/'}>
-        Return to Home
-      </Button>
-    </svelte:fragment>
+<!-- ADD THIS: Turn Banner Overlay -->
+{#if showBanner && currentPlayerForBanner}
+  <Banner
+    player={currentPlayerForBanner}
+    isVisible={showBanner}
+    onComplete={handleBannerComplete}
+  />
+{/if}
 
-    <GameInfoPanel
-      {gameState}
-      {players}
-      {moveMode}
-      {selectedRegion}
-      {audioEnabled}
-      onEndTurn={handleEndTurn}
-      onCancelMove={handleCancelMove}
-      onUndo={handleUndo}
-      onToggleAudio={handleToggleAudio}
-      onShowInstructions={handleShowInstructions}
-      onResign={handleResign}
-    />
-
-    <div class="map-container">
-      <Map
-        {regions}
-        {players}
+<LoadingState
+  {loading}
+  {error}
+  loadingText="Loading game..."
+  containerClass="fullscreen"
+  showRetry={true}
+  on:retry={handleRetry}
+>
+  <div class="game-container">
+    <!-- Left Panel: Game Info -->
+    <div class="info-panel">
+      <GameInfoPanel
         gameState={$gameState}
-        {moveMode}
-        {selectedRegion}
-        onRegionClick={handleRegionClick}
-        playerIndex={playerIndex}
+        {players}
         currentPlayer={currentPlayer}
+        {currentPlayerIndex}
+        {movesRemaining}
+        moveInstruction={moveSystem?.getCurrentInstruction() || ''}
+        showCancelButton={moveState.mode !== 'IDLE'}
+        {audioEnabled}
+        onEndTurn={handleEndTurn}
+        onUndo={handleUndo}
+        onCancelMove={handleCancelMove}
+        onToggleAudio={handleToggleAudio}
+        onShowInstructions={handleShowInstructions}
+        onResign={handleResign}
       />
     </div>
 
-    {#if showSoldierSelection && soldierSelectionData}
-      <SoldierSelectionModal
-        maxSoldiers={soldierSelectionData.maxSoldiers}
-        currentSelection={soldierSelectionData.currentSelection}
-        onConfirm={handleSoldierSelection}
-        onCancel={() => showSoldierSelection = false}
+    <!-- Right Panel: Game Map -->
+    <div class="map-container">
+      <Map
+        {regions}
+        gameState={$gameState}
+        currentPlayer={currentPlayer}
+        selectedRegion={moveState.sourceRegion ? regions.find(r => r.index === moveState.sourceRegion) : null}
+        showTurnHighlights={highlightRegions}
+        onRegionClick={handleRegionClick}
+        previewMode={loading || $turnState.isTransitioning}
       />
-    {/if}
+    </div>
+  </div>
 
-    {#if showInstructions}
-      <GameInstructions
-        onClose={() => showInstructions = false}
-      />
-    {/if}
-  </LoadingState>
-</div>
+  <!-- Soldier Selection Modal -->
+  {#if showSoldierSelection && soldierSelectionData}
+    <SoldierSelectionModal
+      maxSoldiers={soldierSelectionData.maxSoldiers}
+      currentSelection={soldierSelectionData.currentSelection}
+      onConfirm={handleSoldierSelectionConfirm}
+      onCancel={handleSoldierSelectionCancel}
+    />
+  {/if}
+
+  <!-- Instructions Modal -->
+  {#if showInstructions}
+    <GameInstructions on:complete={() => showInstructions = false} />
+  {/if}
+</LoadingState>
 
 <style>
-  .enhanced-game-container {
+  .game-container {
     display: flex;
     height: 100vh;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    background: linear-gradient(135deg, #0f172a, #1e293b);
     color: white;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  .info-panel {
+    width: 320px;
+    min-width: 320px;
+    background: rgba(15, 23, 42, 0.9);
+    border-right: 2px solid #374151;
+    overflow-y: auto;
+    z-index: 10;
   }
 
   .map-container {
     flex: 1;
     position: relative;
     overflow: hidden;
+  }
+
+  /* Responsive design */
+  @media (max-width: 1024px) {
+    .game-container {
+      flex-direction: column;
+    }
+
+    .info-panel {
+      width: 100%;
+      height: 200px;
+      border-right: none;
+      border-bottom: 2px solid #374151;
+    }
+
+    .map-container {
+      height: calc(100vh - 200px);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .info-panel {
+      height: 150px;
+    }
+
+    .map-container {
+      height: calc(100vh - 150px);
+    }
   }
 </style>
