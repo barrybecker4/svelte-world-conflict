@@ -92,7 +92,7 @@
 <Modal
   {isOpen}
   showHeader={false}
-  maxWidth="1000px"
+  width="1000px"
   on:close={handleClose}
 >
   <div class="tutorial-container">

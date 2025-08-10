@@ -7,6 +7,8 @@
   import MapPreviewPanel from './MapPreviewPanel.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import Button from '$lib/components/ui/Button.svelte';
+  import Panel from '$lib/components/ui/Panel.svelte';
+  import Section from '$lib/components/ui/Section.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -17,7 +19,6 @@
     mapSize: 'Large'
   };
 
-  // Player name input
   let playerName = '';
   const PLAYER_NAME_KEY = 'wc_player_name';
 
@@ -107,7 +108,7 @@
   function handleSlotUpdated(event) {
     const { index, slot } = event.detail;
 
-    // If changing to "Set", we need to handle the current player switching
+    // Handle player switching
     if (slot.type === 'Set') {
       // Find the current "Set" slot and change it to "Off"
       const currentSetIndex = playerSlots.findIndex(s => s.type === 'Set');
@@ -195,12 +196,15 @@
     </div>
   {:else}
     <div class="configuration-main">
-      <div class="config-panel">
-        <h2>Game Setup</h2>
+      <!-- Left Panel: Configuration -->
+      <Panel variant="dark" blur={true} customClass="config-panel">
+
+        <!-- Header -->
+        <Section title="Game Setup" borderBottom={true}>
+        </Section>
 
         <!-- Current Player Section -->
-        <div class="current-player-section">
-          <h3>Current Player</h3>
+        <Section title="Current Player" customClass="current-player-section">
           <div class="current-player">
             <span class="player-label">Playing as:</span>
             <span class="player-name-display">{playerName}</span>
@@ -208,11 +212,10 @@
               Change
             </Button>
           </div>
-        </div>
+        </Section>
 
         <!-- Players Section -->
-        <div class="players-section">
-          <h3>Players</h3>
+        <Section title="Players">
           {#each playerSlots as slot, index (slot.index)}
             <PlayerConfiguration
               playerSlot={slot}
@@ -220,13 +223,15 @@
               on:slotUpdated={handleSlotUpdated}
             />
           {/each}
-        </div>
+        </Section>
 
         <!-- Game Settings -->
-        <GameSettingsPanel bind:gameSettings />
+        <Section title="" borderBottom={true}>
+          <GameSettingsPanel bind:gameSettings />
+        </Section>
 
         <!-- Create Game Section -->
-        <div class="create-game-section">
+        <Section title="" borderBottom={false}>
           {#if error}
             <div class="error-message">{error}</div>
           {/if}
@@ -240,10 +245,11 @@
           >
             Create Game
           </Button>
-        </div>
-      </div>
+        </Section>
 
-      <!-- Pass playerSlots to MapPreviewPanel so it can show home bases -->
+      </Panel>
+
+      <!-- Right Panel: Map Preview -->
       <MapPreviewPanel
         bind:this={mapPreviewPanel}
         mapSize={gameSettings.mapSize}
@@ -255,92 +261,68 @@
 </div>
 
 <style>
+  /* Main container - only component-specific styling */
   .game-configuration {
     min-height: 100vh;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    background: linear-gradient(135deg, var(--color-gray-800, #1e293b) 0%, var(--color-gray-700, #334155) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: var(--space-5, 20px);
+  }
+
+  .name-input-container {
+    /* PlayerNameInput handles its own styling */
   }
 
   .configuration-main {
     display: flex;
-    gap: 32px;
-    /*max-width: 1200px;*/
+    gap: var(--space-8, 32px);
     width: 100%;
     height: 80vh;
     min-height: 600px;
   }
 
-  .config-panel {
-    background: rgba(30, 41, 59, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid #475569;
-    border-radius: 12px;
-    padding: 24px;
+  /* Panel customizations */
+  :global(.config-panel) {
     overflow-y: auto;
     min-width: 400px;
     max-height: 100%;
+    flex-direction: column;
+    display: flex;
   }
 
-  .config-panel h2 {
-    font-size: 24px;
-    color: #f8fafc;
-    margin-bottom: 16px;
-  }
-
-  .config-panel h3 {
-    font-size: 20px;
-    color: #f8fafc;
-    margin-bottom: 8px;
-  }
-
-  .current-player-section {
-    margin-bottom: 24px;
-    padding: 16px;
-    background: #374151;
-    border-radius: 8px;
-  }
-
+  /* Current player section styling */
   .current-player {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3, 12px);
   }
 
   .player-label {
-    font-weight: 500;
-    color: #94a3b8;
+    font-weight: var(--font-medium, 500);
+    color: var(--text-tertiary, #94a3b8);
   }
 
   .player-name-display {
-    font-weight: 600;
-    color: #f8fafc;
-    font-size: 1.1rem;
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-primary, #f8fafc);
+    font-size: var(--text-lg, 1.1rem);
   }
 
-  .players-section {
-    margin-bottom: 24px;
-  }
-
-  .create-game-section {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid #475569;
-  }
-
+  /* Error message */
   .error-message {
-    color: #ef4444;
+    color: var(--color-error, #ef4444);
     background: rgba(239, 68, 68, 0.1);
-    border: 1px solid #ef4444;
-    border-radius: 4px;
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    font-size: 0.9rem;
+    border: 1px solid var(--color-error, #ef4444);
+    border-radius: var(--radius-sm, 4px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    margin-bottom: var(--space-3, 12px);
+    font-size: var(--text-sm, 0.9rem);
   }
 
-  .create-game-section :global(.btn-lg) {
+  /* Button styling */
+  :global(.config-panel .btn-lg) {
     width: 100%;
   }
 </style>
