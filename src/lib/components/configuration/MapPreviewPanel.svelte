@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MapGenerator } from '$lib/game/map/MapGenerator';
-  import Map from './Map.svelte';
+  import GameMap from './GameMap.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/classes/Region';
@@ -172,7 +172,7 @@
     >
       {#if previewRegions.length > 0}
         {#key mapKey}
-          <Map
+          <GameMap
             regions={previewRegions}
             gameState={previewGameState}
             currentPlayer={null}

@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { writable } from 'svelte/store';
   import GameInfoPanel from './GameInfoPanel.svelte';
-  import Map from './configuration/Map.svelte';
+  import GameMap from './configuration/GameMap.svelte';
   import SoldierSelectionModal from './SoldierSelectionModal.svelte';
   import GameInstructions from './GameInstructions.svelte';
   import LoadingState from './ui/LoadingState.svelte';
@@ -72,6 +72,9 @@
   });
 
   onDestroy(() => {
+    battleTimeouts.forEach(timeout => clearTimeout(timeout));
+    battleTimeouts.clear();
+
     cleanupWebSocket();
     turnManager.reset();
   });
@@ -109,6 +112,13 @@
         if (worldConflictState) {
           const previousState = $gameState;
           const isNewTurn = previousState && worldConflictState.playerIndex !== previousState.playerIndex;
+
+          // Clear battle timeouts for resolved battles
+          if (previousState?.battlesInProgress) {
+            previousState.battlesInProgress.forEach(regionIndex => {
+              clearBattleTimeout(regionIndex);
+            });
+          }
 
           gameState.set(worldConflictState); // update reactive gameState
 
@@ -251,14 +261,25 @@
       const result = await response.json();
       console.log('✅ Move processed successfully:', result);
 
-      // Update local state with server response
+      clearBattleTimeout(targetRegionIndex);
+
+
+      // Clear battle states when server responds
       if (result.gameState) {
-        console.log('Updating game state with server response. gameState.owners = ', result.gameState.owners);
-        gameState.set(result.gameState);
+        const updatedState = {
+          ...result.gameState,
+          battlesInProgress: [],
+          pendingMoves: []
+        };
+
+        console.log('Updating game state with server response. gameState.owners = ', updatedState.owners);
+        gameState.set(updatedState);
       }
 
     } catch (moveError) {
       console.error('❌ Move failed:', moveError);
+
+      clearBattleTimeout(targetRegionIndex);
 
       // Clear any temporary battle states on error
       if ($gameState) {
@@ -270,7 +291,15 @@
         gameState.set(cleanState);
       }
 
-      throw error;
+      throw moveError;
+    }
+  }
+
+  function clearBattleTimeout(regionIndex: number) {
+    const timeout = battleTimeouts.get(regionIndex);
+    if (timeout) {
+      clearTimeout(timeout);
+      battleTimeouts.delete(regionIndex);
     }
   }
 
@@ -281,28 +310,33 @@
 
     const targetSoldiers = currentState.soldiersByRegion?.[targetRegionIndex] || [];
     const sourceSoldiers = currentState.soldiersByRegion?.[sourceRegionIndex] || [];
-
-    // Check if target is occupied by different player or neutral with soldiers
     const targetOwner = currentState.owners?.[targetRegionIndex];
-    const isHostileTerritory = targetSoldiers.length > 0 &&
-                              (targetOwner === undefined || targetOwner !== playerIndex);
+    const playerIndex = currentState.playerIndex;
+
+    // Fix: Better detection of hostile territory
+    const isNeutralWithSoldiers = targetOwner === undefined && targetSoldiers.length > 0;
+    const isEnemyTerritory = targetOwner !== undefined && targetOwner !== playerIndex && targetSoldiers.length > 0;
+    const isHostileTerritory = isNeutralWithSoldiers || isEnemyTerritory;
 
     console.log('🎯 Move analysis:', {
       targetRegion: targetRegionIndex,
       targetSoldiers: targetSoldiers.length,
       targetOwner,
       playerIndex,
+      isNeutralWithSoldiers,
+      isEnemyTerritory,
       isHostileTerritory
     });
 
     if (isHostileTerritory) {
-      // Show battle in progress for hostile territory
       console.log('⚔️ Battle starting at region', targetRegionIndex);
+
+      // Start battle timeout to prevent stuck battles
+      startBattleTimeout(targetRegionIndex);
 
       const battleState = {
         ...currentState,
         battlesInProgress: [...new Set([...(currentState.battlesInProgress || []), targetRegionIndex])],
-        // Don't move soldiers yet - server will resolve battle
         pendingMoves: [
           ...(currentState.pendingMoves || []),
           { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
@@ -310,7 +344,6 @@
       };
 
       gameState.set(battleState);
-
     } else {
       // Safe to show immediate movement to neutral/friendly territory
       console.log('🚶 Moving to neutral/friendly territory');
@@ -363,6 +396,35 @@
     if (moveSystem) {
       moveSystem.handleRegionClick(region.index);
     }
+  }
+
+  let battleTimeouts = new Map<number, number>();
+
+  function startBattleTimeout(regionIndex: number) {
+    // Clear any existing timeout for this region
+    const existingTimeout = battleTimeouts.get(regionIndex);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set new timeout (5 seconds) - setTimeout returns number in browser
+    const timeout = setTimeout(() => {
+      console.warn(`⚠️ Battle timeout for region ${regionIndex}, clearing battle state`);
+
+      gameState.update(state => {
+        if (!state) return state;
+
+        return {
+          ...state,
+          battlesInProgress: state.battlesInProgress?.filter(r => r !== regionIndex) || [],
+          pendingMoves: state.pendingMoves?.filter(m => m.to !== regionIndex) || []
+        };
+      });
+
+      battleTimeouts.delete(regionIndex);
+    }, 5000);
+
+    battleTimeouts.set(regionIndex, timeout);
   }
 
   function handleSoldierSelectionConfirm(soldierCount: number) {
@@ -500,7 +562,7 @@
 
     <!-- Right Panel: Game Map -->
     <div class="map-container">
-      <Map
+      <GameMap
         {regions}
         gameState={$gameState}
         currentPlayer={currentPlayer}

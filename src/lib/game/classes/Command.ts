@@ -96,23 +96,41 @@ export class ArmyMoveCommand extends Command {
     }
 
     execute(): WorldConflictGameState {
-        this.previousState = this.gameState.copy() as WorldConflictGameState;
-        const newState = this.gameState.copy() as WorldConflictGameState;
-        const players = newState.getPlayers();
+      this.previousState = this.gameState.copy() as WorldConflictGameState;
+      const newState = this.gameState.copy() as WorldConflictGameState;
+      const players = newState.getPlayers();
 
-        // Generate attack sequence if combat needed
-        if (!newState.isOwnedBy(this.destination, this.player)) {
-            const generator = new AttackSequenceGenerator({
-                source: this.source,
-                destination: this.destination,
-                count: this.count
-            });
-            this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
-        }
+      const targetSoldiers = newState.soldiersAtRegion(this.destination);
+      const targetOwner = newState.owner(this.destination);
 
-        this.executeMoveLogic(newState);
+      // Generate attack sequence for any region with defenders that we don't own
+      const needsCombat = targetSoldiers.length > 0 &&
+                         (!targetOwner || targetOwner !== this.player);
 
-        return newState;
+      console.log('🎯 Combat check:', {
+        destination: this.destination,
+        targetSoldiers: targetSoldiers.length,
+        targetOwner: targetOwner?.index || 'neutral',
+        playerIndex: this.player.index,
+        needsCombat
+      });
+
+      if (needsCombat) {
+        const generator = new AttackSequenceGenerator({
+          source: this.source,
+          destination: this.destination,
+          count: this.count
+        });
+        this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
+
+        console.log('⚔️ Generated attack sequence:', {
+          hasSequence: !!this.attackSequence,
+          sequenceLength: this.attackSequence?.length || 0
+        });
+      }
+
+      this.executeMoveLogic(newState);
+      return newState;
     }
 
     private executeMoveLogic(state: WorldConflictGameState): void {

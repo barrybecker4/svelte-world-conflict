@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import Banner from '$lib/components/ui/Banner.svelte';
-  import Map from '$lib/components/configuration/Map.svelte';
+  import GameMap from '$lib/components/configuration/GameMap.svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import { turnManager } from './TurnManager';
   import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
@@ -299,7 +299,7 @@
   </div>
 
   <div class="map-container">
-    <Map
+    <GameMap
       {regions}
       gameState={currentGameState}
       currentPlayer={currentPlayerData}
