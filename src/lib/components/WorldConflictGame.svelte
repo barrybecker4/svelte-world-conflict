@@ -117,8 +117,8 @@
           const previousState = $gameState;
           const isNewTurn = previousState && worldConflictState.playerIndex !== previousState.playerIndex;
 
-          // Update the reactive game state
-          gameState.set(worldConflictState);
+          gameState.set(worldConflictState); // update reactive gameState
+
           regions = worldConflictState.regions || [];
           players = worldConflictState.players || [];
 
@@ -228,43 +228,105 @@
     }
   }
 
-  async function handleMoveComplete(from: number, to: number, soldiers: number) {
+  async function handleMoveComplete(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number) {
+    console.log('Starting move execution:', { sourceRegionIndex, targetRegionIndex, soldierCount });
+
     try {
-      console.log('Sending move request:', { from, to, soldiers });
+      const currentState = $gameState;
+      if (currentState) {
+        updateLocalState(currentState, sourceRegionIndex, targetRegionIndex, soldierCount);
+      }
+
+      // Send move to server
       const response = await fetch(`/api/game/${gameId}/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          moveType: 'ARMY_MOVE',
           playerId,
-          source: from,
-          destination: to,
-          count: soldiers,
-          moveType: 'ARMY_MOVE'
+          source: sourceRegionIndex,
+          destination: targetRegionIndex,
+          count: soldierCount
         })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Move executed successfully:', result);
-
-        // Reset move state
-        moveState = {
-          mode: 'IDLE',
-          sourceRegion: null,
-          targetRegion: null,
-          selectedSoldierCount: 0,
-          maxSoldiers: 0,
-          availableMoves: 3,
-          isMoving: false
-        };
-      } else {
-        const error = await response.json();
-        console.error('❌ Move failed:', error);
-        alert(error.message || 'Move failed');
+      if (!response.ok) {
+        throw new Error('Failed to process move');
       }
+
+      const result = await response.json();
+      console.log('✅ Move processed successfully:', result);
+
+      // Update local state with server response
+      if (result.gameState) {
+        console.log('Updating game state with server response. gameState.owners = ', result.gameState.owners);
+        gameState.set(result.gameState);
+      }
+
+      // The authoritative update from WebSocket will override temporary state
+
     } catch (error) {
-      console.error('❌ Network error during move:', error);
-      alert('Network error: ' + error.message);
+      console.error('❌ Move failed:', error);
+
+      // Clear any temporary battle states on error
+      if ($gameState) {
+        const cleanState = {
+          ...$gameState,
+          battlesInProgress: [],
+          pendingMoves: []
+        };
+        gameState.set(cleanState);
+      }
+
+      throw error;
+    }
+  }
+
+  function updateLocalState(currentState: WorldConflictGameStateData,
+                            sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number) {
+    const targetSoldiers = currentState.soldiersByRegion?.[targetRegionIndex] || [];
+    const isHostileTerritory = targetSoldiers.length > 0 &&
+                              currentState.owners[targetRegionIndex] !== playerIndex;
+
+    if (isHostileTerritory) {
+      // Show battle in progress without claiming territory
+      console.log('⚔️ Battle starting at region', targetRegionIndex);
+
+      const battleState = {
+        ...currentState,
+        battlesInProgress: [...(currentState.battlesInProgress || []), targetRegionIndex],
+        // Optionally show soldier movement without ownership change
+        pendingMoves: [
+          ...(currentState.pendingMoves || []),
+          { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
+        ]
+      };
+
+      gameState.set(battleState);
+    } else {
+      // Moving to neutral/friendly territory - safe to show movement immediately
+      console.log('🚶 Moving to neutral/friendly territory');
+      const moveState = {
+        ...currentState,
+        soldiersByRegion: {
+          ...currentState.soldiersByRegion,
+          [sourceRegionIndex]: (currentState.soldiersByRegion?.[sourceRegionIndex] || []).slice(soldierCount),
+          [targetRegionIndex]: [
+            ...(currentState.soldiersByRegion?.[targetRegionIndex] || []),
+            ...Array(soldierCount).fill({ playerId: playerIndex })
+          ]
+        }
+      };
+
+      if (targetSoldiers.length === 0 && !currentState.owners[targetRegionIndex]) {
+        // Safe to claim neutral territory immediately
+        moveState.owners = {
+          ...currentState.owners,
+          [targetRegionIndex]: playerIndex
+        };
+      }
+
+      gameState.set(moveState);
     }
   }
 

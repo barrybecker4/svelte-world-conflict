@@ -49,6 +49,14 @@ export class MoveSystem {
     return { ...this.state };
   }
 
+  /**
+   * Cancel the current move operation and reset to idle state
+   */
+  cancelMove(): void {
+    console.log('🚫 Cancelling current move operation');
+    this.processAction({ type: 'CANCEL' });
+  }
+
   async processAction(action: MoveAction): Promise<void> {
     const prevState = { ...this.state };
 

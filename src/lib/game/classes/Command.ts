@@ -110,7 +110,6 @@ export class ArmyMoveCommand extends Command {
             this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
         }
 
-        // Execute the move logic
         this.executeMoveLogic(newState);
 
         return newState;
@@ -120,23 +119,27 @@ export class ArmyMoveCommand extends Command {
         const fromList = state.soldiersAtRegion(this.source);
         const toList = state.soldiersAtRegion(this.destination);
 
+        const isNeutralRegion = toList.length === 0 && !state.isOwnedBy(this.destination, this.player);
+
         if (this.attackSequence && this.attackSequence.length > 0) {
-            // Combat occurred - handle casualties and potential conquest
             this.handleCombatResult(state, fromList, toList);
         } else {
-            // Peaceful move between own regions
             this.transferSoldiers(state, fromList, toList, this.count);
         }
 
-        // Update conquered regions if this was a conquest
+        if (isNeutralRegion) {
+            console.log('🏆 CLAIMING neutral region', this.destination, 'for player', this.player.index);
+            state.setOwner(this.destination, this.player);
+        }
+
+        // Update conquered regions
         if (!state.conqueredRegions) {
             state.conqueredRegions = [];
         }
-        if (!state.isOwnedBy(this.destination, this.player) && toList.length === 0) {
+        if (isNeutralRegion) {
             state.conqueredRegions.push(this.destination);
         }
 
-        // Decrease moves remaining
         state.movesRemaining = Math.max(0, state.movesRemaining - 1);
     }
 

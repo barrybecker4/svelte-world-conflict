@@ -20,6 +20,9 @@
   let mapContainer: HTMLDivElement;
   let highlightVisible = true;
 
+  let battlesInProgress = new Set<number>(); // Track regions under attack
+  let battleAnimations = new Map<number, string>(); // Track animation states
+
   onMount(() => {
     // Start the highlight pulse animation
     const interval = setInterval(() => {
@@ -28,6 +31,12 @@
 
     return () => clearInterval(interval);
   });
+
+  $: {
+    if (gameState?.battlesInProgress) {
+      battlesInProgress = new Set(gameState.battlesInProgress);
+    }
+  }
 
   // Auto-detect preview mode if currentPlayer is null but gameState exists
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
@@ -128,22 +137,28 @@
    * Get the color for a region based on ownership
    */
   function getRegionColor(region: Region): string {
-    if (!gameState?.owners) return NEUTRAL_COLOR;
+      if (!gameState?.owners) return NEUTRAL_COLOR;
 
-    const ownerIndex = gameState.owners[region.index];
-    if (ownerIndex !== undefined) {
-      const baseColor = getPlayerMapColor(ownerIndex);
+      const ownerIndex = gameState.owners[region.index];
 
-      // ADD SPECIAL HIGHLIGHTING FOR ACTIVE PLAYER'S REGIONS
-      if (showTurnHighlights && isOwnedByActivePlayer(region.index) && highlightVisible) {
-        return `url(#activePlayerGradient${ownerIndex})`;
+      // Check if this region is under attack
+      if (battlesInProgress.has(region.index)) {
+        // Show contested/battle state with animated pattern
+        return `url(#battlePattern${region.index})`;
       }
 
-      return baseColor;
-    }
+      if (ownerIndex !== undefined) {
+        const baseColor = getPlayerMapColor(ownerIndex);
 
-    return NEUTRAL_COLOR;
-  }
+        if (showTurnHighlights && isOwnedByActivePlayer(region.index) && highlightVisible) {
+          return `url(#activePlayerGradient${ownerIndex})`;
+        }
+
+        return baseColor;
+      }
+
+      return NEUTRAL_COLOR;
+    }
 
   /**
    * Get the border color for a region
@@ -186,6 +201,46 @@
 
     // Default width
     return 1;
+  }
+
+  /**
+   * Get CSS class for battle states
+   */
+  function getBattleClass(region: Region): string {
+    const classes = [];
+
+    if (battlesInProgress.has(region.index)) {
+      classes.push('battle-in-progress');
+    }
+
+    if (canHighlightForTurn(region) && highlightVisible) {
+      classes.push('highlight-active');
+    }
+
+    if (canMoveFrom(region)) {
+      classes.push('can-move');
+    }
+
+    if (isHomeBase(region)) {
+      classes.push('home-base');
+    }
+
+    return classes.join(' ');
+  }
+
+  /**
+   * Get enhanced border effects for battle states
+   */
+  function getBorderEffects(region: Region): string {
+    if (battlesInProgress.has(region.index)) {
+      return 'filter="url(#battleGlow)"';
+    }
+
+    //if (canHighlightForTurn(region) && highlightVisible) {
+    //  return 'filter="url(#activeGlow)"';
+    //}
+
+    return '';
   }
 
   /**
@@ -244,7 +299,6 @@
   <svg class="map-svg" viewBox="0 0 800 600">
     <!-- ADD THESE DEFINITIONS FOR TURN HIGHLIGHTING -->
     <defs>
-      <!-- Active player highlighting gradients -->
       {@html activePlayerGradients}
 
       <!-- Glow effect for active regions -->
@@ -261,6 +315,29 @@
         <rect width="20" height="20" fill="rgba(251, 191, 36, 0.1)"/>
         <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(251, 191, 36, 0.3)" stroke-width="1"/>
       </pattern>
+
+      <!-- Battle progress patterns -->
+      {#each Array.from(battlesInProgress) as regionIndex}
+        <pattern id="battlePattern{regionIndex}" patternUnits="userSpaceOnUse" width="40" height="40">
+          <rect width="40" height="40" fill="{getPlayerMapColor(gameState?.owners?.[regionIndex] || 0)}" opacity="0.7"/>
+          <rect width="40" height="40" fill="none" stroke="#ff6b35" stroke-width="3" stroke-dasharray="10,5">
+            <animate attributeName="stroke-dashoffset" values="0;15" dur="1s" repeatCount="indefinite"/>
+          </rect>
+          <circle cx="20" cy="20" r="8" fill="#ff6b35" opacity="0.6">
+            <animate attributeName="r" values="5;12;5" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+        </pattern>
+      {/each}
+
+      <!-- Battle glow effect -->
+      <filter id="battleGlow">
+        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+        <feColorMatrix type="matrix" values="1 0.3 0 0 0  0.3 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
     </defs>
 
     {#each regions as region (region.index)}
@@ -275,7 +352,8 @@
           fill={getRegionColor(region)}
           stroke={getBorderColor(region)}
           stroke-width={getBorderWidth(region)}
-          class="region-path {effectivePreviewMode ? 'preview-mode' : ''} {canMoveFrom(region) ? 'can-move' : ''} {isHomeBase(region) ? 'home-base' : ''}"
+          class="region-path {getBattleClass(region)}"
+          {...getBorderEffects(region)}
           role="button"
           tabindex={effectivePreviewMode ? -1 : 0}
           aria-label={`Region ${region.index}`}
@@ -297,7 +375,7 @@
           />
         {/if}
 
-        <!-- Region content group (temples and armies) - UNCHANGED FROM YOUR ORIGINAL -->
+        <!-- Region content group (temples and armies) -->
         <g class="region-content">
           <!-- Temple rendering -->
           {#if hasTemple(region.index)}
@@ -429,6 +507,15 @@
   .pulse-overlay {
     pointer-events: none;
     transition: opacity 0.75s ease-in-out;
+  }
+
+  .battle-in-progress {
+    animation: battle-pulse 1s ease-in-out infinite alternate;
+  }
+
+  @keyframes battle-pulse {
+    from { stroke-width: 2; }
+    to { stroke-width: 4; }
   }
 
   /* Responsive adjustments */
