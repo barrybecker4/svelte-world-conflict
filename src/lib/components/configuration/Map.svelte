@@ -229,6 +229,21 @@
   }
 
   /**
+   * Get the filter value for battle states
+   */
+  function getBattleFilter(region: Region): string {
+    if (battlesInProgress.has(region.index)) {
+      return 'url(#battleGlow)';
+    }
+
+    if (canHighlightForTurn(region) && highlightVisible) {
+      return 'url(#activeGlow)';
+    }
+
+    return 'none';
+  }
+
+  /**
    * Get enhanced border effects for battle states
    */
   function getBorderEffects(region: Region): string {
@@ -353,13 +368,12 @@
           stroke={getBorderColor(region)}
           stroke-width={getBorderWidth(region)}
           class="region-path {getBattleClass(region)}"
-          {...getBorderEffects(region)}
+          filter={getBattleFilter(region)}
           role="button"
           tabindex={effectivePreviewMode ? -1 : 0}
           aria-label={`Region ${region.index}`}
           on:click={() => handleRegionClick(region)}
           on:keydown={(event) => handleKeyDown(event, region)}
-          filter={canHighlightForTurn(region) && highlightVisible ? 'url(#activeGlow)' : 'none'}
         />
 
         <!-- ADD PULSE OVERLAY FOR ACTIVE PLAYER REGIONS -->

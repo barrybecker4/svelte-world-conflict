@@ -166,8 +166,14 @@ export class ArmyMoveCommand extends Command {
         }
     }
 
+    // Apply attack sequence results
     private handleCombatResult(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[]): void {
-        // Apply attack sequence results
+        console.log('🔍 handleCombatResult - before combat:', {
+            attackers: fromList.length,
+            defenders: toList.length,
+            destination: this.destination
+        });
+
         if (this.attackSequence) {
             for (const event of this.attackSequence) {
                 if (event.attackerCasualties) {

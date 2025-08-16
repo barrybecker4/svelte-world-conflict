@@ -57,6 +57,16 @@ export class MoveSystem {
     this.processAction({ type: 'CANCEL' });
   }
 
+  /**
+   * Public method to reset the move system completely
+   * Similar to cancelMove but more explicit about full reset
+   */
+  public reset(): void {
+    console.log('🔄 Resetting move system to initial state');
+
+    this.processAction({ type: 'RESET' });
+  }
+
   async processAction(action: MoveAction): Promise<void> {
     const prevState = { ...this.state };
 
@@ -210,49 +220,37 @@ export class MoveSystem {
     }
   }
 
-  private handleCancel(): void {
-    this.state = {
-      mode: 'IDLE',
-      sourceRegion: null,
-      targetRegion: null,
-      selectedSoldierCount: 0,
-      maxSoldiers: 0,
-      availableMoves: this.state.availableMoves,
-      isMoving: false
-    };
-  }
-
-   private async handleConfirmMove(): Promise<void> {
-      if (this.state.sourceRegion === null ||
-          this.state.targetRegion === null ||
-          !this.onMoveComplete) {
-        console.error('Cannot confirm move - missing data or callback');
-        return;
-      }
-
-      try {
-        console.log('Executing move:', {
-          from: this.state.sourceRegion,
-          to: this.state.targetRegion,
-          soldiers: this.state.selectedSoldierCount
-        });
-
-        // Execute the move
-        await this.onMoveComplete(
-          this.state.sourceRegion,
-          this.state.targetRegion,
-          this.state.selectedSoldierCount
-        );
-
-        // Move completed successfully - reset to idle state
-        this.resetToIdle();
-
-      } catch (error) {
-        console.error('Move failed:', error);
-        // Reset state even on error to prevent UI from getting stuck
-        this.resetToIdle();
-      }
+  private async handleConfirmMove(): Promise<void> {
+    if (this.state.sourceRegion === null ||
+        this.state.targetRegion === null ||
+        !this.onMoveComplete) {
+      console.error('Cannot confirm move - missing data or callback');
+      return;
     }
+
+    try {
+      console.log('Executing move:', {
+        from: this.state.sourceRegion,
+        to: this.state.targetRegion,
+        soldiers: this.state.selectedSoldierCount
+      });
+
+      // Execute the move
+      await this.onMoveComplete(
+        this.state.sourceRegion,
+        this.state.targetRegion,
+        this.state.selectedSoldierCount
+      );
+
+      // Move completed successfully - reset to idle state
+      this.resetToIdle();
+
+    } catch (error) {
+      console.error('Move failed:', error);
+      // Reset state even on error to prevent UI from getting stuck
+      this.resetToIdle();
+    }
+  }
 
     private resetToIdle(): void {
       // Explicitly reset all state to idle

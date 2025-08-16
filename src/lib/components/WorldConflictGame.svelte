@@ -47,7 +47,6 @@
     currentSelection: number;
   } | null = null;
 
-
   $: turnState = turnManager.state;
   $: currentPlayerFromTurnManager = turnManager.currentPlayer;
   $: shouldShowBanner = turnManager.shouldShowBanner;
@@ -62,14 +61,8 @@
   $: showBanner = $shouldShowBanner;
   $: highlightRegions = $shouldHighlightRegions;
   $: currentPlayerForBanner = $currentPlayerFromTurnManager;
-
-  $: console.log('WebSocket status:', {
-    wsClient: !!wsClient,
-    isConnected: wsClient?.isConnected(),
-    gameId,
-    playerId,
-    playerIndex
-  });
+  $: connectionStatus = wsClient?.isConnected() ? 'connected' : 'disconnected';
+  $: console.log('WebSocket status:', connectionStatus);
 
   let wsClient: GameWebSocketClient | null = null;
 
@@ -251,7 +244,8 @@
       });
 
       if (!response.ok) {
-        throw new Error('Failed to process move');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
@@ -263,10 +257,8 @@
         gameState.set(result.gameState);
       }
 
-      // The authoritative update from WebSocket will override temporary state
-
-    } catch (error) {
-      console.error('❌ Move failed:', error);
+    } catch (moveError) {
+      console.error('❌ Move failed:', moveError);
 
       // Clear any temporary battle states on error
       if ($gameState) {
@@ -283,19 +275,34 @@
   }
 
   function updateLocalState(currentState: WorldConflictGameStateData,
-                            sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number) {
+                           sourceRegionIndex: number,
+                           targetRegionIndex: number,
+                           soldierCount: number) {
+
     const targetSoldiers = currentState.soldiersByRegion?.[targetRegionIndex] || [];
+    const sourceSoldiers = currentState.soldiersByRegion?.[sourceRegionIndex] || [];
+
+    // Check if target is occupied by different player or neutral with soldiers
+    const targetOwner = currentState.owners?.[targetRegionIndex];
     const isHostileTerritory = targetSoldiers.length > 0 &&
-                              currentState.owners[targetRegionIndex] !== playerIndex;
+                              (targetOwner === undefined || targetOwner !== playerIndex);
+
+    console.log('🎯 Move analysis:', {
+      targetRegion: targetRegionIndex,
+      targetSoldiers: targetSoldiers.length,
+      targetOwner,
+      playerIndex,
+      isHostileTerritory
+    });
 
     if (isHostileTerritory) {
-      // Show battle in progress without claiming territory
+      // Show battle in progress for hostile territory
       console.log('⚔️ Battle starting at region', targetRegionIndex);
 
       const battleState = {
         ...currentState,
-        battlesInProgress: [...(currentState.battlesInProgress || []), targetRegionIndex],
-        // Optionally show soldier movement without ownership change
+        battlesInProgress: [...new Set([...(currentState.battlesInProgress || []), targetRegionIndex])],
+        // Don't move soldiers yet - server will resolve battle
         pendingMoves: [
           ...(currentState.pendingMoves || []),
           { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
@@ -303,27 +310,36 @@
       };
 
       gameState.set(battleState);
+
     } else {
-      // Moving to neutral/friendly territory - safe to show movement immediately
+      // Safe to show immediate movement to neutral/friendly territory
       console.log('🚶 Moving to neutral/friendly territory');
+
+      // Remove soldiers from source
+      const newSourceSoldiers = sourceSoldiers.slice(soldierCount);
+
+      // Add soldiers to target
+      const newTargetSoldiers = [
+        ...targetSoldiers,
+        ...Array(soldierCount).fill({ playerId: playerIndex })
+      ];
+
       const moveState = {
         ...currentState,
         soldiersByRegion: {
           ...currentState.soldiersByRegion,
-          [sourceRegionIndex]: (currentState.soldiersByRegion?.[sourceRegionIndex] || []).slice(soldierCount),
-          [targetRegionIndex]: [
-            ...(currentState.soldiersByRegion?.[targetRegionIndex] || []),
-            ...Array(soldierCount).fill({ playerId: playerIndex })
-          ]
+          [sourceRegionIndex]: newSourceSoldiers,
+          [targetRegionIndex]: newTargetSoldiers
         }
       };
 
-      if (targetSoldiers.length === 0 && !currentState.owners[targetRegionIndex]) {
-        // Safe to claim neutral territory immediately
+      // Claim neutral territory if it's unowned
+      if (targetOwner === undefined) {
         moveState.owners = {
           ...currentState.owners,
           [targetRegionIndex]: playerIndex
         };
+        console.log('🏆 Claiming neutral region', targetRegionIndex);
       }
 
       gameState.set(moveState);
