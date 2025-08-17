@@ -10,18 +10,25 @@
   export let currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
-  export let isPreviewMode = false; // New prop to indicate preview mode
+  export let isPreviewMode = false;
   export let showTurnHighlights: boolean = true;
   export let previewMode: boolean = false;
+  export let mapContainer: HTMLElement | undefined = undefined;
 
   const MAX_INDIVIDUAL_ARMIES = 16;
   const ARMIES_PER_ROW = 8;
-  const NEUTRAL_COLOR = '#8b92a0'; // Gray for neutral regions
-  let mapContainer: HTMLDivElement;
+  const NEUTRAL_COLOR = '#8b92a0';
+  let mapContainerElement: HTMLDivElement;
   let highlightVisible = true;
 
-  let battlesInProgress = new Set<number>(); // Track regions under attack
-  let battleAnimations = new Map<number, string>(); // Track animation states
+  let battlesInProgress = new Set<number>();
+  let battleAnimations = new Map<number, string>();
+
+  // Bind the internal element to the exported prop
+  $: if (mapContainerElement && !mapContainer) {
+    mapContainer = mapContainerElement;
+    console.log('📦 GameMap: mapContainer exported:', mapContainer);
+  }
 
   onMount(() => {
     // Start the highlight pulse animation
@@ -308,9 +315,8 @@
   }
 </script>
 
-<div class="game-map" bind:this={mapContainer}>
+<div class="game-map" bind:this={mapContainerElement}>
   <svg class="map-svg" viewBox="0 0 800 600">
-    <!-- ADD THESE DEFINITIONS FOR TURN HIGHLIGHTING -->
     <defs>
       {@html activePlayerGradients}
 
