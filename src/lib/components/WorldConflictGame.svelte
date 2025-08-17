@@ -50,7 +50,7 @@
     maxSoldiers: number;
     currentSelection: number;
   } | null = null;
-  let debugMode = true;
+  let debugMode = false;
 
   $: turnState = turnManager.state;
   $: currentPlayerFromTurnManager = turnManager.currentPlayer;

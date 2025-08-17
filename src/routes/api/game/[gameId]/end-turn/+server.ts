@@ -213,4 +213,3 @@ async function generateAiMove(gameState: WorldConflictGameState, player: Player)
         soldierCount
     );
 }
-

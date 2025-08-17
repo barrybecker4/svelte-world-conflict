@@ -43,8 +43,6 @@
 
       if (response.ok) {
         const result = await response.json();
-
-        // Find the human player in the result
         const player = result.player || { index: 0, name: humanPlayer.name };
 
         localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({

@@ -195,7 +195,7 @@ export class GameWebSocketClient {
         }
 
         const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
-        console.log(`🔄 Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+        console.log(`Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
 
         this.reconnectTimeout = window.setTimeout(() => {
             if (this.gameId) {
