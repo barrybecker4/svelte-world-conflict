@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameStateData, Player } from '$lib/game/WorldConflictGameState';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
 
-  export let gameState: WorldConflictGameStateData | null = null;
+  export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
   export let onEndTurn: () => void = () => {};
   export let onCancelMove: () => void = () => {};

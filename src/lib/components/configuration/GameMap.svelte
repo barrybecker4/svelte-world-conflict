@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Region, Player, WorldConflictGameStateData } from '$lib/game/gameTypes';
+  import type { Region, Player, GameStateData } from '$lib/game/gameTypes';
   import Temple from './Temple.svelte';
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
   import { fade } from 'svelte/transition';
 
   export let regions: Region[] = [];
-  export let gameState: WorldConflictGameStateData | null = null;
+  export let gameState: GameStateData | null = null;
   export let currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;

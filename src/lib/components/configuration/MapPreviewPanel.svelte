@@ -5,7 +5,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/classes/Region';
-  import type { WorldConflictGameStateData, Player, PlayerSlot } from '$lib/game/gameTypes';
+  import type { GameStateData, Player, PlayerSlot } from '$lib/game/gameTypes';
   import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 
   export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
@@ -13,7 +13,7 @@
   export let playerSlots: PlayerSlot[] = [];
 
   let previewRegions: Region[] = [];
-  let previewGameState: WorldConflictGameStateData | null = null;
+  let previewGameState: GameStateData | null = null;
   let loadingPreview = false;
   let error = '';
   let mapKey = 0; // Force re-render when map changes
@@ -151,7 +151,7 @@
     return previewRegions;
   }
 
-  export function getCurrentPreviewState(): WorldConflictGameStateData | null {
+  export function getCurrentPreviewState(): GameStateData | null {
     return previewGameState;
   }
 

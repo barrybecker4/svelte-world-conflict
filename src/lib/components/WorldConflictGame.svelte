@@ -9,7 +9,7 @@
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
   import { turnManager } from '$lib/game/TurnManager';
-  import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
@@ -21,7 +21,7 @@
   export let playerIndex: number;
 
   // Game state
-  let gameState = writable<WorldConflictGameStateData | null>(null);
+  let gameState = writable<GameStateData | null>(null);
   let regions: any[] = [];
   let players: Player[] = [];
   let loading = true;
@@ -354,7 +354,7 @@
     }
   }
 
-  function updateLocalState(currentState: WorldConflictGameStateData,
+  function updateLocalState(currentState: GameStateData,
                            sourceRegionIndex: number,
                            targetRegionIndex: number,
                            soldierCount: number) {

@@ -4,11 +4,11 @@
   import GameMap from '$lib/components/configuration/GameMap.svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import { turnManager } from './TurnManager';
-  import type { Region, Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
+  import type { Region, Player, GameStateData } from '$lib/game/WorldConflictGameState';
 
   // Props
   export let gameId: string;
-  export let initialGameState: WorldConflictGameStateData;
+  export let initialGameState: GameStateData;
   export let initialPlayers: Player[];
   export let currentPlayerId: string | null = null;
 
@@ -82,7 +82,7 @@
   /**
    * Handle incoming game state updates
    */
-  async function handleGameStateUpdate(newGameState: WorldConflictGameStateData): Promise<void> {
+  async function handleGameStateUpdate(newGameState: GameStateData): Promise<void> {
     const currentState = $gameState;
 
     // Check if it's a new turn

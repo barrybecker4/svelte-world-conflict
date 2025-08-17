@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameStateData, Player } from '$lib/game/WorldConflictGameState';
 
-  export let gameState: WorldConflictGameStateData | null = null;
+  export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
   export let visible: boolean = true;
 

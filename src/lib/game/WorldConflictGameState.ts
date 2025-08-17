@@ -1,12 +1,12 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
-import type { Player, Region, WorldConflictGameStateData } from '$lib/game/gameTypes';
+import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 
 export class WorldConflictGameState {
 
-    private state: WorldConflictGameStateData;
+    private state: GameStateData;
 
-    constructor(data: WorldConflictGameStateData) {
+    constructor(data: GameStateData) {
         this.state = { ...data };
         if (!this.state.players) this.state.players = [];
         if (!this.state.regions) this.state.regions = [];
@@ -17,7 +17,7 @@ export class WorldConflictGameState {
     }
 
     static createInitialState(gameId: string, players: Player[], regions: Region[]): WorldConflictGameState {
-        const initialState: WorldConflictGameStateData = {
+        const initialState: GameStateData = {
             turnIndex: 1,
             playerIndex: 0,
             movesRemaining: 3,
@@ -37,7 +37,7 @@ export class WorldConflictGameState {
         return gameState;
     }
 
-    static fromJSON(data: WorldConflictGameStateData): WorldConflictGameState {
+    static fromJSON(data: GameStateData): WorldConflictGameState {
         return new WorldConflictGameState(data);
     }
 
@@ -362,12 +362,12 @@ export class WorldConflictGameState {
 
     // ==================== SERIALIZATION ====================
 
-    toJSON(): WorldConflictGameStateData {
+    toJSON(): GameStateData {
         return { ...this.state };
     }
 
     // Backward compatibility
-    toGameStateData(): WorldConflictGameStateData {
+    toGameStateData(): GameStateData {
         return this.toJSON();
     }
 

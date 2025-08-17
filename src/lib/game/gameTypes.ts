@@ -37,7 +37,7 @@ export interface FloatingText {
     duration: number;
 }
 
-export interface WorldConflictGameStateData {
+export interface GameStateData {
     id: number;
     gameId: string;
     turnIndex: number;

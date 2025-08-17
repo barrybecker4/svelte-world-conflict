@@ -1,6 +1,6 @@
 // Manages turn transitions, banners, and highlighting
 import { writable, derived } from 'svelte/store';
-import type { Player, WorldConflictGameStateData } from '$lib/game/WorldConflictGameState';
+import type { Player, GameStateData } from '$lib/game/WorldConflictGameState';
 
 interface TurnState {
   currentPlayerIndex: number;
@@ -21,7 +21,7 @@ class TurnManager {
     isTransitioning: false
   });
 
-  private gameState = writable<WorldConflictGameStateData | null>(null);
+  private gameState = writable<GameStateData | null>(null);
   private players = writable<Player[]>([]);
 
   // Public stores for components to subscribe to
@@ -53,7 +53,7 @@ class TurnManager {
   /**
    * Initialize the turn manager with game data
    */
-  public initialize(gameState: WorldConflictGameStateData, players: Player[]): void {
+  public initialize(gameState: GameStateData, players: Player[]): void {
     this.gameState.set(gameState);
     this.players.set(players);
 
@@ -70,7 +70,7 @@ class TurnManager {
   /**
    * Handle a turn transition to a new player
    */
-  public async transitionToPlayer(newPlayerIndex: number, gameState: WorldConflictGameStateData): Promise<void> {
+  public async transitionToPlayer(newPlayerIndex: number, gameState: GameStateData): Promise<void> {
     return new Promise((resolve) => {
       this.turnState.update(state => {
         const isNewTurn = state.currentPlayerIndex !== newPlayerIndex;
@@ -140,7 +140,7 @@ class TurnManager {
   /**
    * Update game state without triggering turn transition
    */
-  public updateGameState(gameState: WorldConflictGameStateData): void {
+  public updateGameState(gameState: GameStateData): void {
     this.gameState.set(gameState);
   }
 
@@ -148,7 +148,7 @@ class TurnManager {
    * Get regions owned by the current player
    */
   public getCurrentPlayerRegions(): number[] {
-    let gameState: WorldConflictGameStateData | null = null;
+    let gameState: GameStateData | null = null;
     let currentPlayerIndex: number = 0;
 
     this.gameState.subscribe(state => gameState = state)();
@@ -165,7 +165,7 @@ class TurnManager {
    * Get regions that can move (have soldiers and haven't moved this turn)
    */
   public getMovableRegions(): number[] {
-    let gameState: WorldConflictGameStateData | null = null;
+    let gameState: GameStateData | null = null;
     this.gameState.subscribe(state => gameState = state)();
 
     if (!gameState) return [];
@@ -185,7 +185,7 @@ class TurnManager {
    * Check if a region is owned by the current player
    */
   public isCurrentPlayerRegion(regionIndex: number): boolean {
-    let gameState: WorldConflictGameStateData | null = null;
+    let gameState: GameStateData | null = null;
     let currentPlayerIndex: number = 0;
 
     this.gameState.subscribe(state => gameState = state)();
@@ -227,7 +227,7 @@ class TurnManager {
     movableRegions: number;
   } {
     let state: TurnState;
-    let gameState: WorldConflictGameStateData | null = null;
+    let gameState: GameStateData | null = null;
 
     this.turnState.subscribe(s => state = s)();
     this.gameState.subscribe(gs => gameState = gs)();

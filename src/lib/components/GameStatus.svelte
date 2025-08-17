@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { getPlayerColor } from '$lib/game/constants/playerColors';
 
-  export let gameState: WorldConflictGameStateData | null = null;
+  export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
   export const currentPlayer: Player | null = null; // Changed to const export since it's unused
 
