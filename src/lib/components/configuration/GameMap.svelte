@@ -49,8 +49,6 @@
   $: {
     if (regions.length > 0) {
       console.log('Map received regions:', regions.length);
-      console.log('Preview mode:', effectivePreviewMode);
-      console.log('Creation mode:', isCreationMode);
       console.log('Current player:', currentPlayer);
       console.log('Selected region:', selectedRegion);
       if (gameState) {

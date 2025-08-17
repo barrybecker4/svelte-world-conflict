@@ -12,6 +12,7 @@
 
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
+  import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
 
   // Props
@@ -38,6 +39,9 @@
     isMoving: false
   };
 
+  let battleAnimationSystem: BattleAnimationSystem;
+  let mapContainer: HTMLElement;
+
   // UI state
   let showSoldierSelection = false;
   let showInstructions = false;
@@ -63,10 +67,21 @@
   $: currentPlayerForBanner = $currentPlayerFromTurnManager;
   $: connectionStatus = wsClient?.isConnected() ? 'connected' : 'disconnected';
   $: console.log('WebSocket status:', connectionStatus);
+  $: {  // debug only
+    if (mapContainer) {
+      console.log('🗺️ Map container bound:', mapContainer);
+    }
+  }
+  $: {
+      if (mapContainer && battleAnimationSystem) {
+        battleAnimationSystem.setMapContainer(mapContainer);
+      }
+    }
 
   let wsClient: GameWebSocketClient | null = null;
 
   onMount(async () => {
+    battleAnimationSystem = new BattleAnimationSystem();
     await initializeGame();
     await initializeWebSocket();
   });
@@ -120,26 +135,33 @@
             });
           }
 
-          gameState.set(worldConflictState); // update reactive gameState
+          // Ensure battle states are cleared from server updates
+          const cleanState = {
+            ...worldConflictState,
+            battlesInProgress: [], // Force clear
+            pendingMoves: []       // Force clear
+          };
 
-          regions = worldConflictState.regions || [];
-          players = worldConflictState.players || [];
+          gameState.set(cleanState); // update reactive gameState
+
+          regions = cleanState.regions || [];
+          players = cleanState.players || [];
 
           if (isNewTurn) {
             // New player's turn - show banner and transition
-            turnManager.transitionToPlayer(worldConflictState.playerIndex, worldConflictState);
+            turnManager.transitionToPlayer(cleanState.playerIndex, cleanState);
           } else {
             // Same player, just update state
-            turnManager.updateGameState(worldConflictState);
+            turnManager.updateGameState(cleanState);
           }
 
           // Update the existing move system with new game state
           if (moveSystem) {
-            moveSystem.updateGameState(worldConflictState);
+            moveSystem.updateGameState(cleanState);
           } else {
             // Only create new MoveSystem if it doesn't exist
             moveSystem = new MoveSystem(
-              worldConflictState,
+              cleanState,
               handleMoveComplete,
               handleMoveStateChange
             );
@@ -261,8 +283,26 @@
       const result = await response.json();
       console.log('✅ Move processed successfully:', result);
 
-      clearBattleTimeout(targetRegionIndex);
+      // Ensure map container is set before playing animations
+      if (result.attackSequence && result.attackSequence.length > 0) {
+        console.log('🎬 Playing attack sequence from server response');
 
+        // Wait a tick to ensure map container is available
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Double-check map container is set
+        if (mapContainer && battleAnimationSystem) {
+          console.log('🗺️ Map container available, setting on animation system');
+          battleAnimationSystem.setMapContainer(mapContainer);
+          await battleAnimationSystem.playAttackSequence(result.attackSequence, regions);
+        } else {
+          console.warn('⚠️ Map container not available for animations:', { mapContainer: !!mapContainer, battleAnimationSystem: !!battleAnimationSystem });
+          // Fallback: just log what would have been shown
+          console.log('🎭 Attack sequence (no animation):', result.attackSequence);
+        }
+      }
+
+      clearBattleTimeout(targetRegionIndex);
 
       // Clear battle states when server responds
       if (result.gameState) {
@@ -274,6 +314,16 @@
 
         console.log('Updating game state with server response. gameState.owners = ', updatedState.owners);
         gameState.set(updatedState);
+      } else {
+        // Even if no gameState in response, clear battle states
+        gameState.update(state => {
+          if (!state) return state;
+          return {
+            ...state,
+            battlesInProgress: [],
+            pendingMoves: []
+          };
+        });
       }
 
     } catch (moveError) {
@@ -570,6 +620,7 @@
         showTurnHighlights={highlightRegions}
         onRegionClick={handleRegionClick}
         previewMode={loading || $turnState.isTransitioning}
+        bind:mapContainer
       />
     </div>
   </div>

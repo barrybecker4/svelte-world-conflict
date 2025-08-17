@@ -117,7 +117,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             success: true,
             gameState: result.newState!.toJSON(),
             game: updatedGame,
-            message: 'Move processed successfully'
+            message: 'Move processed successfully',
+            attackSequence: command.attackSequence
         });
 
     } catch (error) {
