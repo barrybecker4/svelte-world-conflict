@@ -55,7 +55,7 @@ function getResponse(game: WorldConflictGameRecord) {
      console.log(`✅ Returning game data for ${gameId}:`, {
          regions: response.worldConflictState.regions?.length,
          players: response.worldConflictState.players?.length,
-         owners: Object.keys(response.worldConflictState.owners || {}).length,
+         owners: Object.keys(response.worldConflictState.ownersByRegion || {}).length,
          soldiers: Object.keys(response.worldConflictState.soldiersByRegion || {}).length
      });
 

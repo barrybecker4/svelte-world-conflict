@@ -36,12 +36,12 @@
   $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
 
   function getRegionCount(playerIndex: number): number {
-    if (!gameState?.owners) return 0;
-    return Object.values(gameState.owners).filter(owner => owner === playerIndex).length;
+    if (!gameState?.ownersByRegion) return 0;
+    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
   }
 
   function getFaithCount(playerIndex: number): number {
-    return gameState?.cash?.[playerIndex] ?? 0;
+    return gameState?.cashByPlayer?.[playerIndex] ?? 0;
   }
 
   function isPlayerAlive(playerIndex: number): boolean {

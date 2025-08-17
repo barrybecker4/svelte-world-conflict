@@ -61,7 +61,7 @@
       if (gameState) {
         console.log('Game state ID:', gameState.gameId);
         console.log('Game state players:', gameState.players?.length || 0);
-        console.log('Owned regions:', Object.keys(gameState.owners || {}).length);
+        console.log('Owned regions:', Object.keys(gameState.ownersByRegion || {}).length);
       }
     }
   }
@@ -101,8 +101,8 @@
   }
 
   function isOwnedByActivePlayer(regionIndex: number): boolean {
-    if (!gameState?.owners || !showTurnHighlights) return false;
-    return gameState.owners[regionIndex] === gameState.playerIndex;
+    if (!gameState?.ownersByRegion || !showTurnHighlights) return false;
+    return gameState.ownersByRegion[regionIndex] === gameState.playerIndex;
   }
 
   function getSoldierCount(regionIndex: number): number {
@@ -142,9 +142,9 @@
    * Get the color for a region based on ownership
    */
   function getRegionColor(region: Region): string {
-      if (!gameState?.owners) return NEUTRAL_COLOR;
+      if (!gameState?.ownersByRegion) return NEUTRAL_COLOR;
 
-      const ownerIndex = gameState.owners[region.index];
+      const ownerIndex = gameState.ownersByRegion[region.index];
 
       // Check if this region is under attack
       if (battlesInProgress.has(region.index)) {
@@ -180,9 +180,9 @@
     }
 
     // Default border for owned regions
-    if (!gameState?.owners) return '#333';
+    if (!gameState?.ownersByRegion) return '#333';
 
-    const ownerIndex = gameState.owners[region.index];
+    const ownerIndex = gameState.ownersByRegion[region.index];
     if (ownerIndex !== undefined) {
       return getPlayerHighlightColor(ownerIndex);
     }
@@ -267,10 +267,10 @@
    * Check if a region is a home base (owned and has temple)
    */
   function isHomeBase(region: Region): boolean {
-    if (!gameState?.owners || !gameState?.temples) return false;
+    if (!gameState?.ownersByRegion || !gameState?.templesByRegion) return false;
 
-    const isOwned = gameState.owners[region.index] !== undefined;
-    const hasTemple = gameState.temples[region.index] !== undefined;
+    const isOwned = gameState.ownersByRegion[region.index] !== undefined;
+    const hasTemple = gameState.templesByRegion[region.index] !== undefined;
 
     return isOwned && hasTemple;
   }
@@ -279,7 +279,7 @@
    * Check if a region has a temple
    */
   function hasTemple(regionIndex: number): boolean {
-    return gameState?.temples?.[regionIndex] !== undefined;
+    return gameState?.templesByRegion?.[regionIndex] !== undefined;
   }
 
   /**
@@ -287,9 +287,9 @@
    */
   function canMoveFrom(region: Region): boolean {
     if (effectivePreviewMode) return false;
-    if (!currentPlayer || !gameState?.owners || !gameState?.soldiersByRegion) return false;
+    if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
 
-    const isOwnedByCurrentPlayer = gameState.owners[region.index] === currentPlayer.index;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === currentPlayer.index;
     const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
 
     return isOwnedByCurrentPlayer && soldierCount > 1;
@@ -338,7 +338,7 @@
       <!-- Battle progress patterns -->
       {#each Array.from(battlesInProgress) as regionIndex}
         <pattern id="battlePattern{regionIndex}" patternUnits="userSpaceOnUse" width="40" height="40">
-          <rect width="40" height="40" fill="{getPlayerMapColor(gameState?.owners?.[regionIndex] || 0)}" opacity="0.7"/>
+          <rect width="40" height="40" fill="{getPlayerMapColor(gameState?.ownersByRegion?.[regionIndex] || 0)}" opacity="0.7"/>
           <rect width="40" height="40" fill="none" stroke="#ff6b35" stroke-width="3" stroke-dasharray="10,5">
             <animate attributeName="stroke-dashoffset" values="0;15" dur="1s" repeatCount="indefinite"/>
           </rect>
@@ -402,8 +402,8 @@
               y={region.y}
               size="12"
               borderColor="#fbfbf4"
-              level={gameState?.temples?.[region.index]?.level || 0}
-              upgradeType={gameState?.temples?.[region.index]?.upgradeIndex}
+              level={gameState?.templesByRegion?.[region.index]?.level || 0}
+              upgradeType={gameState?.templesByRegion?.[region.index]?.upgradeIndex}
             />
           {/if}
 

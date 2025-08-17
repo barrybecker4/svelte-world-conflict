@@ -1,5 +1,18 @@
 import type { Region } from '$lib/game/classes/Region';
 
+export interface GameSettings {
+    mapSize: 'Small' | 'Medium' | 'Large';
+    moveTimeLimit: number;
+    maxTurns: number;
+}
+
+export interface PlayerSlot {
+    index: number;
+    type: 'Human' | 'AI' | 'Empty';
+    name: string;
+    color: string;
+}
+
 export interface Player {
     index: number;
     name: string;
@@ -31,40 +44,18 @@ export interface WorldConflictGameStateData {
     playerIndex: number;
     movesRemaining: number;
 
-    // Region ownership (regionIndex -> playerIndex)
-    owners: Record<number, number>;
+    ownersByRegion: Record<number, number>; regionIndex -> playerIndex // Index -> playerIndex
+    templesByRegion: Record<number, Temple>; // regionIndex -> Temple
+    soldiersByRegion: Record<number, Soldier[]>; // regionIndex -> soldiers[]
+    cashByPlayer: Record<number, number>; // playerIndex -> amount
 
-    // Temples (regionIndex -> temple)
-    temples: Record<number, Temple>;
-
-    // Soldiers by region (regionIndex -> soldiers[])
-    soldiersByRegion: Record<number, Soldier[]>;
-
-    // Player cash (playerIndex -> amount)
-    cash: Record<number, number>;
-
-    // Game data
     players: Player[];
     regions: Region[];
 
-    // UI state
     floatingText?: FloatingText[];
     conqueredRegions?: number[];
 
-    // Game settings
     moveTimeLimit?: number;
     maxTurns?: number;
 }
 
-export interface GameSettings {
-    mapSize: 'Small' | 'Medium' | 'Large';
-    moveTimeLimit: number;
-    maxTurns: number;
-}
-
-export interface PlayerSlot {
-    index: number;
-    type: 'Human' | 'AI' | 'Empty';
-    name: string;
-    color: string;
-}

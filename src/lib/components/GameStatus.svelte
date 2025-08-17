@@ -9,7 +9,7 @@
   function getPlayerStatus(player: Player): string {
     if (!gameState) return 'Unknown';
 
-    const regionCount = Object.values(gameState.owners || {})
+    const regionCount = Object.values(gameState.ownersByRegions || {})
       .filter(owner => owner === player.index).length;
 
     if (regionCount === 0) return 'Eliminated';
@@ -44,12 +44,12 @@
           <div class="stat">
             <span class="stat-label">Regions:</span>
             <span class="stat-value">
-              {Object.values(gameState?.owners || {}).filter(owner => owner === player.index).length}
+              {Object.values(gameState?.ownersByRegion || {}).filter(owner => owner === player.index).length}
             </span>
           </div>
           <div class="stat">
             <span class="stat-label">Faith:</span>
-            <span class="stat-value">{gameState?.cash?.[player.index] || 0}</span>
+            <span class="stat-value">{gameState?.cashByPlayer?.[player.index] || 0}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Status:</span>

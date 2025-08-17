@@ -15,7 +15,7 @@
   $: faithValues = players.map(player => ({
     playerIndex: player.index,
     playerName: player.name,
-    faith: gameState?.cash?.[player.index] ?? 0,
+    faith: gameState?.cashByPlayer?.[player.index] ?? 0,
     regions: getRegionCount(player.index),
     soldiers: getTotalSoldiers(player.index)
   }));
@@ -25,21 +25,21 @@
   $: regionSoldierCounts = Object.entries(soldiersByRegion).map(([regionIndex, soldiers]) => ({
     regionIndex: parseInt(regionIndex),
     soldierCount: soldiers?.length ?? 0,
-    owner: gameState?.owners?.[parseInt(regionIndex)] ?? -1
+    owner: gameState?.ownersByRegion?.[parseInt(regionIndex)] ?? -1
   }));
 
   function getRegionCount(playerIndex: number): number {
-    if (!gameState?.owners) return 0;
-    return Object.values(gameState.owners).filter(owner => owner === playerIndex).length;
+    if (!gameState?.ownersByRegion) return 0;
+    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
   }
 
   function getTotalSoldiers(playerIndex: number): number {
-    if (!gameState?.soldiersByRegion || !gameState?.owners) return 0;
+    if (!gameState?.soldiersByRegion || !gameState?.ownersByRegion) return 0;
 
     let total = 0;
     for (const [regionIndex, soldiers] of Object.entries(gameState.soldiersByRegion)) {
       const regionIdx = parseInt(regionIndex);
-      if (gameState.owners[regionIdx] === playerIndex) {
+      if (gameState.ownersByRegion[regionIdx] === playerIndex) {
         total += soldiers?.length ?? 0;
       }
     }
@@ -105,7 +105,7 @@
       <h4>Raw Data Check</h4>
       <details>
         <summary>Click to see raw cash values</summary>
-        <pre>{JSON.stringify(gameState?.cash ?? {}, null, 2)}</pre>
+        <pre>{JSON.stringify(gameState?.cashByPlayer ?? {}, null, 2)}</pre>
       </details>
 
       <details>

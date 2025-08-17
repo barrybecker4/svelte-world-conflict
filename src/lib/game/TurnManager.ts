@@ -154,9 +154,9 @@ class TurnManager {
     this.gameState.subscribe(state => gameState = state)();
     this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
 
-    if (!gameState?.owners) return [];
+    if (!gameState?.ownersByRegion) return [];
 
-    return Object.entries(gameState.owners)
+    return Object.entries(gameState.ownersByRegion)
       .filter(([_, ownerIndex]) => ownerIndex === currentPlayerIndex)
       .map(([regionIndex, _]) => parseInt(regionIndex));
   }
@@ -191,8 +191,8 @@ class TurnManager {
     this.gameState.subscribe(state => gameState = state)();
     this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
 
-    if (!gameState?.owners) return false;
-    return gameState.owners[regionIndex] === currentPlayerIndex;
+    if (!gameState?.ownersByRegion) return false;
+    return gameState.ownersByRegion[regionIndex] === currentPlayerIndex;
   }
 
   /**

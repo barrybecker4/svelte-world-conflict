@@ -10,7 +10,7 @@
   export let canEndTurn: boolean = false;
   export let movesRemaining: number = 0;
 
-  $: playerFaith = gameState?.cash?.[currentPlayer?.index || 0] || 0;
+  $: playerFaith = gameState?.cashByPlayer?.[currentPlayer?.index || 0] || 0;
   $: isPlayerTurn = gameState?.playerIndex === currentPlayer?.index;
 </script>
 

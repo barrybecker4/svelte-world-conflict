@@ -336,7 +336,7 @@ export class MoveSystem {
   // Helper methods for game state validation
   private isPlayerRegion(regionIndex: number): boolean {
     const currentPlayerIndex = this.gameState?.playerIndex;
-    return this.gameState?.owners?.[regionIndex] === currentPlayerIndex;
+    return this.gameState?.ownersByRegion?.[regionIndex] === currentPlayerIndex;
   }
 
   private getSoldierCountAtRegion(regionIndex: number): number {

@@ -265,13 +265,13 @@ export class BuildCommand extends Command {
             errors.push("You don't own this region");
         }
 
-        const temple = this.gameState.temples[this.regionIndex];
+        const temple = this.gameState.templesByRegion[this.regionIndex];
         if (!temple) {
             errors.push("No temple at this region");
         }
 
         const cost = this.calculateCost();
-        const playerCash = this.gameState.cash[this.player.index] || 0;
+        const playerCash = this.gameState.cashByPlayer[this.player.index] || 0;
         if (cost > playerCash) {
             errors.push(`Need ${cost} faith, have ${playerCash}`);
         }
@@ -294,9 +294,9 @@ export class BuildCommand extends Command {
         const newState = this.gameState.copy() as WorldConflictGameState;
 
         const cost = this.calculateCost();
-        newState.cash[this.player.index] = (newState.cash[this.player.index] || 0) - cost;
+        newState.cashByPlayer[this.player.index] = (newState.cashByPlayer[this.player.index] || 0) - cost;
 
-        const temple = newState.temples[this.regionIndex];
+        const temple = newState.templesByRegion[this.regionIndex];
         if (temple) {
             // Update temple based on upgrade type
             if (this.upgradeIndex === 1) { // SOLDIER upgrade
@@ -363,26 +363,26 @@ export class EndTurnCommand extends Command {
     }
 
     execute(): WorldConflictGameState {
-        console.log(`🔄 EndTurnCommand executing for player ${this.player.index} (${this.player.name})`);
+        console.log(`EndTurnCommand executing for player ${this.player.index} (${this.player.name})`);
 
         this.previousState = this.gameState.copy() as WorldConflictGameState;
         const newState = this.gameState.copy() as WorldConflictGameState;
 
         // BEFORE values for debugging
-        const beforeCash = newState.cash[this.player.index] || 0;
+        const beforeCash = newState.cashByPlayer[this.player.index] || 0;
         const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
 
         // Calculate and add income (1 faith per region)
         this.income = this.calculateIncome(newState);
-        newState.cash[this.player.index] = beforeCash + this.income;
+        newState.cashByPlayer[this.player.index] = beforeCash + this.income;
 
-        console.log(`💰 Faith income for player ${this.player.index}: ${beforeCash} + ${this.income} = ${newState.cash[this.player.index]}`);
+        console.log(`Faith income for player ${this.player.index}: ${beforeCash} + ${this.income} = ${newState.cashByPlayer[this.player.index]}`);
 
         // Generate soldiers at temples
         this.generateSoldiersAtTemples(newState);
 
         // AFTER values for debugging
-        const afterCash = newState.cash[this.player.index];
+        const afterCash = newState.cashByPlayer[this.player.index];
         const afterSoldiers = this.logTemplesSoldiers(newState, "AFTER");
 
         console.log(`📊 Summary for player ${this.player.index}:`);
@@ -418,14 +418,14 @@ export class EndTurnCommand extends Command {
     private calculateIncome(state: WorldConflictGameState): number {
         // Simple income calculation: 1 faith per region owned
         const regionCount = state.regionCount(this.player);
-        console.log(`🏛️  Player ${this.player.index} owns ${regionCount} regions`);
+        console.log(`Player ${this.player.index} owns ${regionCount} regions`);
         return regionCount;
     }
 
     private generateSoldiersAtTemples(state: WorldConflictGameState): void {
-        console.log(`🏛️  Checking temples for player ${this.player.index}:`);
+        console.log(`Checking temples for player ${this.player.index}:`);
 
-        for (const [regionIndex, temple] of Object.entries(state.temples)) {
+        for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);
             if (state.isOwnedBy(regionIdx, this.player)) {
                 const beforeSoldiers = state.soldiersByRegion[regionIdx]?.length || 0;
@@ -445,10 +445,10 @@ export class EndTurnCommand extends Command {
     }
 
     private logTemplesSoldiers(state: WorldConflictGameState, phase: string): any {
-        console.log(`🏛️  ${phase} - Temples and soldiers for player ${this.player.index}:`);
+        console.log(`${phase} - Temples and soldiers for player ${this.player.index}:`);
         const temples = [];
 
-        for (const [regionIndex, temple] of Object.entries(state.temples)) {
+        for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);
             if (state.isOwnedBy(regionIdx, this.player)) {
                 const soldiers = state.soldiersByRegion[regionIdx]?.length || 0;

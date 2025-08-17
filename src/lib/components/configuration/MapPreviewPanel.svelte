@@ -83,7 +83,7 @@
 
     // Use distance-based home base assignment
     const homeBaseAssignments = assignHomeBaseRegions(activePlayers, previewRegions);
-    const owners = createOwnerAssignments(homeBaseAssignments);
+    const ownersByRegion = createOwnerAssignments(homeBaseAssignments);
 
     // Create minimal game state for preview
     previewGameState = {
@@ -92,10 +92,10 @@
       turnIndex: 1,
       playerIndex: 0,
       movesRemaining: 3,
-      owners,
-      temples: {},
+      ownersByRegion,
+      templesByRegion: {},
       soldiersByRegion: {},
-      cash: {},
+      cashByPlayer: {},
       players: activePlayers,
       regions: previewRegions
     };
@@ -105,7 +105,7 @@
       const regionIndex = assignment.regionIndex;
 
       // Add temple structure
-      previewGameState!.temples[regionIndex] = {
+      previewGameState!.templesByRegion[regionIndex] = {
         regionIndex,
         level: 1
       };
@@ -120,8 +120,8 @@
 
     // Add temples to remaining temple regions (neutral)
     previewRegions.forEach(region => {
-      if (region.hasTemple && !previewGameState!.temples[region.index]) {
-        previewGameState!.temples[region.index] = {
+      if (region.hasTemple && !previewGameState!.templesByRegion[region.index]) {
+        previewGameState!.templesByRegion[region.index] = {
           regionIndex: region.index,
           level: 0
         };
@@ -136,7 +136,7 @@
 
     // Initialize player cash
     activePlayers.forEach(player => {
-      previewGameState!.cash[player.index] = 100;
+      previewGameState!.cashByPlayer[player.index] = 100;
     });
 
     console.log('Preview game state created with distance-based home bases:', previewGameState);

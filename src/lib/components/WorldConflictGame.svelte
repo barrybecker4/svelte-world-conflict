@@ -313,7 +313,7 @@
           pendingMoves: []
         };
 
-        console.log('Updating game state with server response. gameState.owners = ', updatedState.owners);
+        console.log('Updating game state with server response. gameState.ownersByRegion = ', updatedState.ownersByRegion);
         gameState.set(updatedState);
       } else {
         // Even if no gameState in response, clear battle states
@@ -361,7 +361,7 @@
 
     const targetSoldiers = currentState.soldiersByRegion?.[targetRegionIndex] || [];
     const sourceSoldiers = currentState.soldiersByRegion?.[sourceRegionIndex] || [];
-    const targetOwner = currentState.owners?.[targetRegionIndex];
+    const targetOwner = currentState.ownersByRegion?.[targetRegionIndex];
     const playerIndex = currentState.playerIndex;
 
     // Fix: Better detection of hostile territory
@@ -419,8 +419,8 @@
 
       // Claim neutral territory if it's unowned
       if (targetOwner === undefined) {
-        moveState.owners = {
-          ...currentState.owners,
+        moveState.ownersByRegion = {
+          ...currentState.ownersByRegion,
           [targetRegionIndex]: playerIndex
         };
         console.log('🏆 Claiming neutral region', targetRegionIndex);
