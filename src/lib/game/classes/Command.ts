@@ -202,7 +202,7 @@ export class ArmyMoveCommand extends Command {
                 }
             }
 
-            if (event.defenderCasualities && event.defenderCasualties > 0) {
+            if (event.defenderCasualties && event.defenderCasualties > 0) {
                 for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
                     toList.pop();
                 }
