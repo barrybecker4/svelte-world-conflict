@@ -1,8 +1,8 @@
 /**
  * Represents a human or AI player in the game
  */
-import type { PlayerType } from '$lib/game/constants/playerTypes.ts';
-import type { AiPersonality } from './AiPersonality.ts';
+import type { PlayerType } from '$lib/game/constants/playerTypes';
+import type { AiPersonality } from './AiPersonality';
 
 export interface PlayerData {
     index: number;

@@ -137,35 +137,61 @@ export class ArmyMoveCommand extends Command {
         const fromList = state.soldiersAtRegion(this.source);
         const toList = state.soldiersAtRegion(this.destination);
 
-        const isNeutralRegion = toList.length === 0 && !state.isOwnedBy(this.destination, this.player);
+        const wasEnemyRegion = !state.isOwnedBy(this.destination, this.player) && toList.length > 0;
+        const wasNeutralRegion = !state.isOwnedBy(this.destination, this.player) && toList.length === 0;
+
+        console.log('🎯 Move logic:', {
+            destination: this.destination,
+            wasEnemyRegion,
+            wasNeutralRegion,
+            toListBefore: toList.length,
+            fromListBefore: fromList.length
+        });
 
         if (this.attackSequence && this.attackSequence.length > 0) {
             this.handleCombatResult(state, fromList, toList);
         } else {
+            // No combat needed - just move soldiers
             this.transferSoldiers(state, fromList, toList, this.count);
         }
 
-        if (isNeutralRegion) {
-            console.log('🏆 CLAIMING neutral region', this.destination, 'for player', this.player.index);
-            state.setOwner(this.destination, this.player);
-        }
+        console.log('🎯 After combat/movement:', {
+            toListAfter: toList.length,
+            fromListAfter: fromList.length
+        });
 
-        // Update conquered regions
-        if (!state.conqueredRegions) {
-            state.conqueredRegions = [];
-        }
-        if (isNeutralRegion) {
+        // Check if we conquered the region (defenders eliminated or neutral)
+        const conqueredRegion = (wasEnemyRegion && toList.length === 0) || wasNeutralRegion;
+
+        if (conqueredRegion) {
+            console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.index);
+            state.setOwner(this.destination, this.player);
+
+            // Move remaining attackers to conquered region (only for enemy regions after combat)
+            if (wasEnemyRegion && fromList.length > 0) {
+                const attackersToMove = Math.min(this.count, fromList.length);
+                this.transferSoldiers(state, fromList, toList, attackersToMove);
+                console.log('🏆 Moved', attackersToMove, 'attackers to conquered region');
+            }
+
+            // Update conquered regions list
+            if (!state.conqueredRegions) {
+                state.conqueredRegions = [];
+            }
             state.conqueredRegions.push(this.destination);
         }
 
         state.movesRemaining = Math.max(0, state.movesRemaining - 1);
     }
 
-    private processCombat(
-        state: WorldConflictGameState,
-        fromList: { i: number }[],
-        toList: { i: number }[]
-    ): void {
+    // Apply attack sequence results
+    private handleCombatResult(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[]): void {
+        console.log('🔍 handleCombatResult - before combat:', {
+            attackers: fromList.length,
+            defenders: toList.length,
+            hasAttackSequence: !!this.attackSequence
+        });
+
         if (!this.attackSequence) return;
 
         // Apply combat results from attack sequence
@@ -176,45 +202,18 @@ export class ArmyMoveCommand extends Command {
                 }
             }
 
-            if (event.defenderCasualties && event.defenderCasualties > 0) {
+            if (event.defenderCasualities && event.defenderCasualties > 0) {
                 for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
-                    toList.shift();
+                    toList.pop();
                 }
             }
         }
-    }
 
-    // Apply attack sequence results
-    private handleCombatResult(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[]): void {
-        console.log('🔍 handleCombatResult - before combat:', {
+        console.log('🔍 handleCombatResult - after combat:', {
             attackers: fromList.length,
             defenders: toList.length,
-            destination: this.destination
+            defendersEliminated: toList.length === 0
         });
-
-        if (this.attackSequence) {
-            for (const event of this.attackSequence) {
-                if (event.attackerCasualties) {
-                    // Remove attacker casualties
-                    for (let i = 0; i < event.attackerCasualties && fromList.length > 0; i++) {
-                        fromList.pop();
-                    }
-                }
-                if (event.defenderCasualties) {
-                    // Remove defender casualties
-                    for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
-                        toList.pop();
-                    }
-                }
-            }
-        }
-
-        // If defenders are eliminated, conquer the region
-        if (toList.length === 0) {
-            state.owners[this.destination] = this.player.index;
-            // Move remaining attackers to conquered region
-            this.transferSoldiers(state, fromList, toList, Math.min(this.count, fromList.length));
-        }
     }
 
     private transferSoldiers(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[], count: number): void {
@@ -225,6 +224,7 @@ export class ArmyMoveCommand extends Command {
                 toList.push(soldier);
             }
         }
+        console.log('🚶 Transferred', actualCount, 'soldiers');
     }
 
     serialize(): any {
@@ -363,15 +363,31 @@ export class EndTurnCommand extends Command {
     }
 
     execute(): WorldConflictGameState {
+        console.log(`🔄 EndTurnCommand executing for player ${this.player.index} (${this.player.name})`);
+
         this.previousState = this.gameState.copy() as WorldConflictGameState;
         const newState = this.gameState.copy() as WorldConflictGameState;
 
-        // Calculate and add income
+        // BEFORE values for debugging
+        const beforeCash = newState.cash[this.player.index] || 0;
+        const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
+
+        // Calculate and add income (1 faith per region)
         this.income = this.calculateIncome(newState);
-        newState.cash[this.player.index] = (newState.cash[this.player.index] || 0) + this.income;
+        newState.cash[this.player.index] = beforeCash + this.income;
+
+        console.log(`💰 Faith income for player ${this.player.index}: ${beforeCash} + ${this.income} = ${newState.cash[this.player.index]}`);
 
         // Generate soldiers at temples
         this.generateSoldiersAtTemples(newState);
+
+        // AFTER values for debugging
+        const afterCash = newState.cash[this.player.index];
+        const afterSoldiers = this.logTemplesSoldiers(newState, "AFTER");
+
+        console.log(`📊 Summary for player ${this.player.index}:`);
+        console.log(`   Faith: ${beforeCash} → ${afterCash} (+${this.income})`);
+        console.log(`   Temples with soldiers added: ${this.generatedSoldiers.length}`);
 
         // Check for game end
         const gameEndResult = newState.checkGameEnd();
@@ -380,7 +396,7 @@ export class EndTurnCommand extends Command {
         }
 
         // Reset turn state
-        newState.movesRemaining = 3; // Default moves per turn
+        newState.movesRemaining = 3;
         newState.numBoughtSoldiers = 0;
         newState.conqueredRegions = [];
 
@@ -393,53 +409,55 @@ export class EndTurnCommand extends Command {
             newState.turnIndex++;
         }
 
+        console.log(`➡️  Turn advanced to player ${newState.playerIndex}`);
+        console.log("✅ EndTurnCommand completed successfully");
+
         return newState;
     }
 
     private calculateIncome(state: WorldConflictGameState): number {
-        // Basic income calculation - adjust based on your game rules
-        const baseIncome = 5;
+        // Simple income calculation: 1 faith per region owned
         const regionCount = state.regionCount(this.player);
-        const incomePerRegion = 2;
-
-        // Add temple income bonuses
-        let templeBonus = 0;
-        for (const [regionIndex, temple] of Object.entries(state.temples)) {
-            const regionIdx = parseInt(regionIndex);
-            if (state.isOwnedBy(regionIdx, this.player)) {
-                // Income upgrade bonus (upgrade index 4)
-                if (temple.upgradeIndex === 4) {
-                    templeBonus += (temple.level || 0) * 3;
-                }
-            }
-        }
-
-        return baseIncome + (regionCount * incomePerRegion) + templeBonus;
+        console.log(`🏛️  Player ${this.player.index} owns ${regionCount} regions`);
+        return regionCount;
     }
 
     private generateSoldiersAtTemples(state: WorldConflictGameState): void {
+        console.log(`🏛️  Checking temples for player ${this.player.index}:`);
+
         for (const [regionIndex, temple] of Object.entries(state.temples)) {
             const regionIdx = parseInt(regionIndex);
             if (state.isOwnedBy(regionIdx, this.player)) {
-                // Generate soldiers based on temple level and upgrade
-                let soldiersToGenerate = 0;
+                const beforeSoldiers = state.soldiersByRegion[regionIdx]?.length || 0;
 
-                // Basic temple generation
-                if (temple.level && temple.level > 0) {
-                    soldiersToGenerate = 1;
-                }
+                // Each temple produces exactly 1 soldier after player's turn ends
+                state.addSoldiers(regionIdx, 1);
+                this.generatedSoldiers.push(regionIdx);
 
-                // Soldier upgrade bonus (upgrade index 1)
-                if (temple.upgradeIndex === 1) {
-                    soldiersToGenerate += (temple.level || 0);
-                }
-
-                if (soldiersToGenerate > 0) {
-                    state.addSoldiers(regionIdx, soldiersToGenerate);
-                    this.generatedSoldiers.push(regionIdx);
-                }
+                const afterSoldiers = state.soldiersByRegion[regionIdx]?.length || 0;
+                console.log(`   Region ${regionIdx}: ${beforeSoldiers} → ${afterSoldiers} soldiers (+1)`);
             }
         }
+
+        if (this.generatedSoldiers.length === 0) {
+            console.log(`   No temples owned by player ${this.player.index}`);
+        }
+    }
+
+    private logTemplesSoldiers(state: WorldConflictGameState, phase: string): any {
+        console.log(`🏛️  ${phase} - Temples and soldiers for player ${this.player.index}:`);
+        const temples = [];
+
+        for (const [regionIndex, temple] of Object.entries(state.temples)) {
+            const regionIdx = parseInt(regionIndex);
+            if (state.isOwnedBy(regionIdx, this.player)) {
+                const soldiers = state.soldiersByRegion[regionIdx]?.length || 0;
+                console.log(`   Region ${regionIdx}: ${soldiers} soldiers`);
+                temples.push({ regionIdx, soldiers });
+            }
+        }
+
+        return temples;
     }
 
     serialize(): any {

@@ -9,11 +9,11 @@
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
   import { turnManager } from '$lib/game/TurnManager';
-
   import type { WorldConflictGameStateData, Player } from '$lib/game/WorldConflictGameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
+  import DebugUI from './DebugUI.svelte';
 
   // Props
   export let gameId: string;
@@ -50,6 +50,7 @@
     maxSoldiers: number;
     currentSelection: number;
   } | null = null;
+  let debugMode = true;
 
   $: turnState = turnManager.state;
   $: currentPlayerFromTurnManager = turnManager.currentPlayer;
@@ -610,7 +611,6 @@
       />
     </div>
 
-    <!-- Right Panel: Game Map -->
     <div class="map-container">
       <GameMap
         {regions}
@@ -625,7 +625,14 @@
     </div>
   </div>
 
-  <!-- Soldier Selection Modal -->
+  {#if debugMode}
+    <DebugUI
+      gameState={$gameState}
+      {players}
+      visible={true}
+    />
+  {/if}
+
   {#if showSoldierSelection && soldierSelectionData}
     <SoldierSelectionModal
       maxSoldiers={soldierSelectionData.maxSoldiers}
@@ -635,7 +642,6 @@
     />
   {/if}
 
-  <!-- Instructions Modal -->
   {#if showInstructions}
     <GameInstructions on:complete={() => showInstructions = false} />
   {/if}

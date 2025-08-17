@@ -126,41 +126,120 @@ export class AttackSequenceGenerator {
     ): void {
         if (!this.state) return;
 
-        // Simple combat resolution - this is a placeholder implementation
-        // You'll need to implement the actual combat logic based on your game rules
-        const attackerCasualties = Math.floor(Math.random() * Math.min(this.incomingSoldiers, defendingSoldiers));
-        const defenderCasualties = Math.floor(Math.random() * Math.min(defendingSoldiers, this.incomingSoldiers));
+        console.log(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders`);
 
-        // Remove casualties
-        for (let i = 0; i < attackerCasualties && fromList.length > 0; i++) {
+        // Conduct battle rounds until one side is eliminated
+        let attackersRemaining = this.incomingSoldiers;
+        let defendersRemaining = defendingSoldiers;
+        let totalAttackerCasualties = 0;
+        let totalDefenderCasualties = 0;
+
+        // Continue battle until one side has no soldiers
+        while (attackersRemaining > 0 && defendersRemaining > 0) {
+            const battleResult = this.resolveBattleRound(attackersRemaining, defendersRemaining);
+
+            attackersRemaining -= battleResult.attackerCasualties;
+            defendersRemaining -= battleResult.defenderCasualties;
+            totalAttackerCasualties += battleResult.attackerCasualties;
+            totalDefenderCasualties += battleResult.defenderCasualties;
+
+            console.log(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
+        }
+
+        // Remove casualties from actual soldier arrays
+        for (let i = 0; i < totalAttackerCasualties && fromList.length > 0; i++) {
             fromList.pop();
         }
 
-        for (let i = 0; i < defenderCasualties && toList.length > 0; i++) {
+        for (let i = 0; i < totalDefenderCasualties && toList.length > 0; i++) {
             toList.pop();
         }
 
-        this.incomingSoldiers -= attackerCasualties;
+        this.incomingSoldiers = attackersRemaining;
+
+        const winner = defendersRemaining > 0 ? 'defender' : 'attacker';
+        console.log(`⚔️ Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
 
         attackSequence.push({
-            attackerCasualties,
-            defenderCasualties,
+            attackerCasualties: totalAttackerCasualties,
+            defenderCasualties: totalDefenderCasualties,
             soundCue: 'COMBAT',
             delay: 100,
             floatingText: [
                 {
                     regionIdx: this.fromRegion,
-                    text: `-${attackerCasualties}`,
+                    text: `-${totalAttackerCasualties}`,
                     color: '#ff0000',
                     width: 3
                 },
                 {
                     regionIdx: this.toRegion,
-                    text: `-${defenderCasualties}`,
+                    text: `-${totalDefenderCasualties}`,
                     color: '#ff0000',
                     width: 3
                 }
             ]
         });
+    }
+
+    /**
+     * Resolve a single round of Risk-style combat
+     * Returns casualties for this round only
+     */
+    private resolveBattleRound(attackers: number, defenders: number): {
+        attackerCasualties: number;
+        defenderCasualties: number;
+    } {
+        // Risk-style dice rules:
+        // - Attackers roll up to 3 dice (but need to have enough soldiers)
+        // - Defenders roll up to 2 dice
+        // - Compare highest dice, then second highest if both sides have multiple
+        // - Ties go to defender
+
+        const attackerDice = Math.min(3, attackers);
+        const defenderDice = Math.min(2, defenders);
+
+        // Roll dice for both sides
+        const attackerRolls = this.rollDice(attackerDice).sort((a, b) => b - a); // Highest first
+        const defenderRolls = this.rollDice(defenderDice).sort((a, b) => b - a); // Highest first
+
+        console.log(`Dice - Attackers: [${attackerRolls.join(',')}] vs Defenders: [${defenderRolls.join(',')}]`);
+
+        let attackerCasualties = 0;
+        let defenderCasualties = 0;
+
+        // Compare dice results
+        // First comparison (highest dice)
+        if (attackerRolls[0] > defenderRolls[0]) {
+            defenderCasualties++;
+            console.log(`   Round 1: Attacker ${attackerRolls[0]} > Defender ${defenderRolls[0]} - Defender loses 1`);
+        } else {
+            attackerCasualties++;
+            console.log(`   Round 1: Attacker ${attackerRolls[0]} ≤ Defender ${defenderRolls[0]} - Attacker loses 1`);
+        }
+
+        // Second comparison (if both sides have multiple dice)
+        if (attackerRolls.length > 1 && defenderRolls.length > 1) {
+            if (attackerRolls[1] > defenderRolls[1]) {
+                defenderCasualties++;
+                console.log(`   Round 2: Attacker ${attackerRolls[1]} > Defender ${defenderRolls[1]} - Defender loses 1`);
+            } else {
+                attackerCasualties++;
+                console.log(`   Round 2: Attacker ${attackerRolls[1]} ≤ Defender ${defenderRolls[1]} - Attacker loses 1`);
+            }
+        }
+
+        return { attackerCasualties, defenderCasualties };
+    }
+
+    /**
+     * Roll the specified number of 6-sided dice
+     */
+    private rollDice(count: number): number[] {
+        const rolls = [];
+        for (let i = 0; i < count; i++) {
+            rolls.push(Math.floor(Math.random() * 6) + 1); // 1-6
+        }
+        return rolls;
     }
 }

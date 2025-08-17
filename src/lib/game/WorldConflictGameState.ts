@@ -1,5 +1,6 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, WorldConflictGameStateData } from '$lib/game/gameTypes';
+import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 
 export class WorldConflictGameState {
 
@@ -302,6 +303,12 @@ export class WorldConflictGameState {
         // IMPORTANT: Clear any existing soldiers - start fresh
         this.state.soldiersByRegion = {};
 
+        const homeBaseAssignments = assignHomeBaseRegions(this.state.players, this.state.regions);
+
+        // Apply the assignments to game state
+        const owners = createOwnerAssignments(homeBaseAssignments);
+        this.state.owners = { ...this.state.owners, ...owners };
+
         // First, set up ALL temple regions (both neutral and player-owned)
         this.state.regions.forEach(region => {
             if (region.hasTemple) {
@@ -312,15 +319,10 @@ export class WorldConflictGameState {
                 };
 
                 // Add exactly 3 soldiers to ALL temple regions
-                this.addSoldiers(region.index, 3);
+                const startingSolders = region.index in this.state.owners ? GAME_CONSTANTS.OWNER_STARTING_SOLDIERS : GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS;
+                this.addSoldiers(region.index, startingSolders);
             }
         });
-
-        const homeBaseAssignments = assignHomeBaseRegions(this.state.players, this.state.regions);
-        
-        // Apply the assignments to game state
-        const owners = createOwnerAssignments(homeBaseAssignments);
-        this.state.owners = { ...this.state.owners, ...owners };
 
         // Log the results
         homeBaseAssignments.forEach(assignment => {

@@ -4,7 +4,7 @@
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
-  import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs.js';
+  import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
 
   export let gameState: WorldConflictGameStateData | null = null;
   export let players: Player[] = [];

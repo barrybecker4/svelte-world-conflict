@@ -1,5 +1,5 @@
-import { UPGRADES } from "$lib/game/constants/upgradeDefinitions.ts";
-import type { AiPersonalityData } from "$lib/game/classes/AiPersonality.ts";
+import { UPGRADES } from "$lib/game/constants/upgradeDefinitions";
+import type { AiPersonalityData } from "$lib/game/classes/AiPersonality";
 
 export type AiLevel = typeof AI_LEVELS[keyof typeof AI_LEVELS];
 
