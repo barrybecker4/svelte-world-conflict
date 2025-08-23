@@ -1,61 +1,5 @@
-import {Upgrade} from "$lib/game/classes/Upgrade.ts";
-
-export const TEMPLE_LEVELS = ['Basic', 'Advanced', 'Elite', 'Master'];
-
-// Maximum temple level
-export const MAX_TEMPLE_LEVEL = 3;
-
-
-// Upgrade definitions (matching original game data)
-export const UPGRADES: Upgrade[] = [
-    // Index 0 - Placeholder/None
-    new Upgrade(0, 'NONE', 'No upgrade', [0], [0]),
-
-    // Index 1 - Soldier recruitment
-    new Upgrade(
-        1,
-        'SOLDIER',
-        'Recruit additional soldiers',
-        [10, 15, 20, 30, 45, 70, 100, 150, 225, 350], // Increasing costs
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] // Each purchase gives 1 soldier
-    ),
-
-    // Index 2 - Air upgrade (extra moves)
-    new Upgrade(
-        2,
-        'AIR',
-        '{level} Air Magic: +{value} move per turn',
-        [25, 50, 100], // Cost for levels 0, 1, 2
-        [1, 2, 3] // Extra moves granted
-    ),
-
-    // Index 3 - Defense upgrade
-    new Upgrade(
-        3,
-        'DEFENSE',
-        '{level} Defense Magic: +{value} defense in combat',
-        [20, 40, 80],
-        [1, 2, 3] // Defense bonus
-    ),
-
-    // Index 4 - Income upgrade
-    new Upgrade(
-        4,
-        'INCOME',
-        '{level} Economic Magic: +{value} faith per turn',
-        [30, 60, 120],
-        [5, 10, 20] // Additional faith per turn
-    ),
-
-    // Index 5 - Rebuild (remove current upgrade)
-    new Upgrade(
-        5,
-        'REBUILD',
-        'Remove current upgrade and start fresh',
-        [10, 20, 40], // Cost scales with current temple level
-        [0, 0, 0] // No direct benefit, just allows rebuilding
-    )
-];
+import { TEMPLE_LEVELS, MAX_TEMPLE_LEVEL } from '$lib/game/constants/gameConstants';
+import type { UPGRADES, UpgradeDefinition } from '$lib/game/constants/upgradeDefinitions';
 
 export class Temple {
     regionIndex: number;
@@ -68,29 +12,18 @@ export class Temple {
         this.upgradeIndex = upgradeIndex;
     }
 
-    // Get the current upgrade type applied to this temple
-    getCurrentUpgrade(): Upgrade | null {
+    getCurrentUpgrade(): UpgradeDefinition | null {
         if (this.upgradeIndex === undefined) {
             return null;
         }
-        return UPGRADES[this.upgradeIndex] || null;
+        return getUpgradeByIndex(this.upgradeIndex);
     }
 
-    // Check if temple has a specific upgrade
     hasUpgrade(upgradeName: string): boolean {
         const currentUpgrade = this.getCurrentUpgrade();
         return currentUpgrade?.name === upgradeName;
     }
 
-    // Get the effective level for a specific upgrade type
-    getUpgradeLevel(upgradeName: string): number {
-        if (this.hasUpgrade(upgradeName)) {
-            return this.level;
-        }
-        return 0;
-    }
-
-    // Get temple display information
     getDisplayInfo(): { name: string; description: string } {
         if (!this.upgradeIndex) {
             return {
@@ -107,25 +40,36 @@ export class Temple {
             };
         }
 
-        const levelName = TEMPLE_LEVELS[this.level] || "Unknown";
-        const name = upgrade.name.replace('{level}', levelName);
-        const description = upgrade.description.replace('{value}', upgrade.level[this.level]?.toString() || '0');
-
-        return { name, description };
+        return {
+            name: this.getUpgradeFormattedName(upgrade, this.level),
+            description: this.getUpgradeFormattedDescription(upgrade, this.level)
+        };
     }
 
-    // Check if temple can be upgraded to next level
-    canUpgrade(): boolean {
-        return this.level < MAX_TEMPLE_LEVEL;
+    getUpgradeFormattedName(upgrade: UpgradeDefinition, level: number): string {
+        const templateLevel = TEMPLE_LEVELS[level] || "Unknown";
+        return upgrade.displayName.replace('{level}', templateLevel);
     }
 
-    // Get cost to upgrade to next level
+    getUpgradeFormattedDescription(upgrade: UpgradeDefinition, level: number): string {
+        const value = upgrade.level[level];
+        return upgrade.description.replace('{value}', value.toString());
+    }
+
+    getUpgradeByIndex(index: number): UpgradeDefinition | null {
+        return UPGRADES[index] || null;
+    }
+
     getUpgradeCost(): number {
         const upgrade = this.getCurrentUpgrade();
         if (!upgrade || !this.canUpgrade()) {
             return 0;
         }
-        return upgrade.cost[this.level + 1] || 0;
+        return upgrade.cost[this.level + 1];
+    }
+
+    canUpgrade(): boolean {
+        return this.level < MAX_TEMPLE_LEVEL;
     }
 
     // Apply an upgrade to the temple

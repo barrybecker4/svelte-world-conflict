@@ -1,6 +1,7 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
+import { UPGRADES } from '$lib/game/constants/upgradeDefinitions';
 
 export class WorldConflictGameState {
 
