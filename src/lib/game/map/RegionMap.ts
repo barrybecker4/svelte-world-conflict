@@ -1,6 +1,8 @@
 import type { Region } from "$lib/game/GameState.ts";
 import { GRID_WIDTH, GRID_HEIGHT } from "./mapConstants.ts";
 
+const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
 export class RegionMap {
     private positionToRegion: Array<Array<Region | null>>;
 
@@ -29,17 +31,20 @@ export class RegionMap {
             for (let y = 1; y < GRID_HEIGHT - 1; y++) {
                 const region = this.positionToRegion[x][y];
                 if (region) {
-                    // Check cardinal directions
-                    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-                    for (const [dx, dy] of directions) {
-                        const potentialNeighbor = this.positionToRegion[x + dx][y + dy];
-                        if (potentialNeighbor &&
-                            potentialNeighbor !== region &&
-                            !region.neighbors.includes(potentialNeighbor.index)) {
-                            region.neighbors.push(potentialNeighbor.index);
-                        }
-                    }
+                    updateNeighbors(region);
                 }
+            }
+        }
+    }
+
+    private static updateNeighbors(region: Region): void {
+        // Check cardinal directions
+        for (const [dx, dy] of directions) {
+            const potentialNeighbor = this.positionToRegion[x + dx][y + dy];
+            if (potentialNeighbor &&
+                potentialNeighbor !== region &&
+                !region.neighbors.includes(potentialNeighbor.index)) {
+                region.neighbors.push(potentialNeighbor.index);
             }
         }
     }

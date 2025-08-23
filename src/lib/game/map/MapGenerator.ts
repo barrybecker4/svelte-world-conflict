@@ -113,6 +113,3 @@ export class MapGenerator {
         return new Bounds(left, top, width, height);
     }
 }
-
-
-

@@ -30,6 +30,7 @@ export const GAME_CONSTANTS = {
     // Limits
     MAX_TEMPLE_LEVEL: 3,
     MAX_UPGRADE_LEVEL: 3,
+    MAX_MOVES_PER_TURN: 3,
     MAX_GAME_TURNS: 100,
     NUM_UPGRADES: 6,
     MAX_PLAYERS: 4,

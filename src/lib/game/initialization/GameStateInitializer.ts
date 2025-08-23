@@ -11,7 +11,7 @@ export class GameStateInitializer {
         const initialData: GameStateData = {
             turnIndex: 1,
             playerIndex: 0,
-            movesRemaining: 3,
+            movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             ownersByRegion: {},
             templesByRegion: {},
             soldiersByRegion: {},
@@ -38,7 +38,7 @@ export class GameStateInitializer {
             gameData.faithByPlayer[player.index] = GAME_CONSTANTS.DEFAULT_STARTING_FAITH;
         });
 
-        // IMPORTANT: Clear any existing soldiers - start fresh
+        // Clear any existing soldiers
         gameData.soldiersByRegion = {};
 
         const homeBaseAssignments = assignHomeBaseRegions(gameData.players, gameData.regions);
@@ -47,7 +47,21 @@ export class GameStateInitializer {
         const owners = createOwnerAssignments(homeBaseAssignments);
         gameData.ownersByRegion = { ...gameData.ownersByRegion, ...owners };
 
-        // Set up ALL temple regions (both neutral and player-owned)
+        setupTempleRegions(gameData);
+
+        // Log the results
+        homeBaseAssignments.forEach(assignment => {
+            const player = gameData.players[assignment.playerIndex];
+        });
+
+        // Ensure the game has valid starting conditions
+        if (homeBaseAssignments.length < gameData.players.length) {
+            console.warn(`⚠️ Warning: Only ${homeBaseAssignments.length} out of ${gameData.players.length} players have home regions!`);
+        }
+    }
+
+    // Set up ALL temple regions (both neutral and player-owned)
+    private static setupTempleRegions(gameData: GameStateData): void {
         gameData.regions.forEach(region => {
             if (region.hasTemple) {
                 // Add temple structure
@@ -64,17 +78,6 @@ export class GameStateInitializer {
                 this.addSoldiersToData(gameData, region.index, startingSoldiers);
             }
         });
-
-        // Log the results
-        homeBaseAssignments.forEach(assignment => {
-            const player = gameData.players[assignment.playerIndex];
-            console.log(`✅ Player ${player.index} (${player.name}) assigned home region ${assignment.regionIndex} (${assignment.region.name}) with temple`);
-        });
-
-        // Ensure the game has valid starting conditions
-        if (homeBaseAssignments.length < gameData.players.length) {
-            console.warn(`⚠️ Warning: Only ${homeBaseAssignments.length} out of ${gameData.players.length} players have home regions!`);
-        }
     }
 
     /**

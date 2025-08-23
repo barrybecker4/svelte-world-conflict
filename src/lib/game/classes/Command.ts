@@ -363,48 +363,18 @@ export class EndTurnCommand extends Command {
     }
 
     execute(): GameState {
-        console.log(`EndTurnCommand executing for player ${this.player.index} (${this.player.name})`);
+        this.previousState = this.gameState;
+        const newState = this.gameState.copy() as GameState;;
 
-        this.previousState = this.gameState.copy() as GameState;
-        const newState = this.gameState.copy() as GameState;
-
-        // 🔥 DEBUG: Test if faithByPlayer exists and is mutable
-        console.log("🔍 BEFORE faith assignment:");
-        console.log("  Original faithByPlayer:", this.gameState.state.faithByPlayer);
-        console.log("  Copied faithByPlayer:", newState.state.faithByPlayer);
-        console.log("  Player", this.player.index, "current faith:", newState.state.faithByPlayer[this.player.index]);
-
-        // Try direct assignment test
-        const testValue = (newState.state.faithByPlayer[this.player.index] || 0) + 100;
-        newState.state.faithByPlayer[this.player.index] = testValue;
-        console.log("  After test assignment (+100):", newState.state.faithByPlayer[this.player.index]);
-
-        // Reset and continue with normal flow
         const beforeFaith = newState.state.faithByPlayer[this.player.index] || 0;
         const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
 
-        // Calculate and add income
         this.income = this.calculateIncome(newState);
 
-        // 🔥 DEBUG: Show the assignment happening
-        console.log(`🔥 Assigning faith: ${beforeFaith} + ${this.income}`);
         newState.state.faithByPlayer[this.player.index] = beforeFaith + this.income;
-        console.log(`🔥 After assignment: ${newState.state.faithByPlayer[this.player.index]}`);
-
         newState.faithByPlayer[this.player.index] = beforeFaith + this.income;
 
-        console.log(`Faith income for player ${this.player.index}: ${beforeFaith} + ${this.income} = ${newState.faithByPlayer[this.player.index]}`);
-
-        // Generate soldiers at temples
         this.generateSoldiersAtTemples(newState);
-
-        // AFTER values for debugging
-        const afterFaith = newState.faithByPlayer[this.player.index];
-        const afterSoldiers = this.logTemplesSoldiers(newState, "AFTER");
-
-        console.log(`Summary for player ${this.player.index}:`);
-        console.log(`   Faith: ${beforeFaith} → ${afterFaith} (+${this.income})`);
-        console.log(`   Temples with soldiers added: ${this.generatedSoldiers.length}`);
 
         // Check for game end
         const gameEndResult = newState.checkGameEnd();
@@ -425,9 +395,6 @@ export class EndTurnCommand extends Command {
         if (newState.playerIndex === 0) {
             newState.turnIndex++;
         }
-
-        console.log(`➡️  Turn advanced to player ${newState.playerIndex}`);
-        console.log("✅ EndTurnCommand completed successfully");
 
         return newState;
     }
