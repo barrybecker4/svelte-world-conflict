@@ -368,12 +368,29 @@ export class EndTurnCommand extends Command {
         this.previousState = this.gameState.copy() as WorldConflictGameState;
         const newState = this.gameState.copy() as WorldConflictGameState;
 
-        // BEFORE values for debugging
-        const beforeFaith = newState.faithByPlayer[this.player.index] || 0;
+        // 🔥 DEBUG: Test if faithByPlayer exists and is mutable
+        console.log("🔍 BEFORE faith assignment:");
+        console.log("  Original faithByPlayer:", this.gameState.state.faithByPlayer);
+        console.log("  Copied faithByPlayer:", newState.state.faithByPlayer);
+        console.log("  Player", this.player.index, "current faith:", newState.state.faithByPlayer[this.player.index]);
+
+        // Try direct assignment test
+        const testValue = (newState.state.faithByPlayer[this.player.index] || 0) + 100;
+        newState.state.faithByPlayer[this.player.index] = testValue;
+        console.log("  After test assignment (+100):", newState.state.faithByPlayer[this.player.index]);
+
+        // Reset and continue with normal flow
+        const beforeFaith = newState.state.faithByPlayer[this.player.index] || 0;
         const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
 
-        // Calculate and add income (1 faith per region)
+        // Calculate and add income
         this.income = this.calculateIncome(newState);
+
+        // 🔥 DEBUG: Show the assignment happening
+        console.log(`🔥 Assigning faith: ${beforeFaith} + ${this.income}`);
+        newState.state.faithByPlayer[this.player.index] = beforeFaith + this.income;
+        console.log(`🔥 After assignment: ${newState.state.faithByPlayer[this.player.index]}`);
+
         newState.faithByPlayer[this.player.index] = beforeFaith + this.income;
 
         console.log(`Faith income for player ${this.player.index}: ${beforeFaith} + ${this.income} = ${newState.faithByPlayer[this.player.index]}`);

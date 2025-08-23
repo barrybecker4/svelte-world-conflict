@@ -44,11 +44,6 @@
     return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
   }
 
-  function getFaithCount(playerIndex: number): number {
-    // Force reactivity by directly accessing the reactive faithByPlayer
-    return faithByPlayer[playerIndex] ?? 0;
-  }
-
   function isPlayerAlive(playerIndex: number): boolean {
     return getRegionCount(playerIndex) > 0;
   }
@@ -81,7 +76,7 @@
       playerFaithCounts: players.map(player => ({
         index: player.index,
         name: player.name,
-        faith: getFaithCount(player.index)
+        faith: faithByPlayer[player.index]
       }))
     });
   }
@@ -105,7 +100,7 @@
       {@const isActive = index === currentPlayerIndex}
       {@const isAlive = isPlayerAlive(index)}
       {@const regionCount = getRegionCount(index)}
-      {@const faithCount = getFaithCount(index)}
+      {@const faithCount = faithByPlayer[index]}
 
       <div class="player-box" class:active={isActive}>
         <div
@@ -149,7 +144,7 @@
         <div class="stat-label">moves</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value">{getFaithCount(currentPlayerIndex)} <span class="symbol">{@html SYMBOLS.FAITH}</span></div>
+        <div class="stat-value">{faithByPlayer[currentPlayerIndex]} <span class="symbol">{@html SYMBOLS.FAITH}</span></div>
         <div class="stat-label">faith</div>
       </div>
     </div>
@@ -180,6 +175,7 @@
       <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
       <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
     </div>
+
   </Section>
 
 </Panel>
