@@ -45,8 +45,6 @@
         playerCount: playerCount
       });
 
-      console.log(`Generated ${previewRegions.length} regions, ${previewRegions.filter(r => r.hasTemple).length} with temples`);
-
       // Create preview game state with proper home base placement
       createPreviewGameState();
 

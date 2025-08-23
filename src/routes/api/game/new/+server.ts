@@ -5,7 +5,7 @@ import {
     WorldConflictGameStorage,
     type WorldConflictGameRecord,
 } from '$lib/storage/index';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState';
+import { GameState } from '$lib/game/GameState';
 import { Region } from '$lib/game/classes/Region';
 import type { Player } from '$lib/game/classes/Player';
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
@@ -68,7 +68,7 @@ function createGameRecord(body: any, platform: App.Platform): WorldConflictGameR
   // Only initialize full game state for ACTIVE games
   let initialGameState;
   if (gameStatus === 'ACTIVE') {
-    initialGameState = WorldConflictGameState.createInitialState(gameId, players, regions);
+    initialGameState = GameState.createInitialState(gameId, players, regions);
   } else {
     // For PENDING games, use the selected map
     initialGameState = {

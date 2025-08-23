@@ -1,5 +1,3 @@
-
-// Grid constants (from original CONSTS)
 export const GRID_WIDTH = 35;
 export const GRID_HEIGHT = 25;
 

@@ -4,9 +4,9 @@ import {
     WorldConflictKVStorage,
     WorldConflictGameStorage
 } from '$lib/storage/index.ts';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
+import { GameState } from '$lib/game/GameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player } from '$lib/game/WorldConflictGameState.ts';
+import type { Player } from '$lib/game/GameState.ts';
 import { createPlayer } from '$lib/server/api-utils.js';
 import { getErrorMessage } from '$lib/server/api-utils.ts';
 
@@ -67,7 +67,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             updatedGame.status = 'ACTIVE';
 
             // Initialize World Conflict game state
-            const gameState = WorldConflictGameState.createInitialState(
+            const gameState = GameState.createInitialState(
                 gameId,
                 updatedPlayers,
                 game.worldConflictState.regions || []

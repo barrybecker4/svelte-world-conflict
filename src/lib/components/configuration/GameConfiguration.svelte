@@ -39,25 +39,17 @@
   $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
 
   function loadStoredPlayerName() {
-    try {
-      const storedName = localStorage.getItem(PLAYER_NAME_KEY);
-      if (storedName && storedName.trim()) {
-        playerName = storedName.trim();
-        showNameInput = false;
-        return true;
-      }
-    } catch (error) {
-      console.warn('Failed to load stored player name:', error);
+    const storedName = localStorage.getItem(PLAYER_NAME_KEY);
+    if (storedName && storedName.trim()) {
+      playerName = storedName.trim();
+      showNameInput = false;
+      return true;
     }
     return false;
   }
 
   function savePlayerName(name) {
-    try {
       localStorage.setItem(PLAYER_NAME_KEY, name.trim());
-    } catch (error) {
-      console.warn('Failed to save player name:', error);
-    }
   }
 
   // Handle player name submission from the PlayerNameInput component
@@ -143,48 +135,40 @@
   async function createGame() {
     if (creating) return;
 
-    try {
-      creating = true;
-      error = null;
+    creating = true;
+    error = null;
 
-      if (!mapPreviewPanel?.hasValidPreview()) {
-          throw new Error('Map preview is not ready. Please wait or click "New Map" to generate one.');
-        }
-      // Validate at least one active player
-      const activePlayers = playerSlots.filter(slot => slot.type !== 'Off');
-      if (activePlayers.length < 2) {
-        throw new Error('At least 2 players are required');
-      }
-
-      const currentPreviewRegions = mapPreviewPanel?.getCurrentPreviewRegions();
-      const currentPreviewState = mapPreviewPanel?.getCurrentPreviewState();
-
-      if (!currentPreviewRegions || currentPreviewRegions.length === 0) {
-        throw new Error('No map preview available. Please wait for map to load.');
-      }
-
-      // Build the game configuration WITH the selected map
-      const gameConfig = {
-        settings: gameSettings,
-        playerSlots: playerSlots.map(slot => ({
-          index: slot.index,
-          type: slot.type,
-          name: slot.type === 'Set' ? slot.customName : slot.defaultName,
-          customName: slot.customName
-        })),
-        selectedMapRegions: currentPreviewRegions.map(region => region.toJSON ? region.toJSON() : region),
-        selectedMapState: currentPreviewState
-      };
-
-      // Dispatch to parent
-      dispatch('gameCreated', gameConfig);
-
-    } catch (err) {
-      console.error('Error creating game:', err);
-      error = err.message || 'Failed to create game';
-    } finally {
-      creating = false;
+    if (!mapPreviewPanel?.hasValidPreview()) {
+      throw new Error('Map preview is not ready. Please wait or click "New Map" to generate one.');
     }
+    // Validate at least one active player
+    const activePlayers = playerSlots.filter(slot => slot.type !== 'Off');
+    if (activePlayers.length < 2) {
+      throw new Error('At least 2 players are required');
+    }
+
+    const currentPreviewRegions = mapPreviewPanel?.getCurrentPreviewRegions();
+    const currentPreviewState = mapPreviewPanel?.getCurrentPreviewState();
+
+    if (!currentPreviewRegions || currentPreviewRegions.length === 0) {
+      throw new Error('No map preview available. Please wait for map to load.');
+    }
+
+    // Build the game configuration WITH the selected map
+    const gameConfig = {
+      settings: gameSettings,
+      playerSlots: playerSlots.map(slot => ({
+        index: slot.index,
+        type: slot.type,
+        name: slot.type === 'Set' ? slot.customName : slot.defaultName,
+        customName: slot.customName
+      })),
+      selectedMapRegions: currentPreviewRegions.map(region => region.toJSON ? region.toJSON() : region),
+      selectedMapState: currentPreviewState
+    };
+
+    dispatch('gameCreated', gameConfig); // Dispatch to parent
+    creating = false;
   }
 
   // Initialize player name on mount
@@ -209,7 +193,6 @@
       <!-- Left Panel: Configuration -->
       <Panel variant="dark" blur={true} customClass="config-panel">
 
-        <!-- Header -->
         <Section title="Game Setup" borderBottom={true}>
         </Section>
 
@@ -289,6 +272,7 @@
     min-height: 600px;
   }
 
+  /* Panel customizations */
   /* Panel customizations */
   :global(.config-panel) {
     overflow-y: auto;

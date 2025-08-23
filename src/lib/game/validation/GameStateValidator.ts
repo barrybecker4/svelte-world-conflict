@@ -5,7 +5,7 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 export class GameStateValidator {
     /**
      * Validate game state data for consistency and integrity
-     * Works directly with GameStateData, no dependency on WorldConflictGameState
+     * Works directly with GameStateData, no dependency on GameState
      */
     static validate(gameData: GameStateData): ValidationResult {
         const errors: string[] = [];

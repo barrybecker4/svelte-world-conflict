@@ -4,7 +4,7 @@ import type { GameStateData } from '$lib/game/gameTypes';
 export class MoveValidator {
     /**
      * Validate a specific move operation
-     * Works directly with GameStateData, no dependency on WorldConflictGameState
+     * Works directly with GameStateData, no dependency on GameState
      */
     static validateMove(
         gameData: GameStateData,

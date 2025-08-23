@@ -9,7 +9,7 @@
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
   import { turnManager } from '$lib/game/TurnManager';
-  import type { GameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameStateData, Player } from '$lib/game/GameState';
   import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';

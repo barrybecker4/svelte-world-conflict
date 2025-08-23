@@ -4,9 +4,9 @@ import {
     WorldConflictKVStorage,
     WorldConflictGameStorage
 } from '$lib/storage/index.ts';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
+import { GameState } from '$lib/game/GameState.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player } from '$lib/game/WorldConflictGameState.ts';
+import type { Player } from '$lib/game/GameState.ts';
 
 interface StartGameRequest {
     playerId: string; // The ID of the player requesting to start (must be creator)
@@ -110,7 +110,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         game.lastMoveAt = Date.now();
 
         // Initialize World Conflict game state with all players (human + AI)
-        const gameState = WorldConflictGameState.createInitialState(
+        const gameState = GameState.createInitialState(
             gameId,
             game.players,
             game.worldConflictState.regions || []

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { WorldConflictGameState, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameState, Player } from '$lib/game/GameState';
   import Button from '$lib/components/ui/Button.svelte';
 
-  export let gameState: WorldConflictGameState | null = null;
+  export let gameState: GameState | null = null;
   export let currentPlayer: Player | null = null;
   export let onEndTurn: () => void = () => {};
   export let onBuyArmies: () => void = () => {};

@@ -1,4 +1,4 @@
-import type { Region } from '$lib/game/WorldConflictGameState.ts';
+import type { Region } from '$lib/game/GameState.ts';
 import { RegionMap } from '$lib/game/map/RegionMap.ts';
 import { Bounds } from '$lib/game/map/Bounds.ts';
 import { PositionSet } from '$lib/game/map/PositionSet.ts';

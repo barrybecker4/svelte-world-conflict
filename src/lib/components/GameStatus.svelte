@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GameStateData, Player } from '$lib/game/WorldConflictGameState';
+  import type { GameStateData, Player } from '$lib/game/GameState';
   import { getPlayerColor } from '$lib/game/constants/playerColors';
 
   export let gameState: GameStateData | null = null;

@@ -4,7 +4,7 @@
   import GameMap from '$lib/components/configuration/GameMap.svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import { turnManager } from './TurnManager';
-  import type { Region, Player, GameStateData } from '$lib/game/WorldConflictGameState';
+  import type { Region, Player, GameStateData } from '$lib/game/GameState';
 
   // Props
   export let gameId: string;

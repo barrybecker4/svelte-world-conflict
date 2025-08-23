@@ -5,7 +5,7 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 export class TempleValidator {
     /**
      * Validate that a region can support a temple build/upgrade
-     * Works directly with GameStateData, no dependency on WorldConflictGameState
+     * Works directly with GameStateData, no dependency on GameState
      */
     static validateTempleOperation(
         gameData: GameStateData,

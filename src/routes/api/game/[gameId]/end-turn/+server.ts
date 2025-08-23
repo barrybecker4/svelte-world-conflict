@@ -4,7 +4,7 @@ import {
     WorldConflictKVStorage,
     WorldConflictGameStorage,
 } from '$lib/storage/index.ts';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
+import { GameState } from '$lib/game/GameState.ts';
 import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import { getErrorMessage } from '$lib/server/api-utils.ts';
@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         // Create game state instance
-        const gameState = new WorldConflictGameState(game.worldConflictState);
+        const gameState = new GameState(game.worldConflictState);
 
         // Execute the human player's end turn command
         const endTurnCommand = new EndTurnCommand(gameState, player);
@@ -100,7 +100,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 /**
  * Process AI turns until we reach a human player or game ends
  */
-async function processAiTurns(gameState: WorldConflictGameState, gameStorage: WorldConflictGameStorage, gameId: string, platform: any): Promise<WorldConflictGameState> {
+async function processAiTurns(gameState: GameState, gameStorage: WorldConflictGameStorage, gameId: string, platform: any): Promise<GameState> {
     let currentState = gameState;
     let currentPlayer = currentState.activePlayer();
 
@@ -166,7 +166,7 @@ async function processAiTurns(gameState: WorldConflictGameState, gameStorage: Wo
  * Generate an AI move based on the current game state and player personality
  * This is a simplified version - you'll need to implement the full AI logic
  */
-async function generateAiMove(gameState: WorldConflictGameState, player: Player): Promise<any> {
+async function generateAiMove(gameState: GameState, player: Player): Promise<any> {
     // This is where you'd implement the AI decision-making logic
     // Based on the project knowledge, this should mirror the erisk.aiPickMove function
 

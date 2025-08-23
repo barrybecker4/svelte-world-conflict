@@ -5,7 +5,7 @@ import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 export class GameStateInitializer {
     /**
      * Create initial game state data with starting positions
-     * Returns the data object, not the WorldConflictGameState instance
+     * Returns the data object, not the GameState instance
      */
     static createInitialStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
         const initialData: GameStateData = {
@@ -71,12 +71,6 @@ export class GameStateInitializer {
             console.log(`✅ Player ${player.index} (${player.name}) assigned home region ${assignment.regionIndex} (${assignment.region.name}) with temple`);
         });
 
-        // Validation logging
-        //console.log('🏁 Game initialization complete:');
-        //console.log(`   📍 Players with home regions: ${Object.keys(gameData.ownersByRegion).length}`);
-        //console.log(`   🏛️  Total temple regions: ${Object.keys(gameData.templesByRegion).length}`);
-        //console.log(`   ⚔️  Total soldiers placed: ${Object.values(gameData.soldiersByRegion).reduce((sum, soldiers) => sum + soldiers.length, 0)}`);
-
         // Ensure the game has valid starting conditions
         if (homeBaseAssignments.length < gameData.players.length) {
             console.warn(`⚠️ Warning: Only ${homeBaseAssignments.length} out of ${gameData.players.length} players have home regions!`);
@@ -102,7 +96,7 @@ export class GameStateInitializer {
 
     /**
      * Convert legacy flat data to new structure
-     * Returns the data object, not the WorldConflictGameState instance
+     * Returns the data object, not the GameState instance
      */
     static convertLegacyData(legacyData: any): GameStateData {
         return {

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
-  import type { Player } from '$lib/game/WorldConflictGameState';
+  import type { Player } from '$lib/game/GameState';
 
   export let player: Player;
   export let isVisible: boolean = true;

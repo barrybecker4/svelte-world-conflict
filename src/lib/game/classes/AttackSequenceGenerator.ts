@@ -1,4 +1,4 @@
-import type { Player, WorldConflictGameState } from '../WorldConflictGameState.ts';
+import type { Player, GameState } from '../GameState.ts';
 
 export interface AttackEvent {
     attackerCasualties?: number;
@@ -23,7 +23,7 @@ export class AttackSequenceGenerator {
     private fromRegion: number;
     private toRegion: number;
     private soldiers: number;
-    private state: WorldConflictGameState | null = null;
+    private state: GameState | null = null;
     private incomingSoldiers: number;
     private fromOwner: Player | null;
     private toOwner: Player | null;
@@ -43,8 +43,8 @@ export class AttackSequenceGenerator {
      * Create attack sequence for combat resolution
      * Returns undefined if no combat needed (same owner)
      */
-    createAttackSequenceIfFight(origState: WorldConflictGameState, players: Player[]): AttackEvent[] | undefined {
-        this.state = origState.copy() as WorldConflictGameState;
+    createAttackSequenceIfFight(origState: GameState, players: Player[]): AttackEvent[] | undefined {
+        this.state = origState.copy() as GameState;
         this.incomingSoldiers = this.soldiers;
 
 
@@ -158,7 +158,7 @@ export class AttackSequenceGenerator {
         this.incomingSoldiers = attackersRemaining;
 
         const winner = defendersRemaining > 0 ? 'defender' : 'attacker';
-        console.log(`⚔️ Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
+        console.log(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
 
         attackSequence.push({
             attackerCasualties: totalAttackerCasualties,

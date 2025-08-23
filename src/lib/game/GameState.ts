@@ -5,7 +5,7 @@ import { GameStateInitializer } from './initialization/GameStateInitializer';
 import { GameStateValidator, MoveValidator, TempleValidator } from './validation';
 import type { ValidationResult, MoveValidationResult } from './types/validation';
 
-export class WorldConflictGameState {
+export class GameState {
     public state: GameStateData;
 
     constructor(data: GameStateData) {
@@ -24,22 +24,22 @@ export class WorldConflictGameState {
     /**
      * Create initial game state - uses GameStateInitializer to prepare data
      */
-    static createInitialState(gameId: string, players: Player[], regions: Region[]): WorldConflictGameState {
+    static createInitialState(gameId: string, players: Player[], regions: Region[]): GameState {
         const initialData = GameStateInitializer.createInitialStateData(gameId, players, regions);
-        return new WorldConflictGameState(initialData);
+        return new GameState(initialData);
     }
 
     /**
      * Create from JSON data - handles both new and legacy formats
      */
-    static fromJSON(data: GameStateData | any): WorldConflictGameState {
+    static fromJSON(data: GameStateData | any): GameState {
         // If it looks like legacy data, convert it
         if (data.owners || data.temples || data.faith) {
             const convertedData = GameStateInitializer.convertLegacyData(data);
-            return new WorldConflictGameState(convertedData);
+            return new GameState(convertedData);
         }
 
-        return new WorldConflictGameState(data);
+        return new GameState(data);
     }
 
     /**
@@ -277,8 +277,8 @@ export class WorldConflictGameState {
         return this.toJSON();
     }
 
-    copy(): WorldConflictGameState {
-        return new WorldConflictGameState({
+    copy(): GameState {
+        return new GameState({
             ...this.state,
             ownersByRegion: { ...this.state.ownersByRegion },
             templesByRegion: JSON.parse(JSON.stringify(this.state.templesByRegion)),

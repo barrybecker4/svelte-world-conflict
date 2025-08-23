@@ -2,9 +2,9 @@ import { AttackSequenceGenerator, type AttackEvent } from './AttackSequenceGener
 import {
     type Player,
     type Soldier,
-    WorldConflictGameState
-} from "$lib/game/WorldConflictGameState.ts";
-import type { Region } from '$lib/game/WorldConflictGameState.ts';
+    GameState
+} from "$lib/game/GameState.ts";
+import type { Region } from '$lib/game/GameState.ts';
 
 export interface ValidationResult {
     valid: boolean;
@@ -12,13 +12,13 @@ export interface ValidationResult {
 }
 
 export abstract class Command {
-    protected gameState: WorldConflictGameState;
+    protected gameState: GameState;
     protected player: Player;
     protected timestamp: string;
     protected id: string;
-    protected previousState?: WorldConflictGameState;
+    protected previousState?: GameState;
 
-    constructor(gameState: WorldConflictGameState, player: Player) {
+    constructor(gameState: GameState, player: Player) {
         this.gameState = gameState;
         this.player = player;
         this.timestamp = new Date().toISOString();
@@ -26,14 +26,14 @@ export abstract class Command {
     }
 
     abstract validate(): ValidationResult;
-    abstract execute(): WorldConflictGameState;
+    abstract execute(): GameState;
     abstract serialize(): any;
 
     protected generateId(): string {
         return `${this.gameState.id}-${this.player.index}-${Date.now()}`;
     }
 
-    undo(): WorldConflictGameState {
+    undo(): GameState {
         if (!this.previousState) {
             throw new Error("Cannot undo - no previous state stored");
         }
@@ -50,7 +50,7 @@ export class ArmyMoveCommand extends Command {
     public attackSequence?: AttackEvent[];
 
     constructor(
-        gameState: WorldConflictGameState,
+        gameState: GameState,
         player: Player,
         source: number,
         destination: number,
@@ -95,9 +95,9 @@ export class ArmyMoveCommand extends Command {
         };
     }
 
-    execute(): WorldConflictGameState {
-      this.previousState = this.gameState.copy() as WorldConflictGameState;
-      const newState = this.gameState.copy() as WorldConflictGameState;
+    execute(): GameState {
+      this.previousState = this.gameState.copy() as GameState;
+      const newState = this.gameState.copy() as GameState;
       const players = newState.players;
 
       const targetSoldiers = newState.soldiersAtRegion(this.destination);
@@ -133,7 +133,7 @@ export class ArmyMoveCommand extends Command {
       return newState;
     }
 
-    private executeMoveLogic(state: WorldConflictGameState): void {
+    private executeMoveLogic(state: GameState): void {
         const fromList = state.soldiersAtRegion(this.source);
         const toList = state.soldiersAtRegion(this.destination);
 
@@ -185,7 +185,7 @@ export class ArmyMoveCommand extends Command {
     }
 
     // Apply attack sequence results
-    private handleCombatResult(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[]): void {
+    private handleCombatResult(state: GameState, fromList: Soldier[], toList: Soldier[]): void {
         console.log('🔍 handleCombatResult - before combat:', {
             attackers: fromList.length,
             defenders: toList.length,
@@ -216,7 +216,7 @@ export class ArmyMoveCommand extends Command {
         });
     }
 
-    private transferSoldiers(state: WorldConflictGameState, fromList: Soldier[], toList: Soldier[], count: number): void {
+    private transferSoldiers(state: GameState, fromList: Soldier[], toList: Soldier[], count: number): void {
         const actualCount = Math.min(count, fromList.length);
         for (let i = 0; i < actualCount; i++) {
             const soldier = fromList.pop();
@@ -248,7 +248,7 @@ export class BuildCommand extends Command {
     public upgradeIndex: number;
 
     constructor(
-        gameState: WorldConflictGameState,
+        gameState: GameState,
         player: Player,
         regionIndex: number,
         upgradeIndex: number
@@ -289,9 +289,9 @@ export class BuildCommand extends Command {
         return baseCosts[this.upgradeIndex] || 0;
     }
 
-    execute(): WorldConflictGameState {
-        this.previousState = this.gameState.copy() as WorldConflictGameState;
-        const newState = this.gameState.copy() as WorldConflictGameState;
+    execute(): GameState {
+        this.previousState = this.gameState.copy() as GameState;
+        const newState = this.gameState.copy() as GameState;
 
         const cost = this.calculateCost();
         newState.faithByPlayer[this.player.index] = (newState.faithByPlayer[this.player.index] || 0) - cost;
@@ -344,7 +344,7 @@ export class EndTurnCommand extends Command {
     private income: number = 0;
     private generatedSoldiers: number[] = [];
 
-    constructor(gameState: WorldConflictGameState, player: Player) {
+    constructor(gameState: GameState, player: Player) {
         super(gameState, player);
     }
 
@@ -362,11 +362,11 @@ export class EndTurnCommand extends Command {
         };
     }
 
-    execute(): WorldConflictGameState {
+    execute(): GameState {
         console.log(`EndTurnCommand executing for player ${this.player.index} (${this.player.name})`);
 
-        this.previousState = this.gameState.copy() as WorldConflictGameState;
-        const newState = this.gameState.copy() as WorldConflictGameState;
+        this.previousState = this.gameState.copy() as GameState;
+        const newState = this.gameState.copy() as GameState;
 
         // 🔥 DEBUG: Test if faithByPlayer exists and is mutable
         console.log("🔍 BEFORE faith assignment:");
@@ -437,7 +437,7 @@ export class EndTurnCommand extends Command {
      * 1. One faith for each region owned
      * 2. One faith for each soldier stationed at owned temples
      */
-    private calculateIncome(state: WorldConflictGameState): number {
+    private calculateIncome(state: GameState): number {
         const regionCount = state.regionCount(this.player);
         console.log(`Player ${this.player.index} owns ${regionCount} regions`);
 
@@ -467,7 +467,7 @@ export class EndTurnCommand extends Command {
         return totalIncome;
     }
 
-    private generateSoldiersAtTemples(state: WorldConflictGameState): void {
+    private generateSoldiersAtTemples(state: GameState): void {
         console.log(`Checking temples for player ${this.player.index}:`);
 
         for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
@@ -489,7 +489,7 @@ export class EndTurnCommand extends Command {
         }
     }
 
-    private logTemplesSoldiers(state: WorldConflictGameState, phase: string): any {
+    private logTemplesSoldiers(state: GameState, phase: string): any {
         console.log(`${phase} - Temples and soldiers for player ${this.player.index}:`);
         const temples = [];
 
@@ -522,7 +522,7 @@ export class EndTurnCommand extends Command {
 export interface CommandResult {
     success: boolean;
     error?: string;
-    newState?: WorldConflictGameState;
+    newState?: GameState;
 }
 
 export class CommandProcessor {

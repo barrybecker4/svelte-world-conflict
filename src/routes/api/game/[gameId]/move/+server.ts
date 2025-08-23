@@ -4,7 +4,7 @@ import {
     WorldConflictKVStorage,
     WorldConflictGameStorage,
 } from '$lib/storage/index.ts';
-import { WorldConflictGameState } from '$lib/game/WorldConflictGameState.ts';
+import { GameState } from '$lib/game/GameState.ts';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/Command.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import type { WorldConflictGameRecord } from '$lib/storage/games.ts';
@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         // Reconstruct World Conflict game state
-        const worldConflictState = new WorldConflictGameState(game.worldConflictState);
+        const worldConflictState = new GameState(game.worldConflictState);
 
         // Find player by matching playerId with player index or name
         const playerIndex = parseInt(moveData.playerId);

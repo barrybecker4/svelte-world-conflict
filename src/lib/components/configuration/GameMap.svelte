@@ -27,7 +27,6 @@
   // Bind the internal element to the exported prop
   $: if (mapContainerElement && !mapContainer) {
     mapContainer = mapContainerElement;
-    console.log('📦 GameMap: mapContainer exported:', mapContainer);
   }
 
   onMount(() => {
