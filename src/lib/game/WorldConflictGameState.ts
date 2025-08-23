@@ -1,119 +1,104 @@
-import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
-import { UPGRADES } from '$lib/game/constants/upgradeDefinitions';
+import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitions';
+import { GameStateInitializer } from './initialization/GameStateInitializer';
+import { GameStateValidator, MoveValidator, TempleValidator } from './validation';
+import type { ValidationResult, MoveValidationResult } from './types/validation';
 
 export class WorldConflictGameState {
-
-    private state: GameStateData;
+    public state: GameStateData;
 
     constructor(data: GameStateData) {
         this.state = { ...data };
+
+        // Initialize default values if missing
         if (!this.state.players) this.state.players = [];
         if (!this.state.regions) this.state.regions = [];
         if (!this.state.ownersByRegion) this.state.ownersByRegion = {};
         if (!this.state.templesByRegion) this.state.templesByRegion = {};
         if (!this.state.soldiersByRegion) this.state.soldiersByRegion = {};
         if (!this.state.cashByPlayer) this.state.cashByPlayer = {};
+        if (!this.state.conqueredRegions) this.state.conqueredRegions = [];
     }
 
+    /**
+     * Create initial game state - uses GameStateInitializer to prepare data
+     */
     static createInitialState(gameId: string, players: Player[], regions: Region[]): WorldConflictGameState {
-        const initialState: GameStateData = {
-            turnIndex: 1,
-            playerIndex: 0,
-            movesRemaining: 3,
-            owners: {},
-            temples: {},
-            soldiersByRegion: {},
-            cash: {},
-            id: 1,
-            gameId,
-            players: [...players],
-            regions: [...regions]
-        };
-
-        const gameState = new WorldConflictGameState(initialState);
-        gameState.initializeStartingPositions();
-
-        return gameState;
+        const initialData = GameStateInitializer.createInitialStateData(gameId, players, regions);
+        return new WorldConflictGameState(initialData);
     }
 
-    static fromJSON(data: GameStateData): WorldConflictGameState {
+    /**
+     * Create from JSON data - handles both new and legacy formats
+     */
+    static fromJSON(data: GameStateData | any): WorldConflictGameState {
+        // If it looks like legacy data, convert it
+        if (data.owners || data.temples || data.cash) {
+            const convertedData = GameStateInitializer.convertLegacyData(data);
+            return new WorldConflictGameState(convertedData);
+        }
+
         return new WorldConflictGameState(data);
     }
 
+    /**
+     * Validate this game state's integrity
+     */
+    validate(): ValidationResult {
+        return GameStateValidator.validate(this.state);
+    }
+
+    /**
+     * Validate a move operation
+     */
+    validateMove(fromRegion: number, toRegion: number, soldierCount: number): MoveValidationResult {
+        return MoveValidator.validateMove(this.state, fromRegion, toRegion, soldierCount);
+    }
+
+    /**
+     * Validate temple operations
+     */
+    validateTempleOperation(regionIndex: number, operationType: 'build' | 'upgrade'): MoveValidationResult {
+        return TempleValidator.validateTempleOperation(this.state, regionIndex, operationType);
+    }
+
+    // ==================== ACCESSORS ====================
+
     get turnIndex(): number { return this.state.turnIndex; }
+    set turnIndex(value: number) { this.state.turnIndex = value; }
+
     get playerIndex(): number { return this.state.playerIndex; }
+    set playerIndex(value: number) { this.state.playerIndex = value; }
+
     get movesRemaining(): number { return this.state.movesRemaining; }
+    set movesRemaining(value: number) { this.state.movesRemaining = value; }
+
     get gameId(): string { return this.state.gameId; }
     get id(): number { return this.state.id; }
     get players(): Player[] { return [...this.state.players]; }
     get regions(): Region[] { return [...this.state.regions]; }
     get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     get ownersByRegion(): Record<number, number> { return { ...this.state.ownersByRegion }; }
-    get templesByRegion(): Record<number, Temple> { return { ...this.state.templesByRegion }; }
-    get soldiersByRegion(): Record<number, Soldier[]> { return { ...this.state.soldiersByRegion }; }
+    get templesByRegion(): Record<number, any> { return { ...this.state.templesByRegion }; }
+    get soldiersByRegion(): Record<number, any[]> { return { ...this.state.soldiersByRegion }; }
     get cashByPlayer(): Record<number, number> { return { ...this.state.cashByPlayer }; }
-    get floatingText(): FloatingText[] | undefined { return this.state.floatingText ? [...this.state.floatingText] : undefined; }
-    get conqueredRegions(): number[] | undefined { return this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined; }
-    get simulatingPlayer(): Player | undefined { return this.state.simulatingPlayer; }
-    get numBoughtSoldiers(): number | undefined { return this.state.numBoughtSoldiers; }
-    set numBoughtSoldiers(value: number | undefined) { this.state.numBoughtSoldiers = value; }
+    get floatingText(): any[] | undefined { return this.state.floatingText ? [...this.state.floatingText] : undefined; }
 
-    set turnIndex(value: number) { this.state.turnIndex = value; }
-    set playerIndex(value: number) { this.state.playerIndex = value; }
-    set movesRemaining(value: number) { this.state.movesRemaining = value; }
-    set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
-    set floatingText(value: FloatingText[] | undefined) { this.state.floatingText = value; }
+    get conqueredRegions(): number[] | undefined { return this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined; }
     set conqueredRegions(value: number[] | undefined) { this.state.conqueredRegions = value; }
 
-    owner(regionIndex: number): Player | null {
-        const playerIndex = this.state.ownersByRegion[regionIndex];
-        return playerIndex !== undefined ? this.state.players[playerIndex] : null;
-    }
+    get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
+    set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
 
-    isOwnedBy(regionIndex: number, player: Player): boolean {
-        return this.state.ownersByRegion[regionIndex] === player.index;
-    }
+    // ==================== GAME OPERATIONS ====================
 
-    soldierCount(regionIndex: number): number {
-        return this.state.soldiersByRegion[regionIndex]?.length || 0;
-    }
-
-    soldiersAtRegion(regionIndex: number): Soldier[] {
-        if (!this.state.soldiersByRegion[regionIndex]) {
-            this.state.soldiersByRegion[regionIndex] = [];
-        }
-        return this.state.soldiersByRegion[regionIndex];
-    }
-
-    regionCount(player: Player): number {
-        return Object.values(this.state.ownersByRegion).filter(ownerIndex => ownerIndex === player.index).length;
-    }
-
-    cashFor(player: Player): number {
-        return this.state.cashByPlayer[player.index] || 0;
+    getCurrentPlayer(): Player {
+        return this.state.players[this.state.playerIndex];
     }
 
     activePlayer(): Player {
         return this.state.players[this.state.playerIndex];
-    }
-
-    canPlayerMove(player: Player): boolean {
-        return this.state.playerIndex === player.index && this.state.movesRemaining > 0;
-    }
-
-    canMoveFrom(regionIndex: number, player: Player): boolean {
-        return (
-            this.state.movesRemaining > 0 &&
-            this.isOwnedBy(regionIndex, player) &&
-            this.soldierCount(regionIndex) > 0 &&
-            !(this.state.conqueredRegions?.includes(regionIndex))
-        );
-    }
-
-    getRegion(index: number): Region | undefined {
-        return this.state.regions.find(r => r.index === index);
     }
 
     getPlayer(index: number): Player | undefined {
@@ -125,6 +110,91 @@ export class WorldConflictGameState {
     }
 
     /**
+     * Get all regions owned by a specific player
+     */
+    getRegionsOwnedByPlayer(playerIndex: number): Region[] {
+        return this.state.regions.filter(region =>
+            this.state.ownersByRegion[region.index] === playerIndex
+        );
+    }
+
+    owner(regionIndex: number): Player | null {
+        const ownerIndex = this.state.ownersByRegion[regionIndex];
+        return ownerIndex !== undefined ? this.state.players[ownerIndex] : null;
+    }
+
+    isOwnedBy(regionIndex: number, player: Player): boolean {
+        return this.state.ownersByRegion[regionIndex] === player.index;
+    }
+
+    soldiersAtRegion(regionIndex: number): any[] {
+        if (!this.state.soldiersByRegion[regionIndex]) {
+            this.state.soldiersByRegion[regionIndex] = [];
+        }
+        return this.state.soldiersByRegion[regionIndex];
+    }
+
+    soldierCount(regionIndex: number): number {
+        return this.soldiersAtRegion(regionIndex).length;
+    }
+
+    regionCount(player: Player): number {
+        return this.state.regions.filter(region =>
+            this.state.ownersByRegion[region.index] === player.index
+        ).length;
+    }
+
+    cash(playerIndex: number): number {
+        return this.state.cashByPlayer[playerIndex] || 0;
+    }
+
+    setOwner(regionIndex: number, player: Player): void {
+        this.state.ownersByRegion[regionIndex] = player.index;
+    }
+
+    addSoldiers(regionIndex: number, count: number): void {
+        const soldiers = this.soldiersAtRegion(regionIndex);
+        const nextSoldierId = Math.max(0, ...Object.values(this.state.soldiersByRegion)
+            .flat().map((s: any) => s.i || 0)) + 1;
+
+        for (let i = 0; i < count; i++) {
+            soldiers.push({ i: nextSoldierId + i });
+        }
+    }
+
+    canMoveFrom(regionIndex: number, player: Player): boolean {
+        return (
+            this.state.movesRemaining > 0 &&
+            this.isOwnedBy(regionIndex, player) &&
+            this.soldierCount(regionIndex) > 0 &&
+            !(this.state.conqueredRegions?.includes(regionIndex))
+        );
+    }
+
+    removeSoldiers(regionIndex: number, count: number): any[] {
+        const soldiers = this.soldiersAtRegion(regionIndex);
+        return soldiers.splice(0, Math.min(count, soldiers.length));
+    }
+
+    moveSoldiers(fromRegion: number, toRegion: number, count: number): boolean {
+        const fromSoldiers = this.soldiersAtRegion(fromRegion);
+        if (fromSoldiers.length < count) return false;
+
+        const movedSoldiers = fromSoldiers.splice(0, count);
+        const toSoldiers = this.soldiersAtRegion(toRegion);
+        toSoldiers.push(...movedSoldiers);
+
+        return true;
+    }
+
+    advanceToNextPlayer(): void {
+        this.state.playerIndex = (this.state.playerIndex + 1) % this.state.players.length;
+        this.state.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN;
+        this.state.turnIndex++;
+        this.state.conqueredRegions = [];
+    }
+
+    /**
      * Get the current upgrade level for specified player and upgrade type
      * @param player - The player to check upgrades for (null for neutral forces)
      * @param upgradeTypeName - The upgrade type name (e.g., 'DEFENSE', 'FIRE', 'WATER', etc.)
@@ -132,22 +202,10 @@ export class WorldConflictGameState {
      */
     upgradeLevel(player: Player | null, upgradeTypeName: string): number {
         if (!player) {
-            // neutral forces always have upgrade level 0
             return 0;
         }
 
-        // Map upgrade type names to upgrade definitions
-        const upgradeTypeMap: Record<string, any> = {
-            'DEFENSE': UPGRADES.EARTH,
-            'FIRE': UPGRADES.FIRE,
-            'WATER': UPGRADES.WATER,
-            'AIR': UPGRADES.AIR,
-            'EARTH': UPGRADES.EARTH,
-            'SOLDIER': UPGRADES.SOLDIER,
-            'REBUILD': UPGRADES.REBUILD
-        };
-
-        const upgradeType = upgradeTypeMap[upgradeTypeName];
+        const upgradeType = UPGRADES_BY_NAME[upgradeTypeName];
         if (!upgradeType) {
             console.warn(`Unknown upgrade type: ${upgradeTypeName}`);
             return 0;
@@ -177,112 +235,7 @@ export class WorldConflictGameState {
         return maxLevel;
     }
 
-    /**
-     * Get players array (for compatibility with existing code)
-     */
-    getPlayers(): Player[] {
-        return this.players;
-    }
-
-    /**
-     * Get regions array (for compatibility with existing code)
-     */
-    getRegions(): Region[] {
-        return this.regions;
-    }
-
-
-    /**
-     * Get all regions owned by a specific player
-     */
-    getRegionsOwnedByPlayer(playerIndex: number): Region[] {
-        return this.state.regions.filter(region =>
-            this.state.ownersByRegion[region.index] === playerIndex
-        );
-    }
-
-    /**
-     * Get all region indices owned by a specific player
-     */
-    getRegionIndicesOwnedByPlayer(playerIndex: number): number[] {
-        return Object.keys(this.state.ownersByRegion)
-            .map(key => parseInt(key))
-            .filter(regionIndex => this.state.ownersByRegion[regionIndex] === playerIndex);
-    }
-
-    /**
-     * Check if the game is complete (has an end result)
-     */
-    isGameComplete(): boolean {
-        return this.state.endResult !== null && this.state.endResult !== undefined;
-    }
-
-    /**
-     * Get regions owned by a player that have soldiers available to move
-     */
-    getMovableRegionsForPlayer(playerIndex: number): Region[] {
-        return this.getRegionsOwnedByPlayer(playerIndex).filter(region => {
-            const soldierCount = this.soldierCount(region.index);
-            const hasMovedThisTurn = this.state.conqueredRegions?.includes(region.index) ?? false;
-            return soldierCount > 1 && !hasMovedThisTurn; // Need more than 1 soldier and haven't moved this turn
-        });
-    }
-
-    // ==================== STATE MUTATIONS ====================
-
-    setOwner(regionIndex: number, player: Player): void {
-        this.state.ownersByRegion[regionIndex] = player.index;
-    }
-
-    addCash(player: Player, amount: number): void {
-        this.state.cashByPlayer[player.index] = (this.state.cashByPlayer[player.index] || 0) + amount;
-    }
-
-    spendCash(player: Player, amount: number): boolean {
-        const currentCash = this.state.cashByPlayer[player.index] || 0;
-        if (currentCash >= amount) {
-            this.state.cashByPlayer[player.index] = currentCash - amount;
-            return true;
-        }
-        return false;
-    }
-
-    decrementMoves(): void {
-        this.state.movesRemaining = Math.max(0, this.state.movesRemaining - 1);
-    }
-
-    addSoldiers(regionIndex: number, count: number): void {
-        const soldiers = this.soldiersAtRegion(regionIndex);
-        for (let i = 0; i < count; i++) {
-            const soldierId = Math.floor(Math.random() * 1000000000000000);
-            soldiers.push({ i: soldierId });
-        }
-    }
-
-    removeSoldiers(regionIndex: number, count: number): Soldier[] {
-        const soldiers = this.soldiersAtRegion(regionIndex);
-        return soldiers.splice(0, Math.min(count, soldiers.length));
-    }
-
-    moveSoldiers(fromRegion: number, toRegion: number, count: number): boolean {
-        const fromSoldiers = this.soldiersAtRegion(fromRegion);
-        if (fromSoldiers.length < count) return false;
-
-        const movedSoldiers = fromSoldiers.splice(0, count);
-        const toSoldiers = this.soldiersAtRegion(toRegion);
-        toSoldiers.push(...movedSoldiers);
-
-        return true;
-    }
-
-    advanceToNextPlayer(): void {
-        this.state.playerIndex = (this.state.playerIndex + 1) % this.state.players.length;
-        this.state.movesRemaining = 3; // Reset moves for new player
-        this.state.turnIndex++;
-        this.state.conqueredRegions = []; // Reset conquered regions for new turn
-    }
-
-    addFloatingText(text: FloatingText): void {
+    addFloatingText(text: any): void {
         if (!this.state.floatingText) this.state.floatingText = [];
         this.state.floatingText.push(text);
     }
@@ -291,59 +244,12 @@ export class WorldConflictGameState {
         this.state.floatingText = [];
     }
 
-    // ==================== INITIALIZATION ====================
-
-    private initializeStartingPositions(): void {
-        console.log('🎮 Initializing game starting positions...');
-
-        // Initialize cash for all players
-        this.state.players.forEach((player) => {
-            this.state.cashByPlayer[player.index] = 100;
-        });
-
-        // IMPORTANT: Clear any existing soldiers - start fresh
-        this.state.soldiersByRegion = {};
-
-        const homeBaseAssignments = assignHomeBaseRegions(this.state.players, this.state.regions);
-
-        // Apply the assignments to game state
-        const ownersByRegion = createOwnerAssignments(homeBaseAssignments);
-        this.state.ownersByRegion = { ...this.state.ownersByRegion, ...ownersByRegion };
-
-        // First, set up ALL temple regions (both neutral and player-owned)
-        this.state.regions.forEach(region => {
-            if (region.hasTemple) {
-                // Add temple structure
-                this.state.templesByRegion[region.index] = {
-                    regionIndex: region.index,
-                    level: 0
-                };
-
-                // Add exactly 3 soldiers to ALL temple regions
-                const startingSolders = region.index in this.state.ownersByRegion ? GAME_CONSTANTS.OWNER_STARTING_SOLDIERS : GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS;
-                this.addSoldiers(region.index, startingSolders);
-            }
-        });
-
-        // Log the results
-        homeBaseAssignments.forEach(assignment => {
-            const player = this.state.players[assignment.playerIndex];
-            console.log(`✅ Player ${player.index} (${player.name}) assigned home region ${assignment.regionIndex} (${assignment.region.name}) with temple`);
-        });
-
-        // Validation logging
-        console.log('🏁 Game initialization complete:');
-        console.log(`   📍 Players with home regions: ${Object.keys(this.state.ownersByRegion).length}`);
-        console.log(`   🏛️  Total temple regions: ${Object.keys(this.state.templesByRegion).length}`);
-        console.log(`   ⚔️  Total soldiers placed: ${Object.values(this.state.soldiersByRegion).reduce((sum, soldiers) => sum + soldiers.length, 0)}`);
-        
-        // Ensure the game has valid starting conditions
-        if (homeBaseAssignments.length < this.state.players.length) {
-            console.warn(`⚠️ Warning: Only ${homeBaseAssignments.length} out of ${this.state.players.length} players have home regions!`);
-        }
+    /**
+     * Check if the game is complete (has an end result)
+     */
+    isGameComplete(): boolean {
+        return this.state.endResult !== null && this.state.endResult !== undefined;
     }
-
-    // ==================== GAME END CHECKING ====================
 
     checkGameEnd(): Player | 'DRAWN_GAME' | null {
         const activePlayers = this.state.players.filter(player => this.regionCount(player) > 0);
@@ -367,7 +273,6 @@ export class WorldConflictGameState {
         return { ...this.state };
     }
 
-    // Backward compatibility
     toGameStateData(): GameStateData {
         return this.toJSON();
     }
@@ -382,43 +287,10 @@ export class WorldConflictGameState {
             players: [...this.state.players],
             regions: [...this.state.regions],
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
-            conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined,
-            id: this.state.id + 1
+            conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined
         });
     }
-
-    // ==================== VALIDATION ====================
-
-    validate(): ValidationResult {
-        const errors: string[] = [];
-
-        // Validate moves remaining
-        if (this.state.movesRemaining < 0) {
-            errors.push('Moves remaining cannot be negative');
-        }
-
-        // Validate player index
-        if (this.state.playerIndex >= this.state.players.length) {
-            errors.push('Player index out of bounds');
-        }
-
-        // Validate owners reference valid players
-        for (const [regionIdx, playerIdx] of Object.entries(this.state.ownersByRegion)) {
-            if (playerIdx >= this.state.players.length) {
-                errors.push(`Region ${regionIdx} owned by invalid player ${playerIdx}`);
-            }
-        }
-
-        // Validate temples exist in owned regions
-        for (const temple of Object.values(this.state.templesByRegion)) {
-            if (this.state.ownersByRegion[temple.regionIndex] === undefined) {
-                errors.push(`Temple at region ${temple.regionIndex} has no owner`);
-            }
-        }
-
-        return {
-            valid: errors.length === 0,
-            errors
-        };
-    }
 }
+
+// Export types for external use
+export type { ValidationResult, MoveValidationResult };

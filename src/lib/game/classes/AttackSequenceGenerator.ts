@@ -47,7 +47,7 @@ export class AttackSequenceGenerator {
         this.state = origState.copy() as WorldConflictGameState;
         this.incomingSoldiers = this.soldiers;
 
-        // WorldConflictGameState.owner() only takes regionIndex parameter
+
         this.fromOwner = this.state.owner(this.fromRegion);
         this.toOwner = this.state.owner(this.toRegion);
 

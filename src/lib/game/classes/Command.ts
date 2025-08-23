@@ -75,7 +75,7 @@ export class ArmyMoveCommand extends Command {
         }
 
         // Check if regions are neighbors (requires regions data)
-        const regions = this.gameState.getRegions();
+        const regions = this.gameState.regions;
         const sourceRegion = regions.find((r: Region) => r.index === this.source);
         if (sourceRegion && !sourceRegion.neighbors.includes(this.destination)) {
             errors.push("Destination must be a neighboring region");
@@ -98,7 +98,7 @@ export class ArmyMoveCommand extends Command {
     execute(): WorldConflictGameState {
       this.previousState = this.gameState.copy() as WorldConflictGameState;
       const newState = this.gameState.copy() as WorldConflictGameState;
-      const players = newState.getPlayers();
+      const players = newState.players;
 
       const targetSoldiers = newState.soldiersAtRegion(this.destination);
       const targetOwner = newState.owner(this.destination);
@@ -401,7 +401,7 @@ export class EndTurnCommand extends Command {
         newState.conqueredRegions = [];
 
         // Advance to next player
-        const players = newState.getPlayers();
+        const players = newState.players;
         newState.playerIndex = (newState.playerIndex + 1) % players.length;
 
         // If back to first player, increment turn
