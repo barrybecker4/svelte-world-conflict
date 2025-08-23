@@ -204,8 +204,7 @@
       return 2.5;
     }
 
-    // Default width
-    return 1;
+    return 1; // Default width
   }
 
   /**
@@ -256,9 +255,9 @@
       return 'filter="url(#battleGlow)"';
     }
 
-    //if (canHighlightForTurn(region) && highlightVisible) {
-    //  return 'filter="url(#activeGlow)"';
-    //}
+    if (canHighlightForTurn(region) && highlightVisible) {
+      return 'filter="url(#activeGlow)"';
+    }
 
     return '';
   }

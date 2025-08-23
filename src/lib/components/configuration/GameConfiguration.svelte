@@ -213,7 +213,6 @@
         <Section title="Game Setup" borderBottom={true}>
         </Section>
 
-        <!-- Current Player Section -->
         <Section title="Current Player" customClass="current-player-section">
           <div class="current-player">
             <span class="player-label">Playing as:</span>
@@ -224,7 +223,6 @@
           </div>
         </Section>
 
-        <!-- Players Section -->
         <Section title="Players">
           {#each playerSlots as slot, index (slot.index)}
             <PlayerConfiguration
@@ -235,12 +233,10 @@
           {/each}
         </Section>
 
-        <!-- Game Settings -->
         <Section title="" borderBottom={true}>
           <GameSettingsPanel bind:gameSettings />
         </Section>
 
-        <!-- Create Game Section -->
         <Section title="" borderBottom={false}>
           {#if error}
             <div class="error-message">{error}</div>

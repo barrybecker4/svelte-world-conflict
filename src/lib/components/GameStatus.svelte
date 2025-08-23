@@ -49,7 +49,7 @@
           </div>
           <div class="stat">
             <span class="stat-label">Faith:</span>
-            <span class="stat-value">{gameState?.cashByPlayer?.[player.index] || 0}</span>
+            <span class="stat-value">{gameState?.faithByPlayer?.[player.index] || 0}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Status:</span>

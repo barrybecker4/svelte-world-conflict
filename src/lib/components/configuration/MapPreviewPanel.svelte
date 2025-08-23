@@ -95,7 +95,7 @@
       ownersByRegion,
       templesByRegion: {},
       soldiersByRegion: {},
-      cashByPlayer: {},
+      faithByPlayer: {},
       players: activePlayers,
       regions: previewRegions
     };
@@ -134,9 +134,9 @@
       }
     });
 
-    // Initialize player cash
+    // Initialize player faith
     activePlayers.forEach(player => {
-      previewGameState!.cashByPlayer[player.index] = 100;
+      previewGameState!.faithByPlayer[player.index] = 100;
     });
 
     console.log('Preview game state created with distance-based home bases:', previewGameState);

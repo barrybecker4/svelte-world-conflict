@@ -15,7 +15,7 @@ export class GameStateInitializer {
             ownersByRegion: {},
             templesByRegion: {},
             soldiersByRegion: {},
-            cashByPlayer: {},
+            faithByPlayer: {},
             id: 1,
             gameId,
             players: [...players],
@@ -33,9 +33,9 @@ export class GameStateInitializer {
     static initializeStartingPositions(gameData: GameStateData): void {
         console.log('🎮 Initializing game starting positions...');
 
-        // Initialize cash for all players
+        // Initialize faith for all players
         gameData.players.forEach((player) => {
-            gameData.cashByPlayer[player.index] = GAME_CONSTANTS.DEFAULT_STARTING_CASH;
+            gameData.faithByPlayer[player.index] = GAME_CONSTANTS.DEFAULT_STARTING_FAITH;
         });
 
         // IMPORTANT: Clear any existing soldiers - start fresh
@@ -115,7 +115,7 @@ export class GameStateInitializer {
             ownersByRegion: legacyData.owners || legacyData.ownersByRegion || {},
             templesByRegion: legacyData.temples || legacyData.templesByRegion || {},
             soldiersByRegion: legacyData.soldiersByRegion || {},
-            cashByPlayer: legacyData.cash || legacyData.cashByPlayer || {},
+            faithByPlayer: legacyData.faith || legacyData.faithByPlayer || {},
 
             players: legacyData.players || [],
             regions: legacyData.regions || [],

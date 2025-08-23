@@ -12,6 +12,15 @@
   let error = null;
   let loading = true;
 
+  $: if (gameState) {
+    console.log('🎮 Parent - Game state updated:', {
+      turnIndex: gameState.turnIndex,
+      currentPlayer: gameState.playerIndex,
+      faithByPlayer: gameState.faithByPlayer,
+      beforeAfterComparison: JSON.stringify(gameState.faithByPlayer)
+    });
+  }
+
   onMount(async () => {
     await loadGameData();
   });

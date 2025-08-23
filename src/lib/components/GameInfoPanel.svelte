@@ -18,15 +18,16 @@
   export let selectedRegion: number | null = null;
   export let audioEnabled: boolean = true;
 
-  // Unicode symbols matching original game
+  // Unicode symbols matching original game but using yin-yang for faith
   const SYMBOLS = {
-    FAITH: '☧',
+    FAITH: '☯', // Yin-yang symbol for faith (originally used ☧)
     DEAD: '☠',
     VICTORY: '♛',
     REGION: '★',
     MOVES: '➊'
   };
 
+  // Reactive statements - these will update whenever gameState changes
   $: currentPlayerIndex = gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
   $: turnNumber = gameState?.turnIndex ?? 1;
@@ -35,13 +36,17 @@
   $: isMoving = moveMode !== 'IDLE';
   $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
 
+  // Make faith counts reactive to gameState changes
+  $: faithByPlayer = gameState?.faithByPlayer ?? {};
+
   function getRegionCount(playerIndex: number): number {
     if (!gameState?.ownersByRegion) return 0;
     return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
   }
 
   function getFaithCount(playerIndex: number): number {
-    return gameState?.cashByPlayer?.[playerIndex] ?? 0;
+    // Force reactivity by directly accessing the reactive faithByPlayer
+    return faithByPlayer[playerIndex] ?? 0;
   }
 
   function isPlayerAlive(playerIndex: number): boolean {
@@ -65,6 +70,20 @@
       default:
         return 'Click on a region to move or attack with its army.\nClick on a temple to buy soldiers or upgrades.';
     }
+  }
+
+  // Debug logging to see when faith values change
+  $: if (gameState) {
+    console.log('🎯 GameInfoPanel - Faith values updated:', {
+      turnIndex: gameState.turnIndex,
+      currentPlayer: currentPlayerIndex,
+      faithByPlayer: gameState.faithByPlayer,
+      playerFaithCounts: players.map(player => ({
+        index: player.index,
+        name: player.name,
+        faith: getFaithCount(player.index)
+      }))
+    });
   }
 </script>
 
@@ -261,82 +280,77 @@
   }
 
   .stat .value {
-    font-weight: var(--font-bold, bold);
     color: var(--text-primary, #f7fafc);
+    font-weight: var(--font-semibold, 600);
   }
 
   .stat .symbol {
-    font-size: var(--text-xs, 0.8rem);
-    opacity: 0.9;
+    opacity: 0.8;
+    font-size: 0.9em;
   }
 
   .stat .symbol.dead {
-    color: var(--color-error, #ef4444);
-    font-size: var(--text-base, 1rem);
+    color: var(--color-danger, #ef4444);
   }
 
-  /* Info panel */
+  /* Instructions */
   .info-panel {
-    background: var(--bg-panel-light, rgba(0, 0, 0, 0.3));
-    border: 1px solid var(--border-dark, #333);
+    background: rgba(15, 23, 42, 0.4);
     border-radius: var(--radius-md, 6px);
     padding: var(--space-3, 12px);
-    min-height: 60px;
-    display: flex;
-    align-items: center;
   }
 
   .instruction-text {
+    color: var(--text-secondary, #cbd5e1);
     font-size: var(--text-sm, 0.9rem);
     line-height: 1.4;
-    color: var(--text-primary, white);
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
     white-space: pre-line;
   }
 
-  /* Stats display */
+  /* Current player stats */
   .stat-display {
-    display: flex;
-    background: var(--bg-panel-light, rgba(0, 0, 0, 0.3));
-    border: 1px solid var(--border-light, #4a5568);
-    border-radius: var(--radius-md, 6px);
-    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2, 8px);
   }
 
   .stat-item {
-    flex: 1;
-    padding: var(--space-3, 10px);
     text-align: center;
-    border-right: 1px solid var(--border-light, #4a5568);
-  }
-
-  .stat-item:last-child {
-    border-right: none;
+    padding: var(--space-2, 8px);
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: var(--radius-sm, 4px);
   }
 
   .stat-value {
-    font-size: var(--text-lg, 1.1rem);
+    font-size: var(--text-xl, 1.25rem);
     font-weight: var(--font-bold, bold);
+    color: var(--text-primary, #f7fafc);
     margin-bottom: 2px;
-    color: var(--color-warning, #fbbf24);
   }
 
   .stat-value .symbol {
-    font-size: var(--text-sm, 0.9rem);
+    font-size: 0.8em;
+    opacity: 0.7;
     margin-left: 2px;
-    opacity: 0.8;
   }
 
   .stat-label {
     font-size: var(--text-xs, 0.75rem);
-    color: var(--text-tertiary, #a0aec0);
-    text-transform: lowercase;
+    color: var(--text-secondary, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   /* Icon actions */
   .icon-actions {
     display: flex;
-    gap: var(--space-2, 8px);
     justify-content: center;
+    gap: var(--space-2, 8px);
+  }
+
+  /* Flex section override */
+  :global(.flex-1) {
+    flex: 1;
+    overflow-y: auto;
   }
 </style>

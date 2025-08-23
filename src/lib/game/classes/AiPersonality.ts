@@ -58,14 +58,14 @@ export class AiPersonality {
     }
 
     /**
-     * Determine if AI should buy soldiers based on current cash and eagerness
+     * Determine if AI should buy soldiers based on current faith and eagerness
      */
-    shouldBuySoldiers(currentCash: number, soldierCost: number): boolean {
-        if (currentCash < soldierCost) return false;
+    shouldBuySoldiers(currentFaith: number, soldierCost: number): boolean {
+        if (currentFaith < soldierCost) return false;
 
         // Higher eagerness = more likely to buy soldiers
-        // Also consider if we have enough cash for multiple purchases
-        const canAffordMultiple = currentCash >= soldierCost * 2;
+        // Also consider if we have enough faith for multiple purchases
+        const canAffordMultiple = currentFaith >= soldierCost * 2;
         const baseChance = this.soldierEagerness;
         const extraChance = canAffordMultiple ? 0.2 : 0;
 

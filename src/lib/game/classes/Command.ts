@@ -271,9 +271,9 @@ export class BuildCommand extends Command {
         }
 
         const cost = this.calculateCost();
-        const playerCash = this.gameState.cashByPlayer[this.player.index] || 0;
-        if (cost > playerCash) {
-            errors.push(`Need ${cost} faith, have ${playerCash}`);
+        const playerFaith = this.gameState.faithByPlayer[this.player.index] || 0;
+        if (cost > playerFaith) {
+            errors.push(`Need ${cost} faith, have ${playerFaith}`);
         }
 
         return {
@@ -294,7 +294,7 @@ export class BuildCommand extends Command {
         const newState = this.gameState.copy() as WorldConflictGameState;
 
         const cost = this.calculateCost();
-        newState.cashByPlayer[this.player.index] = (newState.cashByPlayer[this.player.index] || 0) - cost;
+        newState.faithByPlayer[this.player.index] = (newState.faithByPlayer[this.player.index] || 0) - cost;
 
         const temple = newState.templesByRegion[this.regionIndex];
         if (temple) {
@@ -369,24 +369,24 @@ export class EndTurnCommand extends Command {
         const newState = this.gameState.copy() as WorldConflictGameState;
 
         // BEFORE values for debugging
-        const beforeCash = newState.cashByPlayer[this.player.index] || 0;
+        const beforeFaith = newState.faithByPlayer[this.player.index] || 0;
         const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
 
         // Calculate and add income (1 faith per region)
         this.income = this.calculateIncome(newState);
-        newState.cashByPlayer[this.player.index] = beforeCash + this.income;
+        newState.faithByPlayer[this.player.index] = beforeFaith + this.income;
 
-        console.log(`Faith income for player ${this.player.index}: ${beforeCash} + ${this.income} = ${newState.cashByPlayer[this.player.index]}`);
+        console.log(`Faith income for player ${this.player.index}: ${beforeFaith} + ${this.income} = ${newState.faithByPlayer[this.player.index]}`);
 
         // Generate soldiers at temples
         this.generateSoldiersAtTemples(newState);
 
         // AFTER values for debugging
-        const afterCash = newState.cashByPlayer[this.player.index];
+        const afterFaith = newState.faithByPlayer[this.player.index];
         const afterSoldiers = this.logTemplesSoldiers(newState, "AFTER");
 
-        console.log(`📊 Summary for player ${this.player.index}:`);
-        console.log(`   Faith: ${beforeCash} → ${afterCash} (+${this.income})`);
+        console.log(`Summary for player ${this.player.index}:`);
+        console.log(`   Faith: ${beforeFaith} → ${afterFaith} (+${this.income})`);
         console.log(`   Temples with soldiers added: ${this.generatedSoldiers.length}`);
 
         // Check for game end
@@ -415,11 +415,39 @@ export class EndTurnCommand extends Command {
         return newState;
     }
 
+    /**
+     * Faith income rules:
+     * 1. One faith for each region owned
+     * 2. One faith for each soldier stationed at owned temples
+     */
     private calculateIncome(state: WorldConflictGameState): number {
-        // Simple income calculation: 1 faith per region owned
         const regionCount = state.regionCount(this.player);
         console.log(`Player ${this.player.index} owns ${regionCount} regions`);
-        return regionCount;
+
+        // Calculate soldiers praying at temples (soldiers stationed at temple regions owned by player)
+        let soldiersAtTemples = 0;
+
+        // Iterate through all regions to find owned temple regions
+        for (const regionIndex in state.templesByRegion) {
+            const regionIdx = parseInt(regionIndex);
+            const temple = state.templesByRegion[regionIdx];
+
+            // Check if player owns this temple region
+            if (temple && state.isOwnedBy(regionIdx, this.player)) {
+                // Count soldiers at this temple region
+                const soldiers = state.soldiersByRegion[regionIdx];
+                if (soldiers && soldiers.length > 0) {
+                    // All soldiers at owned temple regions generate faith
+                    soldiersAtTemples += soldiers.length;
+                    console.log(`Player ${this.player.index} has ${soldiers.length} soldiers praying at temple region ${regionIdx}`);
+                }
+            }
+        }
+
+        const totalIncome = regionCount + soldiersAtTemples;
+        console.log(`Player ${this.player.index} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${totalIncome} faith`);
+
+        return totalIncome;
     }
 
     private generateSoldiersAtTemples(state: WorldConflictGameState): void {

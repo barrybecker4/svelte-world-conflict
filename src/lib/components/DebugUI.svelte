@@ -15,7 +15,7 @@
   $: faithValues = players.map(player => ({
     playerIndex: player.index,
     playerName: player.name,
-    faith: gameState?.cashByPlayer?.[player.index] ?? 0,
+    faith: gameState?.faithByPlayer?.[player.index] ?? 0,
     regions: getRegionCount(player.index),
     soldiers: getTotalSoldiers(player.index)
   }));
@@ -104,8 +104,8 @@
     <div class="debug-section">
       <h4>Raw Data Check</h4>
       <details>
-        <summary>Click to see raw cash values</summary>
-        <pre>{JSON.stringify(gameState?.cashByPlayer ?? {}, null, 2)}</pre>
+        <summary>Click to see raw faith values</summary>
+        <pre>{JSON.stringify(gameState?.faithByPlayer ?? {}, null, 2)}</pre>
       </details>
 
       <details>

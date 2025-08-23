@@ -47,7 +47,7 @@ export interface GameStateData {
     ownersByRegion: Record<number, number>; regionIndex -> playerIndex // Index -> playerIndex
     templesByRegion: Record<number, Temple>; // regionIndex -> Temple
     soldiersByRegion: Record<number, Soldier[]>; // regionIndex -> soldiers[]
-    cashByPlayer: Record<number, number>; // playerIndex -> amount
+    faithByPlayer: Record<number, number>; // playerIndex -> amount
 
     players: Player[];
     regions: Region[];

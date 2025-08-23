@@ -56,12 +56,12 @@ export class GameStateValidator {
             }
         });
 
-        // Validate cash consistency
+        // Validate faith consistency
         gameData.players.forEach(player => {
-            if (!(player.index in gameData.cashByPlayer)) {
-                warnings.push(`Player ${player.index} has no cash entry`);
-            } else if (gameData.cashByPlayer[player.index] < 0) {
-                errors.push(`Player ${player.index} has negative cash`);
+            if (!(player.index in gameData.faithByPlayer)) {
+                warnings.push(`Player ${player.index} has no faith entry`);
+            } else if (gameData.faithByPlayer[player.index] < 0) {
+                errors.push(`Player ${player.index} has negative faith`);
             }
         });
 

@@ -17,7 +17,7 @@ export class WorldConflictGameState {
         if (!this.state.ownersByRegion) this.state.ownersByRegion = {};
         if (!this.state.templesByRegion) this.state.templesByRegion = {};
         if (!this.state.soldiersByRegion) this.state.soldiersByRegion = {};
-        if (!this.state.cashByPlayer) this.state.cashByPlayer = {};
+        if (!this.state.faithByPlayer) this.state.faithByPlayer = {};
         if (!this.state.conqueredRegions) this.state.conqueredRegions = [];
     }
 
@@ -34,7 +34,7 @@ export class WorldConflictGameState {
      */
     static fromJSON(data: GameStateData | any): WorldConflictGameState {
         // If it looks like legacy data, convert it
-        if (data.owners || data.temples || data.cash) {
+        if (data.owners || data.temples || data.faith) {
             const convertedData = GameStateInitializer.convertLegacyData(data);
             return new WorldConflictGameState(convertedData);
         }
@@ -82,7 +82,7 @@ export class WorldConflictGameState {
     get ownersByRegion(): Record<number, number> { return { ...this.state.ownersByRegion }; }
     get templesByRegion(): Record<number, any> { return { ...this.state.templesByRegion }; }
     get soldiersByRegion(): Record<number, any[]> { return { ...this.state.soldiersByRegion }; }
-    get cashByPlayer(): Record<number, number> { return { ...this.state.cashByPlayer }; }
+    get faithByPlayer(): Record<number, number> { return { ...this.state.faithByPlayer }; }
     get floatingText(): any[] | undefined { return this.state.floatingText ? [...this.state.floatingText] : undefined; }
 
     get conqueredRegions(): number[] | undefined { return this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined; }
@@ -144,8 +144,8 @@ export class WorldConflictGameState {
         ).length;
     }
 
-    cash(playerIndex: number): number {
-        return this.state.cashByPlayer[playerIndex] || 0;
+    faith(playerIndex: number): number {
+        return this.state.faithByPlayer[playerIndex] || 0;
     }
 
     setOwner(regionIndex: number, player: Player): void {
@@ -283,7 +283,7 @@ export class WorldConflictGameState {
             ownersByRegion: { ...this.state.ownersByRegion },
             templesByRegion: JSON.parse(JSON.stringify(this.state.templesByRegion)),
             soldiersByRegion: JSON.parse(JSON.stringify(this.state.soldiersByRegion)),
-            cashByPlayer: { ...this.state.cashByPlayer },
+            faithByPlayer: { ...this.state.faithByPlayer },
             players: [...this.state.players],
             regions: [...this.state.regions],
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
