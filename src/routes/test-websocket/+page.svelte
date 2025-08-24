@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { multiplayerActions, multiplayerState, gameUpdates } from '$lib/multiplayer/stores/multiplayerStore.js';
+  import { multiplayerActions, multiplayerState, gameUpdates } from '$lib/stores/multiplayerStore.js';
 
   let testGameId = 'test-game-123';
   let messages = [];

@@ -9,8 +9,8 @@
   import Banner from './ui/Banner.svelte';
   import type { MoveState } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
-  import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
-  import { createGameStateStore } from '$lib/multiplayer/stores/gameStateStore.js';
+  import { GameWebSocketClient } from '$lib/game/websocket/client';
+  import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
   import DebugUI from './DebugUI.svelte';
 
   // Props
