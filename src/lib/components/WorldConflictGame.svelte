@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { writable } from 'svelte/store';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import GameMap from './configuration/GameMap.svelte';
   import SoldierSelectionModal from './SoldierSelectionModal.svelte';
@@ -8,11 +7,10 @@
   import LoadingState from './ui/LoadingState.svelte';
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
-  import { turnManager } from '$lib/game/TurnManager';
-  import type { GameStateData, Player } from '$lib/game/GameState';
-  import { MoveSystem, type MoveState } from '$lib/game/classes/MoveSystem';
+  import type { MoveState } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/multiplayer/websocket/client';
+  import { createGameStateStore } from '$lib/multiplayer/stores/gameStateStore.js';
   import DebugUI from './DebugUI.svelte';
 
   // Props
@@ -20,15 +18,25 @@
   export let playerId: string;
   export let playerIndex: number;
 
-  // Game state
-  let gameState = writable<GameStateData | null>(null);
-  let regions: any[] = [];
-  let players: Player[] = [];
-  let loading = true;
-  let error: string | null = null;
+  // Game state store - destructure the individual stores
+  const gameStore = createGameStateStore(gameId, playerId, playerIndex);
+  const {
+    gameState,
+    regions,
+    players,
+    loading,
+    error,
+    currentPlayerIndex,
+    currentPlayer,
+    isMyTurn,
+    movesRemaining,
+    turnState,
+    currentPlayerFromTurnManager,
+    shouldShowBanner,
+    shouldHighlightRegions
+  } = gameStore;
 
-  // Move system
-  let moveSystem: MoveSystem | null = null;
+  // Move system and state
   let moveState: MoveState = {
     mode: 'IDLE',
     sourceRegion: null,
@@ -52,20 +60,17 @@
   } | null = null;
   let debugMode = false;
 
-  $: turnState = turnManager.state;
-  $: currentPlayerFromTurnManager = turnManager.currentPlayer;
-  $: shouldShowBanner = turnManager.shouldShowBanner;
-  $: shouldHighlightRegions = turnManager.shouldHighlightRegions;
-  $: gameStateFromTurnManager = turnManager.gameData;
-  $: currentPlayerIndex = $gameState?.playerIndex ?? 0;
-  $: currentPlayer = players[currentPlayerIndex];
-  $: isMyTurn = currentPlayerIndex === playerIndex;
-  $: movesRemaining = $gameState?.movesRemaining ?? 3;
+  // Battle management
+  let battleTimeouts = new Map<number, number>();
+
+  // WebSocket client
+  let wsClient: GameWebSocketClient | null = null;
+
+  // UI reactive variables
   $: moveMode = moveState.mode;
   $: selectedRegion = moveState.sourceRegion;
   $: showBanner = $shouldShowBanner;
   $: highlightRegions = $shouldHighlightRegions;
-  $: currentPlayerForBanner = $currentPlayerFromTurnManager;
   $: connectionStatus = wsClient?.isConnected() ? 'connected' : 'disconnected';
   $: console.log('WebSocket status:', connectionStatus);
   $: {  // debug only
@@ -79,8 +84,6 @@
       }
     }
 
-  let wsClient: GameWebSocketClient | null = null;
-
   onMount(async () => {
     battleAnimationSystem = new BattleAnimationSystem();
     await initializeGame();
@@ -90,31 +93,12 @@
   onDestroy(() => {
     battleTimeouts.forEach(timeout => clearTimeout(timeout));
     battleTimeouts.clear();
-
     cleanupWebSocket();
-    turnManager.reset();
+    gameStore.resetTurnManager();
   });
 
   async function initializeGame() {
-    try {
-      await loadGameState();
-
-      // Initialize move system with proper callbacks
-      if ($gameState) {
-        moveSystem = new MoveSystem(
-          $gameState,
-          handleMoveComplete,
-          handleMoveStateChange
-        );
-
-        turnManager.initialize($gameState, players);
-      }
-
-      loading = false;
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to initialize game';
-      loading = false;
-    }
+    await gameStore.initializeGame(handleMoveComplete, handleMoveStateChange);
   }
 
   async function initializeWebSocket() {
@@ -126,47 +110,7 @@
 
         const worldConflictState = gameData.worldConflictState;
         if (worldConflictState) {
-          const previousState = $gameState;
-          const isNewTurn = previousState && worldConflictState.playerIndex !== previousState.playerIndex;
-
-          // Clear battle timeouts for resolved battles
-          if (previousState?.battlesInProgress) {
-            previousState.battlesInProgress.forEach(regionIndex => {
-              clearBattleTimeout(regionIndex);
-            });
-          }
-
-          // Ensure battle states are cleared from server updates
-          const cleanState = {
-            ...worldConflictState,
-            battlesInProgress: [], // Force clear
-            pendingMoves: []       // Force clear
-          };
-
-          gameState.set(cleanState); // update reactive gameState
-
-          regions = cleanState.regions || [];
-          players = cleanState.players || [];
-
-          if (isNewTurn) {
-            // New player's turn - show banner and transition
-            turnManager.transitionToPlayer(cleanState.playerIndex, cleanState);
-          } else {
-            // Same player, just update state
-            turnManager.updateGameState(cleanState);
-          }
-
-          // Update the existing move system with new game state
-          if (moveSystem) {
-            moveSystem.updateGameState(cleanState);
-          } else {
-            // Only create new MoveSystem if it doesn't exist
-            moveSystem = new MoveSystem(
-              cleanState,
-              handleMoveComplete,
-              handleMoveStateChange
-            );
-          }
+          gameStore.handleGameStateUpdate(worldConflictState);
         } else {
           console.error('❌ No worldConflictState found in gameData:', gameData);
         }
@@ -199,44 +143,6 @@
     }
   }
 
-  async function loadGameState() {
-    try {
-      const response = await fetch(`/api/game/${gameId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load game state');
-      }
-
-      const data = await response.json();
-      gameState.set(data.worldConflictState);
-      regions = data.worldConflictState.regions || [];
-      players = data.worldConflictState.players || [];
-
-      // Update move system if it exists
-      if (moveSystem && $gameState) {
-        moveSystem = new MoveSystem(
-          $gameState,
-          handleMoveComplete,
-          handleMoveStateChange
-        );
-      }
-
-    } catch (err) {
-      throw new Error('Failed to load game state');
-    }
-  }
-
-  // Retry function for error state
-  async function handleRetry() {
-    error = null;
-    loading = true;
-    await initializeGame();
-  }
-
-  function handleBannerComplete(): void {
-    turnManager.onBannerComplete();
-  }
-
-  // Move system callbacks
   function handleMoveStateChange(newState: MoveState) {
     console.log('Move state changed:', newState);
     moveState = { ...newState };
@@ -295,7 +201,7 @@
         if (mapContainer && battleAnimationSystem) {
           console.log('🗺️ Map container available, setting on animation system');
           battleAnimationSystem.setMapContainer(mapContainer);
-          await battleAnimationSystem.playAttackSequence(result.attackSequence, regions);
+          await battleAnimationSystem.playAttackSequence(result.attackSequence, $regions);
         } else {
           console.warn('⚠️ Map container not available for animations:', { mapContainer: !!mapContainer, battleAnimationSystem: !!battleAnimationSystem });
           // Fallback: just log what would have been shown
@@ -343,14 +249,6 @@
       }
 
       throw moveError;
-    }
-  }
-
-  function clearBattleTimeout(regionIndex: number) {
-    const timeout = battleTimeouts.get(regionIndex);
-    if (timeout) {
-      clearTimeout(timeout);
-      battleTimeouts.delete(regionIndex);
     }
   }
 
@@ -402,7 +300,7 @@
     gameState.set(battleState);
   }
 
-  function moveIntoRegion(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number, currentState: GameStateData, sourceSoldiers: number[], targetSoldiers: number[], targetOwner: number | undefined) {
+  function moveIntoRegion(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number, currentState: GameStateData, sourceSoldiers: any[], targetSoldiers: any[], targetOwner: number | undefined) {
     console.log('🚶 Moving to neutral/friendly territory');
     const newSourceSoldiers = sourceSoldiers.slice(soldierCount);  // Remove soldiers from source
 
@@ -435,7 +333,6 @@
 
   function handleRegionClick(region: any) {
     console.log('Region clicked:', region);
-
     // Prevent actions during turn transition
     if ($turnState.isTransitioning) {
       console.log('Ignoring click during turn transition');
@@ -447,62 +344,24 @@
       return;
     }
 
-    if (moveSystem) {
-      moveSystem.handleRegionClick(region.index);
-    }
-  }
-
-  let battleTimeouts = new Map<number, number>();
-
-  function startBattleTimeout(regionIndex: number) {
-    // Clear any existing timeout for this region
-    const existingTimeout = battleTimeouts.get(regionIndex);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-    }
-
-    // Set new timeout (5 seconds) - setTimeout returns number in browser
-    const timeout = setTimeout(() => {
-      console.warn(`⚠️ Battle timeout for region ${regionIndex}, clearing battle state`);
-
-      gameState.update(state => {
-        if (!state) return state;
-
-        return {
-          ...state,
-          battlesInProgress: state.battlesInProgress?.filter(r => r !== regionIndex) || [],
-          pendingMoves: state.pendingMoves?.filter(m => m.to !== regionIndex) || []
-        };
-      });
-
-      battleTimeouts.delete(regionIndex);
-    }, 5000);
-
-    battleTimeouts.set(regionIndex, timeout);
+    gameStore.getMoveSystem().handleRegionClick(region.index);
   }
 
   function handleSoldierSelectionConfirm(soldierCount: number) {
-    console.log('Soldier selection:', soldierCount);
-    if (moveSystem) {
-      moveSystem.handleSoldierAdjustment(soldierCount);
-    }
-
+    gameStore.getMoveSystem().handleSoldierAdjustment(soldierCount);
     showSoldierSelection = false;
     soldierSelectionData = null;
   }
 
   function handleSoldierSelectionCancel() {
-    console.log('Soldier selection cancelled');
-
-    if (moveSystem) {
-      moveSystem.cancelMove();
-    }
-
+    gameStore.getMoveSystem().cancelMove();
     showSoldierSelection = false;
     soldierSelectionData = null;
   }
 
   async function handleEndTurn() {
+    if (!$isMyTurn) return;
+
     console.log('Ending turn...');
     try {
       const response = await fetch(`/api/game/${gameId}/end-turn`, {
@@ -541,26 +400,28 @@
   }
 
   function handleUndo() {
-    console.log('Undo requested');
-    if (moveSystem) {
-      moveSystem.undo();
-    }
+    if (!$isMyTurn) return;
+    gameStore.getMoveSystem().undo();
   }
 
   function handleCancelMove() {
-    console.log('Cancel move requested');
-    if (moveSystem) {
-      moveSystem.cancelMove();
-    }
+    gameStore.getMoveSystem().cancelCurrentMove();
+  }
+
+  function handleToggleAudio() {
+    audioEnabled = !audioEnabled;
   }
 
   function handleShowInstructions() {
     showInstructions = true;
   }
 
-  function handleToggleAudio() {
-    audioEnabled = !audioEnabled;
-    console.log('Audio toggled:', audioEnabled);
+  function handleRetry() {
+    gameStore.retryInitialization(handleMoveComplete, handleMoveStateChange);
+  }
+
+  function handleBannerComplete() {
+    gameStore.completeBanner();
   }
 
   function handleResign() {
@@ -570,20 +431,37 @@
       // TODO: Implement resignation logic
     }
   }
+
+  // Battle animation helpers
+  function startBattleTimeout(regionIndex: number) {
+    const timeoutId = setTimeout(() => {
+      clearBattleTimeout(regionIndex);
+    }, 3000);
+
+    battleTimeouts.set(regionIndex, timeoutId);
+  }
+
+  function clearBattleTimeout(regionIndex: number) {
+    const timeoutId = battleTimeouts.get(regionIndex);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      battleTimeouts.delete(regionIndex);
+    }
+  }
 </script>
 
-<!-- Turn Banner Overlay -->
-{#if showBanner && currentPlayerForBanner}
+  <!-- Turn Banner Overlay -->
+{#if showBanner && $currentPlayerFromTurnManager}
   <Banner
-    player={currentPlayerForBanner}
+    player={$currentPlayerFromTurnManager}
     isVisible={showBanner}
     onComplete={handleBannerComplete}
   />
 {/if}
 
 <LoadingState
-  {loading}
-  {error}
+  loading={$loading}
+  error={$error}
   loadingText="Loading game..."
   containerClass="fullscreen"
   showRetry={true}
@@ -594,11 +472,11 @@
     <div class="info-panel">
       <GameInfoPanel
         gameState={$gameState}
-        {players}
-        currentPlayer={currentPlayer}
-        {currentPlayerIndex}
-        {movesRemaining}
-        moveInstruction={moveSystem?.getCurrentInstruction() || ''}
+        players={$players}
+        currentPlayer={$currentPlayer}
+        currentPlayerIndex={$currentPlayerIndex}
+        movesRemaining={$movesRemaining}
+        moveInstruction={gameStore.getMoveSystem()?.getCurrentInstruction() || ''}
         showCancelButton={moveState.mode !== 'IDLE'}
         {audioEnabled}
         onEndTurn={handleEndTurn}
@@ -612,13 +490,13 @@
 
     <div class="map-container">
       <GameMap
-        {regions}
+        regions={$regions}
         gameState={$gameState}
-        currentPlayer={currentPlayer}
-        selectedRegion={moveState.sourceRegion ? regions.find(r => r.index === moveState.sourceRegion) : null}
+        currentPlayer={$currentPlayer}
+        selectedRegion={moveState.sourceRegion ? $regions.find(r => r.index === moveState.sourceRegion) : null}
         showTurnHighlights={highlightRegions}
         onRegionClick={handleRegionClick}
-        previewMode={loading || $turnState.isTransitioning}
+        previewMode={$loading || $turnState.isTransitioning}
         bind:mapContainer
       />
     </div>
@@ -627,7 +505,7 @@
   {#if debugMode}
     <DebugUI
       gameState={$gameState}
-      {players}
+      players={$players}
       visible={true}
     />
   {/if}
