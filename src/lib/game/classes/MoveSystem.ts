@@ -1,23 +1,4 @@
-// Enhanced move system for World Conflict game
-// This handles the three-step move process: select origin, adjust soldiers, select destination
-
-export interface MoveState {
-  mode: 'IDLE' | 'SELECT_SOURCE' | 'ADJUST_SOLDIERS' | 'SELECT_TARGET' | 'BUILD';
-  sourceRegion: number | null;
-  targetRegion: number | null;
-  selectedSoldierCount: number;
-  maxSoldiers: number;
-  availableMoves: number;
-  isMoving: boolean;
-}
-
-export interface MoveAction {
-  type: 'RESET' | 'SELECT_SOURCE' | 'ADJUST_SOLDIERS' | 'SELECT_TARGET' | 'CANCEL' | 'CONFIRM_MOVE' | 'ENTER_BUILD_MODE';
-  payload?: {
-    regionIndex?: number;
-    soldierCount?: number;
-  };
-}
+import type { MoveState, MoveAction } from '../types/MoveTypes';
 
 export class MoveSystem {
   private state: MoveState;
@@ -63,7 +44,6 @@ export class MoveSystem {
    */
   public reset(): void {
     console.log('🔄 Resetting move system to initial state');
-
     this.processAction({ type: 'RESET' });
   }
 
@@ -252,50 +232,50 @@ export class MoveSystem {
     }
   }
 
-    private resetToIdle(): void {
-      // Explicitly reset all state to idle
-      this.state = {
-        mode: 'IDLE',
-        sourceRegion: null,
-        targetRegion: null,
-        selectedSoldierCount: 0,
-        maxSoldiers: 0,
-        availableMoves: this.gameState?.movesRemaining ?? this.state.availableMoves,
-        isMoving: false
-      };
+  private resetToIdle(): void {
+    // Explicitly reset all state to idle
+    this.state = {
+      mode: 'IDLE',
+      sourceRegion: null,
+      targetRegion: null,
+      selectedSoldierCount: 0,
+      maxSoldiers: 0,
+      availableMoves: this.gameState?.movesRemaining ?? this.state.availableMoves,
+      isMoving: false
+    };
 
-      // Notify UI of the state change
-      if (this.onStateChange) {
-        this.onStateChange(this.state);
-      }
+    // Notify UI of the state change
+    if (this.onStateChange) {
+      this.onStateChange(this.state);
     }
+  }
 
-    private handleCancel(): void {
+  private handleCancel(): void {
+    this.resetToIdle();
+  }
+
+  /**
+   * Update the game state and handle post-move cleanup
+   * This is called when receiving WebSocket updates
+   */
+  updateGameState(newGameState: any): void {
+    this.gameState = newGameState;
+    this.state.availableMoves = newGameState?.movesRemaining ?? this.state.availableMoves;
+
+    // If we were in the middle of a move and the game state updated,
+    // it likely means our move was processed successfully
+    // Reset to idle state to allow new moves
+    if (this.state.isMoving && this.state.mode === 'SELECT_TARGET') {
+      console.log('Move appears to have been processed, resetting to idle');
       this.resetToIdle();
+      return; // Don't call onStateChange again since resetToIdle already did
     }
 
-    /**
-     * Update the game state and handle post-move cleanup
-     * This is called when receiving WebSocket updates
-     */
-    updateGameState(newGameState: any): void {
-      this.gameState = newGameState;
-      this.state.availableMoves = newGameState?.movesRemaining ?? this.state.availableMoves;
-
-      // If we were in the middle of a move and the game state updated,
-      // it likely means our move was processed successfully
-      // Reset to idle state to allow new moves
-      if (this.state.isMoving && this.state.mode === 'SELECT_TARGET') {
-        console.log('Move appears to have been processed, resetting to idle');
-        this.resetToIdle();
-        return; // Don't call onStateChange again since resetToIdle already did
-      }
-
-      // Notify of state change to update UI
-      if (this.onStateChange) {
-        this.onStateChange(this.state);
-      }
+    // Notify of state change to update UI
+    if (this.onStateChange) {
+      this.onStateChange(this.state);
     }
+  }
 
   private async executeMove(): Promise<void> {
     if (this.state.sourceRegion === null ||

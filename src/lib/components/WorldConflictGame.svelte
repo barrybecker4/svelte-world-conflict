@@ -7,7 +7,8 @@
   import LoadingState from './ui/LoadingState.svelte';
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
-  import type { MoveState } from '$lib/game/classes/MoveSystem';
+  import type { MoveState } from '$lib/game/moveTypes';
+  import { MoveSystem } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/game/websocket/client';
   import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
