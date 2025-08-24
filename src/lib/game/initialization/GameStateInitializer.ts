@@ -47,7 +47,7 @@ export class GameStateInitializer {
         const owners = createOwnerAssignments(homeBaseAssignments);
         gameData.ownersByRegion = { ...gameData.ownersByRegion, ...owners };
 
-        setupTempleRegions(gameData);
+        this.setupTempleRegions(gameData);
 
         // Log the results
         homeBaseAssignments.forEach(assignment => {

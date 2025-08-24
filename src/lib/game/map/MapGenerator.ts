@@ -80,10 +80,7 @@ export class MapGenerator {
             }
         }
 
-        // Fill in neighbor relationships
         regionMap.fillNeighborLists();
-
-        console.log(`Generated ${regions.length} regions for ${mapSize} map with ${playerCount} players`);
         return regions;
     }
 

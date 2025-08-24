@@ -364,12 +364,11 @@
     const targetOwner = currentState.ownersByRegion?.[targetRegionIndex];
     const playerIndex = currentState.playerIndex;
 
-    // Fix: Better detection of hostile territory
     const isNeutralWithSoldiers = targetOwner === undefined && targetSoldiers.length > 0;
     const isEnemyTerritory = targetOwner !== undefined && targetOwner !== playerIndex && targetSoldiers.length > 0;
     const isHostileTerritory = isNeutralWithSoldiers || isEnemyTerritory;
 
-    console.log('🎯 Move analysis:', {
+    console.log('Move analysis:', {
       targetRegion: targetRegionIndex,
       targetSoldiers: targetSoldiers.length,
       targetOwner,
@@ -380,54 +379,58 @@
     });
 
     if (isHostileTerritory) {
-      console.log('⚔️ Battle starting at region', targetRegionIndex);
-
-      // Start battle timeout to prevent stuck battles
-      startBattleTimeout(targetRegionIndex);
-
-      const battleState = {
-        ...currentState,
-        battlesInProgress: [...new Set([...(currentState.battlesInProgress || []), targetRegionIndex])],
-        pendingMoves: [
-          ...(currentState.pendingMoves || []),
-          { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
-        ]
-      };
-
-      gameState.set(battleState);
+      startBattle(sourceRegionIndex, targetRegionIndex, soldierCount, currentState);
     } else {
-      // Safe to show immediate movement to neutral/friendly territory
-      console.log('🚶 Moving to neutral/friendly territory');
-
-      // Remove soldiers from source
-      const newSourceSoldiers = sourceSoldiers.slice(soldierCount);
-
-      // Add soldiers to target
-      const newTargetSoldiers = [
-        ...targetSoldiers,
-        ...Array(soldierCount).fill({ playerId: playerIndex })
-      ];
-
-      const moveState = {
-        ...currentState,
-        soldiersByRegion: {
-          ...currentState.soldiersByRegion,
-          [sourceRegionIndex]: newSourceSoldiers,
-          [targetRegionIndex]: newTargetSoldiers
-        }
-      };
-
-      // Claim neutral territory if it's unowned
-      if (targetOwner === undefined) {
-        moveState.ownersByRegion = {
-          ...currentState.ownersByRegion,
-          [targetRegionIndex]: playerIndex
-        };
-        console.log('🏆 Claiming neutral region', targetRegionIndex);
-      }
-
-      gameState.set(moveState);
+      moveIntoRegion(sourceRegionIndex, targetRegionIndex, soldierCount, currentState, sourceSoldiers, targetSoldiers, targetOwner);
     }
+  }
+
+  function startBattle(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number, currentState: GameStateData) {
+    console.log('Battle starting at region', targetRegionIndex);
+
+    startBattleTimeout(targetRegionIndex); // timeout to prevent stuck battles
+
+    const battleState = {
+      ...currentState,
+      battlesInProgress: [...new Set([...(currentState.battlesInProgress || []), targetRegionIndex])],
+      pendingMoves: [
+        ...(currentState.pendingMoves || []),
+        { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
+      ]
+    };
+
+    gameState.set(battleState);
+  }
+
+  function moveIntoRegion(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number, currentState: GameStateData, sourceSoldiers: number[], targetSoldiers: number[], targetOwner: number | undefined) {
+    console.log('🚶 Moving to neutral/friendly territory');
+    const newSourceSoldiers = sourceSoldiers.slice(soldierCount);  // Remove soldiers from source
+
+    // Add soldiers to target
+    const newTargetSoldiers = [
+      ...targetSoldiers,
+      ...Array(soldierCount).fill({ playerId: playerIndex })
+    ];
+
+    const moveState = {
+      ...currentState,
+      soldiersByRegion: {
+        ...currentState.soldiersByRegion,
+        [sourceRegionIndex]: newSourceSoldiers,
+        [targetRegionIndex]: newTargetSoldiers
+      }
+    };
+
+    // Claim neutral territory if it's unowned
+    if (targetOwner === undefined) {
+      moveState.ownersByRegion = {
+        ...currentState.ownersByRegion,
+        [targetRegionIndex]: playerIndex
+      };
+      console.log('Claiming neutral region', targetRegionIndex);
+    }
+
+    gameState.set(moveState);
   }
 
   function handleRegionClick(region: any) {
@@ -479,10 +482,7 @@
   }
 
   function handleSoldierSelectionConfirm(soldierCount: number) {
-    //const { soldierCount } = event.detail;
     console.log('Soldier selection:', soldierCount);
-
-
     if (moveSystem) {
       moveSystem.handleSoldierAdjustment(soldierCount);
     }
@@ -504,7 +504,6 @@
 
   async function handleEndTurn() {
     console.log('Ending turn...');
-
     try {
       const response = await fetch(`/api/game/${gameId}/end-turn`, {
         method: 'POST',
@@ -573,7 +572,7 @@
   }
 </script>
 
-<!-- ADD THIS: Turn Banner Overlay -->
+<!-- Turn Banner Overlay -->
 {#if showBanner && currentPlayerForBanner}
   <Banner
     player={currentPlayerForBanner}

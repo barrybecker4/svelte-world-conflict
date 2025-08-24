@@ -31,13 +31,13 @@ export class RegionMap {
             for (let y = 1; y < GRID_HEIGHT - 1; y++) {
                 const region = this.positionToRegion[x][y];
                 if (region) {
-                    updateNeighbors(region);
+                    this.updateNeighbors(region, x, y);
                 }
             }
         }
     }
 
-    private static updateNeighbors(region: Region): void {
+    private updateNeighbors(region: Region, x: number, y: number): void {
         // Check cardinal directions
         for (const [dx, dy] of directions) {
             const potentialNeighbor = this.positionToRegion[x + dx][y + dy];
