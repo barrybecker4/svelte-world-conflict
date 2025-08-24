@@ -12,13 +12,13 @@
   import { GameWebSocketClient } from '$lib/game/websocket/client';
   import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
   import DebugUI from './DebugUI.svelte';
+  import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
 
-  // Props
   export let gameId: string;
   export let playerId: string;
   export let playerIndex: number;
 
-  // Game state store - destructure the individual stores
+  // destructure the individual stores
   const gameStore = createGameStateStore(gameId, playerId, playerIndex);
   const {
     gameState,
@@ -47,7 +47,7 @@
     isMoving: false
   };
 
-  let battleAnimationSystem: BattleAnimationSystem;
+  let battleManager: BattleManager;
   let mapContainer: HTMLElement;
 
   // UI state
@@ -79,20 +79,19 @@
     }
   }
   $: {
-      if (mapContainer && battleAnimationSystem) {
-        battleAnimationSystem.setMapContainer(mapContainer);
-      }
+    if (mapContainer && battleManager) {
+      battleManager.setMapContainer(mapContainer);
     }
+  }
 
   onMount(async () => {
-    battleAnimationSystem = new BattleAnimationSystem();
+    battleManager = new BattleManager(gameId, mapContainer);
     await initializeGame();
     await initializeWebSocket();
   });
 
   onDestroy(() => {
-    battleTimeouts.forEach(timeout => clearTimeout(timeout));
-    battleTimeouts.clear();
+    battleManager?.destroy();
     cleanupWebSocket();
     gameStore.resetTurnManager();
   });
@@ -165,64 +164,38 @@
 
     try {
       const currentState = $gameState;
-      if (currentState) {
-        updateLocalState(currentState, sourceRegionIndex, targetRegionIndex, soldierCount);
-      }
+      const battleMove: BattleMove = {
+        sourceRegionIndex,
+        targetRegionIndex,
+        soldierCount,
+        gameState: currentState
+      };
 
-      // Send move to server
-      const response = await fetch(`/api/game/${gameId}/move`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          moveType: 'ARMY_MOVE',
-          playerId,
-          source: sourceRegionIndex,
-          destination: targetRegionIndex,
-          count: soldierCount
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ Move processed successfully:', result);
-
-      // Ensure map container is set before playing animations
-      if (result.attackSequence && result.attackSequence.length > 0) {
-        console.log('🎬 Playing attack sequence from server response');
-
-        // Wait a tick to ensure map container is available
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        // Double-check map container is set
-        if (mapContainer && battleAnimationSystem) {
-          console.log('🗺️ Map container available, setting on animation system');
-          battleAnimationSystem.setMapContainer(mapContainer);
-          await battleAnimationSystem.playAttackSequence(result.attackSequence, $regions);
-        } else {
-          console.warn('⚠️ Map container not available for animations:', { mapContainer: !!mapContainer, battleAnimationSystem: !!battleAnimationSystem });
-          // Fallback: just log what would have been shown
-          console.log('🎭 Attack sequence (no animation):', result.attackSequence);
-        }
-      }
-
-      clearBattleTimeout(targetRegionIndex);
-
-      // Clear battle states when server responds
-      if (result.gameState) {
-        const updatedState = {
-          ...result.gameState,
-          battlesInProgress: [],
-          pendingMoves: []
+      // Update local state for immediate UI feedback if it's a battle
+      if (battleManager.isBattleRequired(battleMove)) {
+        const battleState = {
+          ...currentState,
+          battlesInProgress: [...new Set([...(currentState.battlesInProgress || []), targetRegionIndex])],
+          pendingMoves: [
+            ...(currentState.pendingMoves || []),
+            { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
+          ]
         };
+        gameState.set(battleState);
+      }
 
-        console.log('Updating game state with server response. gameState.ownersByRegion = ', updatedState.ownersByRegion);
-        gameState.set(updatedState);
+      const result = await battleManager.executeMove(battleMove, playerId, $regions);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Move execution failed');
+      }
+
+      // Update game state with server response
+      if (result.gameState) {
+        console.log('Updating game state with server response');
+        gameState.set(result.gameState);
       } else {
-        // Even if no gameState in response, clear battle states
+        // Clear any temporary battle states if no gameState in response
         gameState.update(state => {
           if (!state) return state;
           return {
@@ -235,8 +208,6 @@
 
     } catch (moveError) {
       console.error('❌ Move failed:', moveError);
-
-      clearBattleTimeout(targetRegionIndex);
 
       // Clear any temporary battle states on error
       if ($gameState) {
@@ -252,84 +223,6 @@
     }
   }
 
-  function updateLocalState(currentState: GameStateData,
-                           sourceRegionIndex: number,
-                           targetRegionIndex: number,
-                           soldierCount: number) {
-
-    const targetSoldiers = currentState.soldiersByRegion?.[targetRegionIndex] || [];
-    const sourceSoldiers = currentState.soldiersByRegion?.[sourceRegionIndex] || [];
-    const targetOwner = currentState.ownersByRegion?.[targetRegionIndex];
-    const playerIndex = currentState.playerIndex;
-
-    const isNeutralWithSoldiers = targetOwner === undefined && targetSoldiers.length > 0;
-    const isEnemyTerritory = targetOwner !== undefined && targetOwner !== playerIndex && targetSoldiers.length > 0;
-    const isHostileTerritory = isNeutralWithSoldiers || isEnemyTerritory;
-
-    console.log('Move analysis:', {
-      targetRegion: targetRegionIndex,
-      targetSoldiers: targetSoldiers.length,
-      targetOwner,
-      playerIndex,
-      isNeutralWithSoldiers,
-      isEnemyTerritory,
-      isHostileTerritory
-    });
-
-    if (isHostileTerritory) {
-      startBattle(sourceRegionIndex, targetRegionIndex, soldierCount, currentState);
-    } else {
-      moveIntoRegion(sourceRegionIndex, targetRegionIndex, soldierCount, currentState, sourceSoldiers, targetSoldiers, targetOwner);
-    }
-  }
-
-  function startBattle(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number, currentState: GameStateData) {
-    console.log('Battle starting at region', targetRegionIndex);
-
-    startBattleTimeout(targetRegionIndex); // timeout to prevent stuck battles
-
-    const battleState = {
-      ...currentState,
-      battlesInProgress: [...new Set([...(currentState.battlesInProgress || []), targetRegionIndex])],
-      pendingMoves: [
-        ...(currentState.pendingMoves || []),
-        { from: sourceRegionIndex, to: targetRegionIndex, count: soldierCount }
-      ]
-    };
-
-    gameState.set(battleState);
-  }
-
-  function moveIntoRegion(sourceRegionIndex: number, targetRegionIndex: number, soldierCount: number, currentState: GameStateData, sourceSoldiers: any[], targetSoldiers: any[], targetOwner: number | undefined) {
-    console.log('🚶 Moving to neutral/friendly territory');
-    const newSourceSoldiers = sourceSoldiers.slice(soldierCount);  // Remove soldiers from source
-
-    // Add soldiers to target
-    const newTargetSoldiers = [
-      ...targetSoldiers,
-      ...Array(soldierCount).fill({ playerId: playerIndex })
-    ];
-
-    const moveState = {
-      ...currentState,
-      soldiersByRegion: {
-        ...currentState.soldiersByRegion,
-        [sourceRegionIndex]: newSourceSoldiers,
-        [targetRegionIndex]: newTargetSoldiers
-      }
-    };
-
-    // Claim neutral territory if it's unowned
-    if (targetOwner === undefined) {
-      moveState.ownersByRegion = {
-        ...currentState.ownersByRegion,
-        [targetRegionIndex]: playerIndex
-      };
-      console.log('Claiming neutral region', targetRegionIndex);
-    }
-
-    gameState.set(moveState);
-  }
 
   function handleRegionClick(region: any) {
     console.log('Region clicked:', region);
