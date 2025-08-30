@@ -107,7 +107,7 @@ export class AttackSequenceGenerator {
 
         attackSequence.push({
             attackerCasualties: damage,
-            soundCue: 'ATTACKER_CASUALTIES',
+            soundCue: 'ATTACK',
             delay: 50,
             floatingText: [{
                 regionIdx: this.toRegion,

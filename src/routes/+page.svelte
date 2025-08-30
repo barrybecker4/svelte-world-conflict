@@ -4,14 +4,18 @@
   import GameInstructions from '$lib/components/GameInstructions.svelte';
   import Lobby from '$lib/components/Lobby.svelte';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
+  import { useAudio } from '$lib/game/audio/useAudio';
 
   let showInstructions = true; // Auto-show on load
   let showLobby = false;
   let showConfiguration = false;
   let loading = false;
 
-  onMount(() => {
-    console.log('📖 Showing instructions on page load');
+  const { initializeAudio } = useAudio();
+
+  onMount(async () => {
+    console.log('📖 Showing instructions on page load. Initializing audio.');
+    await initializeAudio();
   });
 
   async function handleInstructionsComplete() {

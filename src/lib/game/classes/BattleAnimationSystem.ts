@@ -1,4 +1,6 @@
 import type { AttackEvent } from '$lib/game/classes/AttackSequenceGenerator';
+import { audioSystem } from '$lib/game/audio/AudioSystem';
+import { SOUNDS } from '$lib/game/constants';
 
 export interface FloatingTextEvent {
   regionIdx: number;
@@ -7,9 +9,8 @@ export interface FloatingTextEvent {
   width: number;
 }
 
-
 export class BattleAnimationSystem {
-  private activeAnimations = new Map<string, HTMLElement>();
+  private activeAnimations = new Set<HTMLElement>();
   private mapContainer: HTMLElement | null = null;
 
   constructor(mapContainer?: HTMLElement) {
@@ -26,13 +27,26 @@ export class BattleAnimationSystem {
 
     // Check if we have a map container
     if (!this.mapContainer) {
-      console.warn('⚠️ No map container available, cannot show animations');
-      // Just log what would have been shown
+      console.warn('No map container available, cannot show animations');
+      // Just log what would have been shown and play sounds
       attackSequence.forEach((event, index) => {
         if (event.floatingText) {
           console.log(`Event ${index + 1}:`, event.floatingText);
         }
+        if (event.soundCue) {
+          console.log(`Sound cue: ${event.soundCue}`);
+        }
       });
+
+      // Still play audio even without visuals
+      for (const event of attackSequence) {
+        if (event.soundCue) {
+          await this.playSoundCue(event.soundCue);
+        }
+        if (event.delay) {
+          await this.delay(event.delay);
+        }
+      }
       return;
     }
 
@@ -46,7 +60,7 @@ export class BattleAnimationSystem {
 
       // Play sound cues if present
       if (event.soundCue) {
-        this.playSoundCue(event.soundCue);
+        await this.playSoundCue(event.soundCue);
       }
 
       // Wait for delay if specified
@@ -68,46 +82,24 @@ export class BattleAnimationSystem {
       return;
     }
 
-    console.log('🎨 Creating floating text:', textEvent.text, 'at region', textEvent.regionIdx);
-
-    // Get the map container's bounding rect for proper positioning
-    const mapRect = this.mapContainer.getBoundingClientRect();
-    const mapSvg = this.mapContainer.querySelector('svg');
-
-    if (!mapSvg) {
-      console.warn('No SVG found in map container');
-      return;
-    }
-
     // Create floating text element
     const textElement = document.createElement('div');
     textElement.className = 'floating-text';
-    textElement.textContent = textEvent.text;
-
-    // Calculate position relative to the map container
-    // Note: region.x and region.y are SVG coordinates, we need to scale them
-    const svgRect = mapSvg.getBoundingClientRect();
-    const scaleX = svgRect.width / mapSvg.viewBox.baseVal.width;
-    const scaleY = svgRect.height / mapSvg.viewBox.baseVal.height;
-
-    const screenX = region.x * scaleX;
-    const screenY = region.y * scaleY;
-
     textElement.style.cssText = `
       position: absolute;
-      left: ${screenX}px;
-      top: ${screenY}px;
+      left: ${region.x}px;
+      top: ${region.y}px;
       color: ${textEvent.color};
       font-weight: bold;
-      font-size: ${Math.max(12, (textEvent.width || 4) * 3)}px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      font-size: 14px;
       pointer-events: none;
       z-index: 1000;
-      transform: translate(-50%, -50%);
       animation: floatUp 2s ease-out forwards;
+      transform: translate(-50%, -50%);
     `;
+    textElement.textContent = textEvent.text;
 
-    // Add CSS animation if not already present
+    // Add styles if not already present
     if (!document.getElementById('floating-text-styles')) {
       const style = document.createElement('style');
       style.id = 'floating-text-styles';
@@ -135,21 +127,58 @@ export class BattleAnimationSystem {
     }
 
     this.mapContainer.appendChild(textElement);
-    console.log('✨ Floating text element added to DOM');
+    this.activeAnimations.add(textElement);
+    console.log('Floating text element added to DOM');
 
     // Remove after animation
     setTimeout(() => {
       if (textElement.parentNode) {
         textElement.parentNode.removeChild(textElement);
-        console.log('🗑️ Floating text element removed');
+        this.activeAnimations.delete(textElement);
+        console.log('🗑Floating text element removed');
       }
     }, 2000);
   }
 
-  playSoundCue(soundCue: string) {
-    // For now, just log the sound cue
-    // You can implement actual sound playback here
-    console.log('🔊 Sound cue:', soundCue);
+  async playSoundCue(soundCue: string): Promise<void> {
+    console.log('Playing sound cue:', soundCue);
+
+    try {
+      // Map sound cues to our audio system
+      switch (soundCue.toLowerCase()) {
+        case 'attack':
+        case 'combat':
+        case 'battle':
+          await audioSystem.playAttackSequence();
+          break;
+        case 'move':
+          await audioSystem.playSound(SOUNDS.MOVE);
+          break;
+        case 'victory':
+        case 'win':
+          await audioSystem.playVictoryFanfare();
+          break;
+        case 'defeat':
+        case 'lose':
+          await audioSystem.playDefeatSound();
+          break;
+        case 'income':
+          await audioSystem.playSound(SOUNDS.INCOME);
+          break;
+        case 'upgrade':
+          await audioSystem.playSound(SOUNDS.UPGRADE);
+          break;
+        case 'start':
+          await audioSystem.playSound(SOUNDS.START);
+          break;
+        default:
+          // Try to play as a standard sound type
+          await audioSystem.playSound(soundCue as any);
+          break;
+      }
+    } catch (error) {
+      console.warn(`Could not play sound cue "${soundCue}":`, error);
+    }
   }
 
   delay(ms: number): Promise<void> {

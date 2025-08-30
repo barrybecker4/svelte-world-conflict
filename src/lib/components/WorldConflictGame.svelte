@@ -54,7 +54,6 @@
   // UI state
   let showSoldierSelection = false;
   let showInstructions = false;
-  let audioEnabled = true;
   let soldierSelectionData: {
     maxSoldiers: number;
     currentSelection: number;
@@ -302,10 +301,6 @@
     gameStore.getMoveSystem().cancelCurrentMove();
   }
 
-  function handleToggleAudio() {
-    audioEnabled = !audioEnabled;
-  }
-
   function handleShowInstructions() {
     showInstructions = true;
   }
@@ -372,11 +367,9 @@
         movesRemaining={$movesRemaining}
         moveInstruction={gameStore.getMoveSystem()?.getCurrentInstruction() || ''}
         showCancelButton={moveState.mode !== 'IDLE'}
-        {audioEnabled}
         onEndTurn={handleEndTurn}
         onUndo={handleUndo}
         onCancelMove={handleCancelMove}
-        onToggleAudio={handleToggleAudio}
         onShowInstructions={handleShowInstructions}
         onResign={handleResign}
       />

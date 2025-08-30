@@ -5,13 +5,14 @@
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
+  import { useAudio } from '$lib/game/audio/useAudio';
+  import AudioButton from '$lib/components/configuration/AudioButton.svelte';
 
   export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
   export let onEndTurn: () => void = () => {};
   export let onCancelMove: () => void = () => {};
   export let onUndo: () => void = () => {};
-  export let onToggleAudio: () => void = () => {};
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
   export let moveMode: string = 'IDLE';
@@ -38,6 +39,12 @@
 
   // Make faith counts reactive to gameState changes
   $: faithByPlayer = gameState?.faithByPlayer ?? {};
+
+  const { toggleAudio } = useAudio();
+
+  async function onToggleAudio() {
+    await toggleAudio();
+  }
 
   function getRegionCount(playerIndex: number): number {
     if (!gameState?.ownersByRegion) return 0;
@@ -169,9 +176,7 @@
   <!-- Bottom Actions -->
   <Section title="" borderBottom={false}>
     <div class="icon-actions">
-      <IconButton title="Toggle Audio" on:click={onToggleAudio}>
-        {#if audioEnabled}🔊{:else}🔇{/if}
-      </IconButton>
+      <AudioButton/>
       <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
       <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
     </div>
