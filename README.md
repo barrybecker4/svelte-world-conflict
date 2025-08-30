@@ -1,6 +1,6 @@
 # svelte-world-conflict
 
-A real-time multiplayer strategy game built with SvelteKit and Cloudflare infrastructure. This is a modernized port of the original World Conflict game from Google Apps Script to a scalable, real-time architecture.
+A real-time multiplayer strategy game built with SvelteKit and Cloudflare infrastructure. This is a modernized port of the original World Conflict game from Google Apps Script.
 
 ## 🎮 Features
 
@@ -37,15 +37,18 @@ A real-time multiplayer strategy game built with SvelteKit and Cloudflare infras
    ```
 
 2. **Start development server:**
+   CD into `web-socket-worker` and start the worker with
    ```bash
    npm run dev
    ```
 
 3. **Start local websocket server:**
+    In another terminal, CD in the root project directory, start the SvelteKit dev server with
    ```bash
    npm run dev
    ```
-4**View in browser:**
+   
+4. **View in browser:**
    Open [http://localhost:5173](http://localhost:5173)
 
 ## 🛠️ Development
