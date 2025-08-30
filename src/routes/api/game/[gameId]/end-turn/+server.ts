@@ -5,7 +5,7 @@ import {
     WorldConflictGameStorage,
 } from '$lib/storage/index.ts';
 import { GameState } from '$lib/game/GameState.ts';
-import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/classes/Command.ts';
+import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/classes/commands';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
 import { getErrorMessage } from '$lib/server/api-utils.ts';
 
