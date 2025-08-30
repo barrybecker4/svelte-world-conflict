@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import GameInstructions from '$lib/components/GameInstructions.svelte';
-  import Lobby from '$lib/components/Lobby.svelte';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
+  import Lobby from '$lib/components/Lobby.svelte';
   import { useAudio } from '$lib/game/audio/useAudio';
 
   let showInstructions = true; // Auto-show on load
@@ -18,55 +18,34 @@
     await initializeAudio();
   });
 
-  async function handleInstructionsComplete() {
+  function handleInstructionsComplete() {
     console.log('✅ Instructions complete - showing lobby');
     showInstructions = false;
-    loading = true;
-
-    try {
-      // Always show the lobby first instead of checking for games
-      console.log('🏛️ Showing lobby for game selection');
-      showLobby = true;
-    } catch (error) {
-      console.log('🆕 Error - showing game configuration as fallback');
-      showConfiguration = true;
-    } finally {
-      loading = false;
-    }
+    showLobby = true;
   }
 
   async function handleGameCreated(event) {
     const gameConfig = event.detail;
-    console.log('🎮 Game created with config:', gameConfig);
+    const humanPlayer = extractHumanPlayer(gameConfig);
+    const response = await createNewGame(gameConfig, humanPlayer);
 
-    try {
-      const humanPlayer = extractHumanPlayer(gameConfig);
-      console.log('📡 Creating World Conflict game...');
+    if (response.ok) {
+      const result = await response.json();
+      const player = result.player || { index: 0, name: humanPlayer.name };
 
-      const response = await createNewGame(gameConfig, humanPlayer);
+      localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
+        gameId: result.gameId,
+        playerId: player.index.toString(),  // Use player index as string
+        playerIndex: player.index,
+        playerName: player.name
+      }));
 
-      if (response.ok) {
-        const result = await response.json();
-        const player = result.player || { index: 0, name: humanPlayer.name };
+      // Navigate to game - will show WaitingRoom for PENDING games, WorldConflictGame for ACTIVE games
+      await goto(`/game/${result.gameId}`);
 
-        localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
-          gameId: result.gameId,
-          playerId: player.index.toString(),  // Use player index as string
-          playerIndex: player.index,
-          playerName: player.name
-        }));
-
-        // Navigate to game - will show WaitingRoom for PENDING games, WorldConflictGame for ACTIVE games
-        await goto(`/game/${result.gameId}`);
-
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-    } catch (error) {
-      console.error('❌ Failed to create game:', error);
-      alert(`Failed to create game: ${error.message}`);
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
   }
 
