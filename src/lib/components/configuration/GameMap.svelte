@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Region, Player, GameStateData } from '$lib/game/gameTypes';
   import Temple from './Temple.svelte';
+  import Army from './Army.svelte';  // Add this import
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
   import { fade } from 'svelte/transition';
 
@@ -15,8 +16,6 @@
   export let previewMode: boolean = false;
   export let mapContainer: HTMLElement | undefined = undefined;
 
-  const MAX_INDIVIDUAL_ARMIES = 16;
-  const ARMIES_PER_ROW = 8;
   const NEUTRAL_COLOR = '#8b92a0';
   let mapContainerElement: HTMLDivElement;
   let highlightVisible = true;
@@ -393,7 +392,6 @@
 
         <!-- Region content group (temples and armies) -->
         <g class="region-content">
-          <!-- Temple rendering -->
           {#if hasTemple(region.index)}
             <Temple
               x={region.x}
@@ -405,47 +403,14 @@
             />
           {/if}
 
-          <!-- Army count rendering -->
           {#if gameState?.soldiersByRegion?.[region.index]}
             {@const armies = gameState.soldiersByRegion[region.index].length}
-            {#if armies > MAX_INDIVIDUAL_ARMIES}
-              <!-- Show count for large armies -->
-              <circle
-                cx={region.x}
-                cy={region.y + (hasTemple(region.index) ? 15 : 0)}
-                r="10"
-                fill="rgba(0,0,0,0.7)"
-                stroke="#fbfbf4"
-                stroke-width="1"
-              />
-              <text
-                x={region.x}
-                y={region.y + (hasTemple(region.index) ? 18 : 3)}
-                text-anchor="middle"
-                font-size="10"
-                font-weight="bold"
-                fill="#fbfbf4"
-              >
-                {armies}
-              </text>
-            {:else if armies > 0}
-              <!-- Show individual army markers for smaller counts -->
-              {#each Array(armies) as _, armyIndex}
-                {@const row = Math.floor(armyIndex / ARMIES_PER_ROW)}
-                {@const col = armyIndex % ARMIES_PER_ROW}
-                {@const offsetX = (col - (Math.min(armies, ARMIES_PER_ROW) - 1) / 2) * 3}
-                {@const offsetY = row * 3 + (hasTemple(region.index) ? 15 : 0)}
-
-                <circle
-                  cx={region.x + offsetX}
-                  cy={region.y + offsetY}
-                  r="1.5"
-                  fill="#fbfbf4"
-                  stroke="#333"
-                  stroke-width="0.3"
-                />
-              {/each}
-            {/if}
+            <Army
+              x={region.x}
+              y={region.y}
+              armyCount={armies}
+              hasTemple={hasTemple(region.index)}
+            />
           {/if}
         </g>
       </g>
@@ -504,20 +469,6 @@
 
   .region-path.home-base {
     filter: brightness(1.3);
-  }
-
-  .region-content {
-    pointer-events: none;
-  }
-
-  /* Army count styling */
-  .region-content text {
-    font-family: 'Arial', sans-serif;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  }
-
-  .region-content circle {
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
   }
 
   .pulse-overlay {

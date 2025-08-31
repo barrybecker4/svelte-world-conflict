@@ -9,6 +9,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   const dispatch = createEventDispatcher();
 
@@ -23,12 +24,8 @@
   const PLAYER_NAME_KEY = 'wc_player_name';
 
   // Player slot states - Off/Set/Open/AI as per original
-  let playerSlots = [
-    { ...getPlayerConfig(0), type: 'Off', customName: '' },
-    { ...getPlayerConfig(1), type: 'Off', customName: '' },
-    { ...getPlayerConfig(2), type: 'Off', customName: '' },
-    { ...getPlayerConfig(3), type: 'Off', customName: '' }
-  ];
+  let playerSlots = [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()]
+    .map(index => ({ ...getPlayerConfig(index), type: 'Off', customName: '' }));
 
   let creating = false;
   let error = null;
@@ -137,10 +134,7 @@
 
     creating = true;
     error = null;
-
-    if (!mapPreviewPanel?.hasValidPreview()) {
-      throw new Error('Map preview is not ready. Please wait or click "New Map" to generate one.');
-    }
+    verifyMapPreview();
 
     const activePlayers = playerSlots.filter(slot => slot.type !== 'Off');
     if (activePlayers.length < 2) {
@@ -158,6 +152,7 @@
       ...slot,
       name: slot.type === 'Set' ? slot.customName : slot.defaultName,
     }));
+
     // Build the game configuration WITH the selected map
     const gameConfig = {
       settings: gameSettings,
@@ -168,6 +163,12 @@
 
     dispatch('gameCreated', gameConfig); // Dispatch to parent
     creating = false;
+  }
+
+  function verifyMapPreview() {
+    if (!mapPreviewPanel?.hasValidPreview()) {
+       throw new Error('Map preview is not ready. Please wait or click "New Map" to generate one.');
+    }
   }
 
   // Initialize player name on mount
@@ -271,8 +272,6 @@
     min-height: 600px;
   }
 
-  /* Panel customizations */
-  /* Panel customizations */
   :global(.config-panel) {
     overflow-y: auto;
     min-width: 400px;
