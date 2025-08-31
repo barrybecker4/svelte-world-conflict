@@ -5,24 +5,18 @@ import {
     WorldConflictGameStorage
 } from '$lib/storage/index.ts';
 import { GameState } from '$lib/game/GameState.ts';
+import { Region } from '$lib/game/classes/Region.ts';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player } from '$lib/game/GameState.ts';
-
-interface StartGameRequest {
-    playerId: string; // The ID of the player requesting to start (must be creator)
-}
+import { getErrorMessage } from '$lib/server/api-utils.ts';
+import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 
 /**
- * Start a PENDING game anyway, filling any empty slots with AI players
+ * Start a pending multiplayer game
+ * Forces the game to start even with open slots by filling them with AI players
  */
-export const POST: RequestHandler = async ({ params, request, platform }) => {
+export const POST: RequestHandler = async ({ params, platform }) => {
     try {
         const { gameId } = params;
-        const { playerId } = await request.json() as StartGameRequest;
-
-        if (!playerId) {
-            return json({ error: 'Player ID is required' }, { status: 400 });
-        }
 
         const kv = new WorldConflictKVStorage(platform!);
         const gameStorage = new WorldConflictGameStorage(kv);
@@ -33,104 +27,41 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         if (game.status !== 'PENDING') {
-            return json({ error: 'Game is not in a startable state' }, { status: 400 });
+            return json({ error: 'Game is not in pending state' }, { status: 400 });
         }
 
-        // Verify that the requesting player is the game creator (first player)
-        const creator = game.players[0];
-        if (!creator || creator.index.toString() !== playerId) {
-            return json({ error: 'Only the game creator can start the game' }, { status: 403 });
-        }
+        const updatedPlayers = fillRemainingSlotsWithAI(game);
 
-        // If we have pending configuration, use it to fill remaining slots
-        if (game.pendingConfiguration) {
-            const { playerSlots } = game.pendingConfiguration;
-            const maxSlots = playerSlots.filter(slot => slot.type !== 'Off').length;
-            
-            // Fill any "Open" slots that weren't filled by human players with AI
-            const aiPlayerNames = ['AI Easy', 'AI Normal', 'AI Hard', 'AI Expert'];
-            const aiLevels = [0, 1, 2, 3]; // Nice, Rude, Mean, Evil
-            
-            let playerIndex = game.players.length; // Start from next available index
-            
-            for (const slot of playerSlots) {
-                if (slot.type === 'Open') {
-                    // Check if this slot was already filled by a human player
-                    const existingPlayer = game.players.find(p => p.index === slot.index);
-                    if (!existingPlayer) {
-                        // Fill with AI
-                        const aiPlayer: Player = {
-                            id: `ai_${slot.index}_${Date.now()}`,
-                            name: aiPlayerNames[slot.index] || `AI Player ${slot.index + 1}`,
-                            color: getPlayerColor(slot.index),
-                            isAI: true,
-                            index: slot.index,
-                            aiLevel: aiLevels[slot.index % aiLevels.length]
-                        };
-                        game.players.push(aiPlayer);
-                    }
-                } else if (slot.type === 'AI') {
-                    // Add AI players that were configured but not yet added
-                    const existingPlayer = game.players.find(p => p.index === slot.index);
-                    if (!existingPlayer) {
-                        const aiPlayer: Player = {
-                            id: `ai_${slot.index}_${Date.now()}`,
-                            name: slot.name,
-                            color: getPlayerColor(slot.index),
-                            isAI: true,
-                            index: slot.index,
-                            aiLevel: aiLevels[slot.index % aiLevels.length]
-                        };
-                        game.players.push(aiPlayer);
-                    }
-                }
-            }
-        } else {
-            // Fallback: Fill empty slots with AI players up to 4 total
-            const maxPlayers = 4;
-            const currentPlayerCount = game.players.length;
-            const aiPlayerNames = ['AI Easy', 'AI Normal', 'AI Hard', 'AI Expert'];
-            const aiLevels = [0, 1, 2, 3]; // Nice, Rude, Mean, Evil
+        console.log(`Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`);
+        const regions = reconstructRegions(game.worldConflictState?.regions);
 
-            for (let i = currentPlayerCount; i < maxPlayers; i++) {
-                const aiPlayer: Player = {
-                    id: `ai_${i}_${Date.now()}`,
-                    name: aiPlayerNames[i] || `AI Player ${i + 1}`,
-                    color: getPlayerColor(i),
-                    isAI: true,
-                    index: i,
-                    aiLevel: aiLevels[i % aiLevels.length]
-                };
-                game.players.push(aiPlayer);
-            }
-        }
-
-        // Change status to ACTIVE
-        game.status = 'ACTIVE';
-        game.lastMoveAt = Date.now();
-
-        // Initialize World Conflict game state with all players (human + AI)
+        // Initialize World Conflict game state with properly constructed regions
         const gameState = GameState.createInitialState(
             gameId,
-            game.players,
-            game.worldConflictState.regions || []
+            updatedPlayers,
+            regions
         );
 
-        game.worldConflictState = gameState.toJSON();
+        const updatedGame = {
+            ...game,
+            players: updatedPlayers,
+            status: 'ACTIVE' as const,
+            worldConflictState: gameState.toJSON(),
+            lastMoveAt: Date.now()
+        };
 
-        // Clear pending configuration since game is now active
-        delete game.pendingConfiguration;
+        await gameStorage.saveGame(updatedGame);
 
-        await gameStorage.saveGame(game);
+        // Notify all connected clients
+        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
 
-        // Notify all connected players that the game has started
-        await WebSocketNotificationHelper.sendGameUpdate(game, platform!);
+        console.log(`✅ Game ${gameId} started with ${updatedPlayers.length} players`);
 
         return json({
             success: true,
             game: {
-                ...game,
-                playerCount: game.players.length
+                ...updatedGame,
+                playerCount: updatedGame.players.length
             }
         });
 
@@ -142,3 +73,30 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }, { status: 500 });
     }
 };
+
+// Fill any remaining open slots with AI players
+function fillRemainingSlotsWithAI(game: any): any[] {
+  const updatedPlayers = [...game.players];
+
+  while (updatedPlayers.length < GAME_CONSTANTS.MAX_PLAYERS) {
+      updatedPlayers.push({
+          index: updatedPlayers.length,
+          name: updatedPlayers.name,
+          isAI: true
+      });
+  }
+  return updatedPlayers;
+}
+
+// Reconstruct regions from JSON data
+function reconstructRegions(regionObjs: any[] | undefined): Region[] {
+  let regions = [];
+  if (regionObjs) {
+      regions = regionObjs.map((regionObj: any) => {
+          return new Region(regionObj);
+      });
+
+      console.log(`Reconstructed ${regions.length} regions as Region instances`);
+  }
+  return regions;
+}

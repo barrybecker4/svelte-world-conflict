@@ -15,27 +15,64 @@
 
   onMount(() => {
     loadOpenGames();
-    // Auto-refresh every 3 seconds
-    const interval = setInterval(loadOpenGames, 3000);
+
+    // Auto-refresh every 5 seconds (increased from 3 to reduce server load)
+    const interval = setInterval(loadOpenGames, 5000);
+    setupRealtimeUpdates();
+
     return () => clearInterval(interval);
   });
 
+  async function setupRealtimeUpdates() {
+    // Only run in browser
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Dynamic import to avoid SSR issues
+      const { multiplayerActions, gameUpdates } = await import('$lib/game/stores/multiplayerStore');
+
+      // Subscribe to game updates
+      const unsubscribe = gameUpdates.subscribe(update => {
+        if (update && (update.type === 'playerJoined' || update.type === 'gameUpdate')) {
+          console.log('🔄 Real-time update received, refreshing lobby...');
+          loadOpenGames(); // Refresh the lobby to show updated counts
+        }
+      });
+
+      // Store cleanup function
+      return () => {
+        unsubscribe();
+        multiplayerActions.disconnect();
+      };
+    } catch (error) {
+      console.log('Real-time updates not available:', error.message);
+    }
+  }
+
   async function loadOpenGames() {
     try {
+      console.log('🔄 Loading open games...');
       const response = await fetch('/api/games/open');
       if (response.ok) {
-        openGames = await response.json();
+        const games = await response.json();
+
+        // ✅ Log the received data for debugging
+        console.log(`✅ Received ${games.length} games:`, games);
+
+        openGames = games;
 
         // If no games available, automatically go to game configuration
         if (openGames.length === 0 && !loading) {
-          dispatch('close'); // This will trigger the parent to show configuration
+          console.log('📝 No open games found, switching to configuration');
+          dispatch('close');
           return;
         }
       } else {
+        console.error('❌ Failed to fetch open games:', response.status);
         openGames = [];
       }
     } catch (err) {
-      console.error('Failed to load games:', err);
+      console.error('❌ Failed to load games:', err);
       openGames = [];
     } finally {
       loading = false;
@@ -47,10 +84,21 @@
 
   async function joinGame(gameId) {
     try {
-      // Find next available player slot name
+      // Find the game details
       const game = openGames.find(g => g.gameId === gameId);
       const takenSlots = game?.playerCount || 0;
-      const playerName = getPlayerConfig(takenSlots).defaultName;
+
+      // ✅ Better default naming with error handling
+      let playerName;
+      try {
+        playerName = getPlayerConfig(takenSlots).defaultName;
+      } catch (error) {
+        // Fallback if getPlayerConfig fails
+        const defaultNames = ['Crimson', 'Azure', 'Emerald', 'Golden'];
+        playerName = defaultNames[takenSlots] || `Player${takenSlots + 1}`;
+      }
+
+      console.log(`🎮 Attempting to join game ${gameId} as "${playerName}" (slot ${takenSlots})`);
 
       const response = await fetch(`/api/game/${gameId}/join`, {
         method: 'POST',
@@ -68,18 +116,23 @@
           playerName: player.name
         }));
 
+        console.log(`✅ Successfully joined as player ${player.index}: ${player.name}`);
+
         // Route to game page - it will show waiting room if status is PENDING
         goto(`/game/${gameId}`);
       } else {
         const errorData = await response.json();
         error = errorData.error || 'Failed to join game';
+        console.error('❌ Join game failed:', errorData);
         setTimeout(() => error = null, 3000);
       }
     } catch (err) {
       error = 'Network error: ' + err.message;
+      console.error('❌ Network error joining game:', err);
       setTimeout(() => error = null, 3000);
     }
   }
+
 
   function close() {
     dispatch('close');

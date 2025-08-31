@@ -1,127 +1,96 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
+import { validateRegionInstances } from '$lib/game/utils/regionUtils';
 
 export class GameStateInitializer {
     /**
      * Create initial game state data with starting positions
      * Returns the data object, not the GameState instance
      */
-    static createInitialStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
-        const initialData: GameStateData = {
-            turnIndex: 1,
+    createInitialStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
+        console.log(`Initializing game state with ${regions.length} regions`);
+
+        // Validate regions before proceeding
+        if (!validateRegionInstances(regions)) {
+            throw new Error('Invalid regions provided to GameStateInitializer');
+        }
+
+        const stateData: GameStateData = {
+            id: Date.now(),
+            gameId,
+            turnIndex: 0,
             playerIndex: 0,
-            movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
+            movesRemaining: 3,
+            players: [...players],
+            regions: regions, // Keep as Region instances for now
             ownersByRegion: {},
             templesByRegion: {},
             soldiersByRegion: {},
             faithByPlayer: {},
-            id: 1,
-            gameId,
-            players: [...players],
-            regions: [...regions]
+            floatingText: [],
+            conqueredRegions: []
         };
 
-        this.initializeStartingPositions(initialData);
-        return initialData;
+        this.initializeStartingPositions(stateData);
+
+        players.forEach(player => {
+            stateData.faithByPlayer[player.index] = 100;
+        });
+
+        console.log(`Game state initialized successfully`);
+        return stateData;
     }
 
     /**
      * Initialize starting positions, temples, and soldiers for a new game
      * Works directly with the data object
      */
-    static initializeStartingPositions(gameData: GameStateData): void {
-        console.log('🎮 Initializing game starting positions...');
+    private initializeStartingPositions(stateData: GameStateData): void {
+        console.log('Assigning home base regions...');
 
-        // Initialize faith for all players
-        gameData.players.forEach((player) => {
-            gameData.faithByPlayer[player.index] = GAME_CONSTANTS.DEFAULT_STARTING_FAITH;
-        });
+        try {
+            // This should now work because regions are proper Region instances
+            const assignments = assignHomeBaseRegions(stateData.players, stateData.regions);
 
-        // Clear any existing soldiers
-        gameData.soldiersByRegion = {};
+            console.log(`Assigned ${assignments.length} home bases`);
 
-        const homeBaseAssignments = assignHomeBaseRegions(gameData.players, gameData.regions);
+            // Apply assignments
+            assignments.forEach(assignment => {
+                stateData.ownersByRegion[assignment.regionIndex] = assignment.playerIndex;
 
-        // Apply the assignments to game state
-        const owners = createOwnerAssignments(homeBaseAssignments);
-        gameData.ownersByRegion = { ...gameData.ownersByRegion, ...owners };
+                // Add initial soldiers
+                stateData.soldiersByRegion[assignment.regionIndex] = [
+                    { i: assignment.regionIndex * 10 + 1 },
+                    { i: assignment.regionIndex * 10 + 2 },
+                    { i: assignment.regionIndex * 10 + 3 }
+                ];
 
-        this.setupTempleRegions(gameData);
+                // Add temple if the region has one
+                if (assignment.region.hasTemple) {
+                    stateData.templesByRegion[assignment.regionIndex] = {
+                        regionIndex: assignment.regionIndex,
+                        level: 0
+                    };
+                }
+            });
 
-        // Log the results
-        homeBaseAssignments.forEach(assignment => {
-            const player = gameData.players[assignment.playerIndex];
-        });
+        } catch (error) {
+            console.error('Failed to assign home bases:', error);
 
-        // Ensure the game has valid starting conditions
-        if (homeBaseAssignments.length < gameData.players.length) {
-            console.warn(`⚠️ Warning: Only ${homeBaseAssignments.length} out of ${gameData.players.length} players have home regions!`);
+            // Emergency fallback - assign first N regions to players
+            stateData.players.forEach((player, index) => {
+                if (index < stateData.regions.length) {
+                    stateData.ownersByRegion[index] = player.index;
+                    stateData.soldiersByRegion[index] = [
+                        { i: index * 10 + 1 },
+                        { i: index * 10 + 2 },
+                        { i: index * 10 + 3 }
+                    ];
+                }
+            });
+
+            console.log('Used emergency fallback for home base assignment');
         }
-    }
-
-    // Set up ALL temple regions (both neutral and player-owned)
-    private static setupTempleRegions(gameData: GameStateData): void {
-        gameData.regions.forEach(region => {
-            if (region.hasTemple) {
-                // Add temple structure
-                gameData.templesByRegion[region.index] = {
-                    regionIndex: region.index,
-                    level: 0
-                };
-
-                // Add starting soldiers to ALL temple regions
-                const startingSoldiers = region.index in gameData.ownersByRegion
-                    ? GAME_CONSTANTS.OWNER_STARTING_SOLDIERS
-                    : GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS;
-
-                this.addSoldiersToData(gameData, region.index, startingSoldiers);
-            }
-        });
-    }
-
-    /**
-     * Add soldiers to a region in the data structure
-     */
-    private static addSoldiersToData(gameData: GameStateData, regionIndex: number, count: number): void {
-        if (!gameData.soldiersByRegion[regionIndex]) {
-            gameData.soldiersByRegion[regionIndex] = [];
-        }
-
-        const soldiers = gameData.soldiersByRegion[regionIndex];
-        const nextSoldierId = Math.max(0, ...Object.values(gameData.soldiersByRegion)
-            .flat().map((s: any) => s.i || 0)) + 1;
-
-        for (let i = 0; i < count; i++) {
-            soldiers.push({ i: nextSoldierId + i });
-        }
-    }
-
-    /**
-     * Convert legacy flat data to new structure
-     * Returns the data object, not the GameState instance
-     */
-    static convertLegacyData(legacyData: any): GameStateData {
-        return {
-            id: legacyData.id || 1,
-            gameId: legacyData.gameId || '',
-            turnIndex: legacyData.turnIndex || 1,
-            playerIndex: legacyData.playerIndex || 0,
-            movesRemaining: legacyData.movesRemaining || 3,
-
-            ownersByRegion: legacyData.owners || legacyData.ownersByRegion || {},
-            templesByRegion: legacyData.temples || legacyData.templesByRegion || {},
-            soldiersByRegion: legacyData.soldiersByRegion || {},
-            faithByPlayer: legacyData.faith || legacyData.faithByPlayer || {},
-
-            players: legacyData.players || [],
-            regions: legacyData.regions || [],
-
-            floatingText: legacyData.floatingText,
-            conqueredRegions: legacyData.conqueredRegions,
-            moveTimeLimit: legacyData.moveTimeLimit,
-            maxTurns: legacyData.maxTurns,
-            endResult: legacyData.endResult
-        };
     }
 }
