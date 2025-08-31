@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types.ts';
+import type { RequestHandler } from './$types';
 import {
     WorldConflictKVStorage,
     WorldConflictGameStorage
 } from '$lib/storage/index.ts';
 import { GameState } from '$lib/game/GameState.ts';
-import { Region } from '$lib/game/classes/Region.ts';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
+import { Region } from '$lib/game/classes/Region';
 import { getErrorMessage } from '$lib/server/api-utils.ts';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
+import { GameNotifications } from '$lib/server/websocket';
 
 /**
  * Start a pending multiplayer game
@@ -59,6 +60,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         return json({
             success: true,
+            message: 'Game started successfully',
             game: {
                 ...updatedGame,
                 playerCount: updatedGame.players.length

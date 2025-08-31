@@ -12,14 +12,14 @@
   let openGames = [];
   let loading = true;
   let error = null;
+  let wsConnected = false;
 
   onMount(() => {
     loadOpenGames();
-
-    // Auto-refresh every 5 seconds (increased from 3 to reduce server load)
-    const interval = setInterval(loadOpenGames, 5000);
     setupRealtimeUpdates();
 
+    // Auto-refresh every 10 seconds as backup (reduced frequency since we have real-time updates)
+    const interval = setInterval(loadOpenGames, 10000);
     return () => clearInterval(interval);
   });
 
@@ -30,6 +30,11 @@
     try {
       // Dynamic import to avoid SSR issues
       const { multiplayerActions, gameUpdates } = await import('$lib/game/stores/multiplayerStore');
+
+      // Connect to WebSocket for real-time lobby updates
+      await multiplayerActions.connect('lobby');
+      wsConnected = true;
+      console.log('🔌 Connected to lobby WebSocket');
 
       // Subscribe to game updates
       const unsubscribe = gameUpdates.subscribe(update => {
@@ -43,9 +48,11 @@
       return () => {
         unsubscribe();
         multiplayerActions.disconnect();
+        wsConnected = false;
       };
     } catch (error) {
       console.log('Real-time updates not available:', error.message);
+      wsConnected = false;
     }
   }
 
@@ -82,28 +89,24 @@
     }
   }
 
-  async function joinGame(gameId) {
+  async function joinGameInSlot(gameId, slotIndex) {
     try {
-      // Find the game details
-      const game = openGames.find(g => g.gameId === gameId);
-      const takenSlots = game?.playerCount || 0;
-
-      // ✅ Better default naming with error handling
+      // Get player name for this slot
       let playerName;
       try {
-        playerName = getPlayerConfig(takenSlots).defaultName;
+        playerName = getPlayerConfig(slotIndex).defaultName;
       } catch (error) {
         // Fallback if getPlayerConfig fails
         const defaultNames = ['Crimson', 'Azure', 'Emerald', 'Golden'];
-        playerName = defaultNames[takenSlots] || `Player${takenSlots + 1}`;
+        playerName = defaultNames[slotIndex] || `Player${slotIndex + 1}`;
       }
 
-      console.log(`🎮 Attempting to join game ${gameId} as "${playerName}" (slot ${takenSlots})`);
+      console.log(`🎮 Attempting to join game ${gameId} in slot ${slotIndex} as "${playerName}"`);
 
       const response = await fetch(`/api/game/${gameId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName })
+        body: JSON.stringify({ playerName, preferredSlot: slotIndex })
       });
 
       if (response.ok) {
@@ -133,7 +136,6 @@
     }
   }
 
-
   function close() {
     dispatch('close');
   }
@@ -151,6 +153,49 @@
     if (hours === 1) return '1 hour ago';
     return `${hours} hours ago`;
   }
+
+  // Helper function to get player slot display info
+  function getSlotInfo(game, slotIndex) {
+    if (game.pendingConfiguration?.playerSlots) {
+      const slot = game.pendingConfiguration.playerSlots[slotIndex];
+      if (!slot || slot.type === 'Off') {
+        return { type: 'disabled', name: 'Disabled', canJoin: false };
+      }
+      if (slot.type === 'Set') {
+        return { type: 'creator', name: slot.name, canJoin: false };
+      }
+      if (slot.type === 'AI') {
+        return { type: 'ai', name: slot.name, canJoin: false };
+      }
+      if (slot.type === 'Open') {
+        // Check if this slot is already taken by a player
+        const player = game.players?.find(p => p.index === slotIndex);
+        if (player) {
+          return { type: 'taken', name: player.name, canJoin: false };
+        }
+        return { type: 'open', name: 'Open', canJoin: true };
+      }
+    }
+
+    // Fallback for games without proper configuration
+    const player = game.players?.find(p => p.index === slotIndex);
+    if (player) {
+      return { type: 'taken', name: player.name, canJoin: false };
+    }
+    return { type: 'open', name: 'Open', canJoin: slotIndex < game.maxPlayers };
+  }
+
+  // Get button variant based on slot type
+  function getSlotButtonVariant(slotInfo) {
+    switch (slotInfo.type) {
+      case 'open': return 'success';
+      case 'creator': return 'primary';
+      case 'taken': return 'secondary';
+      case 'ai': return 'ghost';
+      case 'disabled': return 'ghost';
+      default: return 'secondary';
+    }
+  }
 </script>
 
 <div class="lobby-overlay">
@@ -158,12 +203,13 @@
 
     <div class="lobby-header">
       <h1>Select Game
-        <br/>
+        <br />
         <span class="title-subheader">
-          {#if gameMode === 'create'}
-            Create a new game or join an existing one
+          Click on an open player slot to join a game
+          {#if wsConnected}
+            <span class="connection-status connected">● Live</span>
           {:else}
-            Select an open slot in a game or create a new game
+            <span class="connection-status disconnected">○ Updating</span>
           {/if}
         </span>
       </h1>
@@ -187,8 +233,8 @@
           <div class="games-list">
             <h3>Available Games ({openGames.length})</h3>
             {#each openGames as game}
-              <div class="game-row">
-                <div class="game-info">
+              <div class="game-card">
+                <div class="game-header">
                   <div class="game-title">
                     {game.creator}'s Game
                   </div>
@@ -200,20 +246,27 @@
                     <span class="game-age">
                       {formatTimeAgo(game.createdAt)}
                     </span>
-                    <span class="separator">•</span>
-                    <span class="game-type">
-                      {game.gameType}
-                    </span>
                   </div>
                 </div>
-                <Button
-                  variant={game.playerCount >= game.maxPlayers ? 'secondary' : 'success'}
-                  size="sm"
-                  disabled={game.playerCount >= game.maxPlayers}
-                  on:click={() => joinGame(game.gameId)}
-                >
-                  {game.playerCount >= game.maxPlayers ? 'Full' : 'Join'}
-                </Button>
+
+                <!-- Player Slots Grid -->
+                <div class="player-slots">
+                  {#each Array(4) as _, slotIndex}
+                    {@const slotInfo = getSlotInfo(game, slotIndex)}
+                    <div class="player-slot">
+                      <div class="slot-label">Player {slotIndex + 1}</div>
+                      <Button
+                        variant={getSlotButtonVariant(slotInfo)}
+                        size="sm"
+                        disabled={!slotInfo.canJoin}
+                        on:click={() => slotInfo.canJoin && joinGameInSlot(game.gameId, slotIndex)}
+                        class="slot-button {slotInfo.type}"
+                      >
+                        {slotInfo.name}
+                      </Button>
+                    </div>
+                  {/each}
+                </div>
               </div>
             {/each}
           </div>
@@ -250,7 +303,7 @@
   }
 
   .lobby-container {
-    max-width: 700px;
+    max-width: 800px;
     width: 90%;
     max-height: 80vh;
     display: flex;
@@ -276,6 +329,20 @@
     font-size: 1.2rem;
     color: var(--text-tertiary, #94a3b8);
     font-weight: normal;
+    position: relative;
+  }
+
+  .connection-status {
+    font-size: 0.9rem;
+    margin-left: 1rem;
+  }
+
+  .connection-status.connected {
+    color: #10b981;
+  }
+
+  .connection-status.disconnected {
+    color: #f59e0b;
   }
 
   .lobby-content {
@@ -284,7 +351,7 @@
     border-radius: 12px;
     padding: 2rem;
     min-height: 300px;
-    max-height: 400px;
+    max-height: 500px;
     overflow-y: auto;
     backdrop-filter: blur(10px);
     flex: 1;
@@ -306,33 +373,32 @@
     font-size: 1.3rem;
   }
 
-  /* Game row - reuse existing game-card pattern */
-  .game-row {
-    background: var(--bg-panel-light, rgba(30, 41, 59, 0.6));
+  /* Game Card */
+  .game-card {
+    background: var(--bg-panel-light, rgba(30, 41, 59, 0.8));
     border: 1px solid var(--border-light, #475569);
     border-radius: var(--radius-lg, 8px);
-    padding: 1rem;
-    margin-bottom: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
     transition: all 0.2s;
+  }
+
+  .game-card:hover {
+    border-color: var(--color-primary-400, #60a5fa);
+    background: var(--bg-panel-light, rgba(30, 41, 59, 0.95));
+  }
+
+  .game-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-
-  .game-row:hover {
-    background: var(--bg-panel-medium, rgba(30, 41, 59, 0.8));
-    border-color: var(--border-accent, #60a5fa);
-  }
-
-  .game-info {
-    flex: 1;
+    margin-bottom: 1rem;
   }
 
   .game-title {
-    font-weight: 600;
     font-size: 1.1rem;
+    font-weight: 600;
     color: var(--text-primary, #f8fafc);
-    margin-bottom: 0.25rem;
   }
 
   .game-details {
@@ -342,53 +408,97 @@
 
   .separator {
     margin: 0 0.5rem;
+    opacity: 0.5;
   }
 
-  .player-count {
-    color: var(--text-accent, #60a5fa);
+  /* Player Slots */
+  .player-slots {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .player-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .slot-label {
+    font-size: 0.8rem;
+    color: var(--text-tertiary, #94a3b8);
     font-weight: 500;
   }
 
-  /* Bottom actions */
+  :global(.slot-button) {
+    min-width: 120px;
+    transition: all 0.2s;
+  }
+
+  :global(.slot-button.open:hover) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  :global(.slot-button.creator) {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  }
+
+  :global(.slot-button.taken) {
+    opacity: 0.7;
+  }
+
+  :global(.slot-button.ai) {
+    opacity: 0.6;
+    font-style: italic;
+  }
+
+  :global(.slot-button.disabled) {
+    opacity: 0.4;
+  }
+
   .bottom-box {
     display: flex;
     justify-content: center;
     gap: 1rem;
-    margin-top: 1.5rem;
+    padding: 2rem 0 0;
   }
 
-  /* Mobile responsiveness */
-  @media (max-width: 768px) {
+  /* Responsive */
+  @media (max-width: 640px) {
     .lobby-container {
       width: 95%;
+      max-height: 90vh;
     }
 
     .lobby-header h1 {
       font-size: 2rem;
     }
 
-    .lobby-content {
-      padding: 1.5rem;
+    .title-subheader {
+      font-size: 1rem;
     }
 
-    .game-row {
+    .connection-status {
+      display: block;
+      margin-top: 0.5rem;
+      margin-left: 0;
+    }
+
+    .player-slots {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .game-header {
       flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
+      align-items: flex-start;
+      gap: 0.5rem;
     }
 
-    .game-row :global(.btn-sm) {
-      align-self: center;
-      width: 100px;
-    }
-
-    .bottom-box {
-      flex-direction: column;
-    }
-
-    .bottom-box :global(.btn-lg) {
-      width: 100%;
-      font-size: 1.1rem;
+    :global(.slot-button) {
+      min-width: 100px;
     }
   }
 </style>

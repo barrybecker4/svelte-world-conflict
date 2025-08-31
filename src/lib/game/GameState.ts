@@ -109,7 +109,6 @@ export class GameState {
     get id(): number { return this.state.id; }
     get players(): Player[] { return [...this.state.players]; }
     get regions(): Region[] { return [...this.state.regions]; }
-    get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     get ownersByRegion(): Record<number, number> { return { ...this.state.ownersByRegion }; }
     get templesByRegion(): Record<number, any> { return { ...this.state.templesByRegion }; }
     get soldiersByRegion(): Record<number, any[]> { return { ...this.state.soldiersByRegion }; }

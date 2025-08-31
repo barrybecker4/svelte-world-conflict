@@ -1,239 +1,331 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { goto } from '$app/navigation';
-  import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+  import { onMount, createEventDispatcher } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
-  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 
-  export let gameId;
-  export let currentPlayer; // The current user's player info
+  const dispatch = createEventDispatcher();
 
-  let game = null;
-  let loading = true;
+  export let gameId: string;
+  export let initialGame: any = null;
+
+  let game = initialGame;
+  let loading = !game;
   let error = null;
+  let currentPlayerId = null;
   let isCreator = false;
-  let pollInterval;
+  let wsConnected = false;
 
-  onMount(() => {
-    loadGameState();
-    // Poll for updates every 2 seconds
-    pollInterval = setInterval(loadGameState, 2000);
-  });
-
-  onDestroy(() => {
-    if (pollInterval) {
-      clearInterval(pollInterval);
+  onMount(async () => {
+    // Get current player info from localStorage
+    const gameData = localStorage.getItem(`wc_game_${gameId}`);
+    if (gameData) {
+      const playerInfo = JSON.parse(gameData);
+      currentPlayerId = playerInfo.playerIndex;
     }
+
+    if (!game) {
+      await loadGameState();
+    }
+
+    checkIfCreator();
+    setupRealtimeUpdates();
+
+    // Refresh game state periodically as backup
+    const interval = setInterval(loadGameState, 5000);
+    return () => clearInterval(interval);
   });
+
+  async function setupRealtimeUpdates() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Dynamic import to avoid SSR issues
+      const { multiplayerActions, gameUpdates } = await import('$lib/game/stores/multiplayerStore');
+
+      // Connect to WebSocket for this specific game
+      await multiplayerActions.connect(gameId);
+      wsConnected = true;
+      console.log(`🔌 Connected to WebSocket for game ${gameId}`);
+
+      // Subscribe to game updates
+      const unsubscribe = gameUpdates.subscribe(update => {
+        if (update && update.gameId === gameId) {
+          console.log(`🔄 Real-time update for game ${gameId}:`, update.type);
+
+          if (update.type === 'playerJoined' || update.type === 'gameUpdate') {
+            loadGameState();
+          } else if (update.type === 'gameStarted') {
+            console.log('🚀 Game started - redirecting...');
+            // Game has started, trigger navigation
+            dispatch('gameStarted', { gameId });
+          }
+        }
+      });
+
+      // Cleanup function
+      return () => {
+        unsubscribe();
+        multiplayerActions.disconnect();
+        wsConnected = false;
+      };
+    } catch (error) {
+      console.log('Real-time updates not available:', error.message);
+      wsConnected = false;
+    }
+  }
 
   async function loadGameState() {
     try {
       const response = await fetch(`/api/game/${gameId}`);
       if (response.ok) {
-        game = await response.json();
-        isCreator = game.players.length > 0 &&
-                   game.players[0].index === currentPlayer.playerIndex;
+        const result = await response.json();
+        game = result.game;
 
-        // If game has started, redirect to game page
-        if (game.status === 'ACTIVE') {
-          goto(`/game/${gameId}`);
+        // Check if game has started
+        if (game?.status === 'ACTIVE') {
+          console.log('🚀 Game is active - triggering gameStarted event');
+          dispatch('gameStarted', { gameId });
+          return;
         }
 
-        error = null; // Clear any previous errors on successful load
+        checkIfCreator();
+        console.log('📊 Game state updated:', game);
       } else {
         error = 'Failed to load game state';
+        setTimeout(() => error = null, 3000);
       }
     } catch (err) {
-      error = 'Network error: ' + err.message;
+      console.error('❌ Error loading game state:', err);
+      error = 'Network error loading game';
+      setTimeout(() => error = null, 3000);
     } finally {
       loading = false;
     }
   }
 
+  function checkIfCreator() {
+    if (game && currentPlayerId !== null) {
+      // Check if current player is the first player (creator)
+      const creator = game.players?.find(p => p.index === 0);
+      isCreator = creator && currentPlayerId === creator.index;
+    }
+  }
+
   async function startGame() {
     try {
+      console.log('🚀 Manually starting game...');
       const response = await fetch(`/api/game/${gameId}/start`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: currentPlayer.playerIndex.toString()
-        })
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
-        // Game will start, page will redirect via loadGameState polling
-        loading = true;
+        const result = await response.json();
+        console.log('✅ Game started successfully');
+        dispatch('gameStarted', { gameId });
       } else {
         const errorData = await response.json();
         error = errorData.error || 'Failed to start game';
         setTimeout(() => error = null, 3000);
       }
     } catch (err) {
-      error = 'Network error: ' + err.message;
+      error = 'Network error starting game';
       setTimeout(() => error = null, 3000);
     }
   }
 
   async function leaveGame() {
-    // Implement leave game logic here
-    goto('/');
-  }
+    try {
+      console.log('🚪 Leaving game...');
+      const response = await fetch(`/api/game/${gameId}/quit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-  function handleRetry() {
-    loading = true;
-    error = null;
-    loadGameState();
-  }
-
-  function getSlotDisplay(index) {
-    // For configured games, use pendingConfiguration which has the complete slot info
-    if (game?.pendingConfiguration?.playerSlots) {
-      const slot = game.pendingConfiguration.playerSlots[index];
-
-      if (!slot) {
-        // Fallback if slot doesn't exist
-        return {
-          name: `Player ${index + 1}`,
-          type: 'Off',
-          color: getPlayerColor(index)
-        };
+      if (response.ok) {
+        // Clear local storage
+        localStorage.removeItem(`wc_game_${gameId}`);
+        console.log('✅ Successfully left game');
+        dispatch('gameLeft');
+      } else {
+        const errorData = await response.json();
+        error = errorData.error || 'Failed to leave game';
+        setTimeout(() => error = null, 3000);
       }
+    } catch (err) {
+      error = 'Network error leaving game';
+      setTimeout(() => error = null, 3000);
+    }
+  }
 
-      return {
-        name: slot.type === 'Set' ? (slot.customName || slot.name) :
-              slot.type === 'Open' ? '< open >' :
-              slot.type === 'AI' ? `${slot.name} (AI)` :
-              slot.name, // 'Off' case
-        type: slot.type,
-        color: getPlayerColor(index)
-      };
+  // Helper function to get player slot display info
+  function getSlotInfo(slotIndex) {
+    if (game?.pendingConfiguration?.playerSlots) {
+      const slot = game.pendingConfiguration.playerSlots[slotIndex];
+      if (!slot || slot.type === 'Off') {
+        return { type: 'disabled', name: 'Disabled', color: '#6b7280' };
+      }
+      if (slot.type === 'Set') {
+        return { type: 'creator', name: slot.name, color: '#3b82f6' };
+      }
+      if (slot.type === 'AI') {
+        return { type: 'ai', name: slot.name, color: '#8b5cf6' };
+      }
+      if (slot.type === 'Open') {
+        // Check if this slot is taken by a player
+        const player = game.players?.find(p => p.index === slotIndex);
+        if (player) {
+          return {
+            type: 'taken',
+            name: player.name,
+            color: getPlayerConfig(slotIndex).color,
+            isCurrentPlayer: currentPlayerId === slotIndex
+          };
+        }
+        return { type: 'open', name: 'Waiting...', color: '#10b981' };
+      }
     }
 
-    // Fallback for simple lobby games (no pendingConfiguration)
-    if (game && index < game.players.length) {
-      const player = game.players[index];
+    // Fallback for games without proper configuration
+    const player = game?.players?.find(p => p.index === slotIndex);
+    if (player) {
       return {
+        type: 'taken',
         name: player.name,
-        type: player.isAI ? 'AI' : 'Set',
-        color: getPlayerColor(index)
+        color: getPlayerConfig(slotIndex).color,
+        isCurrentPlayer: currentPlayerId === slotIndex
       };
     }
+    return { type: 'open', name: 'Waiting...', color: '#10b981' };
+  }
 
-    return {
-      name: '< open >',
-      type: 'Open',
-      color: getPlayerColor(index)
-    };
+  function getOpenSlotsCount() {
+    if (!game?.pendingConfiguration?.playerSlots) return 0;
+
+    return game.pendingConfiguration.playerSlots.filter((slot, index) => {
+      if (!slot || slot.type !== 'Open') return false;
+      return !game.players?.some(p => p.index === index);
+    }).length;
+  }
+
+  function getActivePlayersCount() {
+    return game?.players?.length || 0;
   }
 </script>
 
 <div class="waiting-room-overlay">
   <div class="waiting-room-container">
-    <div class="header">
-      <h1>Player {currentPlayer.playerName} Setup</h1>
-    </div>
+    <LoadingState {loading} loadingText="Loading game...">
 
-    <LoadingState
-      {loading}
-      {error}
-      loadingText="Loading game..."
-      containerClass="card"
-      showRetry={true}
-      on:retry={handleRetry}
-    >
-      <svelte:fragment slot="error-actions">
-        <Button variant="secondary" on:click={leaveGame}>
-          Leave Game
-        </Button>
-      </svelte:fragment>
+      {#if error}
+        <div class="error-message">
+          ⚠️ {error}
+        </div>
+      {/if}
 
-      <!-- Game Setup Content -->
-      <div class="game-setup">
-        <!-- Player Slots -->
-        <div class="player-slots">
-          {#each Array(GAME_CONSTANTS.MAX_PLAYERS) as _, index}
-            {@const slot = getSlotDisplay(index)}
-            <div class="player-slot" style="background-color: {slot.color}">
-              <div class="player-name">{slot.name}</div>
-              <div class="player-controls">
-                <button class="slot-button {slot.type === 'Off' ? 'active' : ''}" disabled>
-                  Off
-                </button>
-                <button class="slot-button {slot.type === 'Set' ? 'active' : ''}" disabled>
-                  Set
-                </button>
-                <button class="slot-button {slot.type === 'Open' ? 'active' : ''}" disabled>
-                  Open
-                </button>
-                <button class="slot-button {slot.type === 'AI' ? 'active' : ''}" disabled>
-                  AI
-                </button>
+      <div class="header">
+        <h1>
+          🎮 Waiting Room
+          {#if wsConnected}
+            <span class="connection-status connected">● Live</span>
+          {:else}
+            <span class="connection-status disconnected">○ Updating</span>
+          {/if}
+        </h1>
+        {#if game}
+          <div class="game-info">
+            <span class="game-id">Game: {gameId}</span>
+            <span class="separator">•</span>
+            <span class="player-status">
+              {getActivePlayersCount()}/{game.pendingConfiguration?.playerSlots?.filter(s => s && s.type !== 'Off').length || 4} players
+            </span>
+          </div>
+        {/if}
+      </div>
+
+      {#if game}
+        <div class="players-section">
+          <h2>Players</h2>
+          <div class="player-slots">
+            {#each Array(4) as _, slotIndex}
+              {@const slotInfo = getSlotInfo(slotIndex)}
+              <div class="player-slot {slotInfo.type}" class:current-player={slotInfo.isCurrentPlayer}>
+                <div class="slot-header">
+                  <span class="slot-label">Player {slotIndex + 1}</span>
+                  {#if slotInfo.isCurrentPlayer}
+                    <span class="current-indicator">You</span>
+                  {/if}
+                </div>
+                <div class="slot-content" style="border-left-color: {slotInfo.color};">
+                  <span class="player-name">{slotInfo.name}</span>
+                  {#if slotInfo.type === 'open'}
+                    <div class="waiting-dots">
+                      <span>.</span><span>.</span><span>.</span>
+                    </div>
+                  {/if}
+                </div>
               </div>
-            </div>
-          {/each}
+            {/each}
+          </div>
         </div>
 
-        <div class="game-settings">
-          <div class="setting-row">
-            <span class="setting-label">AI</span>
-            <div class="setting-buttons">
-              <button class="setting-button active">Nice</button>
-              <button class="setting-button">Rude</button>
-              <button class="setting-button">Mean</button>
-              <button class="setting-button">Evil</button>
+        <div class="game-settings-section">
+          <h3>Game Settings</h3>
+          <div class="settings-grid">
+            <div class="setting-item">
+              <span class="setting-label">Map Size:</span>
+              <span class="setting-value">{game.pendingConfiguration?.settings?.mapSize || 'Medium'}</span>
             </div>
-          </div>
-
-          <div class="setting-row">
-            <span class="setting-label">Turns</span>
-            <div class="setting-buttons">
-              <button class="setting-button">3</button>
-              <button class="setting-button active">10</button>
-              <button class="setting-button">15</button>
-              <button class="setting-button">Endless</button>
+            <div class="setting-item">
+              <span class="setting-label">AI Difficulty:</span>
+              <span class="setting-value">{game.pendingConfiguration?.settings?.aiDifficulty || 'Normal'}</span>
             </div>
-          </div>
-
-          <div class="setting-row">
-            <span class="setting-label">Time (sec)</span>
-            <div class="setting-buttons">
-              <button class="setting-button">10</button>
-              <button class="setting-button">30</button>
-              <button class="setting-button">60</button>
-              <button class="setting-button active">Unlimited</button>
+            <div class="setting-item">
+              <span class="setting-label">Turn Limit:</span>
+              <span class="setting-value">{game.pendingConfiguration?.settings?.turns || 'Unlimited'}</span>
             </div>
-          </div>
-
-          <div class="setting-row">
-            <span class="setting-label">Map size</span>
-            <div class="setting-buttons">
-              <button class="setting-button">Small</button>
-              <button class="setting-button active">Medium</button>
-              <button class="setting-button">Large</button>
+            <div class="setting-item">
+              <span class="setting-label">Time Limit:</span>
+              <span class="setting-value">{game.pendingConfiguration?.settings?.timeLimit || 'None'}</span>
             </div>
           </div>
         </div>
 
         <div class="status-section">
-          {#if game && game.players.length < 4}
-            <p class="waiting-text">Waiting for players to join open slots...</p>
+          {#if getOpenSlotsCount() > 0}
+            <p class="waiting-text">
+              ⏳ Waiting for {getOpenSlotsCount()} more player{getOpenSlotsCount() > 1 ? 's' : ''} to join...
+            </p>
+            <p class="help-text">Share this game ID with friends: <strong>{gameId}</strong></p>
           {:else}
-            <p class="waiting-text">All slots filled - ready to start!</p>
+            <p class="waiting-text ready">
+              ✅ All slots filled - ready to start!
+            </p>
           {/if}
 
           <div class="action-buttons">
             {#if isCreator}
-              <Button variant="success" size="lg" on:click={startGame}>
-                Start anyway
+              <Button
+                variant="success"
+                size="lg"
+                on:click={startGame}
+                disabled={loading}
+              >
+                {getOpenSlotsCount() > 0 ? 'Start Anyway' : 'Start Game'}
               </Button>
             {/if}
-            <Button variant="danger" size="lg" on:click={leaveGame}>
-              Leave
+            <Button
+              variant="danger"
+              size="lg"
+              on:click={leaveGame}
+              disabled={loading}
+            >
+              Leave Game
             </Button>
           </div>
         </div>
-      </div>
+      {/if}
     </LoadingState>
   </div>
 </div>
@@ -245,132 +337,268 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.9);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(15, 23, 42, 0.95));
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    backdrop-filter: blur(5px);
   }
 
   .waiting-room-container {
-    background: #2c3e50;
-    border: 2px solid #34495e;
-    border-radius: 8px;
-    padding: 20px;
+    background: linear-gradient(145deg, #1e293b, #334155);
+    border: 2px solid #475569;
+    border-radius: 16px;
+    padding: 2rem;
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
     color: white;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .error-message {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #fecaca;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #475569;
   }
 
   .header h1 {
-    margin: 0 0 20px 0;
-    text-align: center;
-    color: #ecf0f1;
-    font-size: 1.4em;
-    background: #34495e;
-    padding: 10px;
-    border-radius: 4px;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #60a5fa, #a855f7);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+  }
+
+  .connection-status {
+    font-size: 0.8rem;
+    margin-left: 1rem;
+    font-weight: 500;
+  }
+
+  .connection-status.connected {
+    color: #10b981;
+  }
+
+  .connection-status.disconnected {
+    color: #f59e0b;
+  }
+
+  .game-info {
+    color: #94a3b8;
+    font-size: 0.9rem;
+  }
+
+  .separator {
+    margin: 0 0.5rem;
+    opacity: 0.5;
+  }
+
+  .players-section {
+    margin-bottom: 2rem;
+  }
+
+  .players-section h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.3rem;
+    color: #f1f5f9;
+  }
+
+  .player-slots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
   }
 
   .player-slot {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s;
+  }
+
+  .player-slot.current-player {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .slot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .slot-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  .current-indicator {
+    background: #3b82f6;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .slot-content {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
-    padding: 8px 12px;
-    border-radius: 4px;
-    color: white;
-    font-weight: bold;
+    justify-content: space-between;
+    padding-left: 0.75rem;
+    border-left: 4px solid;
   }
 
   .player-name {
-    flex: 1;
-    font-size: 1.1em;
+    font-weight: 600;
+    font-size: 1rem;
   }
 
-  .player-controls {
+  .player-slot.disabled .player-name {
+    opacity: 0.5;
+    font-style: italic;
+  }
+
+  .player-slot.ai .player-name {
+    opacity: 0.8;
+    font-style: italic;
+  }
+
+  .waiting-dots {
     display: flex;
-    gap: 4px;
+    gap: 0.2rem;
   }
 
-  .slot-button {
-    padding: 4px 8px;
-    border: 1px solid #555;
-    background: #444;
-    color: #aaa;
-    border-radius: 3px;
-    font-size: 0.9em;
-    cursor: not-allowed;
+  .waiting-dots span {
+    animation: blink 1.5s ease-in-out infinite;
+    font-size: 1.2rem;
+    color: #10b981;
   }
 
-  .slot-button.active {
-    background: #666;
-    color: white;
-    border-color: #777;
+  .waiting-dots span:nth-child(1) { animation-delay: 0s; }
+  .waiting-dots span:nth-child(2) { animation-delay: 0.3s; }
+  .waiting-dots span:nth-child(3) { animation-delay: 0.6s; }
+
+  @keyframes blink {
+    0%, 70%, 100% { opacity: 0.3; }
+    35% { opacity: 1; }
   }
 
-  .game-settings {
-    margin: 20px 0;
-    background: #34495e;
-    padding: 15px;
-    border-radius: 4px;
+  .game-settings-section {
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 8px;
   }
 
-  .setting-row {
+  .game-settings-section h3 {
+    margin: 0 0 1rem 0;
+    color: #f1f5f9;
+    font-size: 1.1rem;
+  }
+
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .setting-item {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .setting-row:last-child {
-    margin-bottom: 0;
   }
 
   .setting-label {
-    width: 120px;
-    font-weight: bold;
-    color: #ecf0f1;
+    color: #94a3b8;
+    font-size: 0.9rem;
   }
 
-  .setting-buttons {
-    display: flex;
-    gap: 4px;
-  }
-
-  .setting-button {
-    padding: 4px 12px;
-    border: 1px solid #555;
-    background: #444;
-    color: #aaa;
-    border-radius: 3px;
-    font-size: 0.9em;
-    cursor: not-allowed;
-  }
-
-  .setting-button.active {
-    background: #666;
-    color: white;
-    border-color: #777;
+  .setting-value {
+    color: #f1f5f9;
+    font-weight: 600;
+    font-size: 0.9rem;
   }
 
   .status-section {
     text-align: center;
-    margin-top: 20px;
   }
 
   .waiting-text {
-    margin: 15px 0;
-    color: #bdc3c7;
-    font-style: italic;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #f1f5f9;
+  }
+
+  .waiting-text.ready {
+    color: #10b981;
+    font-weight: 600;
+  }
+
+  .help-text {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+  }
+
+  .help-text strong {
+    color: #60a5fa;
+    font-family: monospace;
+    background: rgba(96, 165, 250, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
   }
 
   .action-buttons {
     display: flex;
-    gap: 10px;
     justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
 
-  .action-buttons :global(.btn-lg) {
-    padding: 12px 24px;
-    font-size: 1em;
+  /* Responsive */
+  @media (max-width: 640px) {
+    .waiting-room-container {
+      width: 95%;
+      padding: 1.5rem;
+    }
+
+    .player-slots {
+      grid-template-columns: 1fr;
+    }
+
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .action-buttons :global(button) {
+      width: 100%;
+      max-width: 200px;
+    }
   }
 </style>

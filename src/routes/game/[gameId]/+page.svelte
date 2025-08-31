@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import WaitingRoom from '$lib/components/WaitingRoom.svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
@@ -11,15 +12,6 @@
   let currentPlayer = null;
   let error = null;
   let loading = true;
-
-  $: if (gameState) {
-    console.log('🎮 Parent - Game state updated:', {
-      turnIndex: gameState.turnIndex,
-      currentPlayer: gameState.playerIndex,
-      faithByPlayer: gameState.faithByPlayer,
-      beforeAfterComparison: JSON.stringify(gameState.faithByPlayer)
-    });
-  }
 
   onMount(async () => {
     await loadGameData();
@@ -56,6 +48,7 @@
         throw new Error('Failed to load game');
       }
     } catch (err) {
+      console.error('❌ Error loading game:', err);
       error = err.message;
       gameState = 'error';
     } finally {
@@ -68,7 +61,18 @@
   }
 
   function handleReturnHome() {
-    window.location.href = '/';
+    goto('/');
+  }
+
+  function handleGameStarted(event) {
+    console.log('🚀 Game started event received:', event.detail);
+    // Refresh game data to get the latest state
+    loadGameData();
+  }
+
+  function handleGameLeft() {
+    console.log('🚪 Player left game');
+    goto('/');
   }
 </script>
 
@@ -89,7 +93,9 @@
   {#if gameState === 'waiting'}
     <WaitingRoom
       gameId={$page.params.gameId}
-      currentPlayer={currentPlayer}
+      initialGame={game}
+      on:gameStarted={handleGameStarted}
+      on:gameLeft={handleGameLeft}
     />
   {:else if gameState === 'playing'}
     <WorldConflictGame
