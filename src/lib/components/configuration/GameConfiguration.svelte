@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import GameMap from './GameMap.svelte';
+  import GameMap from '$lib/components/map/GameMap.svelte';
   import PlayerNameInput from './PlayerNameInput.svelte';
   import PlayerConfiguration from './PlayerConfiguration.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
-  import MapPreviewPanel from './MapPreviewPanel.svelte';
+  import MapPreviewPanel from '$lib/components/map/MapPreviewPanel.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';

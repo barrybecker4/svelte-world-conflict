@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
-  import GameMap from './configuration/GameMap.svelte';
+  import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './SoldierSelectionModal.svelte';
   import GameInstructions from './GameInstructions.svelte';
   import LoadingState from './ui/LoadingState.svelte';
