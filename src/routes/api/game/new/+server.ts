@@ -17,15 +17,25 @@ import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
         const body = await request.json();
+        const { playerName } = body;
 
         const gameRecord = createGameRecord(body, platform);
-        console.log("gameRecord gameId = ", gameRecord);
+        console.log("gameRecord gameId = ", gameRecord.gameId);
         await save(gameRecord, platform);
+
+        // Find the creator player by matching the playerName from the request
+        const creatorPlayer = gameRecord.players.find(p =>
+            p.name === playerName.trim() && !p.isAI
+        );
+
+        if (!creatorPlayer) {
+            throw new Error('Creator player not found in game record');
+        }
 
         return json({
             gameId: gameRecord.gameId,
-            player: gameRecord.players[0], // Return the first player (creator)
-            playerIndex: 0,
+            player: creatorPlayer,
+            playerIndex: creatorPlayer.index,
             gameState: gameRecord.worldConflictState,
             message: `Game created successfully as ${gameRecord.status}`
         });
@@ -38,7 +48,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         }, { status: 500 });
     }
 };
-
 function createGameRecord(body: any, platform: App.Platform): WorldConflictGameRecord {
   const {
       mapSize = 'Medium',
@@ -70,11 +79,10 @@ function createGameRecord(body: any, platform: App.Platform): WorldConflictGameR
   if (gameStatus === 'ACTIVE') {
     initialGameState = GameState.createInitialState(gameId, players, regions);
   } else {
-    // For PENDING games, use the selected map
     initialGameState = {
       gameId,
       regions,
-      players: [],
+      players,
       currentPlayerIndex: 0,
       turnCount: 0,
       gamePhase: 'SETUP'
@@ -163,19 +171,15 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
 
             for (let i = 0; i < activeSlots.length; i++) {
                 const slot = activeSlots[i];
-
                 if (slot.type === 'Set') {
                     // Human player
-                    players.push(createPlayer(slot.name, i, false));
+                    players.push(createPlayer(slot.customName || slot.name, slot.index, false));
                 } else if (slot.type === 'Open') {
                     // Open slot - don't add a player yet, they'll join later
-                    // We still need to track this slot exists for the total count
                     continue;
                 } else if (slot.type === 'AI') {
-                    // Only add AI players if the game is starting immediately (ACTIVE)
-                    if (gameStatus === 'ACTIVE') {
-                        players.push(createPlayer(slot.name, i, true));
-                    }
+                    // AI player - create regardless of game status (PENDING or ACTIVE)
+                    players.push(createPlayer(slot.defaultName, slot.index, true));
                 }
             }
         }

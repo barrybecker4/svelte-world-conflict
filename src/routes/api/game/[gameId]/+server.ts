@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             createdAt: game.createdAt,
             lastMoveAt: game.lastMoveAt,
             currentPlayerIndex: game.currentPlayerIndex,
+            pendingConfiguration: game.pendingConfiguration,
             gameType: game.gameType
         });
 

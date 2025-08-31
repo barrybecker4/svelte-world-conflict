@@ -55,7 +55,7 @@ export class WorldConflictGameStorage {
 
     async saveGame(game: WorldConflictGameRecord): Promise<void> {
         try {
-            console.log(`Saving World Conflict game ${game.gameId} with status: ${game.status}`);
+            console.log(`Saving World Conflict game ${game.gameId} with status: ${game.status} pendingConfig: ${game.pendingConfiguration}`);
 
             await this.kv.put(`wc_game:${game.gameId}`, game);
 

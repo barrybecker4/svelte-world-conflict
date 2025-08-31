@@ -4,6 +4,7 @@
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   export let gameId;
   export let currentPlayer; // The current user's player info
@@ -86,6 +87,30 @@
   }
 
   function getSlotDisplay(index) {
+    // For configured games, use pendingConfiguration which has the complete slot info
+    if (game?.pendingConfiguration?.playerSlots) {
+      const slot = game.pendingConfiguration.playerSlots[index];
+
+      if (!slot) {
+        // Fallback if slot doesn't exist
+        return {
+          name: `Player ${index + 1}`,
+          type: 'Off',
+          color: getPlayerColor(index)
+        };
+      }
+
+      return {
+        name: slot.type === 'Set' ? (slot.customName || slot.name) :
+              slot.type === 'Open' ? '< open >' :
+              slot.type === 'AI' ? `${slot.name} (AI)` :
+              slot.name, // 'Off' case
+        type: slot.type,
+        color: getPlayerColor(index)
+      };
+    }
+
+    // Fallback for simple lobby games (no pendingConfiguration)
     if (game && index < game.players.length) {
       const player = game.players[index];
       return {
@@ -94,6 +119,7 @@
         color: getPlayerColor(index)
       };
     }
+
     return {
       name: '< open >',
       type: 'Open',
@@ -126,7 +152,7 @@
       <div class="game-setup">
         <!-- Player Slots -->
         <div class="player-slots">
-          {#each Array(4) as _, index}
+          {#each Array(GAME_CONSTANTS.MAX_PLAYERS) as _, index}
             {@const slot = getSlotDisplay(index)}
             <div class="player-slot" style="background-color: {slot.color}">
               <div class="player-name">{slot.name}</div>

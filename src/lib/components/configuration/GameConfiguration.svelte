@@ -141,7 +141,7 @@
     if (!mapPreviewPanel?.hasValidPreview()) {
       throw new Error('Map preview is not ready. Please wait or click "New Map" to generate one.');
     }
-    // Validate at least one active player
+
     const activePlayers = playerSlots.filter(slot => slot.type !== 'Off');
     if (activePlayers.length < 2) {
       throw new Error('At least 2 players are required');
@@ -154,15 +154,14 @@
       throw new Error('No map preview available. Please wait for map to load.');
     }
 
+    const updatedPlayerSlots = playerSlots.map(slot => ({
+      ...slot,
+      name: slot.type === 'Set' ? slot.customName : slot.defaultName,
+    }));
     // Build the game configuration WITH the selected map
     const gameConfig = {
       settings: gameSettings,
-      playerSlots: playerSlots.map(slot => ({
-        index: slot.index,
-        type: slot.type,
-        name: slot.type === 'Set' ? slot.customName : slot.defaultName,
-        customName: slot.customName
-      })),
+      playerSlots: updatedPlayerSlots,
       selectedMapRegions: currentPreviewRegions.map(region => region.toJSON ? region.toJSON() : region),
       selectedMapState: currentPreviewState
     };
@@ -207,7 +206,7 @@
         </Section>
 
         <Section title="Players">
-          {#each playerSlots as slot, index (slot.index)}
+          {#each playerSlots as slot, index}
             <PlayerConfiguration
               playerSlot={slot}
               {index}
