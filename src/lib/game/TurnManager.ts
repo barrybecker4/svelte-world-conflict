@@ -261,7 +261,7 @@ class TurnManager {
   }
 }
 
-// Export singleton instance
+// Singleton instance
 export const turnManager = new TurnManager();
 
 // Export types for use in components

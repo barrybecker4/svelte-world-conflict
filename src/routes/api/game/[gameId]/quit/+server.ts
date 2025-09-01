@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameNotifications } from '$lib/server/websocket';
-import { KVStorage } from '$lib/storage';
+import { KVStorage } from '$lib/storage/KVStorage';
 
 interface QuitGameRequest {
     playerId: string;

@@ -27,7 +27,6 @@ export class GameState {
      */
     static createInitialState(gameId: string, players: Player[], regionData: any[]): GameState {
       console.log(`🎮 Creating initial game state for ${gameId}`);
-      console.log(`Players: ${players.length}, Region data provided: ${regionData?.length || 0}`);
 
       let regions: Region[];
 
@@ -73,23 +72,14 @@ export class GameState {
         return new GameState(data);
     }
 
-    /**
-     * Validate this game state's integrity
-     */
     validate(): ValidationResult {
         return GameStateValidator.validate(this.state);
     }
 
-    /**
-     * Validate a move operation
-     */
     validateMove(fromRegion: number, toRegion: number, soldierCount: number): MoveValidationResult {
         return MoveValidator.validateMove(this.state, fromRegion, toRegion, soldierCount);
     }
 
-    /**
-     * Validate temple operations
-     */
     validateTempleOperation(regionIndex: number, operationType: 'build' | 'upgrade'): MoveValidationResult {
         return TempleValidator.validateTempleOperation(this.state, regionIndex, operationType);
     }
@@ -139,9 +129,6 @@ export class GameState {
         return this.state.players.find(p => p.id === id);
     }
 
-    /**
-     * Get all regions owned by a specific player
-     */
     getRegionsOwnedByPlayer(playerIndex: number): Region[] {
         return this.state.regions.filter(region =>
             this.state.ownersByRegion[region.index] === playerIndex
