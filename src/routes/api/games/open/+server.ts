@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { WorldConflictGameStorage, WorldConflictKVStorage } from '$lib/storage/index.ts';
+import { GameStorage } from '$lib/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 const TWENTY_MINUTES = 30 * 60 * 1000;
 const OLD_GAMES_THRESHOLD = TWENTY_MINUTES;
 
 export const GET: RequestHandler = async ({ platform }) => {
-    const kv = new WorldConflictKVStorage(platform!);
-    const gameStorage = new WorldConflictGameStorage(kv);
+
+    const gameStorage = GameStorage.create(platform!);
 
     try {
         const waitingGames = await gameStorage.getGamesByStatus('PENDING');
@@ -46,7 +46,7 @@ function getOpenGames(validGames) {
 }
 
 // Clean up expired games from storage (helps keep storage clean)
-function cleanupOldGames(expiredGames) {
+async function cleanupOldGames(expiredGames) {
     if (expiredGames.length > 0) {
         console.log(`Cleaning up ${expiredGames.length} expired games from storage`);
         for (const expiredGame of expiredGames) {

@@ -1,13 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage,
-} from '$lib/storage/index.ts';
-import { GameState } from '$lib/game/GameState.ts';
+import { GameStorage } from '$lib/storage/GameStorage';
+import { GameState } from '$lib/game/GameState';
 import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/classes/commands';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import { getErrorMessage } from '$lib/server/api-utils.ts';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
+import { getErrorMessage } from '$lib/server/api-utils';
 
 interface EndTurnRequest {
     playerId: string;
@@ -26,8 +23,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Player ID is required' }, { status: 400 });
         }
 
-        const kv = new WorldConflictKVStorage(platform!.env.WORLD_CONFLICT_KV);
-        const gameStorage = new WorldConflictGameStorage(kv);
+        const gameStorage = GameStorage.create(platform!);
 
         // Load the current game
         const game = await gameStorage.getGame(gameId);
@@ -100,7 +96,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 /**
  * Process AI turns until we reach a human player or game ends
  */
-async function processAiTurns(gameState: GameState, gameStorage: WorldConflictGameStorage, gameId: string, platform: any): Promise<GameState> {
+async function processAiTurns(gameState: GameState, gameStorage: GameStorage, gameId: string, platform: any): Promise<GameState> {
     let currentState = gameState;
     let currentPlayer = currentState.activePlayer();
 

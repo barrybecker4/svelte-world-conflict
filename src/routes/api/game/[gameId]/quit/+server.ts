@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameNotifications } from '$lib/server/websocket';
-import { WorldConflictKVStorage } from '$lib/storage';
+import { KVStorage } from '$lib/storage';
 
 interface QuitGameRequest {
     playerId: string;
@@ -10,7 +10,7 @@ interface QuitGameRequest {
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
-        const kv = new WorldConflictKVStorage(platform!);
+        const kv = new KVStorage(platform!);
         const gameId = params.gameId;
         if (!gameId) {
             return json({ error: "Missing gameId" }, { status: 400 });

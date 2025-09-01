@@ -1,4 +1,4 @@
-import type { WorldConflictGameRecord } from "$lib/storage/world-conflict";
+import type { GameRecord } from "$lib/storage/GameStorage";
 import { WORKER_URL } from '$lib/server/api-utils.ts';
 
 const LOCAL_URLS = [
@@ -11,14 +11,14 @@ export class WebSocketNotificationHelper {
     /**
      * Send a game update notification
      */
-    static async sendGameUpdate(gameState: WorldConflictGameRecord, platform: App.Platform): Promise<void> {
+    static async sendGameUpdate(gameState: GameRecord, platform: App.Platform): Promise<void> {
         console.log(`Sending gameUpdate notification for game ${gameState.gameId}`);
 
         const message = this.createMessage(gameState, 'gameUpdate');
         await this.sendNotification(gameState.gameId, message, platform);
     }
 
-    private static createMessage(gameState: WorldConflictGameRecord, type: string) {
+    private static createMessage(gameState: GameRecord, type: string) {
         return {
             type,
             data: {

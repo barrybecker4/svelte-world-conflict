@@ -1,8 +1,8 @@
-import type { WorldConflictKVStorage } from './kv.ts';
-import type { Player, GameStateData } from '$lib/game/GameState.ts';
-import type { PlayerSlotType } from '$lib/game/classes/PlayerSlot.ts';
+import { KVStorage } from './KVStorage';
+import type { Player, GameStateData } from '$lib/game/GameState';
+import type { PlayerSlotType } from '$lib/game/classes/PlayerSlot';
 
-export interface WorldConflictGameRecord {
+export interface GameRecord {
     gameId: string;
     status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
     players: Player[];
@@ -25,7 +25,7 @@ export interface WorldConflictGameRecord {
     };
 }
 
-export interface OpenWorldConflictGamesList {
+export interface OpenGamesList {
     games: Array<{
         gameId: string;
         status: string;
@@ -37,23 +37,31 @@ export interface OpenWorldConflictGamesList {
     lastUpdated: number;
 }
 
-export class WorldConflictGameStorage {
-    private kv: WorldConflictKVStorage;
+export class GameStorage {
+    private kv: KVStorage;
 
-    constructor(kv: WorldConflictKVStorage) {
+    constructor(kv: KVStorage) {
         this.kv = kv;
     }
 
-    async getGame(gameId: string): Promise<WorldConflictGameRecord | null> {
+    /**
+     * Create a game storage instance with platform auto-configuration
+     */
+    static create(platform: App.Platform): GameStorage {
+        const kv = new KVStorage(platform);
+        return new GameStorage(kv);
+    }
+
+    async getGame(gameId: string): Promise<GameRecord | null> {
         try {
-            return await this.kv.get<WorldConflictGameRecord>(`wc_game:${gameId}`);
+            return await this.kv.get<GameRecord>(`wc_game:${gameId}`);
         } catch (error) {
             console.error(`Error getting World Conflict game ${gameId}:`, error);
             return null;
         }
     }
 
-    async saveGame(game: WorldConflictGameRecord): Promise<void> {
+    async saveGame(game: GameRecord): Promise<void> {
         try {
             console.log(`Saving World Conflict game ${game.gameId} with status: ${game.status} pendingConfig: ${game.pendingConfiguration}`);
 
@@ -71,12 +79,12 @@ export class WorldConflictGameStorage {
         }
     }
 
-    async getOpenGames(): Promise<WorldConflictGameRecord[]> {
+    async getOpenGames(): Promise<GameRecord[]> {
         try {
-            const openGamesList = await this.kv.get<OpenWorldConflictGamesList>('wc_games:open');
+            const openGamesList = await this.kv.get<OpenGamesList>('wc_games:open');
             if (!openGamesList) return [];
 
-            const validGames: WorldConflictGameRecord[] = [];
+            const validGames: GameRecord[] = [];
             const gamesStillOpen: typeof openGamesList.games = [];
 
             for (const gameInfo of openGamesList.games) {
@@ -102,7 +110,7 @@ export class WorldConflictGameStorage {
         }
     }
 
-    async findGameForPlayer(playerId: string): Promise<WorldConflictGameRecord | null> {
+    async findGameForPlayer(playerId: string): Promise<GameRecord | null> {
         try {
             // Check if player has an active game
             const gameId = await this.kv.get<string>(`wc_player:${playerId}:game`);
@@ -128,7 +136,7 @@ export class WorldConflictGameStorage {
         }
     }
 
-    async addPlayerToGame(gameId: string, player: Player): Promise<WorldConflictGameRecord | null> {
+    async addPlayerToGame(gameId: string, player: Player): Promise<GameRecord | null> {
         try {
             const game = await this.getGame(gameId);
             if (!game) return null;
@@ -158,11 +166,11 @@ export class WorldConflictGameStorage {
         }
     }
 
-    private async addToOpenGamesList(game: WorldConflictGameRecord): Promise<void> {
+    private async addToOpenGamesList(game: GameRecord): Promise<void> {
         if (game.status !== 'PENDING') return;
 
         try {
-            const currentList = await this.kv.get<OpenWorldConflictGamesList>('wc_games:open') || {
+            const currentList = await this.kv.get<OpenGamesList>('wc_games:open') || {
                 games: [],
                 lastUpdated: Date.now()
             };
@@ -193,7 +201,7 @@ export class WorldConflictGameStorage {
 
     private async removeFromOpenGamesList(gameId: string): Promise<void> {
         try {
-            const currentList = await this.kv.get<OpenWorldConflictGamesList>('wc_games:open');
+            const currentList = await this.kv.get<OpenGamesList>('wc_games:open');
             if (!currentList) return;
 
             currentList.games = currentList.games.filter(g => g.gameId !== gameId);
@@ -227,7 +235,7 @@ export class WorldConflictGameStorage {
         }
     }
 
-    async getGamesByStatus(status: 'PENDING' | 'ACTIVE' | 'COMPLETED'): Promise<WorldConflictGameRecord[]> {
+    async getGamesByStatus(status: 'PENDING' | 'ACTIVE' | 'COMPLETED'): Promise<GameRecord[]> {
         try {
             if (status === 'PENDING') {
                 // For PENDING games, use the existing getOpenGames method which already filters for PENDING status
@@ -236,10 +244,10 @@ export class WorldConflictGameStorage {
 
             // For other statuses, we need to implement a broader search
             // This is a simplified implementation - you might want to optimize this based on your storage strategy
-            const openGamesList = await this.kv.get<OpenWorldConflictGamesList>('wc_games:open');
+            const openGamesList = await this.kv.get<OpenGamesList>('wc_games:open');
             if (!openGamesList) return [];
 
-            const matchingGames: WorldConflictGameRecord[] = [];
+            const matchingGames: GameRecord[] = [];
 
             for (const gameInfo of openGamesList.games) {
                 const fullGame = await this.getGame(gameInfo.gameId);

@@ -1,11 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage
-} from '$lib/storage/index.ts';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import { getErrorMessage } from '$lib/server/api-utils.ts';
+import { GameStorage, type GameRecord } from '$lib/storage/GameStorage';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
+import { getErrorMessage } from '$lib/server/api-utils';
 
 interface RouteParams {
     gameId: string;
@@ -16,13 +13,12 @@ interface QuitGameRequest {
     reason?: 'RESIGN' | 'TIMEOUT' | 'DISCONNECT';
 }
 
-async function getGame(gameId: string, platform: App.Platform): Promise<WorldConflictGameRecord | null> {
-    const kv = new WorldConflictKVStorage(platform);
-    const gameStorage = new WorldConflictGameStorage(kv);
+async function getGame(gameId: string, platform: App.Platform): Promise<GameRecord | null> {
+    const gameStorage = GameStorage.create(platform!);
     return await gameStorage.getGame(gameId);
 }
 
-function getResponse(game: WorldConflictGameRecord) {
+function getResponse(game: GameRecord) {
     console.log(`Loading game ${game.gameId}:`, {
         status: game.status,
         players: game.players?.length,

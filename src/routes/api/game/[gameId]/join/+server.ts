@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage
-} from '$lib/storage/index.ts';
+import { GameStorage } from '$lib/storage/GameStorage';
 import type { Player } from '$lib/game/GameState';
 import { createPlayer, getErrorMessage } from '$lib/server/api-utils';
 import { GameState } from '$lib/game/GameState';
@@ -24,8 +21,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         console.log(`🎮 Player "${playerName}" attempting to join game ${gameId}${preferredSlot !== undefined ? ` in slot ${preferredSlot}` : ''}`);
 
-        const kv = new WorldConflictKVStorage(platform!);
-        const gameStorage = new WorldConflictGameStorage(kv);
+        const gameStorage = GameStorage.create(platform!);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {

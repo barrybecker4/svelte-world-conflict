@@ -1,14 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage,
-} from '$lib/storage/index.ts';
+import { GameStorage, type GameRecord } from '$lib/storage/GameStorage';
 import { GameState } from '$lib/game/GameState.ts';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/commands';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { WorldConflictGameRecord } from '$lib/storage/games.ts';
-import { getErrorMessage } from '$lib/server/api-utils.ts';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
+import { getErrorMessage } from '$lib/server/api-utils';
 
 interface MoveRequest {
     playerId: string;
@@ -34,8 +30,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const { gameId } = params;
         const moveData = await request.json() as MoveRequest;
 
-        const kv = new WorldConflictKVStorage(platform!);
-        const gameStorage = new WorldConflictGameStorage(kv);
+        const gameStorage = GameStorage.create(platform!);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {
@@ -101,7 +96,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const gameStatus: 'ACTIVE' | 'COMPLETED' | 'PENDING' = result.newState!.endResult ? 'COMPLETED' : 'ACTIVE';
 
         // Save updated game state
-        const updatedGame: WorldConflictGameRecord = {
+        const updatedGame: GameRecord = {
             ...game,
             worldConflictState: result.newState!.toJSON(),
             lastMoveAt: Date.now(),

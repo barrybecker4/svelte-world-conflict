@@ -1,4 +1,3 @@
-
 // Memory storage for development fallback
 const memoryStorage = new Map<string, string>();
 let hasWarnedAboutMemoryStorage = false;
@@ -7,7 +6,7 @@ let hasWarnedAboutMemoryStorage = false;
  * Persists game state in Cloudflare KV or memory storage.
  * When running in production, uses Cloudflare KV.
  */
-export class WorldConflictKVStorage {
+export class KVStorage {
     private kv: any;
     private isMemoryMode: boolean;
 

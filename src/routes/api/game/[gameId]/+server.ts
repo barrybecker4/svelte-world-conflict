@@ -1,12 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage
-} from '$lib/storage/index.ts';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper.ts';
-import type { Player } from '$lib/game/GameState.ts';
-import { getErrorMessage } from '$lib/server/api-utils.ts';
+import { GameStorage } from '$lib/storage/GameStorage';
+import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
+import type { Player } from '$lib/game/GameState';
+import { getErrorMessage } from '$lib/server/api-utils';
 
 interface QuitGameRequest {
     playerId: string;
@@ -25,8 +22,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             return json({ error: 'Game ID is required' }, { status: 400 });
         }
 
-        const kv = new WorldConflictKVStorage(platform!);
-        const gameStorage = new WorldConflictGameStorage(kv);
+        const gameStorage = GameStorage.create(platform!);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {
@@ -68,8 +64,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Player ID is required' }, { status: 400 });
         }
 
-        const kv = new WorldConflictKVStorage(platform!);
-        const gameStorage = new WorldConflictGameStorage(kv);
+        const kv = new KVStorage(platform!);
+        const gameStorage = new GameStorage(kv);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {

@@ -1,10 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage,
-    type WorldConflictGameRecord,
-} from '$lib/storage/index';
+import { GameStorage, type GameRecord } from '$lib/storage/GameStorage';
 import { GameState } from '$lib/game/GameState';
 import { Region } from '$lib/game/classes/Region';
 import type { Player } from '$lib/game/classes/Player';
@@ -48,7 +44,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         }, { status: 500 });
     }
 };
-function createGameRecord(body: any, platform: App.Platform): WorldConflictGameRecord {
+function createGameRecord(body: any, platform: App.Platform): GameRecord {
   const {
       mapSize = 'Medium',
       playerName,
@@ -195,9 +191,8 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
     return { hasOpenSlots, gameStatus, finalGameType };
 }
 
-async function save(gameRecord: WorldConflictGameRecord, platform: App.Platform): void {
-    const storage = new WorldConflictKVStorage(platform!);
-    const gameStorage = new WorldConflictGameStorage(storage);
+async function save(gameRecord: GameRecord, platform: App.Platform): void {
+    const gameStorage = GameStorage.create(platform!);
     console.log("saveGame after new. gameId: " + gameRecord.gameId);
     await gameStorage.saveGame(gameRecord);
     console.log(`Created and saved game: ${gameRecord.status} gameId: ${gameRecord.gameId} with ${gameRecord.players.length} players`);

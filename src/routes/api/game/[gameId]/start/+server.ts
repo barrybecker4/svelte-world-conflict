@@ -1,12 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-    WorldConflictKVStorage,
-    WorldConflictGameStorage
-} from '$lib/storage/index.ts';
-import { GameState } from '$lib/game/GameState.ts';
+import {GameStorage } from '$lib/storage/GameStroage';
+import { GameState } from '$lib/game/GameState';
 import { Region } from '$lib/game/classes/Region';
-import { getErrorMessage } from '$lib/server/api-utils.ts';
+import { getErrorMessage } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
 import { GameNotifications } from '$lib/server/websocket';
@@ -19,8 +16,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
     try {
         const { gameId } = params;
 
-        const kv = new WorldConflictKVStorage(platform!);
-        const gameStorage = new WorldConflictGameStorage(kv);
+        const gameStorage = GameStorage.create(platform!);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {

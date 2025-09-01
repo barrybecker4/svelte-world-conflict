@@ -18,33 +18,41 @@
   });
 
   async function loadGameData() {
-    loading = true;
-    error = null;
+    try {
+      loading = true;
+      error = null;
 
-    // Get player info from localStorage
-    const gameId = $page.params.gameId;
-    const playerData = localStorage.getItem(`game_${gameId}`);
+      // Get player info from localStorage
+      const gameId = $page.params.gameId;
+      const playerData = localStorage.getItem(`game_${gameId}`);
 
-    if (!playerData) {
-      throw new Error('Player data not found. Please rejoin the game.');
-    }
-
-    currentPlayer = JSON.parse(playerData);
-
-    // Load game state
-    const response = await fetch(`/api/game/${gameId}`);
-    if (response.ok) {
-      game = await response.json();
-
-      if (game.status === 'PENDING') {
-        gameState = 'waiting';
-      } else if (game.status === 'ACTIVE') {
-        gameState = 'playing';
-      } else {
-        throw new Error(`Unexpected game status: ${game.status}`);
+      if (!playerData) {
+        throw new Error('Player data not found. Please rejoin the game.');
       }
-    } else {
-      throw new Error('Failed to load game');
+
+      currentPlayer = JSON.parse(playerData);
+
+      // Load game state
+      const response = await fetch(`/api/game/${gameId}`);
+      if (response.ok) {
+        game = await response.json();
+
+        if (game.status === 'PENDING') {
+          gameState = 'waiting';
+        } else if (game.status === 'ACTIVE') {
+          gameState = 'playing';
+        } else {
+          throw new Error(`Unexpected game status: ${game.status}`);
+        }
+      } else {
+        throw new Error('Failed to load game');
+      }
+    } catch (err) {
+      console.error('❌ Error loading game:', err);
+      error = err.message;
+      gameState = 'error';
+    } finally {
+      loading = false;
     }
   }
 

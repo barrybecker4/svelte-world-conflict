@@ -1,2 +1,2 @@
-export * from './kv.ts';
-export * from './games.ts';
+export * from './KVStorage.ts';
+export * from './GameStorage.ts';
