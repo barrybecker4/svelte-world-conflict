@@ -14,21 +14,37 @@ export class GameStateInitializer {
      * Returns the data object, not the GameState instance
      */
     createInitialStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
-        console.log(`Initializing game state with ${regions.length} regions`);
-        if (!validateRegionInstances(regions)) {
-            throw new Error('Invalid regions provided to GameStateInitializer');
-        }
+        return this.createInitializedGameStateData(gameId, players, regions);
+    }
 
-        const stateData = this.createGameStateData(gameId, players, regions);
+    /**
+     * Create preview state data for map configuration
+     * Similar to createInitialStateData but designed for previews
+     */
+    createPreviewStateData(players: Player[], regions: Region[]): GameStateData {
+        const stateData = this.createInitializedGameStateData('preview', players, regions);
 
-        this.initializeStartingPositions(stateData);
+        // Set preview-specific values
+        stateData.turnIndex = 1;
+        stateData.movesRemaining = GAME_CONSTANTS.MAX_MOVES_PER_TURN;
 
-        players.forEach(player => {
-            stateData.faithByPlayer[player.index] = 100;
-        });
-
-        console.log(`Game state initialized successfully`);
         return stateData;
+    }
+
+    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
+
+      console.log(`Creating preview state with ${regions.length} regions`);
+      if (!validateRegionInstances(regions)) {
+          throw new Error('Invalid regions provided for preview');
+      }
+
+      const stateData = this.createGameStateData(gameId, players, regions);
+      this.initializeStartingPositions(stateData);
+
+      players.forEach(player => {
+          stateData.faithByPlayer[player.index] = GAME_CONSTANTS.STARTING_FAITH;
+      });
+      return stateData;
     }
 
     private createGameStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {

@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MapGenerator } from '$lib/game/map/MapGenerator';
+  import { GameStateInitializer } from '$lib/game/initialization/GameStateInitializer';
   import GameMap from '$lib/components/map/GameMap.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/classes/Region';
   import type { GameStateData, Player, PlayerSlot } from '$lib/game/gameTypes';
-  import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 
   export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
   export let playerCount = 4;
@@ -19,6 +19,7 @@
   let mapKey = 0; // Force re-render when map changes
 
   const mapGenerator = new MapGenerator();
+  const gameStateInitializer = new GameStateInitializer();
 
   onMount(() => {
     loadPreviewMap();
@@ -45,7 +46,7 @@
         playerCount: playerCount
       });
 
-      // Create preview game state with proper home base placement
+      // Create preview game state using GameStateInitializer
       createPreviewGameState();
 
     } catch (err) {
@@ -79,66 +80,15 @@
       return;
     }
 
-    // Use distance-based home base assignment
-    const homeBaseAssignments = assignHomeBaseRegions(activePlayers, previewRegions);
-    const ownersByRegion = createOwnerAssignments(homeBaseAssignments);
+    try {
+      // Use GameStateInitializer to create properly initialized preview state
+      previewGameState = gameStateInitializer.createPreviewStateData(activePlayers, previewRegions);
 
-    // Create minimal game state for preview
-    previewGameState = {
-      id: 0,
-      gameId: 'preview',
-      turnIndex: 1,
-      playerIndex: 0,
-      movesRemaining: 3,
-      ownersByRegion,
-      templesByRegion: {},
-      soldiersByRegion: {},
-      faithByPlayer: {},
-      players: activePlayers,
-      regions: previewRegions
-    };
-
-    // Set up temples and soldiers for assigned home bases
-    homeBaseAssignments.forEach(assignment => {
-      const regionIndex = assignment.regionIndex;
-
-      // Add temple structure
-      previewGameState!.templesByRegion[regionIndex] = {
-        regionIndex,
-        level: 1
-      };
-
-      // Add soldiers for visual interest
-      previewGameState!.soldiersByRegion[regionIndex] = [
-        { i: assignment.playerIndex * 10 + 1 },
-        { i: assignment.playerIndex * 10 + 2 },
-        { i: assignment.playerIndex * 10 + 3 }
-      ];
-    });
-
-    // Add temples to remaining temple regions (neutral)
-    previewRegions.forEach(region => {
-      if (region.hasTemple && !previewGameState!.templesByRegion[region.index]) {
-        previewGameState!.templesByRegion[region.index] = {
-          regionIndex: region.index,
-          level: 0
-        };
-
-        // Add some neutral soldiers
-        previewGameState!.soldiersByRegion[region.index] = [
-          { i: region.index * 10 + 1 },
-          { i: region.index * 10 + 2 }
-        ];
-      }
-    });
-
-    // Initialize player faith
-    activePlayers.forEach(player => {
-      previewGameState!.faithByPlayer[player.index] = 100;
-    });
-
-    console.log('Preview game state created with distance-based home bases:', previewGameState);
-    console.log('Home base assignments:', homeBaseAssignments.map(a => `Player ${a.playerIndex} -> Region ${a.regionIndex}`));
+      console.log('Preview state created using GameStateInitializer');
+    } catch (err) {
+      console.error('Failed to create preview state:', err);
+      previewGameState = null;
+    }
   }
 
   export function refreshPreview() {
