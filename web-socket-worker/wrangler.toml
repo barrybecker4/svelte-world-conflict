@@ -1,8 +1,6 @@
 name = "svelte-world-conflict-websocket"
 main = "src/index.js"
 compatibility_date = "2024-05-15"
-
-# Only use nodejs_compat - remove experimental flag
 compatibility_flags = ["nodejs_compat"]
 
 [durable_objects]

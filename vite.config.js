@@ -11,7 +11,7 @@ export default defineConfig({
     },
     test: {
         include: ['src/**/*.{test,spec}.{js,ts}'],
-        environment: 'node', // Use node environment for GameState tests
+        environment: 'node',
         globals: true, // Enable global test functions like describe, it, expect
     }
 });
