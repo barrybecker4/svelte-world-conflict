@@ -14,12 +14,10 @@
   const { initializeAudio } = useAudio();
 
   onMount(async () => {
-    console.log('📖 Showing instructions on page load. Initializing audio.');
     await initializeAudio();
   });
 
   function handleInstructionsComplete() {
-    console.log('✅ Instructions complete - showing lobby');
     showInstructions = false;
     showLobby = true;
   }
@@ -27,13 +25,14 @@
   async function handleGameCreated(event) {
     const gameConfig = event.detail;
     const humanPlayer = extractHumanPlayer(gameConfig);
+
     const response = await createNewGame(gameConfig, humanPlayer);
 
     if (response.ok) {
       const result = await response.json();
       const player = result.player || { index: 0, name: humanPlayer.name };
 
-      localStorage.setItem(`wc_game_${result.gameId}`, JSON.stringify({
+      localStorage.setItem(`game_${result.gameId}`, JSON.stringify({
         gameId: result.gameId,
         playerId: player.index.toString(),  // Use player index as string
         playerIndex: player.index,

@@ -18,41 +18,33 @@
   });
 
   async function loadGameData() {
-    try {
-      loading = true;
-      error = null;
+    loading = true;
+    error = null;
 
-      // Get player info from localStorage
-      const gameId = $page.params.gameId;
-      const playerData = localStorage.getItem(`wc_game_${gameId}`);
+    // Get player info from localStorage
+    const gameId = $page.params.gameId;
+    const playerData = localStorage.getItem(`game_${gameId}`);
 
-      if (!playerData) {
-        throw new Error('Player data not found. Please rejoin the game.');
-      }
+    if (!playerData) {
+      throw new Error('Player data not found. Please rejoin the game.');
+    }
 
-      currentPlayer = JSON.parse(playerData);
+    currentPlayer = JSON.parse(playerData);
 
-      // Load game state
-      const response = await fetch(`/api/game/${gameId}`);
-      if (response.ok) {
-        game = await response.json();
+    // Load game state
+    const response = await fetch(`/api/game/${gameId}`);
+    if (response.ok) {
+      game = await response.json();
 
-        if (game.status === 'PENDING') {
-          gameState = 'waiting';
-        } else if (game.status === 'ACTIVE') {
-          gameState = 'playing';
-        } else {
-          throw new Error(`Unexpected game status: ${game.status}`);
-        }
+      if (game.status === 'PENDING') {
+        gameState = 'waiting';
+      } else if (game.status === 'ACTIVE') {
+        gameState = 'playing';
       } else {
-        throw new Error('Failed to load game');
+        throw new Error(`Unexpected game status: ${game.status}`);
       }
-    } catch (err) {
-      console.error('❌ Error loading game:', err);
-      error = err.message;
-      gameState = 'error';
-    } finally {
-      loading = false;
+    } else {
+      throw new Error('Failed to load game');
     }
   }
 

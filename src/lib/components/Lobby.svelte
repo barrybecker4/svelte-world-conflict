@@ -113,7 +113,7 @@
         const result = await response.json();
         const player = result.player;
 
-        localStorage.setItem(`wc_game_${gameId}`, JSON.stringify({
+        localStorage.setItem(`game_${gameId}`, JSON.stringify({
           playerId: player.index.toString(),
           playerIndex: player.index,
           playerName: player.name

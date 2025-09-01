@@ -18,7 +18,7 @@
 
   onMount(async () => {
     // Get current player info from localStorage
-    const gameData = localStorage.getItem(`wc_game_${gameId}`);
+    const gameData = localStorage.getItem(`game_${gameId}`);
     if (gameData) {
       const playerInfo = JSON.parse(gameData);
       currentPlayerId = playerInfo.playerIndex;
@@ -145,7 +145,7 @@
 
       if (response.ok) {
         // Clear local storage
-        localStorage.removeItem(`wc_game_${gameId}`);
+        localStorage.removeItem(`game_${gameId}`);
         console.log('✅ Successfully left game');
         dispatch('gameLeft');
       } else {
