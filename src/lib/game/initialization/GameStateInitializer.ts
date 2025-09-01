@@ -3,6 +3,11 @@ import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { validateRegionInstances } from '$lib/game/utils/regionUtils';
 
+interface Assignment {
+  playerIndex: number;
+  regionIndex: number;
+}
+
 export class GameStateInitializer {
     /**
      * Create initial game state data with starting positions
@@ -10,27 +15,11 @@ export class GameStateInitializer {
      */
     createInitialStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
         console.log(`Initializing game state with ${regions.length} regions`);
-
-        // Validate regions before proceeding
         if (!validateRegionInstances(regions)) {
             throw new Error('Invalid regions provided to GameStateInitializer');
         }
 
-        const stateData: GameStateData = {
-            id: Date.now(),
-            gameId,
-            turnIndex: 0,
-            playerIndex: 0,
-            movesRemaining: 3,
-            players: [...players],
-            regions: regions, // Keep as Region instances for now
-            ownersByRegion: {},
-            templesByRegion: {},
-            soldiersByRegion: {},
-            faithByPlayer: {},
-            floatingText: [],
-            conqueredRegions: []
-        };
+        const stateData = this.createGameStateData(gameId, players, regions);
 
         this.initializeStartingPositions(stateData);
 
@@ -42,55 +31,89 @@ export class GameStateInitializer {
         return stateData;
     }
 
+    private createGameStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
+        return {
+            id: Date.now(),
+            gameId,
+            turnIndex: 0,
+            playerIndex: 0,
+            movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
+            players: [...players],
+            regions: regions, // Keep as Region instances for now
+            ownersByRegion: {},
+            templesByRegion: {},
+            soldiersByRegion: {},
+            faithByPlayer: {},
+            floatingText: [],
+            conqueredRegions: []
+        };
+    }
+
     /**
-     * Initialize starting positions, temples, and soldiers for a new game
-     * Works directly with the data object
+     * Initialize starting positions, temples, and soldiers for a new game.
      */
     private initializeStartingPositions(stateData: GameStateData): void {
         console.log('Assigning home base regions...');
 
         try {
-            // This should now work because regions are proper Region instances
             const assignments = assignHomeBaseRegions(stateData.players, stateData.regions);
-
             console.log(`Assigned ${assignments.length} home bases`);
 
-            // Apply assignments
-            assignments.forEach(assignment => {
-                stateData.ownersByRegion[assignment.regionIndex] = assignment.playerIndex;
-
-                // Add initial soldiers
-                stateData.soldiersByRegion[assignment.regionIndex] = [
-                    { i: assignment.regionIndex * 10 + 1 },
-                    { i: assignment.regionIndex * 10 + 2 },
-                    { i: assignment.regionIndex * 10 + 3 }
-                ];
-
-                // Add temple if the region has one
-                if (assignment.region.hasTemple) {
-                    stateData.templesByRegion[assignment.regionIndex] = {
-                        regionIndex: assignment.regionIndex,
-                        level: 0
-                    };
-                }
-            });
+            this.setupPlayerHomes(stateData, assignments);
+            this.setupNeutralTemples(stateData, assignments);
 
         } catch (error) {
             console.error('Failed to assign home bases:', error);
-
-            // Emergency fallback - assign first N regions to players
-            stateData.players.forEach((player, index) => {
-                if (index < stateData.regions.length) {
-                    stateData.ownersByRegion[index] = player.index;
-                    stateData.soldiersByRegion[index] = [
-                        { i: index * 10 + 1 },
-                        { i: index * 10 + 2 },
-                        { i: index * 10 + 3 }
-                    ];
-                }
-            });
-
-            console.log('Used emergency fallback for home base assignment');
         }
+    }
+
+    private setupPlayerHomes(stateData: GameStateData, assignments: Assignment[]): void {
+        assignments.forEach(assignment => {
+            stateData.ownersByRegion[assignment.regionIndex] = assignment.playerIndex;
+
+            // Add initial soldiers
+            stateData.soldiersByRegion[assignment.regionIndex] =
+                this.createSoldiers(assignment.regionIndex, GAME_CONSTANTS.OWNER_STARTING_SOLDIERS);
+
+            // Add temple if the region has one
+            if (assignment.region.hasTemple) {
+                stateData.templesByRegion[assignment.regionIndex] = {
+                    regionIndex: assignment.regionIndex,
+                    level: 0
+                };
+            }
+        });
+    }
+
+    // Add neutral temples to all remaining temple regions
+    private setupNeutralTemples(stateData: GameStateData, assignments: Assignment[]): void {
+
+      const assignedRegionIndices = new Set(assignments.map(a => a.regionIndex));
+
+      stateData.regions.forEach((region, index) => {
+          // Skip regions that are already assigned as home bases
+          if (assignedRegionIndices.has(index)) {
+              return;
+          }
+
+          // Add temple to neutral temple regions
+          if (region.hasTemple) {
+              stateData.templesByRegion[index] = {
+                  regionIndex: index,
+                  level: 0
+              };
+
+              stateData.soldiersByRegion[index] =
+                  this.createSoldiers(index, GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS);
+          }
+      });
+    }
+
+    private createSoldiers(index: number, numSoldiers: number): { i: number }[] {
+        const soldiers = [];
+        for (let s = 0; s < numSoldiers; s++) {
+            soldiers.push({ i: index * 10 + s + 1 });
+        }
+        return soldiers;
     }
 }
