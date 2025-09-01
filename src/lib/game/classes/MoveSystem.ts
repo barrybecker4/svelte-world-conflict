@@ -97,6 +97,12 @@ export class MoveSystem {
 
   // Handle region clicks during gameplay
   async handleRegionClick(regionIndex: number): Promise<void> {
+    // Early exit if no moves remaining
+    if (this.gameState?.movesRemaining <= 0) {
+      console.log('Cannot select region: no moves remaining');
+      return;
+    }
+
     switch (this.state.mode) {
       case 'IDLE':
       case 'SELECT_SOURCE':
@@ -344,6 +350,11 @@ export class MoveSystem {
 
   // Public methods for UI integration
   canSelectRegion(regionIndex: number): boolean {
+    // Check moves remaining first - if no moves left, can't select anything for moves
+    if (this.gameState?.movesRemaining <= 0) {
+      return false;
+    }
+
     switch (this.state.mode) {
       case 'IDLE':
       case 'SELECT_SOURCE':
@@ -371,6 +382,10 @@ export class MoveSystem {
   }
 
   getCurrentInstruction(): string {
+    if (this.gameState?.movesRemaining <= 0) {
+      return 'No moves remaining. Click "END TURN" to finish your turn.';
+    }
+
     switch (this.state.mode) {
       case 'SELECT_SOURCE':
         return 'Click on a region to move or attack with its army.';

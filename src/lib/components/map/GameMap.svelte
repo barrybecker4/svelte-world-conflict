@@ -109,10 +109,16 @@
   }
 
   function canHighlightForTurn(region: Region): boolean {
-    return showTurnHighlights &&
-           isOwnedByActivePlayer(region.index) &&
-           getSoldierCount(region.index) > 0 &&
-           !effectivePreviewMode;
+    if (!showTurnHighlights || effectivePreviewMode) return false;
+    if (!gameState || gameState.movesRemaining <= 0) return false;
+
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === gameState.playerIndex;
+    const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
+    const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
+
+    return isOwnedByCurrentPlayer &&
+           soldierCount > 1 &&
+           !hasMovedThisTurn;
   }
 
   /**
@@ -285,11 +291,13 @@
   function canMoveFrom(region: Region): boolean {
     if (effectivePreviewMode) return false;
     if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
+    if (gameState.movesRemaining <= 0) return false;
 
     const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === currentPlayer.index;
     const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
+    const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
 
-    return isOwnedByCurrentPlayer && soldierCount > 1;
+    return isOwnedByCurrentPlayer && soldierCount > 1 && !hasMovedThisTurn;
   }
 
   /**

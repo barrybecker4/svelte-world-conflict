@@ -42,7 +42,7 @@
         </div>
         <div class="player-indicator" style="background-color: {playerColor}"></div>
         <div class="banner-subtitle">
-          {isAI ? 'AI is thinking...' : 'Your turn to move!'}
+          {isAI ? 'AI is thinking...' : 'Your move!'}
         </div>
       </div>
       <div class="banner-effects">

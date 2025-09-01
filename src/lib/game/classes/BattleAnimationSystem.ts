@@ -102,15 +102,15 @@ export class BattleAnimationSystem {
     }
 
     // Find the SVG element within the map container
-    const screen = this.getScreenCoords(region, regions)
+    const screenCoords = this.getScreenCoords(region, regions);
 
     // Create floating text element
     const textElement = document.createElement('div');
     textElement.className = 'floating-text';
     textElement.style.cssText = `
       position: fixed;
-      left: ${screen.x}px;
-      top: ${screen.y}px;
+      left: ${screenCoords.x}px;
+      top: ${screenCoords.y}px;
       color: ${textEvent.color};
       font-weight: bold;
       font-size: 16px;
@@ -133,7 +133,7 @@ export class BattleAnimationSystem {
     // Append to document body instead of map container for fixed positioning
     document.body.appendChild(textElement);
     this.activeAnimations.add(textElement);
-    console.log('📝 Floating text element added to DOM at screen coords:', { x: screenX, y: screenY });
+    console.log('📝 Floating text element added to DOM at screen coords:', { x: screenCoords.x, y: screenCoords.y });
 
     // Remove after animation
     setTimeout(() => {
