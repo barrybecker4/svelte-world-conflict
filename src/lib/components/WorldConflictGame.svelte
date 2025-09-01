@@ -9,10 +9,8 @@
   import Banner from './ui/Banner.svelte';
   import type { MoveState } from '$lib/game/moveTypes';
   import { MoveSystem } from '$lib/game/classes/MoveSystem';
-  import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
   import { GameWebSocketClient } from '$lib/game/websocket/GameWebSocketClient';
   import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
-  import DebugUI from './DebugUI.svelte';
   import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
 
   export let gameId: string;
@@ -58,10 +56,6 @@
     maxSoldiers: number;
     currentSelection: number;
   } | null = null;
-  let debugMode = false;
-
-  // Battle management
-  let battleTimeouts = new Map<number, number>();
 
   // WebSocket client
   let wsClient: GameWebSocketClient | null = null;
@@ -320,23 +314,6 @@
       // TODO: Implement resignation logic
     }
   }
-
-  // Battle animation helpers
-  function startBattleTimeout(regionIndex: number) {
-    const timeoutId = setTimeout(() => {
-      clearBattleTimeout(regionIndex);
-    }, 3000);
-
-    battleTimeouts.set(regionIndex, timeoutId);
-  }
-
-  function clearBattleTimeout(regionIndex: number) {
-    const timeoutId = battleTimeouts.get(regionIndex);
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      battleTimeouts.delete(regionIndex);
-    }
-  }
 </script>
 
   <!-- Turn Banner Overlay -->
@@ -388,14 +365,6 @@
       />
     </div>
   </div>
-
-  {#if debugMode}
-    <DebugUI
-      gameState={$gameState}
-      players={$players}
-      visible={true}
-    />
-  {/if}
 
   {#if showSoldierSelection && soldierSelectionData}
     <SoldierSelectionModal

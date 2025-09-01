@@ -1,4 +1,5 @@
 import { MessageHandler } from './MessageHandler';
+import { ReconnectionManager } from './ReconnectionManager';
 
 /**
  * WebSocket client for World Conflict multiplayer communication
@@ -8,13 +9,11 @@ export class GameWebSocketClient {
     private ws: WebSocket | null = null;
     private gameId: string | null = null;
     private messageHandler: MessageHandler;
-
-    private reconnectAttempts = 0;
-    private maxReconnectAttempts = 3;
-    private reconnectTimeout: number | null = null;
+    private reconnectionManager: ReconnectionManager;
 
     constructor() {
         this.messageHandler = new MessageHandler();
+        this.reconnectionManager = new ReconnectionManager();
     }
 
     /**
@@ -32,14 +31,8 @@ export class GameWebSocketClient {
 
                 this.ws.onopen = () => {
                     console.log('✅ WebSocket connected');
-                    this.reconnectAttempts = 0;
-
-                    // Subscribe to game updates
-                    this.send({
-                        type: 'subscribe',
-                        gameId: gameId
-                    });
-
+                    this.reconnectionManager.reset();
+                    this.send({ type: 'subscribe', gameId });
                     this.messageHandler.onConnected?.();
                     resolve();
                 };
@@ -58,9 +51,9 @@ export class GameWebSocketClient {
                     console.log('🔌 WebSocket closed:', event.code, event.reason);
                     this.messageHandler.onDisconnected?.();
 
-                    // Try to reconnect if it wasn't a clean close
-                    if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
-                        this.scheduleReconnect();
+                    // Auto-reconnect on unexpected close
+                    if (event.code !== 1000) {
+                        this.reconnectionManager.start(() => this.connect(this.gameId!));
                     }
                 };
 
@@ -83,41 +76,47 @@ export class GameWebSocketClient {
         });
     }
 
-    /**
-     * Disconnect from WebSocket
-     */
     disconnect(): void {
-        if (this.reconnectTimeout) {
-            clearTimeout(this.reconnectTimeout);
-            this.reconnectTimeout = null;
-        }
-
+        this.reconnectionManager.stop();
         if (this.ws) {
             this.ws.close(1000, 'Client disconnecting');
             this.ws = null;
         }
-
         this.gameId = null;
-        this.reconnectAttempts = 0;
         this.messageHandler.clearCallbacks();
     }
 
-    /**
-     * Check if WebSocket is connected
-     */
     isConnected(): boolean {
         return this.ws?.readyState === WebSocket.OPEN;
     }
 
-    /**
-     * Send message to server
-     */
     send(message: any): void {
         if (this.isConnected()) {
             this.ws!.send(JSON.stringify(message));
         } else {
             console.warn('⚠️ Cannot send message: WebSocket not connected');
         }
+    }
+
+    private buildWebSocketUrl(gameId: string): string {
+        if (typeof window === 'undefined') return '';
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const host = isLocal ? 'localhost:8787' : 'svelte-world-conflict-websocket.YOUR_USERNAME.workers.dev';
+
+        return `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
+    }
+
+    startKeepAlive(intervalMs: number = 30000): void {
+        const keepAlive = () => {
+            if (this.isConnected()) {
+                this.send({ type: 'ping', timestamp: Date.now() });
+            }
+        };
+
+        setTimeout(keepAlive, 1000);
+        setInterval(keepAlive, intervalMs);
     }
 
     // Delegate callback registration to MessageHandler
@@ -147,71 +146,5 @@ export class GameWebSocketClient {
 
     onUnsubscribed(callback: (gameId: string) => void): void {
         this.messageHandler.onUnsubscribed(callback);
-    }
-
-    /**
-     * Schedule reconnection attempt
-     */
-    private scheduleReconnect(): void {
-        if (this.reconnectTimeout) {
-            clearTimeout(this.reconnectTimeout);
-        }
-
-        const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
-        console.log(`Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
-
-        this.reconnectTimeout = window.setTimeout(() => {
-            if (this.gameId) {
-                this.reconnectAttempts++;
-                this.connect(this.gameId).catch(error => {
-                    console.error('Reconnection failed:', error);
-                });
-            }
-        }, delay);
-    }
-
-    /**
-     * Build WebSocket URL based on environment
-     */
-    private buildWebSocketUrl(gameId: string): string {
-        if (typeof window === 'undefined') {
-            return '';
-        }
-
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-        const host = isLocal
-            ? 'localhost:8787'
-            : 'svelte-world-conflict-websocket.YOUR_USERNAME.workers.dev';
-
-        const wsUrl = `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
-
-        console.log(`🌐 Attempting WebSocket connection:`, {
-            protocol,
-            isLocal,
-            host,
-            wsUrl,
-            gameId
-        });
-
-        return wsUrl;
-    }
-
-    /**
-     * Send periodic ping to keep connection alive
-     */
-    startKeepAlive(intervalMs: number = 30000): void {
-        const keepAlive = () => {
-            if (this.isConnected()) {
-                this.send({ type: 'ping', timestamp: Date.now() });
-            }
-        };
-
-        // Send initial ping after connection
-        setTimeout(keepAlive, 1000);
-
-        // Then send periodic pings
-        setInterval(keepAlive, intervalMs);
     }
 }
