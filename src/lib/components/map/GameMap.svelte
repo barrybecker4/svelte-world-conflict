@@ -178,9 +178,8 @@
       return '#fbbf24'; // Bright yellow for selection
     }
 
-    // ADD TURN HIGHLIGHTING BORDER
     if (canHighlightForTurn(region) && highlightVisible) {
-      return '#fbbf24'; // Bright yellow for active player's regions
+      return '#facc15';
     }
 
     // Default border for owned regions
@@ -200,12 +199,11 @@
   function getBorderWidth(region: Region): number {
     // Selection gets thicker border
     if (selectedRegion && selectedRegion.index === region.index) {
-      return 3;
+      return 4;
     }
 
-    // ADD TURN HIGHLIGHTING BORDER WIDTH
     if (canHighlightForTurn(region) && highlightVisible) {
-      return 2.5;
+      return 6;
     }
 
     return 1; // Default width
@@ -245,7 +243,7 @@
     }
 
     if (canHighlightForTurn(region) && highlightVisible) {
-      return 'url(#activeGlow)';
+      return 'url(#highlightGlow)';
     }
 
     return 'none';
@@ -264,6 +262,19 @@
     }
 
     return '';
+  }
+
+  function debugHighlighting(region: Region): void {
+    console.log(`Region ${region.index} highlight check:`, {
+      showTurnHighlights,
+      effectivePreviewMode,
+      movesRemaining: gameState?.movesRemaining,
+      isOwnedByCurrentPlayer: gameState?.ownersByRegion?.[region.index] === gameState?.playerIndex,
+      soldierCount: gameState?.soldiersByRegion?.[region.index]?.length || 0,
+      hasMovedThisTurn: gameState?.conqueredRegions?.includes(region.index),
+      canHighlight: canHighlightForTurn(region),
+      highlightVisible
+    });
   }
 
   /**
@@ -334,10 +345,19 @@
         </feMerge>
       </filter>
 
+      <filter id="highlightGlow">
+        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+        <feColorMatrix type="matrix" values="1.2 1.2 0 0 0  1.2 1.2 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+
       <!-- Pulse pattern for active regions -->
       <pattern id="pulsePattern" patternUnits="userSpaceOnUse" width="20" height="20">
-        <rect width="20" height="20" fill="rgba(251, 191, 36, 0.1)"/>
-        <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(251, 191, 36, 0.3)" stroke-width="1"/>
+        <rect width="20" height="20" fill="rgba(250, 204, 21, 0.3)"/>
+        <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(250, 204, 21, 0.6)" stroke-width="2"/>
       </pattern>
 
       <!-- Battle progress patterns -->
@@ -390,9 +410,10 @@
           <path
             d={regionPath}
             fill="url(#pulsePattern)"
-            stroke="none"
+            stroke="#facc15"
+            stroke-width="2"
             class="pulse-overlay"
-            opacity={highlightVisible ? 0.6 : 0}
+            opacity={highlightVisible ? 0.9 : 0.2}
             transition:fade={{ duration: 750 }}
             style="pointer-events: none;"
           />
