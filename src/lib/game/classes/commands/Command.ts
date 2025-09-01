@@ -3,8 +3,8 @@ import {
     type Player,
     type Soldier,
     GameState
-} from "$lib/game/GameState.ts";
-import type { Region } from '$lib/game/GameState.ts';
+} from "$lib/game/classes/GameState.ts";
+
 
 export interface ValidationResult {
     valid: boolean;

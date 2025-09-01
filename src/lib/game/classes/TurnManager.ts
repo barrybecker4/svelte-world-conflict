@@ -1,6 +1,6 @@
 // Manages turn transitions, banners, and highlighting
 import { writable, derived } from 'svelte/store';
-import type { Player, GameStateData } from '$lib/game/GameState';
+import type { Player, GameStateData } from '$lib/game/classes/GameState';
 
 interface TurnState {
   currentPlayerIndex: number;

@@ -1,10 +1,10 @@
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitions';
-import { GameStateInitializer } from './initialization/GameStateInitializer';
-import { GameStateValidator, MoveValidator, TempleValidator } from './validation';
-import type { ValidationResult, MoveValidationResult } from './types/validation';
-import { createBasicRegions, reconstructRegionsFromJSON, validateRegionInstances } from './utils/regionUtils';
+import { GameStateInitializer } from '$lib/game/initialization/GameStateInitializer';
+import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/validation';
+import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
+import { Regions } from '$lib/game/classes/Regions';
 
 export class GameState {
     public state: GameStateData;
@@ -30,23 +30,18 @@ export class GameState {
 
       let regions: Region[];
 
-      if (regionData && regionData.length > 0) {
-          console.log('Reconstructing regions from provided data...');
-          regions = reconstructRegionsFromJSON(regionData);
+      regions = (regionData?.length > 0)
+          ? Regions.fromJSON(regionData)
+          : Regions.createBasic(Math.max(players.length * 3, 12));
 
-          if (!validateRegionInstances(regions)) {
-              console.error('❌ Region reconstruction failed, falling back to basic regions');
-              regions = createBasicRegions(Math.max(players.length * 3, 12));
-          }
-      } else {
-          console.log('No region data provided, generating basic regions...');
-          regions = createBasicRegions(Math.max(players.length * 3, 12));
+      if (!regions.isValid()) {
+          throw new Error('❌ Region reconstruction failed, falling back to basic regions');
       }
 
       console.log(`Using ${regions.length} regions for game initialization`);
 
       // Verify the first region has the getDistanceTo method
-      if (regions[0] && typeof regions[0].getDistanceTo === 'function') {
+      if (regions.getByIndex(0) && typeof regions.getByIndex(0).getDistanceTo === 'function') {
           console.log('Region methods verified - ready for home base assignment');
       } else {
           console.error(' Regions missing methods - home base assignment will fail!');

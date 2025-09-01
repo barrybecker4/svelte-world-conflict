@@ -1,6 +1,6 @@
 import { BattleAnimationSystem } from './BattleAnimationSystem';
-import type { GameStateData } from '../types/GameState';
-import type { Region } from '../types/Region';
+//import type { GameStateData } from '../types/GameState';
+//import type { Region } from '../types/Region';
 
 export interface BattleMove {
   sourceRegionIndex: number;

@@ -1,4 +1,5 @@
 import type { Region } from '$lib/game/classes/Region';
+import type { Regions } from '$lib/game/classes/Regions';
 
 export interface GameSettings {
     mapSize: 'Small' | 'Medium' | 'Large';
@@ -50,7 +51,7 @@ export interface GameStateData {
     faithByPlayer: Record<number, number>; // playerIndex -> amount
 
     players: Player[];
-    regions: Region[];
+    regions: Regions;
 
     floatingText?: FloatingText[];
     conqueredRegions?: number[];
@@ -58,4 +59,3 @@ export interface GameStateData {
     moveTimeLimit?: number;
     maxTurns?: number;
 }
-

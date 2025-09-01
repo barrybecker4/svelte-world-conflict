@@ -1,5 +1,5 @@
 import { writable, derived } from 'svelte/store';
-import { turnManager } from '$lib/game/TurnManager';
+import { turnManager } from '$lib/game/classes/TurnManager';
 import { MoveSystem } from '$lib/game/classes/MoveSystem';
 
 /**

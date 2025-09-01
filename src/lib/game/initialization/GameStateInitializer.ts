@@ -1,7 +1,7 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
-import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
-import { validateRegionInstances } from '$lib/game/utils/regionUtils';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { Regions } from '$lib/game/classes/Regions';
 
 interface Assignment {
   playerIndex: number;
@@ -13,7 +13,7 @@ export class GameStateInitializer {
      * Create initial game state data with starting positions
      * Returns the data object, not the GameState instance
      */
-    createInitialStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
+    createInitialStateData(gameId: string, players: Player[], regions: Regions): GameStateData {
         return this.createInitializedGameStateData(gameId, players, regions);
     }
 
@@ -21,7 +21,7 @@ export class GameStateInitializer {
      * Create preview state data for map configuration
      * Similar to createInitialStateData but designed for previews
      */
-    createPreviewStateData(players: Player[], regions: Region[]): GameStateData {
+    createPreviewStateData(players: Player[], regions: Regions): GameStateData {
         const stateData = this.createInitializedGameStateData('preview', players, regions);
 
         // Set preview-specific values
@@ -31,12 +31,9 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
+    private createInitializedGameStateData(gameId: string, players: Player[], regions: Regions): GameStateData {
 
       console.log(`Creating preview state with ${regions.length} regions`);
-      if (!validateRegionInstances(regions)) {
-          throw new Error('Invalid regions provided for preview');
-      }
 
       const stateData = this.createGameStateData(gameId, players, regions);
       this.initializeStartingPositions(stateData);
@@ -47,7 +44,7 @@ export class GameStateInitializer {
       return stateData;
     }
 
-    private createGameStateData(gameId: string, players: Player[], regions: Region[]): GameStateData {
+    private createGameStateData(gameId: string, players: Player[], regions: Region): GameStateData {
         return {
             id: Date.now(),
             gameId,
@@ -55,7 +52,7 @@ export class GameStateInitializer {
             playerIndex: 0,
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             players: [...players],
-            regions: regions, // Keep as Region instances for now
+            regions, // Keep as Region instances for now
             ownersByRegion: {},
             templesByRegion: {},
             soldiersByRegion: {},
@@ -103,26 +100,22 @@ export class GameStateInitializer {
 
     // Add neutral temples to all remaining temple regions
     private setupNeutralTemples(stateData: GameStateData, assignments: Assignment[]): void {
+        const assignedRegionIndices = new Set(assignments.map(a => a.regionIndex));
 
-      const assignedRegionIndices = new Set(assignments.map(a => a.regionIndex));
+        // Get all temple regions that aren't already assigned as home bases
+        const neutralTempleRegions = stateData.regions.filter(region =>
+            region.hasTemple && !assignedRegionIndices.has(region.index)
+        );
 
-      stateData.regions.forEach((region, index) => {
-          // Skip regions that are already assigned as home bases
-          if (assignedRegionIndices.has(index)) {
-              return;
-          }
+        neutralTempleRegions.forEach(region => {
+            stateData.templesByRegion[region.index] = {
+                regionIndex: region.index,
+                level: 0
+            };
 
-          // Add temple to neutral temple regions
-          if (region.hasTemple) {
-              stateData.templesByRegion[index] = {
-                  regionIndex: index,
-                  level: 0
-              };
-
-              stateData.soldiersByRegion[index] =
-                  this.createSoldiers(index, GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS);
-          }
-      });
+            stateData.soldiersByRegion[region.index] =
+                this.createSoldiers(region.index, GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS);
+        });
     }
 
     private createSoldiers(index: number, numSoldiers: number): { i: number }[] {

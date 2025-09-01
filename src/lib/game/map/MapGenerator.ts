@@ -1,19 +1,15 @@
-import type { Region } from '$lib/game/GameState.ts';
-import { RegionMap } from '$lib/game/map/RegionMap.ts';
+import type { Region } from '$lib/game/classes/GameState';
+import { RegionMap } from '$lib/game/map/RegionMap';
 import { Bounds } from '$lib/game/map/Bounds.ts';
-import { PositionSet } from '$lib/game/map/PositionSet.ts';
-import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants.ts';
+import { PositionSet } from '$lib/game/map/PositionSet';
+import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants';
 
 export interface MapGenerationOptions {
     size: 'Small' | 'Medium' | 'Large';
     mapWidth?: number;
     mapHeight?: number;
     playerCount?: number;
-    lakePercentage?: number; // Legacy option (not used but kept for compatibility)
 }
-
-// For backward compatibility
-export interface GeneratedRegion extends Region {}
 
 const MIN_REGION_SIZE_MAP = { Small: 7, Medium: 4, Large: 3 };
 const MAX_REGION_SIZE_MAP = { Small: 16, Medium: 12, Large: 10 };
@@ -25,7 +21,6 @@ let perturbConst: number | null = null;
 const PERTURB_SCALE = 0.4;
 
 type MapSize = 'Small' | 'Medium' | 'Large';
-
 
 /**
  * Main MapGenerator class - Drop-in replacement using original GAS algorithm

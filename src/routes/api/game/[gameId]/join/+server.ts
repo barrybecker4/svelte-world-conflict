@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/storage/GameStorage';
-import type { Player } from '$lib/game/GameState';
+import type { Player } from '$lib/game/classes/GameState';
 import { createPlayer, getErrorMessage } from '$lib/server/api-utils';
-import { GameState } from '$lib/game/GameState';
+import { GameState } from '$lib/game/classes/GameState';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
 import { GameNotifications } from '$lib/server/websocket';

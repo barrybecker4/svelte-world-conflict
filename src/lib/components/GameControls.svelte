@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GameState, Player } from '$lib/game/GameState';
+  import type { GameState, Player } from '$lib/game/class/GameState';
   import Button from '$lib/components/ui/Button.svelte';
 
   export let gameState: GameState | null = null;

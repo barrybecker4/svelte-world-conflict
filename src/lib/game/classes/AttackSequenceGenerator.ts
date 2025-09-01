@@ -1,4 +1,4 @@
-import type { Player, GameState } from '../GameState.ts';
+import type { Player, GameState } from '$lib/game/classes/GameState.ts';
 
 export interface AttackEvent {
     attackerCasualties?: number;

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import { GameStorage } from '$lib/storage/GameStorage';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
-import type { Player } from '$lib/game/GameState';
+import type { Player } from '$lib/game/classes/GameState';
 import { getErrorMessage } from '$lib/server/api-utils';
 
 interface QuitGameRequest {
