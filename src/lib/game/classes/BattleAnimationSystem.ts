@@ -102,7 +102,7 @@ export class BattleAnimationSystem {
     }
 
     // Find the SVG element within the map container
-    const screenCoords = this.getScreenCoords(region, regions)
+    const screen = this.getScreenCoords(region, regions)
 
     // Create floating text element
     const textElement = document.createElement('div');
