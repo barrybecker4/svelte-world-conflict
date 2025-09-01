@@ -3,7 +3,7 @@
  * This is the reusable multiplayer framework part
  */
 import { writable, derived } from 'svelte/store';
-import { GameWebSocketClient } from '../websocket/client.js';
+import { GameWebSocketClient } from '../websocket/GameWebSocketClient';
 
 // Types for multiplayer state
 export interface MultiplayerState {

@@ -1,3 +1,5 @@
+import { MessageHandler } from './MessageHandler';
+
 /**
  * WebSocket client for World Conflict multiplayer communication
  * Handles real-time game updates with automatic reconnection
@@ -5,17 +7,15 @@
 export class GameWebSocketClient {
     private ws: WebSocket | null = null;
     private gameId: string | null = null;
-    private callbacks: {
-        gameUpdate?: (data: any) => void;
-        playerJoined?: (data: any) => void;
-        error?: (error: string) => void;
-        connected?: () => void;
-        disconnected?: () => void;
-    } = {};
+    private messageHandler: MessageHandler;
 
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 3;
     private reconnectTimeout: number | null = null;
+
+    constructor() {
+        this.messageHandler = new MessageHandler();
+    }
 
     /**
      * Connect to WebSocket server for a specific game
@@ -40,22 +40,23 @@ export class GameWebSocketClient {
                         gameId: gameId
                     });
 
-                    this.callbacks.connected?.();
+                    this.messageHandler.onConnected?.();
                     resolve();
                 };
 
                 this.ws.onmessage = (event) => {
                     try {
                         const message = JSON.parse(event.data);
-                        this.handleMessage(message);
+                        this.messageHandler.handleMessage(message);
                     } catch (error) {
                         console.error('Error parsing WebSocket message:', error);
+                        this.messageHandler.onError?.('Failed to parse message');
                     }
                 };
 
                 this.ws.onclose = (event) => {
                     console.log('🔌 WebSocket closed:', event.code, event.reason);
-                    this.callbacks.disconnected?.();
+                    this.messageHandler.onDisconnected?.();
 
                     // Try to reconnect if it wasn't a clean close
                     if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -65,7 +66,7 @@ export class GameWebSocketClient {
 
                 this.ws.onerror = (error) => {
                     console.error('❌ WebSocket error:', error);
-                    this.callbacks.error?.('WebSocket connection failed');
+                    this.messageHandler.onError?.('WebSocket connection failed');
                     reject(new Error('WebSocket connection failed'));
                 };
 
@@ -98,6 +99,7 @@ export class GameWebSocketClient {
 
         this.gameId = null;
         this.reconnectAttempts = 0;
+        this.messageHandler.clearCallbacks();
     }
 
     /**
@@ -118,72 +120,33 @@ export class GameWebSocketClient {
         }
     }
 
-    /**
-     * Set callback for game updates
-     */
+    // Delegate callback registration to MessageHandler
     onGameUpdate(callback: (data: any) => void): void {
-        this.callbacks.gameUpdate = callback;
+        this.messageHandler.onGameUpdate(callback);
     }
 
-    /**
-     * Set callback for player joined events
-     */
     onPlayerJoined(callback: (data: any) => void): void {
-        this.callbacks.playerJoined = callback;
+        this.messageHandler.onPlayerJoined(callback);
     }
 
-    /**
-     * Set callback for errors
-     */
     onError(callback: (error: string) => void): void {
-        this.callbacks.error = callback;
+        this.messageHandler.onError(callback);
     }
 
-    /**
-     * Set callback for connection events
-     */
     onConnected(callback: () => void): void {
-        this.callbacks.connected = callback;
+        this.messageHandler.onConnected(callback);
     }
 
-    /**
-     * Set callback for disconnection events
-     */
     onDisconnected(callback: () => void): void {
-        this.callbacks.disconnected = callback;
+        this.messageHandler.onDisconnected(callback);
     }
 
-    /**
-     * Handle incoming WebSocket messages
-     */
-    private handleMessage(message: any): void {
-        console.log('📨 Received WebSocket message:', message.type);
+    onSubscribed(callback: (gameId: string) => void): void {
+        this.messageHandler.onSubscribed(callback);
+    }
 
-        switch (message.type) {
-            case 'subscribed':
-                console.log(`✅ Subscribed to game ${message.gameId}`);
-                break;
-
-            case 'gameUpdate':
-                this.callbacks.gameUpdate?.(message.data);
-                break;
-
-            case 'playerJoined':
-                this.callbacks.playerJoined?.(message.data);
-                break;
-
-            case 'pong':
-                // Handle ping/pong for keep-alive
-                break;
-
-            case 'error':
-                console.error('❌ Server error:', message.data?.error);
-                this.callbacks.error?.(message.data?.error || 'Unknown server error');
-                break;
-
-            default:
-                console.warn(`❓ Unknown message type: ${message.type}`);
-        }
+    onUnsubscribed(callback: (gameId: string) => void): void {
+        this.messageHandler.onUnsubscribed(callback);
     }
 
     /**

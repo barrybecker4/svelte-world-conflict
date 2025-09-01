@@ -10,7 +10,7 @@
   import type { MoveState } from '$lib/game/moveTypes';
   import { MoveSystem } from '$lib/game/classes/MoveSystem';
   import { BattleAnimationSystem } from '$lib/game/classes/BattleAnimationSystem';
-  import { GameWebSocketClient } from '$lib/game/websocket/client';
+  import { GameWebSocketClient } from '$lib/game/websocket/GameWebSocketClient';
   import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
   import DebugUI from './DebugUI.svelte';
   import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
