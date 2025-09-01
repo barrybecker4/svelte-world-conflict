@@ -7,8 +7,6 @@
 
   const dispatch = createEventDispatcher();
 
-  export let gameMode = 'join'; // 'join' or 'create'
-
   let openGames = [];
   let loading = true;
   let error = null;

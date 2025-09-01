@@ -9,6 +9,28 @@ export interface FloatingTextEvent {
   width: number;
 }
 
+const TEXT_CONTENT_STYLE = `
+ @keyframes floatUp {
+   0% {
+     opacity: 1;
+     transform: translate(-50%, -50%) scale(1);
+   }
+   50% {
+     opacity: 1;
+     transform: translate(-50%, -80%) scale(1.2);
+   }
+   100% {
+     opacity: 0;
+     transform: translate(-50%, -120%) scale(0.8);
+   }
+ }
+ .floating-text {
+   font-family: 'Arial', sans-serif;
+   white-space: nowrap;
+   font-weight: bold;
+ }
+`;
+
 export class BattleAnimationSystem {
   private activeAnimations = new Set<HTMLElement>();
   private mapContainer: HTMLElement | null = null;
@@ -70,11 +92,8 @@ export class BattleAnimationSystem {
     }
   }
 
-  showFloatingText(textEvent: FloatingTextEvent, regions: any[]) {
-    if (!this.mapContainer) {
-      console.warn('No map container for floating text');
-      return;
-    }
+  showFloatingText(textEvent: FloatingTextEvent, regions: Regions) {
+    if (!this.isValid(textEvent, regions)) return;
 
     const region = regions.find(r => r.index === textEvent.regionIdx);
     if (!region) {
@@ -82,20 +101,24 @@ export class BattleAnimationSystem {
       return;
     }
 
+    // Find the SVG element within the map container
+    const screenCoords = this.getScreenCoords(region, regions)
+
     // Create floating text element
     const textElement = document.createElement('div');
     textElement.className = 'floating-text';
     textElement.style.cssText = `
-      position: absolute;
-      left: ${region.x}px;
-      top: ${region.y}px;
+      position: fixed;
+      left: ${screen.x}px;
+      top: ${screen.y}px;
       color: ${textEvent.color};
       font-weight: bold;
-      font-size: 14px;
+      font-size: 16px;
       pointer-events: none;
       z-index: 1000;
-      animation: floatUp 2s ease-out forwards;
+      animation: floatUp 3s ease-out forwards;
       transform: translate(-50%, -50%);
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     `;
     textElement.textContent = textEvent.text;
 
@@ -103,41 +126,55 @@ export class BattleAnimationSystem {
     if (!document.getElementById('floating-text-styles')) {
       const style = document.createElement('style');
       style.id = 'floating-text-styles';
-      style.textContent = `
-        @keyframes floatUp {
-          0% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-          }
-          50% {
-            opacity: 1;
-            transform: translate(-50%, -70%) scale(1.2);
-          }
-          100% {
-            opacity: 0;
-            transform: translate(-50%, -100%) scale(0.8);
-          }
-        }
-        .floating-text {
-          font-family: 'Arial', sans-serif;
-          white-space: nowrap;
-        }
-      `;
+      style.textContent = TEXT_CONTENT_STYLE;
       document.head.appendChild(style);
     }
 
-    this.mapContainer.appendChild(textElement);
+    // Append to document body instead of map container for fixed positioning
+    document.body.appendChild(textElement);
     this.activeAnimations.add(textElement);
-    console.log('Floating text element added to DOM');
+    console.log('📝 Floating text element added to DOM at screen coords:', { x: screenX, y: screenY });
 
     // Remove after animation
     setTimeout(() => {
       if (textElement.parentNode) {
         textElement.parentNode.removeChild(textElement);
         this.activeAnimations.delete(textElement);
-        console.log('🗑Floating text element removed');
+        console.log('🗑️ Floating text element removed');
       }
-    }, 2000);
+    }, 3000); // Increased to 3 seconds to match animation duration
+  }
+
+  // Calculate the actual screen position accounting for SVG scaling
+  private getScreenCoords(region: Region, regions: Regions): {x: number, y: number} {
+    // Get the bounding rectangle of the map container and SVG
+    const containerRect = this.mapContainer.getBoundingClientRect();
+    const svgElement = this.mapContainer.querySelector('svg');
+    const svgRect = svgElement.getBoundingClientRect();
+
+    const svgViewBox = svgElement.viewBox.baseVal;
+    const scaleX = svgRect.width / svgViewBox.width;
+    const scaleY = svgRect.height / svgViewBox.height;
+
+    // Convert region coordinates to screen coordinates
+    const screenX = svgRect.left + (region.x * scaleX);
+    const screenY = svgRect.top + (region.y * scaleY);
+
+    return { x: screenX, y: screenY };
+  }
+
+  private isValid(textEvent: FloatingTextEvent, regions: Regions) {
+    if (!this.mapContainer) {
+      console.warn('No map container for floating text');
+      return false;
+    }
+
+    const region = regions.find(r => r.index === textEvent.regionIdx);
+    if (!region) {
+      console.warn('Region not found for floating text:', textEvent.regionIdx);
+      return false;
+    }
+    return true;
   }
 
   async playSoundCue(soundCue: string): Promise<void> {

@@ -16,8 +16,6 @@
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
   export let moveMode: string = 'IDLE';
-  export let selectedRegion: number | null = null;
-  export let audioEnabled: boolean = true;
 
   // Unicode symbols matching original game but using yin-yang for faith
   const SYMBOLS = {

@@ -12,6 +12,7 @@
   import { GameWebSocketClient } from '$lib/game/websocket/GameWebSocketClient';
   import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
   import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
+  import { audioSystem } from '$lib/game/audio/AudioSystem';
 
   export let gameId: string;
   export let playerId: string;
@@ -82,6 +83,7 @@
     battleManager = new BattleManager(gameId, mapContainer);
     await initializeGame();
     await initializeWebSocket();
+    await audioSystem.initializeAudio();
   });
 
   onDestroy(() => {

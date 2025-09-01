@@ -93,7 +93,7 @@
 {/if}
 
 {#if showLobby}
-  <Lobby gameMode="join" on:close={handleLobbyClose} />
+  <Lobby on:close={handleLobbyClose} />
 {/if}
 
 {#if showConfiguration}

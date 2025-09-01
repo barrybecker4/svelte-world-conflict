@@ -29,13 +29,16 @@ export class AudioSystem {
     } as const;
 
     constructor() {
-        this.initializeAudio();
     }
 
     /**
      * Initialize Web Audio API
      */
     private async initializeAudio(): Promise<void> {
+        if (typeof window === 'undefined') {
+            console.log('AudioSystem: Skipping initialization - not in browser environment');
+            return;
+        }
         try {
             // Create audio context on first user interaction
             if (!this.audioContext) {

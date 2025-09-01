@@ -19,7 +19,7 @@ export const audioState: Writable<AudioState> = writable({
  * Composable for managing audio in Svelte components
  */
 export function useAudio() {
-  // Initialize audio state
+
   const initializeAudio = async () => {
     try {
       const isEnabled = audioSystem.isAudioEnabled();
