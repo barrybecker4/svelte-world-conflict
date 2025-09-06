@@ -364,14 +364,9 @@
     }
   }
 
-  function handleReturnToLobby() {
-    cleanupWebSocket();
-    window.location.href = '/';
-  }
-
   function handlePlayAgain() {
     cleanupWebSocket();
-    window.location.href = '/create';
+    window.location.href = '/';
   }
 </script>
 
@@ -390,7 +385,6 @@
     players={$players}
     winner={gameEndResult.winner}
     isVisible={showGameSummary}
-    on:returnToLobby={handleReturnToLobby}
     on:playAgain={handlePlayAgain}
   />
 {/if}

@@ -112,17 +112,13 @@
     return 'Game completed';
   }
 
-  function handleReturnToLobby() {
-    dispatch('returnToLobby');
-  }
-
   function handlePlayAgain() {
     dispatch('playAgain');
   }
 </script>
 
 {#if isVisible}
-  <div class="modal-overlay" on:click={handleReturnToLobby}>
+  <div class="modal-overlay" on:click={handlePlayAgain}>
     <div class="modal-content" on:click|stopPropagation>
       <Panel variant="primary" padding={true} customClass="summary-panel">
 
@@ -191,7 +187,6 @@
           </div>
         </div>
 
-        <!-- Action Buttons -->
         <div class="actions">
           <Button
             variant="primary"
@@ -199,14 +194,6 @@
             on:click={handlePlayAgain}
           >
             Play Again
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="lg"
-            on:click={handleReturnToLobby}
-          >
-            Return to Lobby
           </Button>
         </div>
 

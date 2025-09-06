@@ -47,7 +47,7 @@ function checkTurnLimit(gameState: GameStateData, players: Player[]): GameEndRes
   }
 
   // Check if turn limit reached
-  if (currentTurn >= maxTurns) {
+  if (currentTurn > maxTurns) {
     const winner = determineWinnerByScore(gameState, players);
     return {
       isGameEnded: true,
