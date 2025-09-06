@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ platform }) => {
         );
 
         cleanupOldGames(expiredGames);
-        const openGames = getOpenGames(validGames);
+        const openGames = getOpenGames(validGames, now);
         return json(openGames);
 
     } catch (error) {
@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ platform }) => {
 };
 
 
-function getOpenGames(validGames) {
+function getOpenGames(validGames, now: number) {
   return validGames.map(game => ({
        gameId: game.gameId,
        creator: game.players[0]?.name || 'Unknown',
