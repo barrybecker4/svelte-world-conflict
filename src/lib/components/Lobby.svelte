@@ -30,7 +30,7 @@
       const { multiplayerActions, gameUpdates } = await import('$lib/game/stores/multiplayerStore');
 
       // Connect to WebSocket for real-time lobby updates
-      await multiplayerActions.connect('lobby');
+      await multiplayerActions.connectToGame('lobby');
       wsConnected = true;
       console.log('🔌 Connected to lobby WebSocket');
 

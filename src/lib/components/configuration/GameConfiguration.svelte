@@ -22,10 +22,7 @@
 
   let playerName = '';
   const PLAYER_NAME_KEY = 'wc_player_name';
-
-  // Player slot states - Off/Set/Open/AI as per original
-  let playerSlots = [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()]
-    .map(index => ({ ...getPlayerConfig(index), type: 'Off', customName: '' }));
+  const playerSlots = createPlayerSlots();
 
   let creating = false;
   let error = null;
@@ -48,6 +45,13 @@
   function savePlayerName(name) {
       localStorage.setItem(PLAYER_NAME_KEY, name.trim());
   }
+
+  function createPlayerSlots() {
+      return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(index => ({
+           ...getPlayerConfig(index), type: 'Off', customName: ''
+      }));
+  }
+
 
   // Handle player name submission from the PlayerNameInput component
   function handleNameSubmitted(event) {
@@ -86,7 +90,7 @@
     playerSlots[3] = { ...getPlayerConfig(3), type: 'Off', customName: '' };
 
     // Trigger reactivity
-    playerSlots = [...playerSlots];
+    //playerSlots = [...playerSlots];
   }
 
   function changeName() {
@@ -121,7 +125,7 @@
     }
 
     // Trigger reactivity - this is crucial for the map preview to update
-    playerSlots = [...playerSlots];
+    //playerSlots = [...playerSlots];
   }
 
   // Reactive statement to refresh map preview when map size changes

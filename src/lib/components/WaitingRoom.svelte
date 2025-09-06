@@ -44,7 +44,7 @@
       const { multiplayerActions, gameUpdates } = await import('$lib/game/stores/multiplayerStore');
 
       // Connect to WebSocket for this specific game
-      await multiplayerActions.connect(gameId);
+      await multiplayerActions.connectToGame(gameId);
       wsConnected = true;
       console.log(`🔌 Connected to WebSocket for game ${gameId}`);
 
