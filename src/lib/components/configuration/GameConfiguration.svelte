@@ -5,11 +5,13 @@
   import PlayerConfiguration from './PlayerConfiguration.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from '$lib/components/map/MapPreviewPanel.svelte';
-  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
+
+  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { loadPlayerName, savePlayerName } from '$lib/game/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
 
@@ -21,7 +23,6 @@
   };
 
   let playerName = '';
-  const PLAYER_NAME_KEY = 'wc_player_name';
   const playerSlots = createPlayerSlots();
 
   let creating = false;
@@ -32,18 +33,19 @@
   // Count active players for map generation
   $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
 
+  onMount(() => {
+    if (loadStoredPlayerName()) {
+      initPlayerConfig(playerName);
+    }
+  });
+
   function loadStoredPlayerName() {
-    const storedName = localStorage.getItem(PLAYER_NAME_KEY);
-    if (storedName && storedName.trim()) {
-      playerName = storedName.trim();
+    playerName = loadPlayerName();
+    if (playerName) {
       showNameInput = false;
       return true;
     }
     return false;
-  }
-
-  function savePlayerName(name) {
-      localStorage.setItem(PLAYER_NAME_KEY, name.trim());
   }
 
   function createPlayerSlots() {
@@ -51,7 +53,6 @@
            ...getPlayerConfig(index), type: 'Off', customName: ''
       }));
   }
-
 
   // Handle player name submission from the PlayerNameInput component
   function handleNameSubmitted(event) {
@@ -61,14 +62,12 @@
   }
 
   function proceedWithName() {
-    if (!playerName.trim()) {
+    if (!playerName) {
       error = 'Please enter a name';
       return;
     }
 
-    // Save the name to localStorage
     savePlayerName(playerName);
-
     initPlayerConfig(playerName);
 
     // Hide the name input and show the main configuration
@@ -88,9 +87,6 @@
     playerSlots[1] = { ...getPlayerConfig(1), type: 'AI', customName: '' };
     playerSlots[2] = { ...getPlayerConfig(2), type: 'AI', customName: '' };
     playerSlots[3] = { ...getPlayerConfig(3), type: 'Off', customName: '' };
-
-    // Trigger reactivity
-    //playerSlots = [...playerSlots];
   }
 
   function changeName() {
@@ -123,9 +119,6 @@
       // For other types, just update normally
       playerSlots[index] = { ...slot };
     }
-
-    // Trigger reactivity - this is crucial for the map preview to update
-    //playerSlots = [...playerSlots];
   }
 
   // Reactive statement to refresh map preview when map size changes
@@ -145,6 +138,12 @@
       throw new Error('At least 2 players are required');
     }
 
+    const gameConfig = buildGameConfig();
+    dispatch('gameCreated', gameConfig); // Dispatch to parent
+    creating = false;
+  }
+
+  function buildGameConfig() {
     const currentPreviewRegions = mapPreviewPanel?.getCurrentPreviewRegions();
     const currentPreviewState = mapPreviewPanel?.getCurrentPreviewState();
 
@@ -157,16 +156,12 @@
       name: slot.type === 'Set' ? slot.customName : slot.defaultName,
     }));
 
-    // Build the game configuration WITH the selected map
-    const gameConfig = {
+    return {
       settings: gameSettings,
       playerSlots: updatedPlayerSlots,
       selectedMapRegions: currentPreviewRegions.map(region => region.toJSON ? region.toJSON() : region),
       selectedMapState: currentPreviewState
     };
-
-    dispatch('gameCreated', gameConfig); // Dispatch to parent
-    creating = false;
   }
 
   function verifyMapPreview() {
@@ -174,13 +169,6 @@
        throw new Error('Map preview is not ready. Please wait or click "New Map" to generate one.');
     }
   }
-
-  // Initialize player name on mount
-  onMount(() => {
-    if (loadStoredPlayerName()) {
-      initPlayerConfig(playerName);
-    }
-  });
 </script>
 
 <div class="game-configuration">

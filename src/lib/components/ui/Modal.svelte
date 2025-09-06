@@ -31,13 +31,20 @@
 <svelte:window on:keydown={handleKeydown} />
 
 {#if isOpen}
-  <div class="modal-backdrop" on:click={handleBackdropClick} role="presentation">
+  <div
+    class="modal-backdrop"
+    on:click={handleBackdropClick}
+    on:keydown={(e) => e.key === 'Enter' && handleBackdropClick()}
+    role="presentation"
+  >
     <div
       class="modal-wrapper"
       style="width: {width}; max-height: {height}"
       on:click|stopPropagation
       role="dialog"
+      tabindex="-1"
       aria-labelledby={showHeader ? "modal-title" : undefined}
+      aria-modal="true"
     >
       <Panel
         variant="dark"

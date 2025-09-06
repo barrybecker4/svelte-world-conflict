@@ -4,6 +4,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+  import { saveGameCreator } from '$lib/game/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
 
@@ -111,11 +112,11 @@
         const result = await response.json();
         const player = result.player;
 
-        localStorage.setItem(`game_${gameId}`, JSON.stringify({
+        saveGameCreator(gameId, {
           playerId: player.index.toString(),
           playerIndex: player.index,
           playerName: player.name
-        }));
+        });
 
         console.log(`✅ Successfully joined as player ${player.index}: ${player.name}`);
 

@@ -5,6 +5,7 @@
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
   import Lobby from '$lib/components/Lobby.svelte';
   import { useAudio } from '$lib/game/audio/useAudio';
+  import { saveGameCreator } from '$lib/game/stores/clientStorage';
 
   let showInstructions = true; // Auto-show on load
   let showLobby = false;
@@ -32,12 +33,11 @@
       const result = await response.json();
       const player = result.player || { index: 0, name: humanPlayer.name };
 
-      localStorage.setItem(`game_${result.gameId}`, JSON.stringify({
-        gameId: result.gameId,
+      saveGameCreator(result.gameId, {
         playerId: player.index.toString(),  // Use player index as string
         playerIndex: player.index,
         playerName: player.name
-      }));
+      });
 
       // Navigate to game - will show WaitingRoom for PENDING games, WorldConflictGame for ACTIVE games
       await goto(`/game/${result.gameId}`);

@@ -3,6 +3,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+  import { loadGameCreator, removeGameCreator } from '$lib/game/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
 
@@ -17,11 +18,9 @@
   let wsConnected = false;
 
   onMount(async () => {
-    // Get current player info from localStorage
-    const gameData = localStorage.getItem(`game_${gameId}`);
-    if (gameData) {
-      const playerInfo = JSON.parse(gameData);
-      currentPlayerId = playerInfo.playerIndex;
+    const gameCreator = loadGameCreator(gameId);
+    if (gameCreator) {
+      currentPlayerId = gameCreator.playerIndex;
     }
 
     if (!game) {
@@ -144,8 +143,7 @@
       });
 
       if (response.ok) {
-        // Clear local storage
-        localStorage.removeItem(`game_${gameId}`);
+        removeGameCreator(gameId);
         console.log('✅ Successfully left game');
         dispatch('gameLeft');
       } else {

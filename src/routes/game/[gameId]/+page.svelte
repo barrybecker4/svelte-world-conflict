@@ -6,6 +6,7 @@
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import { loadGameCreator } from '$lib/game/stores/clientStorage';
 
   let gameState = 'loading'; // 'loading', 'waiting', 'playing', 'error'
   let game = null;
@@ -22,15 +23,12 @@
       loading = true;
       error = null;
 
-      // Get player info from localStorage
       const gameId = $page.params.gameId;
-      const playerData = localStorage.getItem(`game_${gameId}`);
+      currentPlayer = loadGameCreator(gameId);
 
-      if (!playerData) {
+      if (!currentPlayer) {
         throw new Error('Player data not found. Please rejoin the game.');
       }
-
-      currentPlayer = JSON.parse(playerData);
 
       // Load game state
       const response = await fetch(`/api/game/${gameId}`);
