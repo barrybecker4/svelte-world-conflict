@@ -1,4 +1,4 @@
-import type { GameRecord } from "$lib/storage/GameStorage";
+import type { GameRecord } from "$lib/serber/storage/GameStorage";
 import { WORKER_URL } from '$lib/server/api-utils.ts';
 
 const LOCAL_URLS = [

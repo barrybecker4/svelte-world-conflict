@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { GameStorage } from '$lib/storage/GameStorage';
+import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/classes/GameState';
 import { Region } from '$lib/game/classes/Region';
 import { getErrorMessage } from '$lib/server/api-utils';

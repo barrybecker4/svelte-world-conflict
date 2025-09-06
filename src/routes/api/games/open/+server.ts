@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { GameStorage } from '$lib/storage/GameStorage';
+import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 const TWENTY_MINUTES = 30 * 60 * 1000;

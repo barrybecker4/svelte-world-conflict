@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { GameStorage } from '$lib/storage/GameStorage';
+import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/classes/GameState';
 import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/classes/commands';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';

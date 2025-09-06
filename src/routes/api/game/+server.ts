@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { GameStorage, type GameRecord } from '$lib/storage/GameStorage';
+import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
 import { getErrorMessage } from '$lib/server/api-utils';
 
