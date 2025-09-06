@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameNotifications } from '$lib/server/websocket';
-import { KVStorage } from '$lib/storage/KVStorage';
+import { GameStorage, type GameRecord } from '$lib/storage/GameStorage';
 
 interface QuitGameRequest {
     playerId: string;
@@ -10,7 +10,6 @@ interface QuitGameRequest {
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
-        const kv = new KVStorage(platform!);
         const gameId = params.gameId;
         if (!gameId) {
             return json({ error: "Missing gameId" }, { status: 400 });
@@ -23,55 +22,88 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Player ID is required' }, { status: 400 });
         }
 
-        const gameDataRaw = await kv.get(`game:${gameId}`);
+        // Use GameStorage instead of direct KVStorage to ensure consistent key format
+        const gameStorage = GameStorage.create(platform!);
+        const game = await gameStorage.getGame(gameId);
 
-        if (!gameDataRaw) {
+        if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        const gameData = JSON.parse(gameDataRaw);
+        // Find the player - convert playerId to number since it's stored as index
+        const playerIndex = parseInt(playerId);
+        const player = game.players.find(p => p.index === playerIndex);
 
-        // Find the player
-        const playerIndex = gameData.players.findIndex((p: any) => p.id === playerId);
-        if (playerIndex === -1) {
+        if (!player) {
             return json({ error: 'Player not found in game' }, { status: 400 });
         }
 
-        const player = gameData.players[playerIndex];
-
-        // Remove player or mark as quit
-        if (gameData.status === 'PENDING') {
-            // Remove player from pending game
-            gameData.players.splice(playerIndex, 1);
+        // Handle different scenarios
+        if (game.status === 'PENDING') {
+            return await quitFromPendingGame(gameId, game, gameStorage);
         } else {
-            // Mark player as quit in active game
-            player.quitAt = Date.now();
-            player.quitReason = reason;
+            return await quitFromActiveGame(gameId, game, player, gameStorage);
         }
 
-        gameData.lastUpdate = Date.now();
-
-        // End game if not enough players remain
-        const activePlayers = gameData.players.filter((p: any) => !p.quitAt);
-        if (activePlayers.length < 2 && gameData.status === 'ACTIVE') {
-            gameData.status = 'FINISHED';
-            gameData.endedAt = Date.now();
-            gameData.endReason = 'INSUFFICIENT_PLAYERS';
-        }
-
-        // Update game in KV
-        await kv.put(`game:${gameId}`, JSON.stringify(gameData));
-
-        // Notify other players
-        if (gameData.status === 'FINISHED') {
-            await GameNotifications.gameEnded(gameId, gameData);
-        } else {
-            await GameNotifications.playerLeft(gameId, playerId, gameData);
-        }
-
-        return json({ success: true, gameData });
     } catch (error) {
         console.error('Error processing quit:', error);
         return json({ error: 'Failed to process quit' }, { status: 500 });
     }
 };
+
+async function quitFromPendingGame(gameId: string, game: GameRecord, gameStorage: GameStorage) {
+    // Game hasn't started yet - remove player or delete game
+    if (game.players.length === 1) {
+        // Last player leaving, delete the game
+        await gameStorage.deleteGame(gameId);
+        console.log(`🗑️ Deleted pending game ${gameId} - last player left`);
+
+        return json({
+            success: true,
+            message: 'Game deleted - you were the last player',
+            gameDeleted: true
+        });
+    } else {
+        // Remove this player from the game
+        const updatedPlayers = game.players.filter(p => p.index !== playerIndex);
+        const updatedGame = {
+            ...game,
+            players: updatedPlayers,
+            lastMoveAt: Date.now()
+        };
+
+        await gameStorage.saveGame(updatedGame);
+
+        console.log(`Player ${player.name} left pending game ${gameId}`);
+
+        // Notify other players
+        await GameNotifications.playerLeft(gameId, playerId, updatedGame);
+
+        return json({
+            success: true,
+            message: `${player.name} left the game`,
+            game: updatedGame
+        });
+    }
+}
+
+async function quitFromActiveGame(gameId: string, game: GameRecord, player: Player, gameStorage: GameStorage) {
+    const updatedGame = {
+        ...game,
+        status: 'COMPLETED' as const,
+        lastMoveAt: Date.now()
+    };
+
+    await gameStorage.saveGame(updatedGame);
+    console.log(`Player ${player.name} resigned from active game ${gameId}`);
+
+    // Notify other players
+    await GameNotifications.gameEnded(gameId, updatedGame);
+
+    return json({
+        success: true,
+        message: `${player.name} resigned from the game`,
+        game: updatedGame,
+        gameEnded: true
+    });
+}

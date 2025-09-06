@@ -19,11 +19,12 @@ export async function notifyGameUpdate(
 ): Promise<void> {
     try {
         const websocketUrl = `${getWebSocketNotifyUrl()}?gameId=${encodeURIComponent(gameId)}`;
-
-        const notification: GameUpdateNotification = {
+        const notification = {
             gameId,
-            type,
-            data
+            message: {
+                type,
+                data
+            }
         };
 
         const response = await fetch(websocketUrl, {
@@ -40,7 +41,7 @@ export async function notifyGameUpdate(
     } catch (error) {
         console.error('Error notifying WebSocket clients:', error);
         // Don't fail the request if WebSocket notification fails
-        // This is important - the API should still work even if real-time updates fail
+        // The API should still work even if real-time updates fail
     }
 }
 

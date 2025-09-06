@@ -219,7 +219,6 @@
     }
   }
 
-
   function handleRegionClick(region: any) {
     console.log('Region clicked:', region);
     // Prevent actions during turn transition
@@ -309,11 +308,38 @@
     gameStore.completeBanner();
   }
 
-  function handleResign() {
+  async function handleResign() {
     const confirmed = confirm('Are you sure you want to resign from this game?');
-    if (confirmed) {
-      console.log('Player resigned');
-      // TODO: Implement resignation logic
+    if (!confirmed) return;
+
+    console.log('Player resigned from ', gameId);
+
+    const response = await fetch(`/api/game/${gameId}/quit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        playerId: playerId,
+        reason: 'RESIGN'
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Resignation successful:', result);
+
+      // Clean up WebSocket connection
+      cleanupWebSocket();
+
+      // Redirect to home page after resignation
+      // Using window.location instead of goto() to ensure clean navigation
+      window.location.href = '/';
+
+    } else {
+      const error = await response.json();
+      console.error('Failed to resign:', error);
+      alert(error.message || 'Failed to resign from game');
     }
   }
 </script>
