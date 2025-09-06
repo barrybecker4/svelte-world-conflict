@@ -7,6 +7,7 @@
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
   import { useAudio } from '$lib/game/audio/useAudio';
   import AudioButton from '$lib/components/configuration/AudioButton.svelte';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
@@ -29,8 +30,8 @@
   // Reactive statements - these will update whenever gameState changes
   $: currentPlayerIndex = gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
-  $: turnNumber = gameState?.turnIndex ?? 1;
-  $: maxTurns = gameState?.maxTurns;
+  $: turnNumber = (gameState?.turnIndex ?? 0) + 1;
+  $: maxTurns = gameState?.maxTurns && gameState.maxTurns !== GAME_CONSTANTS.UNLIMITED_TURNS ? gameState.maxTurns : null;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
   $: isMoving = moveMode !== 'IDLE';
   $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
@@ -92,10 +93,9 @@
   <!-- Turn Section -->
   <Section title="" customClass="turn-section">
     <div class="turn-box">
-      <div class="turn-header">Turn <span class="turn-number">{turnNumber}</span></div>
-      {#if maxTurns}
-        <div class="turn-progress">of {maxTurns}</div>
-      {/if}
+      <div class="turn-header">
+        Turn <span class="turn-number">{turnNumber}</span>{#if maxTurns} / {maxTurns}{/if}
+      </div>
     </div>
   </Section>
 

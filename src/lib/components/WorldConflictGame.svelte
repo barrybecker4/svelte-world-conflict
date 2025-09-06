@@ -4,6 +4,7 @@
   import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './SoldierSelectionModal.svelte';
   import GameInstructions from './GameInstructions.svelte';
+  import GameSummaryModal from './GameSummaryModal.svelte';
   import LoadingState from './ui/LoadingState.svelte';
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
@@ -13,6 +14,7 @@
   import { createGameStateStore } from '$lib/game/stores/gameStateStore.js';
   import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
   import { audioSystem } from '$lib/game/audio/AudioSystem';
+  import { checkGameEnd, type GameEndResult } from '$lib/game/logic/endGameLogic';
 
   export let gameId: string;
   export let playerId: string;
@@ -53,6 +55,8 @@
   // UI state
   let showSoldierSelection = false;
   let showInstructions = false;
+  let showGameSummary = false; // NEW: Add game summary state
+  let gameEndResult: GameEndResult | null = null; // NEW: Track game end result
   let soldierSelectionData: {
     maxSoldiers: number;
     currentSelection: number;
@@ -66,22 +70,23 @@
   $: selectedRegion = moveState.sourceRegion;
   $: showBanner = $shouldShowBanner;
   $: highlightRegions = $shouldHighlightRegions;
-  $: connectionStatus = wsClient?.isConnected() ? 'connected' : 'disconnected';
-  $: console.log('WebSocket status:', connectionStatus);
-  $: {  // debug only
-    if (mapContainer) {
-      console.log('🗺️ Map container bound:', mapContainer);
-    }
+  $: connectionStatus = wsClient?.isConnected() ? 'Connected' : 'Disconnected';
+
+  // Watch for game end conditions
+  $: if ($gameState && $players.length > 0) {
+    checkForGameEnd();
   }
-  $: {
+
+  $: {        // do we need this?
     if (mapContainer && battleManager) {
       battleManager.setMapContainer(mapContainer);
     }
   }
 
   onMount(async () => {
+    console.log('🎮 WorldConflict Game mounting with:', { gameId, playerId, playerIndex });
     battleManager = new BattleManager(gameId, mapContainer);
-    await initializeGame();
+    await gameStore.initializeGame(handleMoveComplete, handleMoveStateChange);
     await initializeWebSocket();
     await audioSystem.initializeAudio();
   });
@@ -92,35 +97,31 @@
     gameStore.resetTurnManager();
   });
 
-  async function initializeGame() {
-    await gameStore.initializeGame(handleMoveComplete, handleMoveStateChange);
-  }
-
   async function initializeWebSocket() {
     try {
       wsClient = new GameWebSocketClient();
 
       wsClient.onGameUpdate((gameData) => {
-        console.log('🎮 Received game update via WebSocket:', gameData);
+        console.log('Received game update via WebSocket:', gameData);
 
         const worldConflictState = gameData.worldConflictState;
         if (worldConflictState) {
           gameStore.handleGameStateUpdate(worldConflictState);
         } else {
-          console.error('❌ No worldConflictState found in gameData:', gameData);
+          console.error('No worldConflictState found in gameData:', gameData);
         }
       });
 
       wsClient.onConnected(() => {
-        console.log('✅ Connected to game WebSocket');
+        console.log('Connected to game WebSocket');
       });
 
       wsClient.onDisconnected(() => {
-        console.log('🔌 Disconnected from game WebSocket');
+        console.log('Disconnected from game WebSocket');
       });
 
       wsClient.onError((error) => {
-        console.error('❌ WebSocket error:', error);
+        console.error('WebSocket error:', error);
       });
 
       // Connect to the WebSocket for this specific game
@@ -248,7 +249,11 @@
   }
 
   async function handleEndTurn() {
-    if (!$isMyTurn) return;
+    if (!$isMyTurn || $movesRemaining === 0) {
+      console.log('Cannot end turn: not my turn or no moves remaining');
+      return;
+    }
+
 
     console.log('Ending turn...');
     try {
@@ -287,6 +292,22 @@
     }
   }
 
+  function checkForGameEnd() {
+    if (!$gameState || gameEndResult) return;
+
+    const endResult = checkGameEnd($gameState, $players);
+
+    if (endResult.isGameEnded) {
+      console.log('🏁 Game ended:', endResult);
+      gameEndResult = endResult;
+
+      // Show summary after a brief delay
+      setTimeout(() => {
+        showGameSummary = true;
+      }, 2000);
+    }
+  }
+
   function handleUndo() {
     if (!$isMyTurn) return;
     gameStore.getMoveSystem().undo();
@@ -300,16 +321,16 @@
     showInstructions = true;
   }
 
-  function handleRetry() {
-    gameStore.retryInitialization(handleMoveComplete, handleMoveStateChange);
-  }
-
   function handleBannerComplete() {
     gameStore.completeBanner();
   }
 
+  function handleRetry() {
+    gameStore.initializeGame(handleMoveComplete, handleMoveStateChange);
+  }
+
   async function handleResign() {
-    const confirmed = confirm('Are you sure you want to resign from this game?');
+    const confirmed = confirm('Are you sure you want to resign? This will end the game for you.');
     if (!confirmed) return;
 
     console.log('Player resigned from ', gameId);
@@ -342,6 +363,16 @@
       alert(error.message || 'Failed to resign from game');
     }
   }
+
+  function handleReturnToLobby() {
+    cleanupWebSocket();
+    window.location.href = '/';
+  }
+
+  function handlePlayAgain() {
+    cleanupWebSocket();
+    window.location.href = '/create';
+  }
 </script>
 
   <!-- Turn Banner Overlay -->
@@ -350,6 +381,17 @@
     player={$currentPlayerFromTurnManager}
     isVisible={showBanner}
     onComplete={handleBannerComplete}
+  />
+{/if}
+
+{#if showGameSummary && gameEndResult && $gameState}
+  <GameSummaryModal
+    gameState={$gameState}
+    players={$players}
+    winner={gameEndResult.winner}
+    isVisible={showGameSummary}
+    on:returnToLobby={handleReturnToLobby}
+    on:playAgain={handlePlayAgain}
   />
 {/if}
 

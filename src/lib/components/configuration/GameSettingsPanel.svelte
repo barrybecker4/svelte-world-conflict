@@ -1,8 +1,18 @@
 <script lang="ts">
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+
   export let gameSettings;
 
   const difficultyOptions = ['Nice', 'Normal', 'Hard'];
   const mapSizeOptions = ['Small', 'Medium', 'Large'];
+
+  // Turn options with labels and values
+  const turnOptions = [
+    { label: '3 Turns', value: 3 },
+    { label: `${GAME_CONSTANTS.STANDARD_TURN_COUNT} Turns`, value: GAME_CONSTANTS.STANDARD_TURN_COUNT },
+    { label: '15 Turns', value: 15 },
+    { label: 'Endless', value: GAME_CONSTANTS.UNLIMITED_TURNS }
+  ];
 
   // Reactive updates to ensure parent component stays in sync
   $: if (gameSettings) {
@@ -12,6 +22,11 @@
     }
     if (!mapSizeOptions.includes(gameSettings.mapSize)) {
       gameSettings.mapSize = 'Large';
+    }
+    // Validate turn count - default to standard if invalid
+    const validTurnValues = turnOptions.map(opt => opt.value);
+    if (!validTurnValues.includes(gameSettings.turns)) {
+      gameSettings.turns = GAME_CONSTANTS.STANDARD_TURN_COUNT;
     }
   }
 </script>
@@ -30,14 +45,11 @@
 
   <div class="setting">
     <label for="turns">Turns:</label>
-    <input
-      id="turns"
-      type="number"
-      min="5"
-      max="50"
-      bind:value={gameSettings.turns}
-      class="number-input"
-    />
+    <select id="turns" bind:value={gameSettings.turns}>
+      {#each turnOptions as option}
+        <option value={option.value}>{option.label}</option>
+      {/each}
+    </select>
   </div>
 
   <div class="setting">

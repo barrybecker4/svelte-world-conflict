@@ -1,145 +1,178 @@
-import { Command } from "./Command";
+import { Command } from './Command';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { checkGameEnd } from '$lib/game/logic/endGameLogic';
+import type { GameState, Player } from '$lib/game/classes/GameState';
 
 export class EndTurnCommand extends Command {
-    private income: number = 0;
-    private generatedSoldiers: number[] = [];
+  private income: number = 0;
+  private generatedSoldiers: number[] = [];
 
-    constructor(gameState: GameState, player: Player) {
-        super(gameState, player);
+  constructor(gameState: GameState, player: Player) {
+    super(gameState, player);
+  }
+
+  validate(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (this.gameState.playerIndex !== this.player.index) {
+      errors.push("It's not your turn");
     }
 
-    validate(): ValidationResult {
-        const errors: string[] = [];
-
-        const activePlayer = this.gameState.activePlayer();
-        if (activePlayer.index !== this.player.index) {
-            errors.push("Not your turn");
-        }
-
-        return {
-            valid: errors.length === 0,
-            errors
-        };
+    if (this.gameState.movesRemaining === 0) {
+      errors.push("You have no moves remaining");
     }
 
-    execute(): GameState {
-        this.previousState = this.gameState;
-        const newState = this.gameState.copy() as GameState;;
-
-        const beforeFaith = newState.state.faithByPlayer[this.player.index] || 0;
-        const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
-
-        this.income = this.calculateIncome(newState);
-
-        newState.state.faithByPlayer[this.player.index] = beforeFaith + this.income;
-        newState.faithByPlayer[this.player.index] = beforeFaith + this.income;
-
-        this.generateSoldiersAtTemples(newState);
-
-        // Check for game end
-        const gameEndResult = newState.checkGameEnd();
-        if (gameEndResult) {
-            newState.endResult = gameEndResult;
-        }
-
-        // Reset turn state
-        newState.movesRemaining = 3;
-        newState.numBoughtSoldiers = 0;
-        newState.conqueredRegions = [];
-
-        // Advance to next player
-        const players = newState.players;
-        newState.playerIndex = (newState.playerIndex + 1) % players.length;
-
-        // If back to first player, increment turn
-        if (newState.playerIndex === 0) {
-            newState.turnIndex++;
-        }
-
-        return newState;
+    // Check if game has already ended
+    if (this.gameState.endResult) {
+      errors.push("Game has already ended");
     }
 
-    /**
-     * Faith income rules:
-     * 1. One faith for each region owned
-     * 2. One faith for each soldier stationed at owned temples
-     */
-    private calculateIncome(state: GameState): number {
-        const regionCount = state.regionCount(this.player);
-        console.log(`Player ${this.player.index} owns ${regionCount} regions`);
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
 
-        // Calculate soldiers praying at temples (soldiers stationed at temple regions owned by player)
-        let soldiersAtTemples = 0;
+  execute(): GameState {
+    this.previousState = this.gameState.copy();
+    const newState = this.gameState.copy();
 
-        // Iterate through all regions to find owned temple regions
-        for (const regionIndex in state.templesByRegion) {
-            const regionIdx = parseInt(regionIndex);
-            const temple = state.templesByRegion[regionIdx];
+    // Calculate faith income from temples and regions
+    this.calculateIncome(newState);
 
-            // Check if player owns this temple region
-            if (temple && state.isOwnedBy(regionIdx, this.player)) {
-                // Count soldiers at this temple region
-                const soldiers = state.soldiersByRegion[regionIdx];
-                if (soldiers && soldiers.length > 0) {
-                    // All soldiers at owned temple regions generate faith
-                    soldiersAtTemples += soldiers.length;
-                    console.log(`Player ${this.player.index} has ${soldiers.length} soldiers praying at temple region ${regionIdx}`);
-                }
-            }
-        }
+    // Add faith income to player
+    if (this.income > 0) {
+      const currentFaith = newState.faithByPlayer[this.player.index] || 0;
+      newState.faithByPlayer[this.player.index] = currentFaith + this.income;
 
-        const totalIncome = regionCount + soldiersAtTemples;
-        console.log(`Player ${this.player.index} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${totalIncome} faith`);
-
-        return totalIncome;
+      // Add floating text for income display
+      const playerTemples = this.getPlayerTemples(newState);
+      if (playerTemples.length > 0) {
+        newState.floatingText = [{
+          regionIdx: playerTemples[0].regionIndex,
+          text: `+${this.income}&#9775;`,
+          color: '#fff',
+          width: 5
+        }];
+      }
     }
 
-    private generateSoldiersAtTemples(state: GameState): void {
-        console.log(`Checking temples for player ${this.player.index}:`);
+    // Generate soldiers at temples
+    this.generateSoldiersAtTemples(newState);
 
-        for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
-            const regionIdx = parseInt(regionIndex);
-            if (state.isOwnedBy(regionIdx, this.player)) {
-                const beforeSoldiers = state.soldiersByRegion[regionIdx]?.length || 0;
+    // Reset moves for next turn
+    newState.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN;
 
-                // Each temple produces exactly 1 soldier after player's turn ends
-                state.addSoldiers(regionIdx, 1);
-                this.generatedSoldiers.push(regionIdx);
+    // Clear conquered regions (reset for next turn)
+    newState.conqueredRegions = [];
 
-                const afterSoldiers = state.soldiersByRegion[regionIdx]?.length || 0;
-                console.log(`   Region ${regionIdx}: ${beforeSoldiers} → ${afterSoldiers} soldiers (+1)`);
-            }
-        }
+    // Advance to next player
+    this.findNextPlayer(newState);
 
-        if (this.generatedSoldiers.length === 0) {
-            console.log(`   No temples owned by player ${this.player.index}`);
-        }
+    // Increment turn index if we've cycled back to player 0
+    if (newState.playerIndex === 0 && this.previousState.playerIndex !== 0) {
+      newState.turnIndex += 1;
     }
 
-    private logTemplesSoldiers(state: GameState, phase: string): any {
-        console.log(`${phase} - Temples and soldiers for player ${this.player.index}:`);
-        const temples = [];
-
-        for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
-            const regionIdx = parseInt(regionIndex);
-            if (state.isOwnedBy(regionIdx, this.player)) {
-                const soldiers = state.soldiersByRegion[regionIdx]?.length || 0;
-                console.log(`   Region ${regionIdx}: ${soldiers} soldiers`);
-                temples.push({ regionIdx, soldiers });
-            }
-        }
-
-        return temples;
+    // Check if game should end due to turn limit or elimination
+    const gameEndResult = checkGameEnd(newState.toJSON(), newState.players);
+    if (gameEndResult.isGameEnded) {
+      newState.endResult = gameEndResult.winner;
     }
 
-    serialize(): any {
-        return {
-            type: 'EndTurnCommand',
-            playerId: this.player.index,
-            income: this.income,
-            generatedSoldiers: this.generatedSoldiers,
-            timestamp: this.timestamp,
-            id: this.id
-        };
+    return newState;
+  }
+
+  private calculateIncome(state: GameState): void {
+    let income = 0;
+
+    // Faith from temples (base income)
+    const playerTemples = this.getPlayerTemples(state);
+    income += playerTemples.length * GAME_CONSTANTS.TEMPLE_INCOME_BASE;
+
+    // Faith from regions owned
+    const playerRegions = state.getRegionsOwnedByPlayer(this.player.index);
+    income += playerRegions.length;
+
+    // Faith from soldiers praying at temples
+    playerTemples.forEach(temple => {
+      const soldiers = state.soldiersAtRegion(temple.regionIndex);
+      income += soldiers.length;
+    });
+
+    this.income = income;
+  }
+
+  private getPlayerTemples(state: GameState): any[] {
+    // Get temples owned by this player
+    return (state.temples || []).filter(temple =>
+      state.ownersByRegion[temple.regionIndex] === this.player.index
+    );
+  }
+
+  private generateSoldiersAtTemples(state: GameState): void {
+    const playerTemples = this.getPlayerTemples(state);
+
+    playerTemples.forEach(temple => {
+      if (state.isOwnedBy(temple.regionIndex, this.player)) {
+        state.addSoldiers(temple.regionIndex, GAME_CONSTANTS.SOLDIER_GENERATION_PER_TEMPLE);
+        this.generatedSoldiers.push(temple.regionIndex);
+      }
+    });
+  }
+
+  private findNextPlayer(state: GameState): void {
+    let attempts = 0;
+    const maxAttempts = state.players.length;
+
+    do {
+      // Move to next player index
+      state.playerIndex = (state.playerIndex + 1) % state.players.length;
+      attempts++;
+
+      // Safety check to prevent infinite loop
+      if (attempts >= maxAttempts) {
+        console.warn('Could not find next active player, game may need to end');
+        break;
+      }
+
+      const nextPlayer = state.players[state.playerIndex];
+
+      // Continue if this player has regions (is still alive)
+      if (state.regionCount(nextPlayer) > 0) {
+        break;
+      }
+    } while (attempts < maxAttempts);
+  }
+
+  undo(): void {
+    if (!this.previousState) {
+      throw new Error("Cannot undo - no previous state stored");
     }
+
+    // Restore the previous state
+    Object.assign(this.gameState, this.previousState);
+  }
+
+  serialize(): any {
+    return {
+      ...super.serialize(),
+      type: 'END_TURN',
+      income: this.income,
+      generatedSoldiers: this.generatedSoldiers
+    };
+  }
+
+  static deserialize(data: any, gameState: GameState, players: Player[]): EndTurnCommand {
+    const player = players.find(p => p.index === data.playerIndex);
+    if (!player) {
+      throw new Error(`Player with index ${data.playerIndex} not found`);
+    }
+
+    const command = new EndTurnCommand(gameState, player);
+    command.income = data.income || 0;
+    command.generatedSoldiers = data.generatedSoldiers || [];
+
+    return command;
+  }
 }
