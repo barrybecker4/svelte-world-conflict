@@ -16,8 +16,8 @@
     if (!mapSizeOptions.includes(gameSettings.mapSize)) {
       gameSettings.mapSize = 'Large';
     }
-    if (!GAME_CONSTANTS.MAX_TURN_OPTIONS.includes(gameSettings.turns)) {
-      gameSettings.turns = GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX];
+    if (!GAME_CONSTANTS.MAX_TURN_OPTIONS.includes(gameSettings.maxTurns)) {
+      gameSettings.maxTurns = GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX];
     }
   }
 
@@ -43,7 +43,7 @@
 
   <div class="setting">
     <label for="turns">Turns:</label>
-    <select id="turns" bind:value={gameSettings.turns}>
+    <select id="turns" bind:value={gameSettings.maxTurns}>
       {#each turnOptions as option}
         <option value={option.value}>{option.label}</option>
       {/each}

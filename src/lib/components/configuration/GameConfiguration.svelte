@@ -15,7 +15,7 @@
 
   let gameSettings = {
     aiDifficulty: 'Nice',
-    turns: 10,
+    maxTurns: 10,
     timeLimit: 30,
     mapSize: 'Large'
   };

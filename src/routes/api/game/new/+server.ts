@@ -51,7 +51,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       gameType = 'MULTIPLAYER',
       maxPlayers = 4,
       aiDifficulty = 'Nice',
-      turns = 10,
+      maxTurns = 10,
       timeLimit = 30,
       playerSlots = [], // For configured games (from GameConfiguration)
       settings,
@@ -73,7 +73,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
   // Only initialize full game state for ACTIVE games
   let initialGameState;
   if (gameStatus === 'ACTIVE') {
-    initialGameState = GameState.createInitialState(gameId, players, regions, turns);
+    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns);
   } else {
     initialGameState = {
       gameId,
@@ -81,7 +81,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       players,
       currentPlayerIndex: 0,
       turnCount: 0,
-      maxTurns: turns,
+      maxTurns,
       gamePhase: 'SETUP'
     };
   }
@@ -104,7 +104,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
     pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
       settings,
       playerSlots,
-      turns,
+      maxTurns,
       timeLimit,
       selectedMapRegions // Store the selected map for pending games too
     } : undefined

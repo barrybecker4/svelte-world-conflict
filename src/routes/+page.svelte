@@ -59,7 +59,7 @@
         gameType: 'MULTIPLAYER', // Always create as multiplayer
         mapSize: gameConfig.settings.mapSize,
         aiDifficulty: gameConfig.settings.aiDifficulty,
-        turns: gameConfig.settings.turns,
+        maxTurns: gameConfig.settings.maxTurns,
         timeLimit: gameConfig.settings.timeLimit,
         playerSlots: gameConfig.playerSlots,
         selectedMapRegions: gameConfig.selectedMapRegions,

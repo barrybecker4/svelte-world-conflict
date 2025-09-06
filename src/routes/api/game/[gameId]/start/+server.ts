@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             gameId,
             updatedPlayers,
             regions,
-            game.worldConflictState?.turns
+            game.worldConflictState?.maxTurns
         );
 
         const updatedGame = {

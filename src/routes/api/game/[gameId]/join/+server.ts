@@ -145,7 +145,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 gameId,
                 updatedPlayers,
                 regions,
-                game.worldConflictState?.turns
+                game.worldConflictState?.maxTurns
             );
 
             updatedGame.worldConflictState = gameState.toJSON();

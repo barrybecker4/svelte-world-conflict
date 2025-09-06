@@ -283,7 +283,7 @@
             </div>
             <div class="setting-item">
               <span class="setting-label">Turn Limit:</span>
-              <span class="setting-value">{game.pendingConfiguration?.settings?.turns || 'Unlimited'}</span>
+              <span class="setting-value">{game.pendingConfiguration?.settings?.maxTurns || 'Unlimited'}</span>
             </div>
             <div class="setting-item">
               <span class="setting-label">Time Limit:</span>
