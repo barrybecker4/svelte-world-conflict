@@ -5,14 +5,7 @@
 
   const difficultyOptions = ['Nice', 'Normal', 'Hard'];
   const mapSizeOptions = ['Small', 'Medium', 'Large'];
-
-  // Turn options with labels and values
-  const turnOptions = [
-    { label: '3 Turns', value: 3 },
-    { label: `${GAME_CONSTANTS.STANDARD_TURN_COUNT} Turns`, value: GAME_CONSTANTS.STANDARD_TURN_COUNT },
-    { label: '15 Turns', value: 15 },
-    { label: 'Endless', value: GAME_CONSTANTS.UNLIMITED_TURNS }
-  ];
+  const turnOptions = createTurnOptions();
 
   // Reactive updates to ensure parent component stays in sync
   $: if (gameSettings) {
@@ -23,11 +16,16 @@
     if (!mapSizeOptions.includes(gameSettings.mapSize)) {
       gameSettings.mapSize = 'Large';
     }
-    // Validate turn count - default to standard if invalid
-    const validTurnValues = turnOptions.map(opt => opt.value);
-    if (!validTurnValues.includes(gameSettings.turns)) {
-      gameSettings.turns = GAME_CONSTANTS.STANDARD_TURN_COUNT;
+    if (!GAME_CONSTANTS.MAX_TURN_OPTIONS.includes(gameSettings.turns)) {
+      gameSettings.turns = GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX];
     }
+  }
+
+  // Turn options with labels and values
+  function createTurnOptions() {
+      const turnOptions = GAME_CONSTANTS.MAX_TURN_OPTIONS.map(v => ({label: `${v} Turns`, value: v }));
+      turnOptions.push({ label: 'Endless', value: GAME_CONSTANTS.UNLIMITED_TURNS });
+      return turnOptions;
   }
 </script>
 

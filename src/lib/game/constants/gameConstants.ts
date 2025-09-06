@@ -5,7 +5,8 @@ export const GAME_CONSTANTS = {
 
     // Turn mechanics
     BASE_MOVES_PER_TURN: 3,
-    STANDARD_TURN_COUNT: 10,
+    MAX_TURN_OPTIONS: [3, 10, 15],
+    DEFAULT_TURN_COUNT_INDEX: 1,
     UNLIMITED_TURNS: 999,
 
     // Time limits (in seconds)
