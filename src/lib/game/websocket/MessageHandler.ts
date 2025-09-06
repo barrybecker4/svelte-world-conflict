@@ -5,6 +5,7 @@ export class MessageHandler {
     private callbacks: {
         gameUpdate?: (data: any) => void;
         playerJoined?: (data: any) => void;
+        gameEnded?: (data: any) => void;
         error?: (error: string) => void;
         connected?: () => void;
         disconnected?: () => void;
@@ -32,6 +33,10 @@ export class MessageHandler {
 
                 case 'playerJoined':
                     this.callbacks.playerJoined?.(message.data);
+                    break;
+
+                case 'gameEnded':
+                    this.callbacks.gameEnded?.(message.data);
                     break;
 
                 case 'pong':
@@ -68,6 +73,10 @@ export class MessageHandler {
 
     onPlayerJoined(callback: (data: any) => void): void {
         this.callbacks.playerJoined = callback;
+    }
+
+    onGameEnded(callback: (data: any) => void): void {
+        this.callbacks.gameEnded = callback;
     }
 
     onError(callback: (error: string) => void): void {
