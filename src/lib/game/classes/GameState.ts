@@ -25,33 +25,33 @@ export class GameState {
     /**
      * Create initial game state - uses GameStateInitializer to prepare data
      */
-    static createInitialState(gameId: string, players: Player[], regionData: any[]): GameState {
-      console.log(`🎮 Creating initial game state for ${gameId}`);
+    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number): GameState {
+        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}`);
 
-      let regions: Region[];
+        let regions: Region[];
 
-      regions = (regionData?.length > 0)
-          ? Regions.fromJSON(regionData)
-          : Regions.createBasic(Math.max(players.length * 3, 12));
+        regions = (regionData?.length > 0)
+            ? Regions.fromJSON(regionData)
+            : Regions.createBasic(Math.max(players.length * 3, 12));
 
-      if (!regions.isValid()) {
-          throw new Error('❌ Region reconstruction failed, falling back to basic regions');
-      }
+        if (!regions.isValid()) {
+            throw new Error('❌ Region reconstruction failed, falling back to basic regions');
+        }
 
-      console.log(`Using ${regions.length} regions for game initialization`);
+        console.log(`Using ${regions.length} regions for game initialization`);
 
-      // Verify the first region has the getDistanceTo method
-      if (regions.getByIndex(0) && typeof regions.getByIndex(0).getDistanceTo === 'function') {
-          console.log('Region methods verified - ready for home base assignment');
-      } else {
-          console.error(' Regions missing methods - home base assignment will fail!');
-          throw new Error('Region reconstruction failed - regions missing required methods');
-      }
+        // Verify the first region has the getDistanceTo method
+        if (regions.getByIndex(0) && typeof regions.getByIndex(0).getDistanceTo === 'function') {
+            console.log('Region methods verified - ready for home base assignment');
+        } else {
+            console.error('Regions missing methods - home base assignment will fail!');
+            throw new Error('Region reconstruction failed - regions missing required methods');
+        }
 
-      const initializer = new GameStateInitializer();
-      const initialStateData = initializer.createInitialStateData(gameId, players, regions);
+        const initializer = new GameStateInitializer();
+        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns);
 
-      return new GameState(initialStateData);
+        return new GameState(initialStateData);
     }
 
     /**

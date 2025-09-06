@@ -13,8 +13,8 @@ export class GameStateInitializer {
      * Create initial game state data with starting positions
      * Returns the data object, not the GameState instance
      */
-    createInitialStateData(gameId: string, players: Player[], regions: Regions): GameStateData {
-        return this.createInitializedGameStateData(gameId, players, regions);
+    createInitialStateData(gameId: string, players: Player[], regions: Regions, maxTurns?: number): GameStateData {
+        return this.createInitializedGameStateData(gameId, players, regions, maxTurns);
     }
 
     /**
@@ -31,26 +31,26 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createInitializedGameStateData(gameId: string, players: Player[], regions: Regions): GameStateData {
+    private createInitializedGameStateData(gameId: string, players: Player[], regions: Regions, maxTurns?: number): GameStateData {
+        console.log(`Creating preview state with ${regions.length} regions`);
 
-      console.log(`Creating preview state with ${regions.length} regions`);
+        const stateData = this.createGameStateData(gameId, players, regions, maxTurns);
+        this.initializeStartingPositions(stateData);
 
-      const stateData = this.createGameStateData(gameId, players, regions);
-      this.initializeStartingPositions(stateData);
-
-      players.forEach(player => {
-          stateData.faithByPlayer[player.index] = GAME_CONSTANTS.STARTING_FAITH;
-      });
-      return stateData;
+        players.forEach(player => {
+            stateData.faithByPlayer[player.index] = GAME_CONSTANTS.STARTING_FAITH;
+        });
+        return stateData;
     }
 
-    private createGameStateData(gameId: string, players: Player[], regions: Region): GameStateData {
+    private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number): GameStateData {
         return {
             id: Date.now(),
             gameId,
             turnIndex: 0,
             playerIndex: 0,
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
+            maxTurns: maxTurns || GAME_CONSTANTS.STANDARD_TURN_COUNT, // Add this line
             players: [...players],
             regions, // Keep as Region instances for now
             ownersByRegion: {},

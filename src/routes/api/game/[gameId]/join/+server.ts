@@ -144,7 +144,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             const gameState = GameState.createInitialState(
                 gameId,
                 updatedPlayers,
-                regions
+                regions,
+                game.worldConflictState?.turns
             );
 
             updatedGame.worldConflictState = gameState.toJSON();

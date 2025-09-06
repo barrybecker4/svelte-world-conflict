@@ -36,7 +36,8 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         const gameState = GameState.createInitialState(
             gameId,
             updatedPlayers,
-            regions
+            regions,
+            game.worldConflictState?.turns
         );
 
         const updatedGame = {
