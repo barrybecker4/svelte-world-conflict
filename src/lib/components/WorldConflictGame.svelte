@@ -8,13 +8,13 @@
   import LoadingState from './ui/LoadingState.svelte';
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
-  import type { MoveState } from '$lib/game/moveTypes';
-  import { MoveSystem } from '$lib/game/classes/MoveSystem';
+  import type { MoveState } from '$lib/gamemechanics/moveTypes';
+  import { MoveSystem } from '$lib/game/mechanics/MoveSystem';
   import { GameWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
   import { createGameStateStore } from '$lib/client/stores/gameStateStore.js';
   import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
-  import { checkGameEnd, type GameEndResult } from '$lib/game/logic/endGameLogic';
+  import { checkGameEnd, type GameEndResult } from '$lib/game/mechanics/endGameLogic';
 
   export let gameId: string;
   export let playerId: string;

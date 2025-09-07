@@ -1,6 +1,6 @@
 import { Command } from './Command';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { checkGameEnd } from '$lib/game/logic/endGameLogic';
+import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { GameState, Player } from '$lib/game/state/GameState';
 
 export class EndTurnCommand extends Command {

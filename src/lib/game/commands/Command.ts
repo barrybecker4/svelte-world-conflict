@@ -1,4 +1,4 @@
-import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/classes/AttackSequenceGenerator';
+import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import {
     type Player,
     type Soldier,

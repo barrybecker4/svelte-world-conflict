@@ -1,5 +1,5 @@
 import { Command, type ValidationResult } from './Command';
-import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/classes/AttackSequenceGenerator';
+import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 
 export class ArmyMoveCommand extends Command {
     public source: number;

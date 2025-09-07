@@ -1,4 +1,4 @@
-import type { AttackEvent } from '$lib/game/classes/AttackSequenceGenerator';
+import type { AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 

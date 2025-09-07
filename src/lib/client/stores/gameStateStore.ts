@@ -1,6 +1,6 @@
 import { writable, derived } from 'svelte/store';
-import { turnManager } from '$lib/game/classes/TurnManager';
-import { MoveSystem } from '$lib/game/classes/MoveSystem';
+import { turnManager } from '$lib/game/mechanics/TurnManager';
+import { MoveSystem } from '$lib/game/mechanics/MoveSystem';
 
 /**
  * Svelte Store for managing game state loading, initialization, and updates
