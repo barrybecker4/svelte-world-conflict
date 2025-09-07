@@ -5,8 +5,8 @@ import type { Player } from '$lib/game/classes/GameState';
 import { createPlayer, getErrorMessage } from '$lib/server/api-utils';
 import { GameState } from '$lib/game/classes/GameState';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
-import { GameNotifications } from '$lib/server/websocket';
+import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { GameNotifications } from '$lib/server/websocket/websocket';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {

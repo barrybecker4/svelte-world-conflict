@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.ts';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/classes/GameState';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/classes/commands';
-import { WebSocketNotificationHelper } from '$lib/server/WebSocketNotificationHelper';
+import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
 import { getErrorMessage } from '$lib/server/api-utils';
 
 interface MoveRequest {
