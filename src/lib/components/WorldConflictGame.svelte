@@ -249,11 +249,10 @@
   }
 
   async function handleEndTurn() {
-    if (!$isMyTurn || $movesRemaining === 0) {
-      console.log('Cannot end turn: not my turn or no moves remaining');
+    if (!$isMyTurn) {
+      console.log('Cannot end turn: not my turn');
       return;
     }
-
 
     console.log('Ending turn...');
     try {
