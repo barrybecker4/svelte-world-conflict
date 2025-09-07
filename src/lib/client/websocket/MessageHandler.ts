@@ -4,6 +4,7 @@
 export class MessageHandler {
     private callbacks: {
         gameUpdate?: (data: any) => void;
+        gameStarted?: (data: any) => void;
         playerJoined?: (data: any) => void;
         gameEnded?: (data: any) => void;
         error?: (error: string) => void;
@@ -29,6 +30,10 @@ export class MessageHandler {
 
                 case 'gameUpdate':
                     this.callbacks.gameUpdate?.(message.data);
+                    break;
+
+                case 'gameStarted':
+                    this.callbacks.gameStarted?.(message.data);
                     break;
 
                 case 'playerJoined':
@@ -69,6 +74,10 @@ export class MessageHandler {
      */
     onGameUpdate(callback: (data: any) => void): void {
         this.callbacks.gameUpdate = callback;
+    }
+
+    onGameStarted(callback: (data: any) => void): void {
+        this.callbacks.gameStarted = callback;
     }
 
     onPlayerJoined(callback: (data: any) => void): void {

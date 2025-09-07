@@ -123,7 +123,6 @@ function setupWebSocketCallbacks(): void {
 
     wsClient.onGameUpdate((data) => {
         console.log('🎮 Game update received:', data);
-
         const currentState = multiplayerActions.getConnectionInfo();
 
         gameUpdates.set({
@@ -134,9 +133,20 @@ function setupWebSocketCallbacks(): void {
         });
     });
 
+    wsClient.onGameStarted((data) => {
+            console.log('🎮 Game Started received:', data);
+            const currentState = multiplayerActions.getConnectionInfo();
+
+            gameUpdates.set({
+                type: 'gameStarted',
+                gameId: currentState.gameId || '',
+                data,
+                timestamp: Date.now()
+            });
+        });
+
     wsClient.onPlayerJoined((data) => {
         console.log('👥 Player joined:', data);
-
         const currentState = multiplayerActions.getConnectionInfo();
 
         gameUpdates.set({

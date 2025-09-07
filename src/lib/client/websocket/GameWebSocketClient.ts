@@ -124,6 +124,10 @@ export class GameWebSocketClient {
         this.messageHandler.onGameUpdate(callback);
     }
 
+    onGameStarted(callback: (data: any) => void): void {
+        this.messageHandler.onGameStarted(callback);
+    }
+
     onPlayerJoined(callback: (data: any) => void): void {
         this.messageHandler.onPlayerJoined(callback);
     }

@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ platform }) => {
           (now - game.createdAt) >= OLD_GAMES_THRESHOLD
         );
 
-        cleanupOldGames(expiredGames);
+        cleanupOldGames(expiredGames, gameStorage);
         const openGames = getOpenGames(validGames, now);
         return json(openGames);
 
@@ -46,7 +46,7 @@ function getOpenGames(validGames, now: number) {
 }
 
 // Clean up expired games from storage (helps keep storage clean)
-async function cleanupOldGames(expiredGames) {
+async function cleanupOldGames(expiredGames, gameStorage: GameStorage) {
     if (expiredGames.length > 0) {
         console.log(`Cleaning up ${expiredGames.length} expired games from storage`);
         for (const expiredGame of expiredGames) {

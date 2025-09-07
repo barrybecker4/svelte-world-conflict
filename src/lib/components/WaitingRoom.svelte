@@ -28,11 +28,18 @@
     }
 
     checkIfCreator();
-    setupRealtimeUpdates();
+    await setupRealtimeUpdates();
 
-    // Refresh game state periodically as backup
-    const interval = setInterval(loadGameState, 5000);
-    return () => clearInterval(interval);
+    // Refresh game state periodically only as backup
+    if (!wsConnected) {
+      console.log('wsConnected filed to connect! Falling back to polling');
+      pollInterval = setInterval(() => {
+          if (!wsConnected) {
+            loadGameState();
+          }
+      }, 5000);
+      return () => clearInterval(interval);
+    }
   });
 
   async function setupRealtimeUpdates() {
@@ -40,33 +47,42 @@
 
     try {
       // Dynamic import to avoid SSR issues
-      const { multiplayerActions, gameUpdates } = await import('$lib/client/stores/multiplayerStore');
+      const { multiplayerActions, gameUpdates, multiplayerState } = await import('$lib/client/stores/multiplayerStore');
+
+      // Monitor connection state changes
+      const stateUnsubscribe = multiplayerState.subscribe(state => {
+        wsConnected = state.isConnected;
+        if (state.lastError) {
+          console.error(`WebSocket error: ${state.lastError}`);
+        }
+      });
 
       // Connect to WebSocket for this specific game
       await multiplayerActions.connectToGame(gameId);
-      wsConnected = true;
-      console.log(`🔌 Connected to WebSocket for game ${gameId}`);
+      console.log(`WebSocket connected for game ${gameId}`);
 
       // Subscribe to game updates
-      const unsubscribe = gameUpdates.subscribe(update => {
+      const gameUnsubscribe = gameUpdates.subscribe(update => {
         if (update && update.gameId === gameId) {
-          console.log(`🔄 Real-time update for game ${gameId}:`, update.type);
+          console.log(`📨 Real-time update for game ${gameId}:`, {
+            type: update.type,
+            data: update.data,
+            timestamp: new Date().toISOString()
+          });
 
           if (update.type === 'playerJoined' || update.type === 'gameUpdate') {
+            console.log(`🔄 Triggering game state reload due to ${update.type}`);
             loadGameState();
           } else if (update.type === 'gameStarted') {
-            console.log('🚀 Game started - redirecting...');
-            // Game has started, trigger navigation
+            console.log('🚀 Game started - dispatching event...');
             dispatch('gameStarted', { gameId });
           }
         }
       });
 
-      // Cleanup function
-      return () => {
-        unsubscribe();
-        multiplayerActions.disconnect();
-        wsConnected = false;
+      return () => {   // Cleanup
+        stateUnsubscribe();
+        gameUnsubscribe();
       };
     } catch (error) {
       console.log('Real-time updates not available:', error.message);
@@ -76,24 +92,29 @@
 
   async function loadGameState() {
     try {
+      console.log(`🔄 Loading game state for ${gameId}...`);
+
       const response = await fetch(`/api/game/${gameId}`);
-      if (response.ok) {
-        const result = await response.json();
-        game = result.game;
 
-        // Check if game has started
-        if (game?.status === 'ACTIVE') {
-          console.log('🚀 Game is active - triggering gameStarted event');
-          dispatch('gameStarted', { gameId });
-          return;
-        }
-
-        checkIfCreator();
-        console.log('📊 Game state updated:', game);
-      } else {
-        error = 'Failed to load game state';
-        setTimeout(() => error = null, 3000);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`Failed to load game state: ${response.status}`, errorData);
+        error = `Failed to load game: ${errorData.error || response.statusText}`;
+        return; // Don't update game state on error
       }
+
+      const gameData = await response.json();
+      console.log(`📥 Received game data:`, {
+        gameId: gameData?.gameId,
+        status: gameData?.status,
+        playersLength: gameData?.players?.length,
+        hasConfig: !!(gameData?.pendingConfiguration || gameData?.configuration),
+        fullData: gameData
+      });
+
+      console.log(`✅ Game state updated successfully`);
+      game = gameData;
+      error = null; // Clear any previous errors
     } catch (err) {
       console.error('❌ Error loading game state:', err);
       error = 'Network error loading game';
