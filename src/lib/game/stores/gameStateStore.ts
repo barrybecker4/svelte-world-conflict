@@ -3,7 +3,7 @@ import { turnManager } from '$lib/game/classes/TurnManager';
 import { MoveSystem } from '$lib/game/classes/MoveSystem';
 
 /**
- * Store for managing game state loading, initialization, and updates
+ * Svelte Store for managing game state loading, initialization, and updates
  * Extracts game state management logic from WorldConflictGame component
  */
 export function createGameStateStore(gameId, playerId, playerIndex) {
