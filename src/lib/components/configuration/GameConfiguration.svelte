@@ -11,7 +11,7 @@
 
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-  import { loadPlayerName, savePlayerName } from '$lib/game/stores/clientStorage';
+  import { loadPlayerName, savePlayerName } from '$lib//client/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
 

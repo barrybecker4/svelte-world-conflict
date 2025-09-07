@@ -5,7 +5,7 @@
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
-  import { useAudio } from '$lib/game/audio/useAudio';
+  import { useAudio } from '$lib/client/audio/useAudio';
   import AudioButton from '$lib/components/configuration/AudioButton.svelte';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 

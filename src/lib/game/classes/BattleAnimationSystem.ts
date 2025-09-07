@@ -1,5 +1,5 @@
 import type { AttackEvent } from '$lib/game/classes/AttackSequenceGenerator';
-import { audioSystem } from '$lib/game/audio/AudioSystem';
+import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/game/constants';
 
 export interface FloatingTextEvent {

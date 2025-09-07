@@ -6,7 +6,7 @@
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import { loadGameCreator } from '$lib/game/stores/clientStorage';
+  import { loadGameCreator } from '$lib//client/stores/clientStorage';
 
   let gameState = 'loading'; // 'loading', 'waiting', 'playing', 'error'
   let game = null;

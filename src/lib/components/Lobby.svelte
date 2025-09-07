@@ -4,7 +4,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
-  import { saveGameCreator } from '$lib/game/stores/clientStorage';
+  import { saveGameCreator } from '$lib//client/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
 
@@ -28,7 +28,7 @@
 
     try {
       // Dynamic import to avoid SSR issues
-      const { multiplayerActions, gameUpdates } = await import('$lib/game/stores/multiplayerStore');
+      const { multiplayerActions, gameUpdates } = await import('$lib//client/stores/multiplayerStore');
 
       // Connect to WebSocket for real-time lobby updates
       await multiplayerActions.connectToGame('lobby');
