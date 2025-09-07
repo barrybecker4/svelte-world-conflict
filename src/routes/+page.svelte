@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import GameInstructions from '$lib/components/GameInstructions.svelte';
+  import GameInstructions from '$lib/components/modals/GameInstructionsModal.svelte';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
   import Lobby from '$lib/components/Lobby.svelte';
   import { useAudio } from '$lib/game/audio/useAudio';

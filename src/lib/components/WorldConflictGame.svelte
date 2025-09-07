@@ -2,9 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import GameMap from './map/GameMap.svelte';
-  import SoldierSelectionModal from './SoldierSelectionModal.svelte';
-  import GameInstructions from './GameInstructions.svelte';
-  import GameSummaryModal from './GameSummaryModal.svelte';
+  import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
+  import GameInstructions from './modals/GameInstructionsModal.svelte';
+  import GameSummaryModal from './modals/GameSummaryModal.svelte';
   import LoadingState from './ui/LoadingState.svelte';
   import Button from './ui/Button.svelte';
   import Banner from './ui/Banner.svelte';
