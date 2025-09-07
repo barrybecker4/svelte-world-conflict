@@ -1,5 +1,5 @@
 import { KVStorage } from './KVStorage';
-import type { Player, GameStateData } from '$lib/game/classes/GameState';
+import type { Player, GameStateData } from '$lib/game/state/GameState';
 import type { PlayerSlotType } from '$lib/game/classes/PlayerSlot';
 
 export interface GameRecord {

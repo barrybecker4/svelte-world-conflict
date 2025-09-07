@@ -1,4 +1,4 @@
-import type { Region } from '$lib/game/classes/GameState';
+import type { Region } from '$lib/game/state/GameState';
 import { RegionMap } from '$lib/game/map/RegionMap';
 import { Bounds } from '$lib/game/map/Bounds.ts';
 import { PositionSet } from '$lib/game/map/PositionSet';

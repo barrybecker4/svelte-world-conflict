@@ -1,4 +1,4 @@
-import { SOUNDS, type SoundType } from '$lib/game/constants';
+import { SOUNDS, type SoundType } from './sounds';
 
 /**
  * Audio system for World Conflict game

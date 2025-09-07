@@ -5,7 +5,7 @@
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
   import Lobby from '$lib/components/Lobby.svelte';
   import { useAudio } from '$lib/client/audio/useAudio';
-  import { saveGameCreator } from '$lib//client/stores/clientStorage';
+  import { saveGameCreator } from '$lib/client/stores/clientStorage';
 
   let showInstructions = true; // Auto-show on load
   let showLobby = false;

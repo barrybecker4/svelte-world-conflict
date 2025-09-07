@@ -3,7 +3,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
-  import type { Player, GameStateData } from '$lib/game/classes/GameState';
+  import type { Player, GameStateData } from '$lib/game/state/GameState';
 
   export let gameState: GameStateData;
   export let players: Player[];

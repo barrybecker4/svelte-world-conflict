@@ -1,4 +1,4 @@
-import type { Player } from '$lib/game/classes/GameState';
+import type { Player } from '$lib/game/state/GameState';
 
 // Update with your deployed worker URL. i.e. replace "barrybecker4", with your username, if needed.
 export const WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';

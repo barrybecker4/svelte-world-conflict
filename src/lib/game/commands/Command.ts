@@ -3,7 +3,7 @@ import {
     type Player,
     type Soldier,
     GameState
-} from "$lib/game/classes/GameState.ts";
+} from "$lib/game/state/GameState.ts";
 
 
 export interface ValidationResult {

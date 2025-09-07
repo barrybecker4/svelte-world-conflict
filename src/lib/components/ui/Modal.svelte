@@ -34,8 +34,10 @@
   <div
     class="modal-backdrop"
     on:click={handleBackdropClick}
-    on:keydown={(e) => e.key === 'Enter' && handleBackdropClick()}
-    role="presentation"
+    on:keydown={(e) => e.key === 'Escape' && handleClose()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
   >
     <div
       class="modal-wrapper"

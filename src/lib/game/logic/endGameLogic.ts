@@ -1,5 +1,5 @@
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import type { GameStateData, Player } from '$lib/game/classes/GameState';
+import type { GameStateData, Player } from '$lib/game/state/GameState';
 
 export interface GameEndResult {
   isGameEnded: boolean;

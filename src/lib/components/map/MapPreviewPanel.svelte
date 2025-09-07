@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { MapGenerator } from '$lib/game/map/MapGenerator';
-  import { GameStateInitializer } from '$lib/game/initialization/GameStateInitializer';
+  import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
   import GameMap from '$lib/components/map/GameMap.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';

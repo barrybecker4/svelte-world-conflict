@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GameStateData, Player } from '$lib/game/classes/GameState';
+  import type { GameStateData, Player } from '$lib/game/state/GameState';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';

@@ -11,7 +11,7 @@
   import type { MoveState } from '$lib/game/moveTypes';
   import { MoveSystem } from '$lib/game/classes/MoveSystem';
   import { GameWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
-  import { createGameStateStore } from '$lib//client/stores/gameStateStore.js';
+  import { createGameStateStore } from '$lib/client/stores/gameStateStore.js';
   import { BattleManager, type BattleMove } from '$lib/game/classes/BattleManager';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { checkGameEnd, type GameEndResult } from '$lib/game/logic/endGameLogic';

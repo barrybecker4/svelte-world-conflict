@@ -1,5 +1,5 @@
 import type { Region } from '$lib/game/classes/Region';
-import type { Player } from '$lib/game/classes/GameState';
+import type { Player } from '$lib/game/state/GameState';
 
 export interface HomeBaseAssignment {
     playerIndex: number;

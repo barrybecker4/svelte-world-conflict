@@ -1,7 +1,7 @@
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitions';
-import { GameStateInitializer } from '$lib/game/initialization/GameStateInitializer';
+import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
 import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/validation';
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
 import { Regions } from '$lib/game/classes/Regions';

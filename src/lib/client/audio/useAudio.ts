@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import { audioSystem } from './AudioSystem';
-import { SOUNDS, type SoundType } from '$lib/game/constants';
+import { SOUNDS, type SoundType } from './sounds';
 
 interface AudioState {
   isEnabled: boolean;
