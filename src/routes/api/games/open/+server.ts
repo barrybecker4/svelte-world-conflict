@@ -32,7 +32,6 @@ export const GET: RequestHandler = async ({ platform }) => {
     }
 };
 
-
 function getOpenGames(validGames, now: number) {
   return validGames.map(game => ({
        gameId: game.gameId,
