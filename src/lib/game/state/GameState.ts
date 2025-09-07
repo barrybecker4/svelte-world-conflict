@@ -1,4 +1,4 @@
-import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
+import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitions';
 import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';

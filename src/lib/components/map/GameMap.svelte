@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Region, Player, GameStateData } from '$lib/game/gameTypes';
+  import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
   import Temple from './Temple.svelte';
   import Army from './Army.svelte';  // Add this import
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';

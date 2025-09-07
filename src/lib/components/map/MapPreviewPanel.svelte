@@ -6,7 +6,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/entities/Region';
-  import type { GameStateData, Player, PlayerSlot } from '$lib/game/gameTypes';
+  import type { GameStateData, Player, PlayerSlot } from '$lib/game/entities/gameTypes';
 
   export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
   export let playerCount = 4;

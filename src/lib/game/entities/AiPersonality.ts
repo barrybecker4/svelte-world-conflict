@@ -3,7 +3,7 @@
  * Defines how AI players behave in the game
  */
 import { UPGRADES } from '$lib/game/constants/upgradeDefinitions';
-import { type AiLevel } from '$lib/game/constants/aiPersonalities';
+import { type AiLevel } from './aiPersonalities';
 
 export interface AiPersonalityData {
     name: string;

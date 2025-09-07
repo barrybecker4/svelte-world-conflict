@@ -1,5 +1,5 @@
 import type { ValidationResult } from '$lib/game/types/validation';
-import type { GameStateData } from '$lib/game/gameTypes';
+import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export class GameStateValidator {

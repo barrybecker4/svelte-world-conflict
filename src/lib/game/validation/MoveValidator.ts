@@ -1,5 +1,5 @@
 import type { MoveValidationResult } from '$lib/game/types/validation';
-import type { GameStateData } from '$lib/game/gameTypes';
+import type { GameStateData } from '$lib/game/entities/gameTypes';
 
 export class MoveValidator {
     /**

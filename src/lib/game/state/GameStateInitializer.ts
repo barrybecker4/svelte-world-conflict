@@ -1,5 +1,5 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
-import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
+import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { Regions } from '$lib/game/entities/Regions';
 
