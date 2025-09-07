@@ -41,7 +41,9 @@ function getOpenGames(validGames, now: number) {
        maxPlayers: GAME_CONSTANTS.MAX_PLAYERS,
        createdAt: game.createdAt,
        gameType: game.gameType || 'MULTIPLAYER',
-       timeRemaining: Math.max(0, OLD_GAMES_THRESHOLD - (now - game.createdAt)) // Time until expiration
+       timeRemaining: Math.max(0, OLD_GAMES_THRESHOLD - (now - game.createdAt)), // Time until expiration
+       pendingConfiguration: game.pendingConfiguration,
+       players: game.players
   }));
 }
 
@@ -59,4 +61,3 @@ async function cleanupOldGames(expiredGames, gameStorage: GameStorage) {
         }
     }
 }
-
