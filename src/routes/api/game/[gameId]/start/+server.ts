@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
-import { Region } from '$lib/game/classes/Region';
+import { Region } from '$lib/game/entities/Region';
 import { getErrorMessage } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';

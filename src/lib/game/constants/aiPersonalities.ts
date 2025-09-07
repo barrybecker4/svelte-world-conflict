@@ -1,5 +1,5 @@
 import { UPGRADES_BY_NAME } from "$lib/game/constants/upgradeDefinitions";
-import type { AiPersonalityData } from "$lib/game/classes/AiPersonality";
+import type { AiPersonalityData } from "$lib/game/entities/AiPersonality";
 
 export type AiLevel = typeof AI_LEVELS[keyof typeof AI_LEVELS];
 

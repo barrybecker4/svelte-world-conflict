@@ -1,7 +1,7 @@
 import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { Regions } from '$lib/game/classes/Regions';
+import { Regions } from '$lib/game/entities/Regions';
 
 interface Assignment {
   playerIndex: number;

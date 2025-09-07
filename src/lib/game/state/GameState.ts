@@ -4,7 +4,7 @@ import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitio
 import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
 import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/validation';
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
-import { Regions } from '$lib/game/classes/Regions';
+import { Regions } from '$lib/game/entities/Regions';
 
 export class GameState {
     public state: GameStateData;

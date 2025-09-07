@@ -1,5 +1,5 @@
-import type { Region } from '$lib/game/classes/Region';
-import type { Regions } from '$lib/game/classes/Regions';
+import type { Region } from '$lib/game/entities/Region';
+import type { Regions } from '$lib/game/entities/Regions';
 
 export interface GameSettings {
     mapSize: 'Small' | 'Medium' | 'Large';

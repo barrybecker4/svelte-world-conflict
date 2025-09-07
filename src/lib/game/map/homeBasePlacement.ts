@@ -1,4 +1,4 @@
-import type { Region } from '$lib/game/classes/Region';
+import type { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/state/GameState';
 
 export interface HomeBaseAssignment {

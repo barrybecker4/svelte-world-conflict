@@ -1,4 +1,4 @@
-import { Region } from "$lib/game/classes/Region";
+import { Region } from "$lib/game/entities/Region";
 import { RegionMap } from "$lib/game/map/RegionMap";
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants";
 
