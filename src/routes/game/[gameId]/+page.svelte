@@ -7,6 +7,8 @@
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { loadGameCreator } from '$lib/client/stores/clientStorage';
+  import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS } from '$lib/client/audio/sounds';
 
   let gameState = 'loading'; // 'loading', 'waiting', 'playing', 'error'
   let game = null;
@@ -72,6 +74,20 @@
     console.log('🚪 Player left game');
     goto('/');
   }
+
+  async function testGameSounds() {
+    const sounds = ['GAME_CREATED', 'GAME_STARTED', 'SOLDIERS_MOVE', 'ATTACK', 'REGION_CONQUERED', 'GAME_WON', 'GAME_LOST', 'SOLDIERS_RECRUITED', 'TEMPLE_UPGRADED'];
+
+    for (const sound of sounds) {
+      console.log(`🔊 Playing: ${sound}`);
+      await audioSystem.playSound(SOUNDS[sound]);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
+    window.testGameSounds = testGameSounds;
+  }
 </script>
 
 <LoadingState
@@ -101,5 +117,13 @@
       playerId={currentPlayer.playerId}
       playerIndex={currentPlayer.playerIndex}
     />
+  {/if}
+  {#if import.meta.env.DEV}
+    <button
+      on:click={testGameSounds}
+      style="position: fixed; top: 10px; right: 10px; z-index: 1000; background: orange; color: white; padding: 8px; border: none; border-radius: 4px;"
+    >
+      🎵 Test Sounds
+    </button>
   {/if}
 </LoadingState>

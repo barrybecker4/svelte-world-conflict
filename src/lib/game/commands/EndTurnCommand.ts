@@ -27,7 +27,7 @@ export class EndTurnCommand extends Command {
 
     execute(): GameState {
         this.previousState = this.gameState;
-        const newState = this.gameState.copy() as GameState;;
+        const newState = this.gameState.copy() as GameState;
 
         const beforeFaith = newState.state.faithByPlayer[this.player.index] || 0;
         const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");

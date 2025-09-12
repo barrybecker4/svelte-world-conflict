@@ -4,6 +4,8 @@
   import Panel from '$lib/components/ui/Panel.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import type { Player, GameStateData } from '$lib/game/state/GameState';
+  import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS } from '$lib/client/audio/sounds';
 
   export let gameState: GameStateData;
   export let players: Player[];
@@ -32,6 +34,18 @@
 
   $: playerStats = calculatePlayerStats();
   $: gameEndReason = getGameEndReason();
+
+  onMount(async () => {
+    if (winner) {
+        const localPlayer = gameState.getLocalPlayer();
+
+        if (winner.index === localPlayer.index) {
+            await audioSystem.playSound(SOUNDS.GAME_WON);
+        } else {
+            await audioSystem.playSound(SOUNDS.GAME_LOST);
+        }
+    }
+  });
 
   function calculatePlayerStats(): PlayerStats[] {
     if (!gameState || !players.length) return [];

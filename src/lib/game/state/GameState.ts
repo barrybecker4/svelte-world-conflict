@@ -183,22 +183,6 @@ export class GameState {
         );
     }
 
-    removeSoldiers(regionIndex: number, count: number): any[] {
-        const soldiers = this.soldiersAtRegion(regionIndex);
-        return soldiers.splice(0, Math.min(count, soldiers.length));
-    }
-
-    moveSoldiers(fromRegion: number, toRegion: number, count: number): boolean {
-        const fromSoldiers = this.soldiersAtRegion(fromRegion);
-        if (fromSoldiers.length < count) return false;
-
-        const movedSoldiers = fromSoldiers.splice(0, count);
-        const toSoldiers = this.soldiersAtRegion(toRegion);
-        toSoldiers.push(...movedSoldiers);
-
-        return true;
-    }
-
     advanceToNextPlayer(): void {
         this.state.playerIndex = (this.state.playerIndex + 1) % this.state.players.length;
         this.state.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN;

@@ -4,6 +4,8 @@
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { loadGameCreator, removeGameCreator } from '$lib/client/stores/clientStorage';
+  import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS } from '$lib/client/audio/sounds';
 
   const dispatch = createEventDispatcher();
 
@@ -143,6 +145,7 @@
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Game started successfully');
+        await audioSystem.playSound(SOUNDS.GAME_STARTED);
         dispatch('gameStarted', { gameId });
       } else {
         const errorData = await response.json();

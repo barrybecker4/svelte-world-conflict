@@ -5,6 +5,8 @@
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
   import Lobby from '$lib/components/Lobby.svelte';
   import { useAudio } from '$lib/client/audio/useAudio';
+  import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS } from '$lib/client/audio/sounds';
   import { saveGameCreator } from '$lib/client/stores/clientStorage';
 
   let showInstructions = true; // Auto-show on load
@@ -32,6 +34,8 @@
     if (response.ok) {
       const result = await response.json();
       const player = result.player || { index: 0, name: humanPlayer.name };
+
+      await audioSystem.playSound(SOUNDS.GAME_CREATED);
 
       saveGameCreator(result.gameId, {
         playerId: player.index.toString(),  // Use player index as string

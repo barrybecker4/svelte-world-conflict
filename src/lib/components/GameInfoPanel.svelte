@@ -195,12 +195,6 @@
     display: flex;
   }
 
-  /* Turn box - component-specific styling */
-  .turn-section :global(.section-content) {
-    display: flex;
-    justify-content: center;
-  }
-
   .turn-box {
     background: linear-gradient(135deg, var(--color-warning, #fbbf24), #f59e0b);
     color: var(--color-gray-900, #1f2937);
@@ -219,11 +213,6 @@
   .turn-number {
     font-size: var(--text-xl, 1.3rem);
     font-weight: var(--font-extrabold, 900);
-  }
-
-  .turn-progress {
-    font-size: var(--text-sm, 0.85rem);
-    opacity: 0.8;
   }
 
   /* Player cards */

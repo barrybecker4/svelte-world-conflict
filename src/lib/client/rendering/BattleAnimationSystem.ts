@@ -178,44 +178,53 @@ export class BattleAnimationSystem {
   }
 
   async playSoundCue(soundCue: string): Promise<void> {
-    console.log('Playing sound cue:', soundCue);
+      console.log('Playing sound cue:', soundCue);
 
-    try {
-      // Map sound cues to our audio system
-      switch (soundCue.toLowerCase()) {
-        case 'attack':
-        case 'combat':
-        case 'battle':
-          await audioSystem.playAttackSequence();
-          break;
-        case 'move':
-          await audioSystem.playSound(SOUNDS.MOVE);
-          break;
-        case 'victory':
-        case 'win':
-          await audioSystem.playVictoryFanfare();
-          break;
-        case 'defeat':
-        case 'lose':
-          await audioSystem.playDefeatSound();
-          break;
-        case 'income':
-          await audioSystem.playSound(SOUNDS.INCOME);
-          break;
-        case 'upgrade':
-          await audioSystem.playSound(SOUNDS.UPGRADE);
-          break;
-        case 'start':
-          await audioSystem.playSound(SOUNDS.START);
-          break;
-        default:
-          // Try to play as a standard sound type
-          await audioSystem.playSound(soundCue as any);
-          break;
+      try {
+          switch (soundCue.toLowerCase()) {
+              case 'attack':
+              case 'combat':
+              case 'battle':
+                  await audioSystem.playSound(SOUNDS.ATTACK);
+                  await audioSystem.playAttackSequence();
+                  break;
+              case 'move':
+                  await audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
+                  break;
+              case 'conquest':
+              case 'conquered':
+                  await audioSystem.playSound(SOUNDS.REGION_CONQUERED);
+                  break;
+              case 'victory':
+              case 'win':
+                  await audioSystem.playVictoryFanfare();
+                  await audioSystem.playSound(SOUNDS.GAME_WON);
+                  break;
+              case 'defeat':
+              case 'lose':
+                  await audioSystem.playSound(SOUNDS.GAME_LOST);
+                  break;
+              case 'recruit':
+              case 'soldiers':
+                  await audioSystem.playSound(SOUNDS.SOLDIERS_RECRUITED);
+                  break;
+              case 'upgrade':
+                  await audioSystem.playSound(SOUNDS.TEMPLE_UPGRADED);
+                  break;
+              case 'start':
+                  await audioSystem.playSound(SOUNDS.GAME_STARTED);
+                  break;
+              case 'created':
+                  await audioSystem.playSound(SOUNDS.GAME_CREATED);
+                  break;
+              default:
+                  // Fallback to existing logic
+                  await audioSystem.playSound(soundCue as any);
+                  break;
+          }
+      } catch (error) {
+          console.warn(`Could not play sound cue "${soundCue}":`, error);
       }
-    } catch (error) {
-      console.warn(`Could not play sound cue "${soundCue}":`, error);
-    }
   }
 
   delay(ms: number): Promise<void> {
