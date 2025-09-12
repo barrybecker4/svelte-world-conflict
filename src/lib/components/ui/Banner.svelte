@@ -3,6 +3,7 @@
   import { fade, scale } from 'svelte/transition';
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
   import type { Player } from '$lib/game/state/GameState';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   export let player: Player;
   export let isVisible: boolean = true;
@@ -12,24 +13,31 @@
   let animationComplete = false;
 
   onMount(() => {
-    // Auto-dismiss after animation completes
     const timer = setTimeout(() => {
       animationComplete = true;
       onComplete();
-    }, 2000);
+    }, GAME_CONSTANTS.BANNER_TIME);
 
     return () => clearTimeout(timer);
   });
 
   $: playerColor = getPlayerColor(player.index);
   $: isAI = player.type === 'AI';
+
+  function skipBanner() {
+    animationComplete = true;
+    onComplete();
+  }
 </script>
 
 {#if isVisible && !animationComplete}
   <div class="turn-banner-overlay"
        transition:fade={{ duration: 300 }}
        bind:this={bannerElement}
-       on:click={() => { animationComplete = true; onComplete(); }}>
+       on:click={skipBanner}
+       on:keydown={(e) => e.key === 'Enter' && skipBanner()}
+       role="button"
+       tabindex="0">
     <div class="turn-banner"
          transition:scale={{ duration: 600, start: 0.3 }}
          style="--player-color: {playerColor}">
@@ -43,6 +51,9 @@
         <div class="player-indicator" style="background-color: {playerColor}"></div>
         <div class="banner-subtitle">
           {isAI ? 'AI is thinking...' : 'Your move!'}
+        </div>
+        <div class="skip-hint">
+          Click to continue
         </div>
       </div>
       <div class="banner-effects">
@@ -63,8 +74,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.3); /* Not too opaque */
+    backdrop-filter: blur(1px); /* Not too much blurring */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -132,6 +143,15 @@
     color: #94a3b8;
     font-weight: 500;
     letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+
+  .skip-hint {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 400;
+    margin-top: 0.5rem;
+    opacity: 0.8;
   }
 
   .banner-effects {

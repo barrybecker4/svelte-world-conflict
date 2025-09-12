@@ -17,6 +17,7 @@ export const GAME_CONSTANTS = {
     MOVE_DELAY: 500,
     PLAYBACK_DELAY: 1000,
     AI_THINK_TIME: 2000,
+    BANNER_TIME: 2000,
 
     // Combat
     COMBAT_DICE_SIDES: 6,
