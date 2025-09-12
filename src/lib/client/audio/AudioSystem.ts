@@ -18,6 +18,7 @@ export class AudioSystem {
         [SOUNDS.START]: { frequency: 440, duration: 0.3, type: 'sine' as OscillatorType },
         [SOUNDS.MOVE]: { frequency: 220, duration: 0.1, type: 'sine' as OscillatorType },
         [SOUNDS.ATTACK]: { frequency: 150, duration: 0.2, type: 'square' as OscillatorType },
+        [SOUNDS.COMBAT]: { frequency: 185, duration: 0.25, type: 'square' as OscillatorType },
         [SOUNDS.VICTORY]: { frequency: 523, duration: 0.5, type: 'sine' as OscillatorType },
         [SOUNDS.DEFEAT]: { frequency: 200, duration: 0.8, type: 'sawtooth' as OscillatorType },
         [SOUNDS.INCOME]: { frequency: 330, duration: 0.2, type: 'sine' as OscillatorType },
@@ -27,7 +28,7 @@ export class AudioSystem {
         [SOUNDS.GAME_CREATED]: { frequency: 392, duration: 0.4, type: 'sine' as OscillatorType }, // G4 - welcoming
         [SOUNDS.GAME_STARTED]: { frequency: 523, duration: 0.6, type: 'triangle' as OscillatorType }, // C5 - exciting start
         [SOUNDS.SOLDIERS_MOVE]: { frequency: 294, duration: 0.15, type: 'sine' as OscillatorType }, // D4 - marching sound
-        [SOUNDS.ATTACK]: { frequency: 185, duration: 0.25, type: 'square' as OscillatorType }, // F#3 - aggressive
+
         [SOUNDS.REGION_CONQUERED]: { frequency: 659, duration: 0.4, type: 'triangle' as OscillatorType }, // E5 - triumphant
         [SOUNDS.GAME_WON]: { frequency: 784, duration: 0.8, type: 'sine' as OscillatorType }, // G5 - very triumphant
         [SOUNDS.GAME_LOST]: { frequency: 147, duration: 1.0, type: 'sawtooth' as OscillatorType }, // D3 - sad/low

@@ -45,48 +45,25 @@ export class BattleAnimationSystem {
   }
 
   async playAttackSequence(attackSequence: AttackEvent[], regions: any[]): Promise<void> {
-    console.log('🎬 Playing attack sequence:', attackSequence);
+    console.log('Playing attack sequence:', attackSequence);
 
     // Check if we have a map container
     if (!this.mapContainer) {
-      console.warn('No map container available, cannot show animations');
-      // Just log what would have been shown and play sounds
-      attackSequence.forEach((event, index) => {
-        if (event.floatingText) {
-          console.log(`Event ${index + 1}:`, event.floatingText);
-        }
-        if (event.soundCue) {
-          console.log(`Sound cue: ${event.soundCue}`);
-        }
-      });
-
-      // Still play audio even without visuals
-      for (const event of attackSequence) {
-        if (event.soundCue) {
-          await this.playSoundCue(event.soundCue);
-        }
-        if (event.delay) {
-          await this.delay(event.delay);
-        }
-      }
-      return;
+      throw new Error('No map container available, cannot show animations');
     }
 
     for (const event of attackSequence) {
-      // Play floating text if present
-      if (event.floatingText) {
+      if (event.floatingText) {   // Show floating text if present
         for (const textEvent of event.floatingText) {
           this.showFloatingText(textEvent, regions);
         }
       }
 
-      // Play sound cues if present
-      if (event.soundCue) {
+      if (event.soundCue) { // Play sound cues if present
         await this.playSoundCue(event.soundCue);
       }
 
-      // Wait for delay if specified
-      if (event.delay) {
+      if (event.delay) { // Wait for delay if specified
         await this.delay(event.delay);
       }
     }
@@ -183,16 +160,16 @@ export class BattleAnimationSystem {
       try {
           switch (soundCue.toLowerCase()) {
               case 'attack':
+                await audioSystem.playSound(SOUNDS.ATTACK);
+                break;
               case 'combat':
-              case 'battle':
-                  await audioSystem.playSound(SOUNDS.ATTACK);
+                  await audioSystem.playSound(SOUNDS.BATTLE);
                   await audioSystem.playAttackSequence();
                   break;
               case 'move':
                   await audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
                   break;
               case 'conquest':
-              case 'conquered':
                   await audioSystem.playSound(SOUNDS.REGION_CONQUERED);
                   break;
               case 'victory':

@@ -56,7 +56,7 @@
   let showSoldierSelection = false;
   let showInstructions = false;
   let showGameSummary = false; // NEW: Add game summary state
-  let gameEndResult: GameEndResult | null = null; // NEW: Track game end result
+  let gameEndResult: GameEndResult | null = null;
   let soldierSelectionData: {
     maxSoldiers: number;
     currentSelection: number;

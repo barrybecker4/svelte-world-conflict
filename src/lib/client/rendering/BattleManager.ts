@@ -1,4 +1,6 @@
 import { BattleAnimationSystem } from './BattleAnimationSystem';
+import { audioSystem } from '$lib/client/audio/AudioSystem';
+import { SOUNDS } from '$lib/client/audio/sounds';
 
 export interface BattleMove {
   sourceRegionIndex: number;
@@ -46,6 +48,17 @@ export class BattleManager {
     const isEnemyTerritory = targetOwner !== undefined && targetOwner !== playerIndex && targetSoldiers.length > 0;
 
     return isNeutralWithSoldiers || isEnemyTerritory;
+  }
+
+  /**
+   * Main entry point for executing any type of move
+   */
+  async executeMove(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
+    if (this.isBattleRequired(move)) {
+      return this.executeBattle(move, playerId, regions);
+    } else {
+      return this.executePeacefulMove(move, playerId);
+    }
   }
 
   async executeBattle(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
@@ -100,6 +113,7 @@ export class BattleManager {
     });
 
     try {
+      audioSystem.playSound(SOUNDS.MOVE);
       const result = await this.sendMoveToServer(move, playerId);
       console.log('✅ BattleManager: Peaceful move completed successfully');
       return result;
@@ -109,17 +123,6 @@ export class BattleManager {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown move error'
       };
-    }
-  }
-
-  /**
-   * Main entry point for executing any type of move
-   */
-  async executeMove(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
-    if (this.isBattleRequired(move)) {
-      return this.executeBattle(move, playerId, regions);
-    } else {
-      return this.executePeacefulMove(move, playerId);
     }
   }
 

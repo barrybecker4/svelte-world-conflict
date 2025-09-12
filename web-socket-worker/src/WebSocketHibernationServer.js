@@ -108,7 +108,7 @@ export class WebSocketHibernationServer {
     }
 
     handleMessage(sessionId, message) {
-        console.log(`Message from ${sessionId}:`, message.type);
+        console.log(`Message from ${sessionId}:`, JSON.stringify(message));
 
         switch (message.type) {
             case 'subscribe':
