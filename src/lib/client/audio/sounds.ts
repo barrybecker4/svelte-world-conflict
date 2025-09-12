@@ -1,21 +1,29 @@
 export const SOUNDS = {
+    // Game events
     GAME_CREATED: 'created',
     GAME_STARTED: 'start',
-    START: 'start',
-    SOLDIERS_MOVE: 'move',
-    COMBAT: 'combat',
-    ATTACK: 'attack',
-    REGION_CONQUERED: 'conquest',
     GAME_WON: 'victory',
     GAME_LOST: 'defeat',
+
+    // Player actions
+    SOLDIERS_MOVE: 'move',
     SOLDIERS_RECRUITED: 'recruit',
+    ATTACK: 'attack',
+    COMBAT: 'combat',
+    REGION_CONQUERED: 'conquest',
     TEMPLE_UPGRADED: 'upgrade',
-    VICTORY: 'victory',
-    DEFEAT: 'defeat',
+
+    // Economy
     INCOME: 'income',
-    UPGRADE: 'upgrade',
+
+    // Time warnings
     OUT_OF_TIME: 'OUT_OF_TIME',
-    ALMOST_OUT_OF_TIME: 'ALMOST_OUT_OF_TIME'
+    ALMOST_OUT_OF_TIME: 'ALMOST_OUT_OF_TIME',
+
+    // UI sounds
+    CLICK: 'click',
+    HOVER: 'hover',
+    ERROR: 'error'
 } as const;
 
 export type SoundType = typeof SOUNDS[keyof typeof SOUNDS];

@@ -117,7 +117,7 @@ export class AudioSystem {
     /**
      * Play ultimate victory fanfare
      */
-    async playGameWonFanfare(): Promise<void> {
+    async playVictoryFanfare(): Promise<void> {
         if (!this.isEnabled) return;
         
         // Epic victory sequence
@@ -132,7 +132,7 @@ export class AudioSystem {
     /**
      * Play sad defeat sound
      */
-    async playGameLostSound(): Promise<void> {
+    async playDefeatSound(): Promise<void> {
         if (!this.isEnabled) return;
         
         // Descending sad sequence
@@ -380,9 +380,9 @@ export class AudioSystem {
             case SOUNDS.REGION_CONQUERED:
                 return this.playRegionConquered();
             case SOUNDS.GAME_WON:
-                return this.playGameWonFanfare();
+                return this.playVictoryFanfare();
             case SOUNDS.GAME_LOST:
-                return this.playGameLostSound();
+                return this.playDefeatSound();
             case SOUNDS.SOLDIERS_RECRUITED:
                 return this.playSoldiersRecruited();
             case SOUNDS.TEMPLE_UPGRADED:

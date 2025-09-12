@@ -158,46 +158,28 @@ export class BattleAnimationSystem {
       console.log('Playing sound cue:', soundCue);
 
       try {
-          switch (soundCue.toLowerCase()) {
-              case 'attack':
-                await audioSystem.playSound(SOUNDS.ATTACK);
-                break;
-              case 'combat':
-                  await audioSystem.playSound(SOUNDS.BATTLE);
-                  await audioSystem.playAttackSequence();
-                  break;
-              case 'move':
-                  await audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
-                  break;
-              case 'conquest':
-                  await audioSystem.playSound(SOUNDS.REGION_CONQUERED);
-                  break;
-              case 'victory':
-              case 'win':
-                  await audioSystem.playVictoryFanfare();
-                  await audioSystem.playSound(SOUNDS.GAME_WON);
-                  break;
-              case 'defeat':
-              case 'lose':
-                  await audioSystem.playSound(SOUNDS.GAME_LOST);
-                  break;
-              case 'recruit':
-              case 'soldiers':
-                  await audioSystem.playSound(SOUNDS.SOLDIERS_RECRUITED);
-                  break;
-              case 'upgrade':
-                  await audioSystem.playSound(SOUNDS.TEMPLE_UPGRADED);
-                  break;
-              case 'start':
-                  await audioSystem.playSound(SOUNDS.GAME_STARTED);
-                  break;
-              case 'created':
-                  await audioSystem.playSound(SOUNDS.GAME_CREATED);
-                  break;
-              default:
-                  // Fallback to existing logic
-                  await audioSystem.playSound(soundCue as any);
-                  break;
+          // Map sound cues to constants
+          const soundMap: Record<string, SoundType> = {
+              'attack': SOUNDS.ATTACK,
+              'combat': SOUNDS.COMBAT,
+              'move': SOUNDS.SOLDIERS_MOVE,
+              'conquest': SOUNDS.REGION_CONQUERED,
+              'victory': SOUNDS.GAME_WON,
+              'win': SOUNDS.GAME_WON,
+              'defeat': SOUNDS.GAME_LOST,
+              'lose': SOUNDS.GAME_LOST,
+              'recruit': SOUNDS.SOLDIERS_RECRUITED,
+              'soldiers': SOUNDS.SOLDIERS_RECRUITED,
+              'upgrade': SOUNDS.TEMPLE_UPGRADED,
+              'start': SOUNDS.GAME_STARTED,
+              'created': SOUNDS.GAME_CREATED
+          };
+
+          const soundType = soundMap[soundCue.toLowerCase()];
+          if (soundType) {
+              await audioSystem.playSound(soundType);
+          } else {
+              console.warn(`Unknown sound cue: ${soundCue}`);
           }
       } catch (error) {
           console.warn(`Could not play sound cue "${soundCue}":`, error);

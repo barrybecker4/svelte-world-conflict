@@ -79,12 +79,19 @@ export function useAudio() {
   };
 
   // Play UI sounds (click, hover, etc.)
-  const playUISound = async (soundType: 'CLICK' | 'HOVER' | 'ERROR'): Promise<void> => {
-    try {
-      await audioSystem.playSound(soundType);
-    } catch (error) {
-      console.warn(`Failed to play UI sound ${soundType}:`, error);
-    }
+  const playUISound = async (soundType: SoundType): Promise<void> => {
+      // Validate it's a UI sound
+      const uiSounds = [SOUNDS.CLICK, SOUNDS.HOVER, SOUNDS.ERROR];
+      if (!uiSounds.includes(soundType)) {
+          console.warn(`${soundType} is not a UI sound`);
+          return;
+      }
+
+      try {
+          await audioSystem.playSound(soundType);
+      } catch (error) {
+          console.warn(`Failed to play UI sound ${soundType}:`, error);
+      }
   };
 
   // Play special sound sequences
