@@ -93,7 +93,6 @@ export class Bounds {
         const width = this.width;
         const height = this.height;
 
-        console.log(`Creating region ${index} with bounds: left=${left}, top=${top}, width=${width}, height=${height}`);
 
         // Create perturbed border points (like original GAS)
         const points: Array<{x: number, y: number}> = [];
@@ -115,7 +114,6 @@ export class Bounds {
             points[width + height + width + i] = Bounds.perturbPoint(left, top + height - i);
         }
 
-        console.log(`Generated ${points.length} grid points for region ${index}`);
 
         // Convert grid coordinates to pixel coordinates
         const pixelPoints = points.map(point => ({

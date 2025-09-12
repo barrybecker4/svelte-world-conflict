@@ -65,7 +65,7 @@
         // ✅ Log the received data for debugging
         console.log(`✅ Received ${games.length} games:`, games);
 
-        openGames = games;
+        openGames = games.sort((a, b) => b.createdAt - a.createdAt);
 
         // If no games available, automatically go to game configuration
         if (openGames.length === 0 && !loading) {
