@@ -55,7 +55,7 @@
   // UI state
   let showSoldierSelection = false;
   let showInstructions = false;
-  let showGameSummary = false; // NEW: Add game summary state
+  let showGameSummary = false;
   let gameEndResult: GameEndResult | null = null;
   let soldierSelectionData: {
     maxSoldiers: number;
@@ -77,7 +77,7 @@
     checkForGameEnd();
   }
 
-  $: {        // do we need this?
+  $: {
     if (mapContainer && battleManager) {
       battleManager.setMapContainer(mapContainer);
     }
@@ -300,6 +300,9 @@
       console.log('🏁 Game ended:', endResult);
       gameEndResult = endResult;
 
+      // Hide the turn banner immediately when game ends
+      showBanner = false;
+
       // Show summary after a brief delay
       setTimeout(() => {
         showGameSummary = true;
@@ -369,7 +372,7 @@
   }
 </script>
 
-  <!-- Turn Banner Overlay -->
+<!-- Turn Banner Overlay -->
 {#if showBanner && $currentPlayerFromTurnManager}
   <Banner
     player={$currentPlayerFromTurnManager}

@@ -16,7 +16,7 @@
     const timer = setTimeout(() => {
       animationComplete = true;
       onComplete();
-    }, 3000); // Show for 3 seconds
+    }, 2000);
 
     return () => clearTimeout(timer);
   });

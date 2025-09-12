@@ -115,11 +115,7 @@ class TurnManager {
    * Called when the turn banner animation completes
    */
   public onBannerComplete(): void {
-    this.turnState.update(state => ({
-      ...state,
-      bannerComplete: true,
-      showBanner: false
-    }));
+    this.hideBanner();
 
     if (this.onBannerCompleteCallback) {
       this.onBannerCompleteCallback();
