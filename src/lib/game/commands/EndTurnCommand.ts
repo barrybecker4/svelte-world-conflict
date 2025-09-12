@@ -46,17 +46,49 @@ export class EndTurnCommand extends Command {
         }
 
         // Reset turn state
-        newState.movesRemaining = 3;
+        newState.movesRemaining = GAME_CONSTANTS.MAX_MOVES_PER_TURN;
         newState.numBoughtSoldiers = 0;
         newState.conqueredRegions = [];
 
-        // Advance to next player
         const players = newState.players;
-        newState.playerIndex = (newState.playerIndex + 1) % players.length;
 
-        // If back to first player, increment turn
-        if (newState.playerIndex === 0) {
-            newState.turnIndex++;
+        console.log('🔄 EndTurnCommand - Before turn advance:', {
+          'currentPlayerIndex': newState.playerIndex,
+          'currentPlayerName': this.player.name,
+          'players': players.map(p => ({
+            index: p.index,
+            name: p.name,
+            isAI: p.isAI
+          }))
+        });
+
+        // Find current player index in the players array
+        const currentPlayerArrayIndex = players.findIndex(p => p.index === newState.playerIndex);
+
+        if (currentPlayerArrayIndex === -1) {
+          console.error(`Current player index ${newState.playerIndex} not found in players array`);
+          console.error('Available players:', players.map(p => ({ index: p.index, name: p.name })));
+          throw new Error(`Current player index ${newState.playerIndex} not found in players array`);
+        }
+
+        // Get next player in the array (with wraparound)
+        const nextPlayerArrayIndex = (currentPlayerArrayIndex + 1) % players.length;
+        const nextPlayer = players[nextPlayerArrayIndex];
+
+        // Set the actual player index, not the array index
+        newState.playerIndex = nextPlayer.index;
+
+        console.log('🔄 Turn advanced:', {
+          'from': `${this.player.name} (index ${this.player.index})`,
+          'to': `${nextPlayer.name} (index ${nextPlayer.index})`,
+          'arrayPositions': `${currentPlayerArrayIndex} → ${nextPlayerArrayIndex}`,
+          'newPlayerIndex': newState.playerIndex
+        });
+
+        // If back to first player in the array, increment turn
+        if (nextPlayerArrayIndex === 0) {
+          newState.turnIndex++;
+          console.log(`New turn: ${newState.turnIndex}`);
         }
 
         return newState;

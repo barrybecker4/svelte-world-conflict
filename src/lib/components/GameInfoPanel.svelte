@@ -102,7 +102,7 @@
   <!-- Players Section -->
   <Section title="" flex={true} flexDirection="column" gap="8px" customClass="flex-1">
     {#each players as player, index}
-      {@const isActive = index === currentPlayerIndex}
+      {@const isActive = player.index === currentPlayerIndex}
       {@const isAlive = isPlayerAlive(index)}
       {@const regionCount = getRegionCount(index)}
       {@const faithCount = faithByPlayer[index]}
@@ -110,10 +110,10 @@
       <div class="player-box" class:active={isActive}>
         <div
           class="player-color"
-          style="background: linear-gradient(135deg, {getPlayerColor(index)}, {getPlayerEndColor(index)});"
+          style="background: linear-gradient(135deg, {getPlayerColor(player.index)}, {getPlayerEndColor(player.index)});"
         ></div>
         <div class="player-info">
-          <div class="player-name">{player.name || getPlayerConfig(index).defaultName}</div>
+          <div class="player-name">{player.name}</div>
           <div class="player-stats">
             <div class="stat">
               <span class="value">{regionCount}</span>

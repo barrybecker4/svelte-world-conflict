@@ -94,6 +94,14 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
     const isNewTurn = currentState && updatedState.playerIndex !== currentState.playerIndex;
     const isOtherPlayersTurn = updatedState.playerIndex !== playerIndex;
 
+    console.log('🎯 Turn transition check:', {
+      'currentState.playerIndex': currentState?.playerIndex,
+      'updatedState.playerIndex': updatedState.playerIndex,
+      'my playerIndex': playerIndex,
+      'isNewTurn': isNewTurn,
+      'isOtherPlayersTurn': isOtherPlayersTurn
+    });
+
     // Ensure battle states are cleared from server updates
     const cleanState = {
       ...updatedState,
@@ -160,9 +168,15 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
     $gameState?.playerIndex ?? 0
   );
 
-  const currentPlayer = derived([players, currentPlayerIndex], ([$players, $currentPlayerIndex]) =>
-    $players[$currentPlayerIndex]
-  );
+  const currentPlayer = derived([players, currentPlayerIndex], ([$players, $currentPlayerIndex]) => {
+    const player = $players.find(p => p.index === $currentPlayerIndex);
+
+    if (!player) {
+      throw new Exception(`⚠️ Could not find player with index ${$currentPlayerIndex} in players array:`, $players);
+    }
+
+    return player;
+  });
 
   const isMyTurn = derived(currentPlayerIndex, $currentPlayerIndex =>
     $currentPlayerIndex === playerIndex

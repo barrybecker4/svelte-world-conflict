@@ -44,11 +44,18 @@ export class GameStateInitializer {
     }
 
     private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number): GameStateData {
+
+        const sortedPlayers = [...players].sort((a, b) => a.index - b.index);
+        const initialPlayerIndex = players.length > 0 ? players[0].index : 0;
+
+        console.log(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.index})`));
+        console.log(`Setting initial playerIndex to ${initialPlayerIndex}`);
+
         return {
             id: Date.now(),
             gameId,
             turnIndex: 0,
-            playerIndex: 0,
+            playerIndex: initialPlayerIndex,
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             maxTurns: maxTurns || GAME_CONSTANTS.STANDARD_TURN_COUNT, // Add this line
             players: [...players],

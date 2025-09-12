@@ -173,36 +173,6 @@ export class AudioSystem {
     }
 
     /**
-     * Play victory fanfare
-     */
-    async playVictoryFanfare(): Promise<void> {
-        if (!this.isEnabled) return;
-
-        // Play a sequence of ascending tones
-        const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.3, 'sine');
-            }, i * 200);
-        }
-    }
-
-    /**
-     * Play defeat sound
-     */
-    async playDefeatSound(): Promise<void> {
-        if (!this.isEnabled) return;
-
-        // Play a descending tone sequence
-        const notes = [400, 350, 300, 250, 200];
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.2, 'sawtooth');
-            }, i * 150);
-        }
-    }
-
-    /**
      * Play attack sequence with multiple sounds
      */
     async playAttackSequence(): Promise<void> {
