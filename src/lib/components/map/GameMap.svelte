@@ -112,6 +112,7 @@
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
 
+    // gameState.playerIndex is now slot index of current turn player
     const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === gameState.playerIndex;
     const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
     const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;

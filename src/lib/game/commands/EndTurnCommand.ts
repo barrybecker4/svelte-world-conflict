@@ -53,45 +53,52 @@ export class EndTurnCommand extends Command {
         const players = newState.players;
 
         console.log('🔄 EndTurnCommand - Before turn advance:', {
-          'currentPlayerIndex': newState.playerIndex,
+          'currentPlayerSlotIndex': newState.playerIndex, // This is the slot index
           'currentPlayerName': this.player.name,
           'players': players.map(p => ({
-            index: p.index,
+            slotIndex: p.index,
             name: p.name,
             isAI: p.isAI
           }))
         });
 
-        // Find current player index in the players array
-        const currentPlayerArrayIndex = newState.playerIndex;
-
-        if (currentPlayerArrayIndex === -1) {
-          console.error(`Current player index ${newState.playerIndex} not found in players array`);
-          console.error('Available players:', players.map(p => ({ index: p.index, name: p.name })));
-          throw new Error(`Current player index ${newState.playerIndex} not found in players array`);
-        }
-
-        // Get next player in the array (with wraparound)
-        const nextPlayerArrayIndex = (currentPlayerArrayIndex + 1) % players.length;
-        const nextPlayer = players[nextPlayerArrayIndex];
-
-        // Set the actual player index, not the array index
-        newState.playerIndex = nextPlayer.index;
+        const nextSlotIndex = this.getNextActiveSlot(newState.playerIndex, players);
+        newState.playerIndex = nextSlotIndex;
 
         console.log('🔄 Turn advanced:', {
-          'from': `${this.player.name} (index ${this.player.index})`,
-          'to': `${nextPlayer.name} (index ${nextPlayer.index})`,
-          'arrayPositions': `${currentPlayerArrayIndex} → ${nextPlayerArrayIndex}`,
-          'newPlayerIndex': newState.playerIndex
+          'from': `${this.player.name} (slot ${this.player.index})`,
+          'to': `${this.getPlayerBySlot(nextSlotIndex, players)?.name} (slot ${nextSlotIndex})`,
+          'newPlayerSlotIndex': newState.playerIndex
         });
 
-        // If back to first player in the array, increment turn
-        if (nextPlayerArrayIndex === 0) {
+        // Check if we completed a full round (back to first active slot)
+        const activeSlots = this.getActiveSlots(players);
+        if (nextSlotIndex === activeSlots[0]) {
           newState.turnNumber++;
           console.log(`New turn: ${newState.turnNumber}`);
         }
 
         return newState;
+    }
+
+    private getNextActiveSlot(currentSlotIndex: number, players: Player[]): number {
+        const activeSlots = this.getActiveSlots(players);
+        const currentIndex = activeSlots.indexOf(currentSlotIndex);
+
+        if (currentIndex === -1) {
+            throw new Error(`Current slot ${currentSlotIndex} not found in active slots:`, activeSlots);
+        }
+
+        const nextIndex = (currentIndex + 1) % activeSlots.length;
+        return activeSlots[nextIndex];
+    }
+
+    private getActiveSlots(players: Player[]): number[] {
+        return players.map(p => p.index).sort((a, b) => a - b);
+    }
+
+    private getPlayerBySlot(slotIndex: number, players: Player[]): Player | undefined {
+        return players.find(p => p.index === slotIndex);
     }
 
     /**

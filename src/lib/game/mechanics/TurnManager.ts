@@ -1,6 +1,7 @@
 // Manages turn transitions, banners, and highlighting
 import { writable, derived } from 'svelte/store';
 import type { Player, GameStateData } from '$lib/game/state/GameState';
+import { get } from 'svelte/store';
 
 interface TurnState {
   currentPlayerIndex: number;
@@ -57,9 +58,13 @@ class TurnManager {
     this.gameState.set(gameState);
     this.players.set(players);
 
+    // playerIndex is slot index, find the array position
+    const currentPlayer = players.find(p => p.index === gameState.playerIndex);
+    const arrayIndex = currentPlayer ? players.indexOf(currentPlayer) : 0;
+
     this.turnState.update(state => ({
       ...state,
-      currentPlayerIndex: gameState.playerIndex,
+      currentPlayerIndex: arrayIndex, // Store array index for internal use
       turnStartTime: Date.now(),
       bannerComplete: false,
       showBanner: true,
@@ -70,15 +75,19 @@ class TurnManager {
   /**
    * Handle a turn transition to a new player
    */
-  public async transitionToPlayer(newPlayerIndex: number, gameState: GameStateData): Promise<void> {
+  public async transitionToPlayer(newPlayerSlotIndex: number, gameState: GameStateData): Promise<void> {
     return new Promise((resolve) => {
+      this.gameState.set(gameState);
+
+      const newArrayIndex = findArrayIndexForSlot(newPlayerSlotIndex);
+
       this.turnState.update(state => {
-        const isNewTurn = state.currentPlayerIndex !== newPlayerIndex;
+        const isNewTurn = state.currentPlayerIndex !== newArrayIndex;
 
         return {
           ...state,
           previousPlayerIndex: isNewTurn ? state.currentPlayerIndex : state.previousPlayerIndex,
-          currentPlayerIndex: newPlayerIndex,
+          currentPlayerIndex: newArrayIndex, // Array index for internal TurnManager use
           isTransitioning: true,
           showBanner: isNewTurn,
           bannerComplete: !isNewTurn,
@@ -86,21 +95,17 @@ class TurnManager {
         };
       });
 
-      this.gameState.set(gameState);
-
-      // If it's a new turn, wait for banner completion
-      if (this.isNewTurn(newPlayerIndex)) {
-        // Banner will call onBannerComplete when done
-        this.onBannerCompleteCallback = () => {
-          this.completeTurnTransition();
-          resolve();
-        };
-      } else {
-        // No banner needed, complete immediately
-        this.completeTurnTransition();
+      // Resolve after transition delay
+      setTimeout(() => {
         resolve();
-      }
+      }, 100);
     });
+  }
+
+  private findArrayIndexForSlot(slotIndex: number): number {
+    const players = get(this.players);
+    const newPlayer = players.find(p => p.index === slotIndex);
+    return newPlayer ? players.indexOf(newPlayer) : 0;
   }
 
   private onBannerCompleteCallback: (() => void) | null = null;
@@ -144,37 +149,23 @@ class TurnManager {
    * Get regions owned by the current player
    */
   public getCurrentPlayerRegions(): number[] {
-    let gameState: GameStateData | null = null;
-    let currentPlayerIndex: number = 0;
+      let gameState: GameStateData | null = null;
+      let players: Player[] = [];
+      let currentPlayerIndex: number = 0;
 
-    this.gameState.subscribe(state => gameState = state)();
-    this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
+      this.gameState.subscribe(state => gameState = state)();
+      this.players.subscribe(p => players = p)();
+      this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
 
-    if (!gameState?.ownersByRegion) return [];
+      if (!gameState?.ownersByRegion) return [];
 
-    return Object.entries(gameState.ownersByRegion)
-      .filter(([_, ownerIndex]) => ownerIndex === currentPlayerIndex)
-      .map(([regionIndex, _]) => parseInt(regionIndex));
-  }
+      // Get current player by array index, then use their slot index
+      const currentPlayer = players[currentPlayerIndex];
+      if (!currentPlayer) return [];
 
-  /**
-   * Get regions that can move (have soldiers and haven't moved this turn)
-   */
-  public getMovableRegions(): number[] {
-    let gameState: GameStateData | null = null;
-    this.gameState.subscribe(state => gameState = state)();
-
-    if (!gameState) return [];
-
-    const playerRegions = this.getCurrentPlayerRegions();
-
-    return playerRegions.filter(regionIndex => {
-      const soldiers = gameState!.soldiersByRegion?.[regionIndex];
-      const soldierCount = soldiers ? soldiers.length : 0;
-      const hasMovedThisTurn = gameState!.conqueredRegions?.includes(regionIndex) ?? false;
-
-      return soldierCount > 1 && !hasMovedThisTurn;
-    });
+      return Object.keys(gameState.ownersByRegion)
+        .map(k => parseInt(k))
+        .filter(regionIndex => gameState.ownersByRegion[regionIndex] === currentPlayer.index);
   }
 
   /**
@@ -182,13 +173,17 @@ class TurnManager {
    */
   public isCurrentPlayerRegion(regionIndex: number): boolean {
     let gameState: GameStateData | null = null;
+    let players: Player[] = [];
     let currentPlayerIndex: number = 0;
 
     this.gameState.subscribe(state => gameState = state)();
+    this.players.subscribe(p => players = p)();
     this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
 
     if (!gameState?.ownersByRegion) return false;
-    const currentPlayer = gameState.players[currentPlayerIndex];
+
+    const currentPlayer = players[currentPlayerIndex];
+    if (!currentPlayer) return false;
 
     return gameState.ownersByRegion[regionIndex] === currentPlayer.index;
   }

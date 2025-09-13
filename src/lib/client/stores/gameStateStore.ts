@@ -169,10 +169,10 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
   );
 
   const currentPlayer = derived([players, currentPlayerIndex], ([$players, $currentPlayerIndex]) => {
-    const player = $players[$currentPlayerIndex];
+    const player = $players.find(p => p.index === $currentPlayerIndex);
 
     if (!player) {
-      throw new Exception(`⚠️ Could not find player with index ${$currentPlayerIndex} in players array:`, $players);
+      throw new Exception(`⚠️ Could not find player with slot index ${$currentPlayerIndex} in players array:`, $players);
     }
 
     return player;

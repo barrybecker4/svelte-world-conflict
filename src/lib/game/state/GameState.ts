@@ -109,11 +109,16 @@ export class GameState {
     // ==================== GAME OPERATIONS ====================
 
     getCurrentPlayer(): Player {
-        return this.state.players[this.state.playerIndex];
+        // playerIndex is now slot index, so find player with that slot
+        return this.state.players.find(p => p.index === this.state.playerIndex) || this.state.players[0];
     }
 
     activePlayer(): Player {
-        return this.state.players[this.state.playerIndex];
+        return this.getCurrentPlayer();
+    }
+
+    getPlayerBySlot(slotIndex: number): Player | undefined {
+        return this.state.players.find(p => p.index === slotIndex);
     }
 
     getPlayer(index: number): Player | undefined {
