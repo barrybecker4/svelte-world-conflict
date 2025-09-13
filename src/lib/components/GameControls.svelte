@@ -13,7 +13,7 @@
   export let movesRemaining: number = 0;
 
   $: playerFaith = gameState?.faithByPlayer?.[currentPlayer?.index || 0] || 0;
-  $: isPlayerTurn = gameState?.players[gameState.playerIndex]?.index === currentPlayer?.index;
+  $: isPlayerTurn = gameState?.playerIndex === currentPlayer?.index;
 </script>
 
 <div class="game-controls">

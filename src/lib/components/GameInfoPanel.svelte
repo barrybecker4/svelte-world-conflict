@@ -45,13 +45,13 @@
     await toggleAudio();
   }
 
-  function getRegionCount(playerIndex: number): number {
+  function getRegionCount(slotIndex: number): number {
     if (!gameState?.ownersByRegion) return 0;
-    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
+    return Object.values(gameState.ownersByRegion).filter(owner => owner === slotIndex).length;
   }
 
-  function isPlayerAlive(playerIndex: number): boolean {
-    return getRegionCount(playerIndex) > 0;
+  function isPlayerAlive(slotIndex: number): boolean {
+    return getRegionCount(slotIndex) > 0;
   }
 
   function getCurrentInstruction(): string {
@@ -101,11 +101,11 @@
 
   <!-- Players Section -->
   <Section title="" flex={true} flexDirection="column" gap="8px" customClass="flex-1">
-    {#each players as player, index}
+    {#each players.slice().sort((a, b) => a.index - b.index) as player, slotOrderIndex}
       {@const isActive = player.index === currentPlayerIndex}
-      {@const isAlive = isPlayerAlive(index)}
-      {@const regionCount = getRegionCount(index)}
-      {@const faithCount = faithByPlayer[index]}
+      {@const isAlive = isPlayerAlive(player.index)}
+      {@const regionCount = getRegionCount(player.index)}
+      {@const faithCount = faithByPlayer[player.index]}
 
       <div class="player-box" class:active={isActive}>
         <div

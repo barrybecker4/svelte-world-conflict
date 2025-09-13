@@ -112,8 +112,10 @@
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
 
-    // gameState.playerIndex is now slot index of current turn player
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === gameState.playerIndex;
+    const turnPlayer = findCurrentPlayerBySlot();
+    if (!turnPlayer) return false;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === turnPlayer.index;
+
     const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
     const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
 
@@ -305,12 +307,18 @@
     if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
     if (gameState.movesRemaining <= 0) return false;
 
-    const activePlayer = gameState.players[gameState.playerIndex];
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === activePlayer?.index;
+    const turnPlayer = findCurrentPlayerBySlot();
+    if (!turnPlayer) return false;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === turnPlayer.index;
+
     const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
     const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
 
     return isOwnedByCurrentPlayer && soldierCount > 1 && !hasMovedThisTurn;
+  }
+
+  function findCurrentPlayerBySlot(): Player | null {
+    return gameState.players.find(p => p.index === gameState.playerIndex) || null;
   }
 
   /**

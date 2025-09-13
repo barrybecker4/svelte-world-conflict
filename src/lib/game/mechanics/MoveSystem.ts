@@ -319,10 +319,18 @@ export class MoveSystem {
     }
   }
 
-  // Helper methods for game state validation
   private isPlayerRegion(regionIndex: number): boolean {
-    const currentPlayerIndex = this.gameState?.playerIndex;
-    return this.gameState?.ownersByRegion?.[regionIndex] === currentPlayerIndex;
+    const currentPlayer = this.getCurrentPlayer();
+    if (!currentPlayer) return false;
+
+    return this.gameState?.ownersByRegion?.[regionIndex] === currentPlayer.index;
+  }
+
+  private getCurrentPlayer(): any {
+    if (!this.gameState?.players || this.gameState.playerIndex === undefined) {
+        return null;
+    }
+    return this.gameState.players.find(p => p.index === this.gameState.playerIndex);
   }
 
   private getSoldierCountAtRegion(regionIndex: number): number {

@@ -24,6 +24,7 @@ class TurnManager {
 
   private gameState = writable<GameStateData | null>(null);
   private players = writable<Player[]>([]);
+  private previousSlotIndex: number | null = null;
 
   // Public stores for components to subscribe to
   public readonly state = { subscribe: this.turnState.subscribe };
@@ -76,30 +77,34 @@ class TurnManager {
    * Handle a turn transition to a new player
    */
   public async transitionToPlayer(newPlayerSlotIndex: number, gameState: GameStateData): Promise<void> {
-    return new Promise((resolve) => {
-      this.gameState.set(gameState);
+      return new Promise((resolve) => {
+        this.gameState.set(gameState);
 
-      const newArrayIndex = findArrayIndexForSlot(newPlayerSlotIndex);
+        const newArrayIndex = this.findArrayIndexForSlot(newPlayerSlotIndex);
 
-      this.turnState.update(state => {
-        const isNewTurn = state.currentPlayerIndex !== newArrayIndex;
+        // slot-based turn detection
+        const isNewTurn = this.previousSlotIndex !== newPlayerSlotIndex;
 
-        return {
+        console.log('Turn transition:', {
+          previousSlot: this.previousSlotIndex,
+          newSlot: newPlayerSlotIndex,
+          isNewTurn
+        });
+
+        this.turnState.update(state => ({
           ...state,
           previousPlayerIndex: isNewTurn ? state.currentPlayerIndex : state.previousPlayerIndex,
-          currentPlayerIndex: newArrayIndex, // Array index for internal TurnManager use
+          currentPlayerIndex: newArrayIndex,
           isTransitioning: true,
           showBanner: isNewTurn,
           bannerComplete: !isNewTurn,
           turnStartTime: isNewTurn ? Date.now() : state.turnStartTime
-        };
-      });
+        }));
 
-      // Resolve after transition delay
-      setTimeout(() => {
-        resolve();
-      }, 100);
-    });
+        this.previousSlotIndex = newPlayerSlotIndex;
+
+        setTimeout(() => resolve(), 100);
+      });
   }
 
   private findArrayIndexForSlot(slotIndex: number): number {
