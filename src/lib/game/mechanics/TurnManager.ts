@@ -188,7 +188,9 @@ class TurnManager {
     this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
 
     if (!gameState?.ownersByRegion) return false;
-    return gameState.ownersByRegion[regionIndex] === currentPlayerIndex;
+    const currentPlayer = gameState.players[currentPlayerIndex];
+
+    return gameState.ownersByRegion[regionIndex] === currentPlayer.index;
   }
 
   /**

@@ -304,7 +304,8 @@
     if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
     if (gameState.movesRemaining <= 0) return false;
 
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === currentPlayer.index;
+    const activePlayer = gameState.players[gameState.playerIndex];
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === activePlayer?.index;
     const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
     const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
 

@@ -63,7 +63,7 @@ export class EndTurnCommand extends Command {
         });
 
         // Find current player index in the players array
-        const currentPlayerArrayIndex = players.findIndex(p => p.index === newState.playerIndex);
+        const currentPlayerArrayIndex = newState.playerIndex;
 
         if (currentPlayerArrayIndex === -1) {
           console.error(`Current player index ${newState.playerIndex} not found in players array`);

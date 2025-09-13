@@ -2,7 +2,9 @@
   import type { GameState, Player } from '$lib/game/class/GameState';
   import Button from '$lib/components/ui/Button.svelte';
 
+  // gameState.playerIndex = Whose turn it is (array index)
   export let gameState: GameState | null = null;
+  // The local human player (the person using this browser)
   export let currentPlayer: Player | null = null;
   export let onEndTurn: () => void = () => {};
   export let onBuyArmies: () => void = () => {};
@@ -11,7 +13,7 @@
   export let movesRemaining: number = 0;
 
   $: playerFaith = gameState?.faithByPlayer?.[currentPlayer?.index || 0] || 0;
-  $: isPlayerTurn = gameState?.playerIndex === currentPlayer?.index;
+  $: isPlayerTurn = gameState?.players[gameState.playerIndex]?.index === currentPlayer?.index;
 </script>
 
 <div class="game-controls">
