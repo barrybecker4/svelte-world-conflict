@@ -41,7 +41,7 @@ export interface FloatingText {
 export interface GameStateData {
     id: number;
     gameId: string;
-    turnIndex: number;
+    turnNumber: number;
     playerIndex: number;
     movesRemaining: number;
 

@@ -25,7 +25,7 @@ export class GameStateInitializer {
         const stateData = this.createInitializedGameStateData('preview', players, regions);
 
         // Set preview-specific values
-        stateData.turnIndex = 1;
+        stateData.turnNumber = 1;
         stateData.movesRemaining = GAME_CONSTANTS.MAX_MOVES_PER_TURN;
 
         return stateData;
@@ -54,7 +54,7 @@ export class GameStateInitializer {
         return {
             id: Date.now(),
             gameId,
-            turnIndex: 0,
+            turnNumber: 0,
             playerIndex: initialPlayerIndex,
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             maxTurns: maxTurns || GAME_CONSTANTS.STANDARD_TURN_COUNT, // Add this line

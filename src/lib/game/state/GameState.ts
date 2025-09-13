@@ -81,8 +81,8 @@ export class GameState {
 
     // ==================== ACCESSORS ====================
 
-    get turnIndex(): number { return this.state.turnIndex; }
-    set turnIndex(value: number) { this.state.turnIndex = value; }
+    get turnNumber(): number { return this.state.turnNumber; }
+    set turnNumber(value: number) { this.state.turnNumber = value; }
 
     get playerIndex(): number { return this.state.playerIndex; }
     set playerIndex(value: number) { this.state.playerIndex = value; }
@@ -186,7 +186,7 @@ export class GameState {
     advanceToNextPlayer(): void {
         this.state.playerIndex = (this.state.playerIndex + 1) % this.state.players.length;
         this.state.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN;
-        this.state.turnIndex++;
+        this.state.turnNumber++;
         this.state.conqueredRegions = [];
     }
 

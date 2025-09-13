@@ -87,8 +87,8 @@ export class EndTurnCommand extends Command {
 
         // If back to first player in the array, increment turn
         if (nextPlayerArrayIndex === 0) {
-          newState.turnIndex++;
-          console.log(`New turn: ${newState.turnIndex}`);
+          newState.turnNumber++;
+          console.log(`New turn: ${newState.turnNumber}`);
         }
 
         return newState;

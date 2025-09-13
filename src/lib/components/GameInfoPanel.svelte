@@ -30,7 +30,7 @@
   // Reactive statements - these will update whenever gameState changes
   $: currentPlayerIndex = gameState?.playerIndex ?? 0;
   $: currentPlayer = players[currentPlayerIndex];
-  $: turnNumber = (gameState?.turnIndex ?? 0) + 1;
+  $: turnNumber = (gameState?.turnNumber ?? 0) + 1;
   $: maxTurns = gameState?.maxTurns && gameState.maxTurns !== GAME_CONSTANTS.UNLIMITED_TURNS ? gameState.maxTurns : null;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
   $: isMoving = moveMode !== 'IDLE';
@@ -76,7 +76,7 @@
   // Debug logging to see when faith values change
   $: if (gameState) {
     console.log('🎯 GameInfoPanel - Faith values updated:', {
-      turnIndex: gameState.turnIndex,
+      turnNumber: gameState.turnNumber,
       currentPlayer: currentPlayerIndex,
       faithByPlayer: gameState.faithByPlayer,
       playerFaithCounts: players.map(player => ({

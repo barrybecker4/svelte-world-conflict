@@ -112,7 +112,7 @@
 
     // Check if game ended due to turn limit
     const maxTurns = gameState.maxTurns;
-    const currentTurn = gameState.turnIndex + 1;
+    const currentTurn = gameState.turnNumber + 1;
 
     if (maxTurns && currentTurn >= maxTurns) {
       return `Turn limit reached (${maxTurns} turns)`;

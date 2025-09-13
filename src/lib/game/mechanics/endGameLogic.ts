@@ -35,7 +35,7 @@ export function checkGameEnd(gameState: GameStateData, players: Player[]): GameE
  */
 function checkTurnLimit(gameState: GameStateData, players: Player[]): GameEndResult {
   const maxTurns = gameState.maxTurns;
-  const currentTurn = gameState.turnIndex + 1; // Convert to 1-indexed
+  const currentTurn = gameState.turnNumber + 1; // Convert to 1-indexed
 
   // If no turn limit or unlimited turns, game doesn't end by turn limit
   if (!maxTurns || maxTurns === GAME_CONSTANTS.UNLIMITED_TURNS) {
