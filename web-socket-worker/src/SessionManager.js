@@ -68,7 +68,15 @@ export class SessionManager {
         const ws = this.sessions.get(sessionId);
         if (ws && ws.readyState === WebSocket.READY_STATE_OPEN) {
             try {
-                ws.send(JSON.stringify(message));
+                const serialized = JSON.stringify(message);
+                console.log(`📤 SessionManager sending to ${sessionId}:`, {
+                    messageType: message.type,
+                    messageKeys: Object.keys(message),
+                    serializedLength: serialized.length,
+                    first100chars: serialized.substring(0, 100)
+                });
+
+                ws.send(serialized);
                 return true;
             } catch (error) {
                 console.error(`Error sending to session ${sessionId}:`, error);

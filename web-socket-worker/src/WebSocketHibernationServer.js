@@ -81,9 +81,10 @@ export class WebSocketHibernationServer {
             }
 
             // Use SessionManager to broadcast
+            console.log('handleNotification received:', message);
             const sentCount = this.sessionManager.broadcastToGame(gameId, {
                 type: message.type,
-                data: message.data,
+                data: message.gameState,
                 timestamp: Date.now()
             });
 

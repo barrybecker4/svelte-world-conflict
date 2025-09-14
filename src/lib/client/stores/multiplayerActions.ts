@@ -134,16 +134,16 @@ function setupWebSocketCallbacks(): void {
     });
 
     wsClient.onGameStarted((data) => {
-            console.log('🎮 Game Started received:', data);
-            const currentState = multiplayerActions.getConnectionInfo();
+        console.log('🎮 Game Started received:', data);
+        const currentState = multiplayerActions.getConnectionInfo();
 
-            gameUpdates.set({
-                type: 'gameStarted',
-                gameId: currentState.gameId || '',
-                data,
-                timestamp: Date.now()
-            });
+        gameUpdates.set({
+            type: 'gameStarted',
+            gameId: currentState.gameId || '',
+            data,
+            timestamp: Date.now()
         });
+    });
 
     wsClient.onPlayerJoined((data) => {
         console.log('👥 Player joined:', data);

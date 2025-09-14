@@ -13,6 +13,15 @@ export class WebSocketNotificationHelper {
      */
     static async sendGameUpdate(gameState: GameRecord, platform: App.Platform): Promise<void> {
         console.log(`Sending gameUpdate notification for game ${gameState.gameId}`);
+        console.log('📤 Sending WebSocket notification:', {
+            gameId: gameState.gameId,
+            hasGameId: !!gameState.gameId,
+            notificationData: {
+                type: 'gameUpdate',
+                gameId: gameState.gameId,
+                gameState: gameState.worldConflictState ? 'present' : 'missing'
+            }
+        });
 
         const message = this.createMessage(gameState, 'gameUpdate');
         await this.sendNotification(gameState.gameId, message, platform);
@@ -21,9 +30,8 @@ export class WebSocketNotificationHelper {
     private static createMessage(gameState: GameRecord, type: string) {
         return {
             type,
-            data: {
-                ...gameState,
-            },
+            gameId: gameState.gameId,
+            gameState: gameState.worldConflictState,
             timestamp: Date.now()
         };
     }
@@ -52,7 +60,7 @@ export class WebSocketNotificationHelper {
     private static async sendMessageToWorker(workerUrl: string, message: any, gameId: string): Promise<boolean> {
         try {
             await this.sendToWorker(workerUrl, gameId, message);
-            console.log(`✅ Successfully sent notification via ${workerUrl}`);
+            console.log(`✅ Successfully sent notification via ${workerUrl} for game ${gameId}`);
             return true;
         } catch (error) {
             console.error(`❌ Failed to send to worker:`, error);

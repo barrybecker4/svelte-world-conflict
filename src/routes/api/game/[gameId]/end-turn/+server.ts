@@ -37,9 +37,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: `Invalid player ID: ${playerId}` }, { status: 400 });
         }
 
-        // Verify it's the player's turn using player index
-        if (game.currentPlayerIndex !== playerIndex) {
+        const gameState = new GameState(game.worldConflictState);
+
+        const currentTurnPlayer = gameState.players.find(p => p.index === gameState.playerIndex);
+        if (!currentTurnPlayer || currentTurnPlayer.index !== playerIndex) {
             return json({ error: 'Not your turn' }, { status: 400 });
+        }
+        else {
+          console.log(`currentTurnPlayer.index = ${currentTurnPlayer.index}, game.currentPlayerIndex = ${game.currentPlayerIndex}`);
         }
 
         // Verify the player exists in the game
@@ -47,9 +52,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         if (!player) {
             return json({ error: 'Player not found in game' }, { status: 400 });
         }
-
-        // Create game state instance
-        const gameState = new GameState(game.worldConflictState);
 
         // Execute the human player's end turn command
         const endTurnCommand = new EndTurnCommand(gameState, player);

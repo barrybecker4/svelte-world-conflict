@@ -40,6 +40,12 @@ export class GameWebSocketClient {
                 this.ws.onmessage = (event) => {
                     try {
                         const message = JSON.parse(event.data);
+                        console.log('📨 RAW WebSocket message:', {
+                            type: message.type,
+                            hasGameState: !!message.gameState,
+                            gameId: message.gameId,
+                            fullMessage: message
+                        });
                         this.messageHandler.handleMessage(message);
                     } catch (error) {
                         console.error('Error parsing WebSocket message:', error);

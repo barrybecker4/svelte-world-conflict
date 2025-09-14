@@ -103,13 +103,7 @@
 
       wsClient.onGameUpdate((gameData) => {
         console.log('Received game update via WebSocket:', gameData);
-
-        const worldConflictState = gameData.worldConflictState;
-        if (worldConflictState) {
-          gameStore.handleGameStateUpdate(worldConflictState);
-        } else {
-          console.error('No worldConflictState found in gameData:', gameData);
-        }
+        gameStore.handleGameStateUpdate(gameData);
       });
 
       wsClient.onConnected(() => {
