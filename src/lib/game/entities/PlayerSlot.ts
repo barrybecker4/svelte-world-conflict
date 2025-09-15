@@ -12,7 +12,7 @@ export interface PlayerSlot {
   defaultName: string;
   customName?: string;
 
-  // Visual styling (from PlayerColorConfig)
+  // Visual styling (from PlayerConfig)
   color: string;
   colorStart: string;
   colorEnd: string;

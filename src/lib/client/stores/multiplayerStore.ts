@@ -31,16 +31,6 @@ export const currentGameId = derived(
     $state => $state.gameId
 );
 
-export function isMultiplayerAvailable(): boolean {
-    return typeof WebSocket !== 'undefined';
-}
-
-export function resetMultiplayerState(): void {
-    multiplayerActions.disconnect();
-    multiplayerState.set(initialState);
-    gameUpdates.set(null);
-}
-
 // Re-export actions and types for convenience
 export { multiplayerActions };
 export * from './multiplayerTypes';

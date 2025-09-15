@@ -50,9 +50,6 @@ export class BattleManager {
     return isNeutralWithSoldiers || isEnemyTerritory;
   }
 
-  /**
-   * Main entry point for executing any type of move
-   */
   async executeMove(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
     if (this.isBattleRequired(move)) {
       return this.executeBattle(move, playerId, regions);

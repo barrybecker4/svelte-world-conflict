@@ -1,6 +1,7 @@
 import type { AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export interface FloatingTextEvent {
   regionIdx: number;
@@ -110,16 +111,16 @@ export class BattleAnimationSystem {
     // Append to document body instead of map container for fixed positioning
     document.body.appendChild(textElement);
     this.activeAnimations.add(textElement);
-    console.log('📝 Floating text element added to DOM at screen coords:', { x: screenCoords.x, y: screenCoords.y });
+    console.log('Floating text element added to DOM at screen coords:', { x: screenCoords.x, y: screenCoords.y });
 
     // Remove after animation
     setTimeout(() => {
       if (textElement.parentNode) {
         textElement.parentNode.removeChild(textElement);
         this.activeAnimations.delete(textElement);
-        console.log('🗑️ Floating text element removed');
+        console.log('🗑Floating text element removed');
       }
-    }, 3000); // Increased to 3 seconds to match animation duration
+    }, GAME_CONSTANTS.BANNER_TIME);
   }
 
   // Calculate the actual screen position accounting for SVG scaling

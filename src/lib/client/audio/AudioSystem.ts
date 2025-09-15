@@ -365,5 +365,4 @@ export class AudioSystem {
 
 }
 
-// Export singleton instance
 export const audioSystem = new AudioSystem();

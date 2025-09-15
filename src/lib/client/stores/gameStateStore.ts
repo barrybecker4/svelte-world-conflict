@@ -183,7 +183,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
   );
 
   const movesRemaining = derived(gameState, $gameState =>
-    $gameState?.movesRemaining ?? 3
+    $gameState?.movesRemaining ?? GAME_CONSTANTS.MAX_MOVES_PER_TURN
   );
 
   // Turn manager reactive stores

@@ -8,7 +8,6 @@ interface AudioState {
   isInitialized: boolean;
 }
 
-// Create reactive audio state
 export const audioState: Writable<AudioState> = writable({
   isEnabled: false,
   volume: 0.5,
@@ -58,7 +57,6 @@ export function useAudio() {
     }
   };
 
-  // Set volume
   const setVolume = (volume: number): void => {
     const clampedVolume = Math.max(0, Math.min(1, volume));
     audioSystem.setVolume(clampedVolume);
@@ -69,7 +67,6 @@ export function useAudio() {
     }));
   };
 
-  // Play game sounds
   const playGameSound = async (soundType: SoundType): Promise<void> => {
     try {
       await audioSystem.playSound(soundType);

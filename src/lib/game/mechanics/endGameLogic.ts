@@ -1,5 +1,6 @@
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import type { GameStateData, Player } from '$lib/game/state/GameState';
+import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 export interface GameEndResult {
   isGameEnded: boolean;
@@ -67,7 +68,8 @@ function checkTurnLimit(gameState: GameStateData, players: Player[]): GameEndRes
  * Check if all but one player has been eliminated
  */
 function checkElimination(gameState: GameStateData, players: Player[]): GameEndResult {
-  const activePlayers = players.filter(player => getRegionCount(gameState, player.index) > 0);
+  const scoreCalculator = new ScoreCalculator(gameState);
+  const activePlayers = players.filter(player => scoreCalculator.getRegionCount(player.index) > 0);
 
   if (activePlayers.length <= 1) {
     const winner = activePlayers.length === 1 ? activePlayers[0] : 'DRAWN_GAME';
@@ -90,9 +92,10 @@ function checkElimination(gameState: GameStateData, players: Player[]): GameEndR
  * Uses same logic as the original game: 1000 * regions + soldiers
  */
 function determineWinnerByScore(gameState: GameStateData, players: Player[]): Player | 'DRAWN_GAME' {
+  const scoreCalculator = new ScoreCalculator(gameState);
   const playerScores = players.map(player => ({
     player,
-    score: calculatePlayerScore(gameState, player.index)
+    score: scoreCalculator.calculatePlayerScore(player.index)
   }));
 
   // Sort by score descending
@@ -107,60 +110,4 @@ function determineWinnerByScore(gameState: GameStateData, players: Player[]): Pl
   }
 
   return playerScores[0].player;
-}
-
-/**
- * Calculate a player's score: 1000 * regions + total soldiers
- */
-function calculatePlayerScore(gameState: GameStateData, playerIndex: number): number {
-  const regionCount = getRegionCount(gameState, playerIndex);
-  const soldierCount = getTotalSoldiers(gameState, playerIndex);
-
-  return (1000 * regionCount) + soldierCount;
-}
-
-/**
- * Get number of regions owned by a player
- */
-function getRegionCount(gameState: GameStateData, playerIndex: number): number {
-  if (!gameState.ownersByRegion) return 0;
-  return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
-}
-
-/**
- * Get total number of soldiers owned by a player across all regions
- */
-function getTotalSoldiers(gameState: GameStateData, playerIndex: number): number {
-  if (!gameState.soldiersByRegion || !gameState.ownersByRegion) return 0;
-
-  let total = 0;
-  Object.entries(gameState.soldiersByRegion).forEach(([regionIndexStr, soldiers]) => {
-    const regionIndex = parseInt(regionIndexStr);
-    if (gameState.ownersByRegion[regionIndex] === playerIndex) {
-      total += soldiers.length;
-    }
-  });
-
-  return total;
-}
-
-/**
- * Check if a specific player should be marked as eliminated
- */
-export function isPlayerEliminated(gameState: GameStateData, playerIndex: number): boolean {
-  return getRegionCount(gameState, playerIndex) === 0;
-}
-
-/**
- * Get player statistics for game summary
- */
-export function getPlayerStats(gameState: GameStateData, players: Player[]) {
-  return players.map(player => ({
-    player,
-    regionCount: getRegionCount(gameState, player.index),
-    soldierCount: getTotalSoldiers(gameState, player.index),
-    faithCount: gameState.faithByPlayer[player.index] || 0,
-    score: calculatePlayerScore(gameState, player.index),
-    isEliminated: isPlayerEliminated(gameState, player.index)
-  })).sort((a, b) => b.score - a.score);
 }
