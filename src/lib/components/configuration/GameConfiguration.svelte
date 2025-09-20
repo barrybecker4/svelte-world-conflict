@@ -1,16 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import GameMap from '$lib/components/map/GameMap.svelte';
   import PlayerNameInput from './PlayerNameInput.svelte';
-  import PlayerConfiguration from './PlayerConfiguration.svelte';
+  import PlayerSlots from './PlayerSlots.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from '$lib/components/map/MapPreviewPanel.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
-
-  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
-  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
@@ -23,18 +19,16 @@
   };
 
   let playerName = '';
-  const playerSlots = createPlayerSlots();
+  let playerSlots = [];
 
   let creating = false;
   let error = null;
   let showNameInput = true;
   let mapPreviewPanel;
 
-  // Count active players for map generation
-  $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
-
-  // Check if current player is "set" on one of the slots
-  $: hasCurrentPlayerSet = playerSlots.some(slot => slot.type === 'Set');
+  // Player slot state from PlayerSlotManager
+  let activePlayerCount = 0;
+  let hasCurrentPlayerSet = false;
 
   // Determine if create game button should be disabled
   $: createGameDisabled = creating || activePlayerCount < 2 || !hasCurrentPlayerSet;
@@ -47,24 +41,15 @@
     : '';
 
   onMount(() => {
-    if (loadStoredPlayerName()) {
-      initPlayerConfig(playerName);
-    }
+    loadStoredPlayerName();
   });
 
   function loadStoredPlayerName() {
-    playerName = loadPlayerName();
-    if (playerName) {
+    const storedName = loadPlayerName();
+    if (storedName) {
+      playerName = storedName;
       showNameInput = false;
-      return true;
     }
-    return false;
-  }
-
-  function createPlayerSlots() {
-      return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(index => ({
-           ...getPlayerConfig(index), type: 'Off', customName: ''
-      }));
   }
 
   // Handle player name submission from the PlayerNameInput component
@@ -81,57 +66,20 @@
     }
 
     savePlayerName(playerName);
-    initPlayerConfig(playerName);
-
-    // Hide the name input and show the main configuration
     showNameInput = false;
     error = null;
-  }
-
-  function initPlayerConfig(playerName) {
-    // Set the first player slot to "Set" with the custom name
-    playerSlots[0] = {
-      ...getPlayerConfig(0),
-      type: 'Set',
-      customName: playerName
-    };
-
-    // Set some AI opponents by default
-    playerSlots[1] = { ...getPlayerConfig(1), type: 'AI', customName: '' };
-    playerSlots[2] = { ...getPlayerConfig(2), type: 'AI', customName: '' };
-    playerSlots[3] = { ...getPlayerConfig(3), type: 'Off', customName: '' };
   }
 
   function changeName() {
     showNameInput = true;
   }
 
-  // Handle player slot updates from PlayerConfiguration components
-  function handleSlotUpdated(event) {
-    const { index, slot } = event.detail;
-
-    // Handle player switching
-    if (slot.type === 'Set') {
-      // Find the current "Set" slot and change it to "Off"
-      const currentSetIndex = playerSlots.findIndex(s => s.type === 'Set');
-      if (currentSetIndex !== -1 && currentSetIndex !== index) {
-        playerSlots[currentSetIndex] = {
-          ...playerSlots[currentSetIndex],
-          type: 'Off',
-          customName: ''
-        };
-      }
-
-      // Set the new slot to "Set" with the current player's name
-      playerSlots[index] = {
-        ...slot,
-        type: 'Set',
-        customName: playerName
-      };
-    } else {
-      // For other types, just update normally
-      playerSlots[index] = { ...slot };
-    }
+  // Handle updates from PlayerSlots
+  function handleSlotsUpdated(event) {
+    const { slots, activeSlotCount, hasPlayerSet } = event.detail;
+    playerSlots = slots;
+    activePlayerCount = activeSlotCount;
+    hasCurrentPlayerSet = hasPlayerSet;
   }
 
   // Reactive statement to refresh map preview when map size changes
@@ -150,16 +98,16 @@
 
     creating = true;
     error = null;
-    verifyMapPreview();
 
-    const activePlayers = playerSlots.filter(slot => slot.type !== 'Off');
-    if (activePlayers.length < 2) {
-      throw new Error('At least 2 players are required');
+    try {
+      verifyMapPreview();
+      const gameConfig = buildGameConfig();
+      dispatch('gameCreated', gameConfig);
+    } catch (err) {
+      error = err.message;
+    } finally {
+      creating = false;
     }
-
-    const gameConfig = buildGameConfig();
-    dispatch('gameCreated', gameConfig); // Dispatch to parent
-    creating = false;
   }
 
   function buildGameConfig() {
@@ -203,7 +151,6 @@
     <div class="configuration-main">
       <!-- Left Panel: Configuration -->
       <Panel variant="dark" blur={true} customClass="config-panel">
-
         <Section title="Game Setup" borderBottom={true}>
         </Section>
 
@@ -217,15 +164,11 @@
           </div>
         </Section>
 
-        <Section title="Players">
-          {#each playerSlots as slot, index}
-            <PlayerConfiguration
-              playerSlot={slot}
-              {index}
-              on:slotUpdated={handleSlotUpdated}
-            />
-          {/each}
-        </Section>
+        <PlayerSlots
+          bind:slots={playerSlots}
+          {playerName}
+          on:update={handleSlotsUpdated}
+        />
 
         <Section title="" borderBottom={true}>
           <GameSettingsPanel bind:gameSettings />
@@ -247,7 +190,6 @@
             Create Game
           </Button>
         </Section>
-
       </Panel>
 
       <!-- Right Panel: Map Preview -->
@@ -319,8 +261,9 @@
     border-left: 3px solid var(--color-red-400, #f87171);
   }
 
-    /* Button styling */
-    :global(.config-panel .btn-lg) {
-      margin-left: 70px;
-    }
+  /* Target the last section's content specifically for button centering */
+  :global(.config-panel .section-base:last-child .section-content) {
+    display: flex;
+    justify-content: center;
+  }
 </style>
