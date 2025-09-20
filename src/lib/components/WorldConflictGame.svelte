@@ -216,11 +216,6 @@
 
   function handleRegionClick(region: any) {
     console.log('Region clicked:', region);
-    // Prevent actions during turn transition
-    if ($turnState.isTransitioning) {
-      console.log('Ignoring click during turn transition');
-      return;
-    }
 
     if (!isMyTurn) {
       console.log('Not my turn, ignoring click');
@@ -420,7 +415,7 @@
         selectedRegion={moveState.sourceRegion ? $regions.find(r => r.index === moveState.sourceRegion) : null}
         showTurnHighlights={highlightRegions}
         onRegionClick={handleRegionClick}
-        previewMode={$loading || $turnState.isTransitioning}
+        previewMode={$loading}
         bind:mapContainer
       />
     </div>
