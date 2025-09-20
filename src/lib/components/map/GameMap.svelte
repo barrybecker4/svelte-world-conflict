@@ -2,10 +2,11 @@
   import { onMount } from 'svelte';
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
   import Temple from './Temple.svelte';
-  import Army from './Army.svelte';  // Add this import
+  import Army from './Army.svelte';
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
   import { fade } from 'svelte/transition';
   import SvgDefinitions from './SvgDefinitions.svelte';
+  import gameMapUtil from './gameMapUtil';
 
   export let regions: Region[] = [];
   export let gameState: GameStateData | null = null;
@@ -18,23 +19,15 @@
   export let mapContainer: HTMLElement | undefined = undefined;
 
   const NEUTRAL_COLOR = '#8b92a0';
+
   let mapContainerElement: HTMLDivElement;
   let highlightVisible = true;
-
   let battlesInProgress = new Set<number>();
   let battleAnimations = new Map<number, string>();
 
   // Bind the internal element to the exported prop
   $: if (mapContainerElement && !mapContainer) {
     mapContainer = mapContainerElement;
-  }
-
-  $: if (gameState) {  // temp debug
-    console.log('GameMap gameState updated:', {
-      playerIndex: gameState.playerIndex,
-      turnNumber: gameState.turnNumber,
-      players: gameState.players?.map(p => ({ name: p.name, slotIndex: p.index }))
-    });
   }
 
   $: currentTurnPlayer = (() => {
@@ -45,26 +38,20 @@
     return gameState.players.find(p => p.index === playerIndex) || null;
   })();
 
-  $: canMoveFromReactive = function(region: Region): boolean {
-    console.log('canMoveFrom recalculated for gameState change');
-    const turnPlayer = currentTurnPlayer;
+  // Auto-detect preview mode if currentPlayer is null but gameState exists
+  $: detectedPreviewMode = !currentPlayer && gameState !== null;
+  $: effectivePreviewMode = isPreviewMode || detectedPreviewMode || previewMode;
 
-    console.log('canMoveFrom debug for region', region.index, ':', {
-      turnPlayer: turnPlayer ? { name: turnPlayer.name, slotIndex: turnPlayer.index } : null,
-      regionOwner: gameState?.ownersByRegion?.[region.index],
-    });
+  // Generate active player gradients
+  $: activePlayerGradients = gameMapUtil.generateActivePlayerGradients(gameState, showTurnHighlights);
 
-    if (effectivePreviewMode) return false;
-    if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
-    if (gameState.movesRemaining <= 0) return false;
 
-    if (!turnPlayer) return false;
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === turnPlayer.index;
-    const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
-    const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
-
-    return isOwnedByCurrentPlayer && soldierCount > 0 && !hasMovedThisTurn;
-  };
+  // Update battles in progress
+  $: {
+    if (gameState?.battlesInProgress) {
+      battlesInProgress = new Set(gameState.battlesInProgress);
+    }
+  }
 
   onMount(() => {
     // Start the highlight pulse animation
@@ -75,75 +62,9 @@
     return () => clearInterval(interval);
   });
 
-  $: {
-    if (gameState?.battlesInProgress) {
-      battlesInProgress = new Set(gameState.battlesInProgress);
-    }
-  }
-
-  // Auto-detect preview mode if currentPlayer is null but gameState exists
-  $: detectedPreviewMode = !currentPlayer && gameState !== null;
-  $: effectivePreviewMode = isPreviewMode || detectedPreviewMode || previewMode;
-
-  // Additional check for preview mode based on gameState
-  $: isCreationMode = gameState?.gameId === 'preview' || currentPlayer === null;
-
-  // Debug logging when regions change
-  $: {
-    if (regions.length > 0) {
-      console.log('Map received regions:', regions.length);
-      console.log('Current player:', currentPlayer);
-      console.log('Selected region:', selectedRegion);
-      if (gameState) {
-        console.log('Game state ID:', gameState.gameId);
-        console.log('Game state players:', gameState.players?.length || 0);
-        console.log('Owned regions:', Object.keys(gameState.ownersByRegion || {}).length);
-      }
-    }
-  }
-
-  $: activePlayerGradients = gameState && showTurnHighlights ? Array.from({length: 6}, (_, i) => {
-    const color = getPlayerMapColor(i);
-    return `
-      <radialGradient id="activePlayerGradient${i}" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style="stop-color:${color};stop-opacity:0.9"/>
-        <stop offset="70%" style="stop-color:${color};stop-opacity:0.7"/>
-        <stop offset="100%" style="stop-color:${color};stop-opacity:0.6"/>
-      </radialGradient>
-    `;
-  }).join('') : '';
-
-  /**
-   * Convert border points to SVG path
-   */
-  function pointsToPath(points: Array<{x: number, y: number}>): string {
-    if (!points || points.length < 3) return '';
-
-    let path = `M ${points[0].x},${points[0].y}`;
-    for (let i = 1; i < points.length; i++) {
-      path += ` L ${points[i].x},${points[i].y}`;
-    }
-    path += ' Z';
-
-    return path;
-  }
-
-  /**
-   * Create fallback circle for regions without border points
-   */
-  function createFallbackCircle(region: Region): string {
-    const radius = 35;
-    return `M ${region.x + radius},${region.y} A ${radius},${radius} 0 1,1 ${region.x + radius - 0.1},${region.y} Z`;
-  }
-
   function isOwnedByActivePlayer(regionIndex: number): boolean {
     if (!gameState?.ownersByRegion || !showTurnHighlights) return false;
     return gameState.ownersByRegion[regionIndex] === gameState.playerIndex;
-  }
-
-  function getSoldierCount(regionIndex: number): number {
-    if (!gameState?.soldiersByRegion?.[regionIndex]) return 0;
-    return gameState.soldiersByRegion[regionIndex].length;
   }
 
   function canHighlightForTurn(region: Region): boolean {
@@ -162,30 +83,59 @@
            !hasMovedThisTurn;
   }
 
-  /**
-   * Create a lighter version of a hex color for selection borders
-   */
-  function getLighterColor(hexColor: string, factor: number = 0.3): string {
-    // Remove the hash if present
-    const color = hexColor.replace('#', '');
-
-    // Parse r, g, b values
-    const r = parseInt(color.substr(0, 2), 16);
-    const g = parseInt(color.substr(2, 2), 16);
-    const b = parseInt(color.substr(4, 2), 16);
-
-    // Lighten by moving towards white
-    const newR = Math.round(r + (255 - r) * factor);
-    const newG = Math.round(g + (255 - g) * factor);
-    const newB = Math.round(b + (255 - b) * factor);
-
-    // Convert back to hex
-    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  function getSoldierCount(regionIndex: number): number {
+    if (!gameState?.soldiersByRegion?.[regionIndex]) return 0;
+    return gameState.soldiersByRegion[regionIndex].length;
   }
 
   /**
-   * Get the color for a region based on ownership
+   * Check if the region can be moved from
    */
+  function canMoveFrom(region: Region): boolean {
+    const turnPlayer = currentTurnPlayer;
+
+    console.log('🏃 canMoveFrom debug for region', region.index, ':', {
+      turnPlayer: turnPlayer ? { name: turnPlayer.name, slotIndex: turnPlayer.index } : null,
+      regionOwner: gameState?.ownersByRegion?.[region.index],
+      movesRemaining: gameState?.movesRemaining,
+      soldierCount: gameState?.soldiersByRegion?.[region.index]?.length || 0,
+    });
+
+    if (effectivePreviewMode) return false;
+    if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
+    if (gameState.movesRemaining <= 0) return false;
+
+    if (!turnPlayer) return false;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === turnPlayer.index;
+    const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
+    const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
+
+    const canMove = isOwnedByCurrentPlayer && soldierCount > 1 && !hasMovedThisTurn;
+
+    console.log('🏃 canMoveFrom result:', canMove, {
+      isOwnedByCurrentPlayer,
+      soldierCount,
+      hasMovedThisTurn
+    });
+
+    return canMove;
+  }
+
+  // Event handlers
+  function handleRegionClick(region: Region): void {
+    if (effectivePreviewMode) return;
+    onRegionClick(region);
+  }
+
+
+  function handleKeyDown(event: KeyboardEvent, region: Region): void {
+    if (effectivePreviewMode) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleRegionClick(region);
+    }
+  }
+
   function getRegionColor(region: Region): string {
     if (!gameState?.ownersByRegion) return NEUTRAL_COLOR;
 
@@ -314,52 +264,6 @@
   function hasTemple(regionIndex: number): boolean {
     return gameState?.templesByRegion?.[regionIndex] !== undefined;
   }
-
-  /**
-   * Check if the region can be moved from
-   */
-  function canMoveFrom(region: Region): boolean {
-    const turnPlayer = currentTurnPlayer;
-
-    console.log('🏃 canMoveFrom debug for region', region.index, ':', {
-      turnPlayer: turnPlayer ? { name: turnPlayer.name, slotIndex: turnPlayer.index } : null,
-      regionOwner: gameState?.ownersByRegion?.[region.index],
-      movesRemaining: gameState?.movesRemaining,
-      soldierCount: gameState?.soldiersByRegion?.[region.index]?.length || 0,
-    });
-
-    if (effectivePreviewMode) return false;
-    if (!currentPlayer || !gameState?.ownersByRegion || !gameState?.soldiersByRegion) return false;
-    if (gameState.movesRemaining <= 0) return false;
-
-    if (!turnPlayer) return false;
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion[region.index] === turnPlayer.index;
-    const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
-    const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
-
-    const canMove = isOwnedByCurrentPlayer && soldierCount > 1 && !hasMovedThisTurn;
-
-    console.log('🏃 canMoveFrom result:', canMove, {
-      isOwnedByCurrentPlayer,
-      soldierCount,
-      hasMovedThisTurn
-    });
-
-    return canMove;
-  }
-
-  function handleRegionClick(region: Region): void {
-    if (effectivePreviewMode) return;
-    onRegionClick(region);
-  }
-
-  function handleKeyDown(event: KeyboardEvent, region: Region): void {
-    if (effectivePreviewMode) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleRegionClick(region);
-    }
-  }
 </script>
 
 <div class="game-map" bind:this={mapContainerElement}>
@@ -373,7 +277,7 @@
     {#each regions as region (region.index)}
       {@const regionWithPoints = region}
       {@const regionPath = regionWithPoints.points ?
-        pointsToPath(regionWithPoints.points) : createFallbackCircle(region)}
+        gameMapUtil.pointsToPath(regionWithPoints.points) : gameMapUtil.createFallbackCircle(region)}
 
       <g class="region-group">
         <!-- Main region path -->
@@ -391,7 +295,7 @@
           on:keydown={(event) => handleKeyDown(event, region)}
         />
 
-        <!-- ADD PULSE OVERLAY FOR ACTIVE PLAYER REGIONS -->
+        <!-- Pulse overlay -->
         {#if canHighlightForTurn(region)}
           <path
             d={regionPath}
@@ -466,11 +370,6 @@
   /* Remove browser focus outline and use our dynamic border system */
   .region-path:focus:not(.preview-mode) {
     outline: none;
-  }
-
-  /* Remove the static .selected styling since we use dynamic stroke colors */
-  .region-path.selected {
-    /* Border is now handled dynamically in the SVG stroke attribute */
   }
 
   .region-path.can-move {
