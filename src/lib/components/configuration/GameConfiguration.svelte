@@ -33,6 +33,19 @@
   // Count active players for map generation
   $: activePlayerCount = playerSlots.filter(slot => slot.type !== 'Off').length;
 
+  // Check if current player is "set" on one of the slots
+  $: hasCurrentPlayerSet = playerSlots.some(slot => slot.type === 'Set');
+
+  // Determine if create game button should be disabled
+  $: createGameDisabled = creating || activePlayerCount < 2 || !hasCurrentPlayerSet;
+
+  // Warning message for create game button
+  $: warning = !hasCurrentPlayerSet
+    ? 'The game cannot be created until you "set" yourself on one of the player slots'
+    : activePlayerCount < 2
+    ? 'At least 2 players are required to create a game'
+    : '';
+
   onMount(() => {
     if (loadStoredPlayerName()) {
       initPlayerConfig(playerName);
@@ -129,6 +142,12 @@
   async function createGame() {
     if (creating) return;
 
+    // Additional validation before proceeding
+    if (!hasCurrentPlayerSet) {
+      error = 'You must "set" yourself on one of the player slots before creating the game.';
+      return;
+    }
+
     creating = true;
     error = null;
     verifyMapPreview();
@@ -220,9 +239,10 @@
           <Button
             variant="primary"
             size="lg"
-            disabled={activePlayerCount < 2}
+            disabled={createGameDisabled}
             loading={creating}
             on:click={createGame}
+            title={warning}
           >
             Create Game
           </Button>
@@ -272,7 +292,6 @@
     display: flex;
   }
 
-  /* Current player section styling */
   .current-player {
     display: flex;
     align-items: center;
@@ -280,29 +299,28 @@
   }
 
   .player-label {
-    font-weight: var(--font-medium, 500);
-    color: var(--text-tertiary, #94a3b8);
+    color: var(--color-gray-300, #d1d5db);
+    font-size: var(--text-sm, 0.875rem);
   }
 
   .player-name-display {
-    font-weight: var(--font-semibold, 600);
-    color: var(--text-primary, #f8fafc);
-    font-size: var(--text-lg, 1.1rem);
+    color: var(--color-white, white);
+    font-weight: 600;
+    font-size: var(--text-base, 1rem);
   }
 
-  /* Error message */
   .error-message {
-    color: var(--color-error, #ef4444);
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid var(--color-error, #ef4444);
-    border-radius: var(--radius-sm, 4px);
-    padding: var(--space-2, 8px) var(--space-3, 12px);
+    color: var(--color-red-400, #f87171);
+    font-size: var(--text-sm, 0.875rem);
     margin-bottom: var(--space-3, 12px);
-    font-size: var(--text-sm, 0.9rem);
+    padding: var(--space-2, 8px);
+    background: rgba(248, 113, 113, 0.1);
+    border-radius: var(--border-radius-md, 6px);
+    border-left: 3px solid var(--color-red-400, #f87171);
   }
 
-  /* Button styling */
-  :global(.config-panel .btn-lg) {
-    width: 100%;
-  }
+    /* Button styling */
+    :global(.config-panel .btn-lg) {
+      margin-left: 70px;
+    }
 </style>
