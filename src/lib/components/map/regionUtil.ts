@@ -4,7 +4,7 @@ import { getPlayerMapColor } from '$lib/game/constants/playerConfigs';
 /**
  * utility functions for GameMap component grouped into a single object
  */
-const gameMapUtil = {
+const regionUtil = {
 
   /**
    * Convert border points to SVG path
@@ -45,4 +45,4 @@ const gameMapUtil = {
   }
 };
 
-export default gameMapUtil;
+export default regionUtil;

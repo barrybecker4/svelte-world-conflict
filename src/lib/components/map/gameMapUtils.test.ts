@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import gameMapUtil from './gameMapUtil';
+import regionUtil from './regionUtil';
 import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
 
 describe('GameMap Utilities', () => {
@@ -51,25 +51,25 @@ describe('GameMap Utilities', () => {
           { x: 50, y: 60 }
         ];
         
-        const result = gameMapUtil.pointsToPath(points);
+        const result = regionUtil.pointsToPath(points);
         expect(result).toBe('M 10,20 L 30,40 L 50,60 Z');
       });
 
       it('should return empty string for insufficient points', () => {
-        expect(gameMapUtil.pointsToPath([])).toBe('');
-        expect(gameMapUtil.pointsToPath([{ x: 10, y: 20 }])).toBe('');
-        expect(gameMapUtil.pointsToPath([{ x: 10, y: 20 }, { x: 30, y: 40 }])).toBe('');
+        expect(regionUtil.pointsToPath([])).toBe('');
+        expect(regionUtil.pointsToPath([{ x: 10, y: 20 }])).toBe('');
+        expect(regionUtil.pointsToPath([{ x: 10, y: 20 }, { x: 30, y: 40 }])).toBe('');
       });
 
       it('should handle null/undefined points', () => {
-        expect(gameMapUtil.pointsToPath(null as any)).toBe('');
-        expect(gameMapUtil.pointsToPath(undefined as any)).toBe('');
+        expect(regionUtil.pointsToPath(null as any)).toBe('');
+        expect(regionUtil.pointsToPath(undefined as any)).toBe('');
       });
     });
 
     describe('createFallbackCircle', () => {
       it('should create circular SVG path for region', () => {
-        const result = gameMapUtil.createFallbackCircle(mockRegion);
+        const result = regionUtil.createFallbackCircle(mockRegion);
         expect(result).toContain('M 135,150');
         expect(result).toContain('A 35,35');
         expect(result).toContain('Z');
