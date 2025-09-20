@@ -296,19 +296,6 @@
     return '';
   }
 
-  function debugHighlighting(region: Region): void {
-    console.log(`Region ${region.index} highlight check:`, {
-      showTurnHighlights,
-      effectivePreviewMode,
-      movesRemaining: gameState?.movesRemaining,
-      isOwnedByCurrentPlayer: gameState?.ownersByRegion?.[region.index] === gameState?.playerIndex,
-      soldierCount: gameState?.soldiersByRegion?.[region.index]?.length || 0,
-      hasMovedThisTurn: gameState?.conqueredRegions?.includes(region.index),
-      canHighlight: canHighlightForTurn(region),
-      highlightVisible
-    });
-  }
-
   /**
    * Check if a region is a home base (owned and has temple)
    */
