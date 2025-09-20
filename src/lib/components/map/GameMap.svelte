@@ -5,6 +5,7 @@
   import Army from './Army.svelte';  // Add this import
   import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
   import { fade } from 'svelte/transition';
+  import SvgDefinitions from './SvgDefinitions.svelte';
 
   export let regions: Region[] = [];
   export let gameState: GameStateData | null = null;
@@ -186,32 +187,29 @@
    * Get the color for a region based on ownership
    */
   function getRegionColor(region: Region): string {
-      if (!gameState?.ownersByRegion) return NEUTRAL_COLOR;
+    if (!gameState?.ownersByRegion) return NEUTRAL_COLOR;
 
-      const ownerIndex = gameState.ownersByRegion[region.index];
+    const ownerIndex = gameState.ownersByRegion[region.index];
 
-      // Check if this region is under attack
-      if (battlesInProgress.has(region.index)) {
-        // Show contested/battle state with animated pattern
-        return `url(#battlePattern${region.index})`;
-      }
-
-      if (ownerIndex !== undefined) {
-        const baseColor = getPlayerMapColor(ownerIndex);
-
-        if (showTurnHighlights && isOwnedByActivePlayer(region.index) && highlightVisible) {
-          return `url(#activePlayerGradient${ownerIndex})`;
-        }
-
-        return baseColor;
-      }
-
-      return NEUTRAL_COLOR;
+    // Check if this region is under attack
+    if (battlesInProgress.has(region.index)) {
+      // Show contested/battle state with animated pattern
+      return `url(#battlePattern${region.index})`;
     }
 
-  /**
-   * Get the border color for a region
-   */
+    if (ownerIndex !== undefined) {
+      const baseColor = getPlayerMapColor(ownerIndex);
+
+      if (showTurnHighlights && isOwnedByActivePlayer(region.index) && highlightVisible) {
+        return `url(#activePlayerGradient${ownerIndex})`;
+      }
+
+      return baseColor;
+    }
+
+    return NEUTRAL_COLOR;
+  }
+
   function getBorderColor(region: Region): string {
     // Check if this is the selected region
     if (selectedRegion && selectedRegion.index === region.index) {
@@ -233,9 +231,6 @@
     return '#666';
   }
 
-  /**
-   * Get the border width for a region
-   */
   function getBorderWidth(region: Region): number {
     // Selection gets thicker border
     if (selectedRegion && selectedRegion.index === region.index) {
@@ -249,9 +244,6 @@
     return 1; // Default width
   }
 
-  /**
-   * Get CSS class for battle states
-   */
   function getBattleClass(region: Region): string {
     const classes = [];
 
@@ -369,17 +361,11 @@
     return canMove;
   }
 
-  /**
-   * Handle region clicks
-   */
   function handleRegionClick(region: Region): void {
     if (effectivePreviewMode) return;
     onRegionClick(region);
   }
 
-  /**
-   * Handle keyboard events for accessibility
-   */
   function handleKeyDown(event: KeyboardEvent, region: Region): void {
     if (effectivePreviewMode) return;
     if (event.key === 'Enter' || event.key === ' ') {
@@ -391,56 +377,11 @@
 
 <div class="game-map" bind:this={mapContainerElement}>
   <svg class="map-svg" viewBox="0 0 800 600">
-    <defs>
-      {@html activePlayerGradients}
 
-      <!-- Glow effect for active regions -->
-      <filter id="activeGlow">
-        <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-
-      <filter id="highlightGlow">
-        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-        <feColorMatrix type="matrix" values="1.2 1.2 0 0 0  1.2 1.2 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-
-      <!-- Pulse pattern for active regions -->
-      <pattern id="pulsePattern" patternUnits="userSpaceOnUse" width="20" height="20">
-        <rect width="20" height="20" fill="rgba(250, 204, 21, 0.3)"/>
-        <circle cx="10" cy="10" r="8" fill="none" stroke="rgba(250, 204, 21, 0.6)" stroke-width="2"/>
-      </pattern>
-
-      <!-- Battle progress patterns -->
-      {#each Array.from(battlesInProgress) as regionIndex}
-        <pattern id="battlePattern{regionIndex}" patternUnits="userSpaceOnUse" width="40" height="40">
-          <rect width="40" height="40" fill="{getPlayerMapColor(gameState?.ownersByRegion?.[regionIndex] || 0)}" opacity="0.7"/>
-          <rect width="40" height="40" fill="none" stroke="#ff6b35" stroke-width="3" stroke-dasharray="10,5">
-            <animate attributeName="stroke-dashoffset" values="0;15" dur="1s" repeatCount="indefinite"/>
-          </rect>
-          <circle cx="20" cy="20" r="8" fill="#ff6b35" opacity="0.6">
-            <animate attributeName="r" values="5;12;5" dur="1.5s" repeatCount="indefinite"/>
-          </circle>
-        </pattern>
-      {/each}
-
-      <!-- Battle glow effect -->
-      <filter id="battleGlow">
-        <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-        <feColorMatrix type="matrix" values="1 0.3 0 0 0  0.3 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
+    <SvgDefinitions
+      {gameState}
+      {battlesInProgress}
+    />
 
     {#each regions as region (region.index)}
       {@const regionWithPoints = region}
