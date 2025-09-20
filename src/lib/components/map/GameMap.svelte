@@ -29,18 +29,26 @@
   }
 
   $: if (gameState) {  // temp debug
-    console.log('🔄 GameMap gameState updated:', {
+    console.log('GameMap gameState updated:', {
       playerIndex: gameState.playerIndex,
       turnNumber: gameState.turnNumber,
       players: gameState.players?.map(p => ({ name: p.name, slotIndex: p.index }))
     });
   }
+
+  $: currentTurnPlayer = (() => {
+    if (!gameState?.players) return null;
+
+    // Use playerIndex if available, otherwise fall back to currentPlayerIndex
+    const playerIndex = gameState.playerIndex ?? gameState.currentPlayerIndex;
+    return gameState.players.find(p => p.index === playerIndex) || null;
+  })();
+
   $: canMoveFromReactive = function(region: Region): boolean {
-    console.log('🔄 canMoveFrom recalculated for gameState change');
+    console.log('canMoveFrom recalculated for gameState change');
+    const turnPlayer = currentTurnPlayer;
 
-    const turnPlayer = findCurrentPlayerBySlot();
-
-    console.log('🏃 canMoveFrom debug for region', region.index, ':', {
+    console.log('canMoveFrom debug for region', region.index, ':', {
       turnPlayer: turnPlayer ? { name: turnPlayer.name, slotIndex: turnPlayer.index } : null,
       regionOwner: gameState?.ownersByRegion?.[region.index],
     });
@@ -54,15 +62,7 @@
     const soldierCount = gameState.soldiersByRegion[region.index]?.length || 0;
     const hasMovedThisTurn = gameState.conqueredRegions?.includes(region.index) ?? false;
 
-    const canMove = isOwnedByCurrentPlayer && soldierCount > 1 && !hasMovedThisTurn;
-
-    console.log('🏃 canMoveFrom result:', canMove, {
-      isOwnedByCurrentPlayer,
-      soldierCount,
-      hasMovedThisTurn
-    });
-
-    return canMove;
+    return isOwnedByCurrentPlayer && soldierCount > 0 && !hasMovedThisTurn;
   };
 
   onMount(() => {
@@ -149,7 +149,7 @@
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
 
-    const turnPlayer = findCurrentPlayerBySlot();
+    const turnPlayer = currentTurnPlayer
     if (!turnPlayer) return false;
     const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === turnPlayer.index;
 
@@ -340,7 +340,7 @@
    * Check if the region can be moved from
    */
   function canMoveFrom(region: Region): boolean {
-    const turnPlayer = findCurrentPlayerBySlot();
+    const turnPlayer = currentTurnPlayer;
 
     console.log('🏃 canMoveFrom debug for region', region.index, ':', {
       turnPlayer: turnPlayer ? { name: turnPlayer.name, slotIndex: turnPlayer.index } : null,
@@ -367,20 +367,6 @@
     });
 
     return canMove;
-  }
-
-  function findCurrentPlayerBySlot(): Player | null {
-    console.log('findCurrentPlayerBySlot debug:', {
-        gameStatePlayerIndex: gameState?.playerIndex,
-        allPlayers: gameState?.players?.map(p => ({ name: p.name, slotIndex: p.index })),
-        ownersByRegionSample: gameState?.ownersByRegion ? Object.entries(gameState.ownersByRegion).slice(0, 5) : 'MISSING'
-      });
-
-    const player = gameState?.players?.find(p => p.index === gameState?.playerIndex) || null;
-
-    console.log('Found player:', player ? { name: player.name, slotIndex: player.index } : null);
-
-    return player;
   }
 
   /**
