@@ -217,8 +217,9 @@
   function handleRegionClick(region: any) {
     console.log('Region clicked:', region);
 
-    if (!isMyTurn) {
-      console.log('Not my turn, ignoring click');
+    // Check if it's my turn AND the current player is not an AI
+    if (!$isMyTurn) {
+      console.log('Not my turn or current player is AI, ignoring click');
       return;
     }
 

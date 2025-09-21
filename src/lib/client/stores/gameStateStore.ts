@@ -175,8 +175,19 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
     return player;
   });
 
-  const isMyTurn = derived(currentPlayerIndex, $currentPlayerIndex =>
-    $currentPlayerIndex === playerIndex
+  const isMyTurn = derived(
+    [gameState, players],
+    ([$gameState, $players]) => {
+      if (!$gameState || !$players.length) return false;
+
+      // Find the player whose turn it is (by slot index)
+      const currentTurnPlayer = $players.find(p => p.index === $gameState.playerIndex);
+
+      const isMySlot = $gameState.playerIndex === playerIndex;
+      const isHumanPlayer = currentTurnPlayer && !currentTurnPlayer.personality;
+
+      return isMySlot && isHumanPlayer;
+    }
   );
 
   const movesRemaining = derived(gameState, $gameState =>
