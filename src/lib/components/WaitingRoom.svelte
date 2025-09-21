@@ -94,29 +94,17 @@
 
   async function loadGameState() {
     try {
-      console.log(`🔄 Loading game state for ${gameId}...`);
-
+      loading = true;
       const response = await fetch(`/api/game/${gameId}`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error(`Failed to load game state: ${response.status}`, errorData);
-        error = `Failed to load game: ${errorData.error || response.statusText}`;
-        return; // Don't update game state on error
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const gameData = await response.json();
-      console.log(`📥 Received game data:`, {
-        gameId: gameData?.gameId,
-        status: gameData?.status,
-        playersLength: gameData?.players?.length,
-        hasConfig: !!(gameData?.pendingConfiguration || gameData?.configuration),
-        fullData: gameData
-      });
-
-      console.log(`✅ Game state updated successfully`);
       game = gameData;
-      error = null; // Clear any previous errors
+      checkIfCreator(); // Add this line!
+      error = null;
     } catch (err) {
       console.error('❌ Error loading game state:', err);
       error = 'Network error loading game';
@@ -126,11 +114,20 @@
     }
   }
 
+  /**
+   * The creator is whoever created this game (stored in localStorage).
+   * currentPlayerId should match the playerIndex of whoever created the game
+   */
   function checkIfCreator() {
-    if (game && currentPlayerId !== null) {
-      // Check if current player is the first player (creator)
-      const creator = game.players?.find(p => p.index === 0);
-      isCreator = creator && currentPlayerId === creator.index;
+    const gameCreator = loadGameCreator(gameId);
+
+    if (game && gameCreator && gameCreator.playerIndex !== undefined) {
+      // Check if the current player is the same as the stored creator
+      isCreator = currentPlayerId === gameCreator.playerIndex;
+
+      console.log(`🔍 Creator check: currentPlayerId=${currentPlayerId}, creatorIndex=${gameCreator.playerIndex}, isCreator=${isCreator}`);
+    } else { // if (game && currentPlayerId !== null) {
+      throw new Error("insufficient data ", game, gameCreator);
     }
   }
 

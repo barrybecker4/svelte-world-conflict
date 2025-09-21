@@ -77,13 +77,47 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 function fillRemainingSlotsWithAI(game: any): any[] {
   const updatedPlayers = [...game.players];
 
-  while (updatedPlayers.length < GAME_CONSTANTS.MAX_PLAYERS) {
-      updatedPlayers.push({
-          index: updatedPlayers.length,
-          name: updatedPlayers.name,
+  // If the game has a pendingConfiguration with playerSlots, respect it
+  if (game.pendingConfiguration?.playerSlots) {
+    const playerSlots = game.pendingConfiguration.playerSlots;
+
+    // Only fill slots that are configured as "Open" and not yet filled
+    for (let slotIndex = 0; slotIndex < playerSlots.length; slotIndex++) {
+      const slot = playerSlots[slotIndex];
+
+      if (!slot) {
+        throw new Error("no slot at index " + slotIndex);
+      }
+      if (slot.type == 'Open') {
+        // Skip if this slot already has a player
+        const existingPlayer = updatedPlayers.find(p => p.index === slotIndex);
+        if (existingPlayer) {
+          continue;
+        }
+
+        // Add AI player for this open slot
+        const aiPlayer = {
+          index: slotIndex,
+          name: `AI Player ${slotIndex + 1}`,
           isAI: true
-      });
+        };
+
+        console.log(`Adding AI player to open slot ${slotIndex}:`, aiPlayer);
+        updatedPlayers.push(aiPlayer);
+      }
+    }
+  } else {
+    throw new Error('Game is missing pendingConfiguration with playerSlots');
+    // Fallback for games without proper configuration - fill up to MAX_PLAYERS
+//     while (updatedPlayers.length < GAME_CONSTANTS.MAX_PLAYERS) {
+//       updatedPlayers.push({
+//         index: updatedPlayers.length,
+//         name: `AI Player ${updatedPlayers.length + 1}`,
+//         isAI: true
+//       });
+//     }
   }
+
   return updatedPlayers;
 }
 

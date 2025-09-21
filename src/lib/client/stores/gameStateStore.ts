@@ -134,10 +134,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
       turnManager.updateGameState(cleanState);
     }
 
-    // Update the existing move system with new game state
-    if (moveSystem) {
-      moveSystem.updateGameState(cleanState);
-    }
+     moveSystem.updateGameState(cleanState);
   }
 
   /**
