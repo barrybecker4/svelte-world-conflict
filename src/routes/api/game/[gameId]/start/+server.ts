@@ -7,6 +7,7 @@ import { getErrorMessage } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
 import { GameNotifications } from '$lib/server/websocket/websocket';
+import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 
 /**
  * Start a pending multiplayer game
@@ -50,78 +51,116 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         await gameStorage.saveGame(updatedGame);
 
-        // Notify all connected clients
-        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+        // Check if first player is AI and process AI turns if needed
+        const initialGameState = new GameState(updatedGame.worldConflictState);
+        const firstPlayer = initialGameState.activePlayer();
 
-        console.log(`✅ Game ${gameId} started with ${updatedPlayers.length} players`);
+        if (firstPlayer?.isAI) {
+            console.log(`First player is AI (${firstPlayer.name}), processing AI turns after manual start...`);
+
+            // Process AI turns until we reach a human player
+            const processedGameState = await processAiTurns(initialGameState, gameStorage, gameId, platform);
+
+            // Update the game with the processed state
+            updatedGame.worldConflictState = processedGameState.toJSON();
+            updatedGame.currentPlayerIndex = processedGameState.playerIndex;
+            updatedGame.lastMoveAt = Date.now();
+
+            console.log(`AI processing complete after manual start, current player: ${processedGameState.playerIndex}`);
+
+            // Save the updated game record
+            await gameStorage.saveGame(updatedGame);
+        }
+
+        // Notify all connected clients
+        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!.env);
+        await GameNotifications.gameStarted(gameId, updatedGame);
 
         return json({
             success: true,
-            message: 'Game started successfully',
-            game: {
-                ...updatedGame,
-                playerCount: updatedGame.players.length
-            }
+            gameId: updatedGame.gameId,
+            gameStatus: updatedGame.status,
+            worldConflictState: updatedGame.worldConflictState,
+            players: updatedGame.players
         });
 
     } catch (error) {
-        console.error('Error starting game:', error);
-        return json({
-            error: 'Failed to start game',
-            details: getErrorMessage(error)
-        }, { status: 500 });
+        console.error(`Error starting game ${params.gameId}:`, error);
+        return json({ error: 'Failed to start game: ' + getErrorMessage(error) }, { status: 500 });
     }
 };
 
-// Fill any remaining open slots with AI players
+// Rest of the file remains the same...
 function fillRemainingSlotsWithAI(game: any): any[] {
-  const updatedPlayers = [...game.players];
-  const playerSlots = game.pendingConfiguration.playerSlots;
+    const players = [...game.players];
 
-  // Only fill slots that are configured as "Open" and not yet filled
-  for (let slotIndex = 0; slotIndex < playerSlots.length; slotIndex++) {
-    const slot = playerSlots[slotIndex];
+    if (game.pendingConfiguration?.playerSlots) {
+        const playerSlots = game.pendingConfiguration.playerSlots;
+        const activeSlots = playerSlots.filter((slot: any) => slot && slot.type !== 'Off');
 
-    if (!slot) {
-      throw new Error("no slot at index " + slotIndex);
+        for (const slot of activeSlots) {
+            if (slot.type === 'Open' && !players.find(p => p.index === slot.index)) {
+                console.log(`Adding AI player to open slot ${slot.index}:`, {
+                    index: slot.index,
+                    name: slot.defaultName || `AI Player ${slot.index + 1}`,
+                    type: 'AI',
+                    personality: {
+                        name: slot.defaultName || `AI Player ${slot.index + 1}`,
+                        level: 1,
+                        soldierEagerness: 0.5,
+                        upgradePreference: []
+                    }
+                });
+
+                players.push({
+                    id: `ai_${slot.index}`,
+                    index: slot.index,
+                    name: slot.defaultName || `AI Player ${slot.index + 1}`,
+                    color: getPlayerColor(slot.index),
+                    isAI: true,
+                    personality: {
+                        name: slot.defaultName || `AI Player ${slot.index + 1}`,
+                        level: 1,
+                        soldierEagerness: 0.5,
+                        upgradePreference: []
+                    }
+                });
+            }
+        }
+    } else {
+        // Fill up to max players
+        while (players.length < GAME_CONSTANTS.MAX_PLAYERS) {
+            const aiIndex = players.length;
+            players.push({
+                id: `ai_${aiIndex}`,
+                index: aiIndex,
+                name: `AI Player ${aiIndex + 1}`,
+                color: getPlayerColor(aiIndex),
+                isAI: true,
+                personality: {
+                    name: `AI Player ${aiIndex + 1}`,
+                    level: 1,
+                    soldierEagerness: 0.5,
+                    upgradePreference: []
+                }
+            });
+        }
     }
-    if (slot.type == 'Open') {
-      // Skip if this slot already has a player
-      const existingPlayer = updatedPlayers.find(p => p.index === slotIndex);
-      if (existingPlayer) {
-        continue;
-      }
 
-      // Add AI player for this open slot
-     const aiPlayer = {
-       index: slotIndex,
-       name: `AI Player ${slotIndex + 1}`,
-       type: 'AI',
-       personality: {
-         name: `AI Player ${slotIndex + 1}`,
-         level: 1,
-         soldierEagerness: 0.5,
-         upgradePreference: []
-       }
-     };
-
-      console.log(`Adding AI player to open slot ${slotIndex}:`, aiPlayer);
-      updatedPlayers.push(aiPlayer);
-    }
-  }
-
-  return updatedPlayers;
+    return players;
 }
 
-// Reconstruct regions from JSON data
-function reconstructRegions(regionObjs: any[] | undefined): Region[] {
-  let regions = [];
-  if (regionObjs) {
-      regions = regionObjs.map((regionObj: any) => {
-          return new Region(regionObj);
-      });
+function reconstructRegions(regionData: any): Region[] {
+    if (!regionData?.length) {
+        console.log('No region data provided, creating basic regions');
+        return [];
+    }
 
-      console.log(`Reconstructed ${regions.length} regions as Region instances`);
-  }
-  return regions;
+    console.log(`Reconstructed ${regionData.length} regions as Region instances`);
+    return regionData.map((data: any) => new Region(data));
+}
+
+function getPlayerColor(index: number): string {
+    const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
+    return colors[index % colors.length];
 }

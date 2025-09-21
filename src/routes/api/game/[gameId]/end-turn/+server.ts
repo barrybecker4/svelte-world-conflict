@@ -2,9 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
-import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/commands';
+import { EndTurnCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
 import { getErrorMessage } from '$lib/server/api-utils';
+import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 
 interface EndTurnRequest {
     playerId: string;
@@ -94,120 +95,3 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return json({ error: 'Failed to end turn: ' + getErrorMessage(error) }, { status: 500 });
     }
 };
-
-/**
- * Process AI turns until we reach a human player or game ends
- */
-async function processAiTurns(gameState: GameState, gameStorage: GameStorage, gameId: string, platform: any): Promise<GameState> {
-    let currentState = gameState;
-    let currentPlayer = currentState.activePlayer();
-
-    // Continue processing AI turns until we reach a human player or game ends
-    while (currentPlayer?.isAI && !currentState.isGameComplete()) {
-        console.log(`Processing AI turn for player ${currentPlayer.index} (${currentPlayer.name})`);
-
-        try {
-            // Simulate AI move decision (you'll need to implement this based on your AI logic)
-            const aiMove = await generateAiMove(currentState, currentPlayer);
-
-            if (aiMove) {
-                const commandProcessor = new CommandProcessor();
-                const result = commandProcessor.process(aiMove);
-
-                if (result.success && result.newState) {
-                    currentState = result.newState;
-
-                    // Save the updated game state
-                    const updatedGame = {
-                        ...await gameStorage.getGame(gameId),
-                        worldConflictState: currentState.toJSON(),
-                        currentPlayerIndex: currentState.playerIndex,
-                        lastMoveAt: Date.now()
-                    };
-
-                    await gameStorage.saveGame(updatedGame);
-
-                    // Notify players of AI move
-                    await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform.env);
-
-                    // Small delay to make AI moves visible
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } else {
-                    console.error('AI move failed:', result.error);
-                    break;
-                }
-            } else {
-                // AI couldn't make a move, end turn
-                const endTurnCommand = new EndTurnCommand(currentState, currentPlayer);
-                const commandProcessor = new CommandProcessor();
-                const result = commandProcessor.process(endTurnCommand);
-
-                if (result.success && result.newState) {
-                    currentState = result.newState;
-                } else {
-                    break;
-                }
-            }
-
-            currentPlayer = currentState.activePlayer();
-
-        } catch (error) {
-            console.error('Error processing AI turn:', error);
-            break;
-        }
-    }
-
-    return currentState;
-}
-
-/**
- * Generate an AI move based on the current game state and player personality
- * This is a simplified version - you'll need to implement the full AI logic
- */
-async function generateAiMove(gameState: GameState, player: Player): Promise<any> {
-    // This is where you'd implement the AI decision-making logic
-    // Based on the project knowledge, this should mirror the erisk.aiPickMove function
-
-    const availableMoves = gameState.movesRemaining || 0;
-    if (availableMoves <= 0) {
-        return null; // No moves left, will end turn
-    }
-
-    // Simple AI logic - find a region owned by this player with soldiers
-    const playerRegions = gameState.getRegionsOwnedByPlayer(player.index);
-    const regionsWithSoldiers = playerRegions.filter(region =>
-        gameState.soldierCount(region.index) > 1
-    );
-
-    if (regionsWithSoldiers.length === 0) {
-        return null; // No valid moves available
-    }
-
-    // Pick a random region with soldiers
-    const sourceRegion = regionsWithSoldiers[Math.floor(Math.random() * regionsWithSoldiers.length)];
-    const neighbors = sourceRegion.neighbors || [];
-
-    if (neighbors.length === 0) {
-        return null; // No neighbors to move to
-    }
-
-    // Pick a random neighbor
-    const targetRegionIndex = neighbors[Math.floor(Math.random() * neighbors.length)];
-    const soldierCount = Math.min(
-        gameState.soldierCount(sourceRegion.index) - 1, // Leave one soldier
-        1 // Move one soldier for now
-    );
-
-    if (soldierCount <= 0) {
-        return null;
-    }
-
-    // Create an army move command
-    return new ArmyMoveCommand(
-        gameState,
-        player,
-        sourceRegion.index,
-        targetRegionIndex,
-        soldierCount
-    );
-}
