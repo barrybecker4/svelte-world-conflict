@@ -6,6 +6,8 @@ import { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/entities/gameTypes';
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
+import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
+import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
 
 /**
  * Create a new game
@@ -26,6 +28,40 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
         if (!creatorPlayer) {
             throw new Error('Creator player not found in game record');
+        }
+
+        if (gameRecord.status === 'ACTIVE') {
+            // pull out to aiMovesFirst(...)
+            const gameStorage = GameStorage.create(platform!);
+            const initialGameState = new GameState(gameRecord.worldConflictState);
+            const firstPlayer = initialGameState.getCurrentPlayer();
+
+            if (firstPlayer?.isAI) {
+                console.log(`First player is AI (${firstPlayer.name}), processing AI turns after game creation...`);
+
+                // Process AI turns until we reach a human player
+                const processedGameState = await processAiTurns(
+                    initialGameState,
+                    gameStorage,
+                    gameRecord.gameId,
+                    platform
+                );
+
+                // Update the game record with the processed state
+                gameRecord.worldConflictState = processedGameState.toJSON();
+                gameRecord.currentPlayerSlot = processedGameState.playerSlotIndex;
+                gameRecord.lastMoveAt = Date.now();
+
+                // Save the updated state
+                await gameStorage.saveGame(gameRecord);
+
+                // Notify via WebSocket if available
+                if (platform?.env) {
+                    await WebSocketNotificationHelper.sendGameUpdate(gameRecord, platform.env);
+                }
+
+                console.log(`AI processing complete after game creation, current player slot: ${processedGameState.playerSlotIndex}`);
+            }
         }
 
         return json({

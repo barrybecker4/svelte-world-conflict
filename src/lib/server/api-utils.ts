@@ -1,4 +1,5 @@
 import type { Player } from '$lib/game/state/GameState';
+import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 
 // Update with your deployed worker URL. i.e. replace "barrybecker4", with your username, if needed.
 export const WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
@@ -39,6 +40,7 @@ export function createPlayer(name: string, slotIndex: number, isAI: boolean = fa
     return {
         slotIndex,  // Changed from 'index'
         name: name.trim(),
+        color: getPlayerColor(slotIndex),
         isAI
     };
 }
