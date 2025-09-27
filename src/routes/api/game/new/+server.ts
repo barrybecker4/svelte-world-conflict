@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { Region } from '$lib/game/entities/Region';
-import type { Player } from '$lib/game/entities/Player';
+import type { Player } from '$lib/game/entities/gameTypes';
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
 

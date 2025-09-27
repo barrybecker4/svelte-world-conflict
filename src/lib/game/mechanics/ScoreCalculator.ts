@@ -8,7 +8,7 @@ export class ScoreCalculator {
     this.gameState = gameState;
   }
 
-  calculatePlayerScore(playeSlotrIndex: number): number {
+  calculatePlayerScore(playerSlotIndex: number): number {
     const regionCount = this.getRegionCount(playerSlotIndex);
     const soldierCount = this.getTotalSoldiers(playerSlotIndex);
     return (1000 * regionCount) + soldierCount;

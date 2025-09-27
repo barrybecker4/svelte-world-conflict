@@ -9,7 +9,7 @@ import { GameState } from '$lib/game/state/GameState';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { ArmyMoveCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
-import type { Player } from '$lib/game/entities/Player';
+import type { Player } from '$lib/game/entities/gameTypes';
 
 /**
  * Process AI turns until we reach a human player or game ends

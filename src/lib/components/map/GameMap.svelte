@@ -50,7 +50,6 @@
 
   function getRegionColor(region: Region): string {
     if (!gameState?.ownersByRegion) {
-        console.log('❌ No ownersByRegion');
         return NEUTRAL_COLOR;
     }
 

@@ -1,3 +1,5 @@
+import type { Player } from '$lib/game/entities/gameTypes';
+
 export interface PlayerColorConfig {
   slotIndex: number;
   defaultName: string;
@@ -64,11 +66,11 @@ export function getPlayerEndColor(playerSlotIndex: number): string {
 }
 
 // For creating Player objects with consistent colors
-export function createPlayerWithColors(name: string, index: number, isAI: boolean = false) {
-  const config = getPlayerConfig(index);
+export function createPlayerWithColors(name: string, slotIndex: number, isAI: boolean = false): Player {
+  const config = getPlayerConfig(slotIndex);
 
   return {
-    index,
+    slotIndex,
     name: name.trim() || config.defaultName,
     color: config.colorStart,
     isAI
