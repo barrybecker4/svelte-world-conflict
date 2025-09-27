@@ -17,8 +17,8 @@ export const SOUNDS = {
     INCOME: 'income',
 
     // Time warnings
-    OUT_OF_TIME: 'OUT_OF_TIME',
-    ALMOST_OUT_OF_TIME: 'ALMOST_OUT_OF_TIME',
+    OUT_OF_TIME: 'out of time',
+    ALMOST_OUT_OF_TIME: 'almost out of time',
 
     // UI sounds
     CLICK: 'click',
