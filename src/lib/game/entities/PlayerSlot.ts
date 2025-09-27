@@ -6,7 +6,7 @@
 export type PlayerSlotType = 'Off' | 'Set' | 'Open' | 'AI';
 
 export interface PlayerSlot {
-  index: number; // Core identification
+  slotIndex: number;
   type: PlayerSlotType;
   name?: string;
   defaultName: string;
@@ -62,9 +62,9 @@ export function getPlayerSlotDisplayName(slot: PlayerSlot): string {
 /**
  * Convert player slot to simplified player data for game state
  */
-export function playerSlotToGamePlayer(slot: PlayerSlot, index: number) {
+export function playerSlotToGamePlayer(slot: PlayerSlot, slotIndex: number) {
   return {
-    index,
+    slotIndex,
     name: getPlayerSlotDisplayName(slot),
     color: slot.colorStart,
     isAI: slot.type === 'AI'

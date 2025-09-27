@@ -30,7 +30,7 @@ export abstract class Command {
     abstract serialize(): any;
 
     protected generateId(): string {
-        return `${this.gameState.id}-${this.player.index}-${Date.now()}`;
+        return `${this.gameState.id}-${this.player.slotIndex}-${Date.now()}`;
     }
 
     undo(): GameState {

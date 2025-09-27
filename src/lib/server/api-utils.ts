@@ -31,13 +31,13 @@ export function generatePlayerId(): string {
 /**
  * Create a properly typed World Conflict Player object
  */
-export function createPlayer(name: string, index: number, isAI: boolean = false): Player {
-    if (index < 0 || index > 3) {
-        throw new Error(`Invalid player index: ${index}. Must be 0-3.`);
+export function createPlayer(name: string, slotIndex: number, isAI: boolean = false): Player {
+    if (slotIndex < 0 || slotIndex > 3) {
+        throw new Error(`Invalid player slot index: ${slotIndex}. Must be 0-3.`);
     }
 
     return {
-        index,
+        slotIndex,  // Changed from 'index'
         name: name.trim(),
         isAI
     };

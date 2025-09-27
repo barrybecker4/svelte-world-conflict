@@ -37,7 +37,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             worldConflictState: game.worldConflictState,
             createdAt: game.createdAt,
             lastMoveAt: game.lastMoveAt,
-            currentPlayerIndex: game.currentPlayerIndex,
+            currentPlayerSlot: game.currentPlayerSlot,
             pendingConfiguration: game.pendingConfiguration,
             gameType: game.gameType
         });
@@ -73,8 +73,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         // Find the player (convert playerId to index if needed)
-        const playerIndex = parseInt(playerId);
-        const player = game.players.find((p: Player) => p.index === playerIndex);
+        const playerSlotIndex = parseInt(playerId);
+        const player = game.players.find((p: Player) => p.slotIndex === playerSlotIndex);
 
         if (!player) {
             return json({ error: 'Player not found in this game' }, { status: 404 });
@@ -95,7 +95,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 });
             } else {
                 // Remove this player from the game
-                const updatedPlayers = game.players.filter((p: Player) => p.index !== playerIndex);
+                const updatedPlayers = game.players.filter((p: Player) => p.slotIndex !== playerSlotIndex);
                 const updatedGame = {
                     ...game,
                     players: updatedPlayers,
@@ -121,7 +121,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 status: 'COMPLETED' as const,
                 lastMoveAt: Date.now(),
                 endReason: reason,
-                endedBy: player.index
+                endedBy: player.slotIndex
             };
 
             console.log("saveGame after resign. gameId: " + updatedGame.gameId);

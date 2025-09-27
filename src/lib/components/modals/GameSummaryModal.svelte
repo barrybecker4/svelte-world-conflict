@@ -40,7 +40,7 @@
     if (winner) {
         const localPlayer = gameState.getLocalPlayer();
 
-        if (winner.index === localPlayer.index) {
+        if (winner.slotIndex === localPlayer.slotIndex) {
             await audioSystem.playSound(SOUNDS.GAME_WON);
         } else {
             await audioSystem.playSound(SOUNDS.GAME_LOST);
@@ -52,9 +52,9 @@
     if (!gameState || !players.length) return [];
 
     const stats = players.map(player => {
-      const regionCount = getRegionCount(player.index);
-      const soldierCount = getTotalSoldiers(player.index);
-      const faithCount = gameState.faithByPlayer[player.index] || 0;
+      const regionCount = getRegionCount(player.slotIndex);
+      const soldierCount = getTotalSoldiers(player.slotIndex);
+      const faithCount = gameState.faithByPlayer[player.slotIndex] || 0;
 
       // Calculate total score (same as game logic: 1000 * regions + soldiers)
       const totalScore = (1000 * regionCount) + soldierCount;
@@ -78,18 +78,18 @@
     return stats;
   }
 
-  function getRegionCount(playerIndex: number): number {
+  function getRegionCount(playerSlotIndex: number): number {
     if (!gameState?.ownersByRegion) return 0;
-    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerIndex).length;
+    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerSlotIndex).length;
   }
 
-  function getTotalSoldiers(playerIndex: number): number {
+  function getTotalSoldiers(playerSlotIndex: number): number {
     if (!gameState?.soldiersByRegion) return 0;
 
     let total = 0;
     Object.entries(gameState.soldiersByRegion).forEach(([regionIndexStr, soldiers]) => {
       const regionIndex = parseInt(regionIndexStr);
-      if (gameState.ownersByRegion[regionIndex] === playerIndex) {
+      if (gameState.ownersByRegion[regionIndex] === playerSlotIndex) {
         total += soldiers.length;
       }
     });
@@ -175,7 +175,7 @@
 
                 <div
                   class="player-color-badge"
-                  style="background: linear-gradient(135deg, {getPlayerColor(stat.player.index)}, {getPlayerEndColor(stat.player.index)});"
+                  style="background: linear-gradient(135deg, {getPlayerColor(stat.player.slotIndex)}, {getPlayerEndColor(stat.player.slotIndex)});"
                 ></div>
 
                 <div class="player-details">

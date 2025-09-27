@@ -1,5 +1,5 @@
 export interface PlayerColorConfig {
-  index: number;
+  slotIndex: number;
   defaultName: string;
   colorStart: string;
   colorEnd: string;
@@ -9,7 +9,7 @@ export interface PlayerColorConfig {
 
 export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   {
-    index: 0,
+    slotIndex: 0,
     defaultName: 'Amber',
     colorStart: '#ffcc46',  // Muted dark goldenrod (was #e6bf2d)
     colorEnd: '#daab1a',    // Darker muted gold (was #daab1a)
@@ -17,7 +17,7 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
     highlightEnd: '#b8860b',
   },
   {
-    index: 1,
+    slotIndex: 1,
     defaultName: 'Crimson',
     colorStart: '#bf4f42', // Muted red (was #dc2626)
     colorEnd: '#7a2727',   // Darker muted red (was #991b1b)
@@ -25,7 +25,7 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
     highlightEnd: '#a83232',
   },
   {
-    index: 2,
+    slotIndex: 2,
     defaultName: 'Lavender',
     colorStart: '#8b61ba', // Muted purple (was #9A3BF2)
     colorEnd: '#5d4e75',   // Darker muted purple (was #7B68EE)
@@ -33,7 +33,7 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
     highlightEnd: '#7b68aa',
   },
   {
-    index: 3,
+    slotIndex: 3,
     defaultName: 'Emerald',
     colorStart: '#2e8b57', // Muted sea green (was #059669)
     colorEnd: '#1e5631',   // Darker muted green (was #047857)
@@ -43,24 +43,24 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
 ];
 
 // Helper functions
-export function getPlayerConfig(playerIndex: number): PlayerColorConfig {
-  return PLAYER_CONFIGS[playerIndex % PLAYER_CONFIGS.length];
+export function getPlayerConfig(playerSlotIndex: number): PlayerColorConfig {
+  return PLAYER_CONFIGS[playerSlotIndex % PLAYER_CONFIGS.length];
 }
 
-export function getPlayerColor(playerIndex: number): string {
-  return getPlayerConfig(playerIndex).colorStart;
+export function getPlayerColor(playerSlotIndex: number): string {
+  return getPlayerConfig(playerSlotIndex).colorStart;
 }
 
-export function getPlayerMapColor(playerIndex: number): string {
-  return getPlayerConfig(playerIndex).colorStart;
+export function getPlayerMapColor(playerSlotIndex: number): string {
+  return getPlayerConfig(playerSlotIndex).colorStart;
 }
 
-export function getPlayerHighlightColor(playerIndex: number): string {
-  return getPlayerConfig(playerIndex).highlightStart;
+export function getPlayerHighlightColor(playerSlotIndex: number): string {
+  return getPlayerConfig(playerSlotIndex).highlightStart;
 }
 
-export function getPlayerEndColor(playerIndex: number): string {
-  return getPlayerConfig(playerIndex).colorEnd;
+export function getPlayerEndColor(playerSlotIndex: number): string {
+  return getPlayerConfig(playerSlotIndex).colorEnd;
 }
 
 // For creating Player objects with consistent colors

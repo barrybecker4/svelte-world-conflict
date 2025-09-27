@@ -113,12 +113,12 @@
         const player = result.player;
 
         saveGameCreator(gameId, {
-          playerId: player.index.toString(),
-          playerIndex: player.index,
+          playerId: player.slotIndex.toString(),
+          playerSlotIndex: player.slotIndex,
           playerName: player.name
         });
 
-        console.log(`✅ Successfully joined as player ${player.index}: ${player.name}`);
+        console.log(`✅ Successfully joined as player ${player.slotIndex}: ${player.name}`);
 
         // Route to game page - it will show waiting room if status is PENDING
         goto(`/game/${gameId}`);
@@ -168,7 +168,7 @@
       }
       if (slot.type === 'Open') {
         // Check if this slot is already taken by a player
-        const player = game.players?.find(p => p.index === slotIndex);
+        const player = game.players?.find(p => p.slotIndex === slotIndex);
         if (player) {
           return { type: 'taken', name: player.name, canJoin: false };
         }
@@ -177,7 +177,7 @@
     }
 
     // Fallback for games without proper configuration
-    const player = game.players?.find(p => p.index === slotIndex);
+    const player = game.players?.find(p => p.slotIndex === slotIndex);
     if (player) {
       return { type: 'taken', name: player.name, canJoin: false };
     }

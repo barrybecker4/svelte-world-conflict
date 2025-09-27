@@ -13,13 +13,13 @@ export class MoveValidator {
         soldierCount: number
     ): MoveValidationResult {
 
-        const currentPlayer = gameData.players.find(p => p.index === gameData.playerIndex);
+        const currentPlayer = gameData.players.find(p => p.slotIndex === gameData.currentPlayerSlot);
         if (!currentPlayer) {
             return { isValid: false, error: "Current player not found" };
         }
 
         // Check if player owns the source region
-        if (gameData.ownersByRegion[fromRegion] !== currentPlayer.index) {
+        if (gameData.ownersByRegion[fromRegion] !== currentPlayer.slotIndex) {
             return { isValid: false, error: "Cannot move soldiers from region you don't own" };
         }
 

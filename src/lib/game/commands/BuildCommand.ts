@@ -28,7 +28,7 @@ export class BuildCommand extends Command {
         }
 
         const cost = this.calculateCost();
-        const playerFaith = this.gameState.faithByPlayer[this.player.index] || 0;
+        const playerFaith = this.gameState.faithByPlayer[this.player.slotIndex] || 0;
         if (cost > playerFaith) {
             errors.push(`Need ${cost} faith, have ${playerFaith}`);
         }
@@ -53,7 +53,7 @@ export class BuildCommand extends Command {
         const newState = this.gameState.copy() as GameState;
 
         const cost = this.calculateCost();
-        newState.faithByPlayer[this.player.index] = (newState.faithByPlayer[this.player.index] || 0) - cost;
+        newState.faithByPlayer[this.player.slotIndex] = (newState.faithByPlayer[this.player.slotIndex] || 0) - cost;
 
         const temple = newState.templesByRegion[this.regionIndex];
         if (temple) {
@@ -88,7 +88,7 @@ export class BuildCommand extends Command {
     serialize(): any {
         return {
             type: 'BuildCommand',
-            playerId: this.player.index,
+            playerId: this.player.slotIndex,
             regionIndex: this.regionIndex,
             upgradeIndex: this.upgradeIndex,
             timestamp: this.timestamp,

@@ -9,7 +9,7 @@ import { SOUNDS } from '$lib/client/audio/sounds';
 /**
  * Svelte Store for managing game state loading, initialization, and updates
  */
-export function createGameStateStore(gameId: string, playerId: string, playerIndex: number) {
+export function createGameStateStore(gameId: string, playerId: string, playerSlotIndex: number) {
 
   const gameState = writable(null);
   const regions = writable([]);
@@ -36,7 +36,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
       players.set(data.worldConflictState.players || []);
 
       console.log('📊 Game state loaded:', {
-        playerIndex: data.worldConflictState.playerIndex,
+        playerSlotIndex: data.worldConflictState.playerSlotIndex,
         movesRemaining: data.worldConflictState.movesRemaining,
         regionsCount: data.worldConflictState.regions?.length,
         playersCount: data.worldConflictState.players?.length
@@ -91,15 +91,15 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
     let currentState: any;
     gameState.subscribe(state => currentState = state)();
 
-    const isNewTurn = currentState && updatedState.playerIndex !== currentState.playerIndex;
-    const isOtherPlayersTurn = updatedState.playerIndex !== playerIndex;
+    const isNewTurn = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
+    const isOtherPlayersTurn = updatedState.currentPlayerSlot !== playerSlotIndex;
 
     console.log('🎯 Turn transition check:', {
-      'currentState.playerIndex': currentState?.playerIndex,
-      'updatedState.playerIndex': updatedState.playerIndex,
-      'my playerIndex': playerIndex,
-      'isNewTurn': isNewTurn,
-      'isOtherPlayersTurn': isOtherPlayersTurn
+        'currentState.currentPlayerSlot': currentState?.currentPlayerSlot,
+        'updatedState.currentPlayerSlot': updatedState.currentPlayerSlot,
+        'my playerSlotIndex': playerSlotIndex,
+        'isNewTurn': isNewTurn,
+        'isOtherPlayersTurn': isOtherPlayersTurn
     });
 
     // Ensure battle states are cleared from server updates
@@ -128,7 +128,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
         audioSystem.playSound(SOUNDS.START);
       }
 
-      turnManager.transitionToPlayer(cleanState.playerIndex, cleanState);
+      turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
     } else {
       // Same player, just update state
       turnManager.updateGameState(cleanState);
@@ -160,16 +160,22 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
     turnManager.reset();
   }
 
-  // Derived stores for commonly used values
-  const currentPlayerIndex = derived(gameState, $gameState =>
-    $gameState?.playerIndex ?? 0
+  const currentPlayerSlot = derived(gameState, $gameState =>
+    $gameState?.currentPlayerSlot ?? 0
   );
 
-  const currentPlayer = derived([players, currentPlayerIndex], ([$players, $currentPlayerIndex]) => {
-    const player = $players.find(p => p.index === $currentPlayerIndex);
+  const currentPlayer = derived([players, currentPlayerSlot], ([$players, $currentPlayerSlot]) => {
+    // Return null if players haven't loaded yet
+    if (!$players || $players.length === 0) {
+      return null;
+    }
+
+    const player = $players.find(p => p.slotIndex === $currentPlayerSlot);
 
     if (!player) {
-      throw new Exception(`⚠️ Could not find player with slot index ${$currentPlayerIndex} in players array:`, $players);
+      console.warn(`⚠️ Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);
+      // Return the first player as fallback instead of throwing
+      return $players[0] || null;
     }
 
     return player;
@@ -178,15 +184,15 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
   const isMyTurn = derived(
     [gameState, players],
     ([$gameState, $players]) => {
-      if (!$gameState || !$players.length) return false;
+        if (!$gameState || !$players.length) return false;
 
-      // Find the player whose turn it is (by slot index)
-      const currentTurnPlayer = $players.find(p => p.index === $gameState.playerIndex);
+        // Find the player whose turn it is (by slot index)
+        const currentTurnPlayer = $players.find(p => p.slotIndex === $gameState.currentPlayerSlot);
 
-      const isMySlot = $gameState.playerIndex === playerIndex;
-      const isHumanPlayer = currentTurnPlayer && !currentTurnPlayer.personality;
+        const isMySlot = $gameState.currentPlayerSlot === playerSlotIndex;
+        const isHumanPlayer = currentTurnPlayer && !currentTurnPlayer.personality;
 
-      return isMySlot && isHumanPlayer;
+        return isMySlot && isHumanPlayer;
     }
   );
 
@@ -210,7 +216,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerInd
     error,
 
     // Derived stores
-    currentPlayerIndex,
+    currentPlayerSlot,
     currentPlayer,
     isMyTurn,
     movesRemaining,

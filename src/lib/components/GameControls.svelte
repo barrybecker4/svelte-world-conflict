@@ -2,7 +2,7 @@
   import type { GameState, Player } from '$lib/game/class/GameState';
   import Button from '$lib/components/ui/Button.svelte';
 
-  // gameState.playerIndex = Whose turn it is (array index)
+  // gameState.currentPlayerSlot = Whose turn it is (slot)
   export let gameState: GameState | null = null;
   // The local human player (the person using this browser)
   export let currentPlayer: Player | null = null;
@@ -12,8 +12,8 @@
   export let canEndTurn: boolean = false;
   export let movesRemaining: number = 0;
 
-  $: playerFaith = gameState?.faithByPlayer?.[currentPlayer?.index || 0] || 0;
-  $: isPlayerTurn = gameState?.playerIndex === currentPlayer?.index;
+  $: playerFaith = gameState?.faithByPlayer?.[currentPlayer?.slotIndex || 0] || 0;
+  $: isPlayerTurn = gameState?.currentPlayerSlot === currentPlayer?.slotIndex;
 </script>
 
 <div class="game-controls">

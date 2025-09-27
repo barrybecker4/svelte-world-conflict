@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 }
 
                 // Check if slot is already taken by an existing player
-                const slotTaken = game.players.some(p => p.index === preferredSlot);
+                const slotTaken = game.players.some(p => p.slotIndex === preferredSlot);
                 if (slotTaken) {
                     return json({
                         error: 'Selected slot is already taken'
@@ -79,9 +79,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 targetSlotIndex = preferredSlot;
             } else {
                 // Find first available open slot
-                targetSlotIndex = playerSlots.findIndex((slot, index) =>
+                targetSlotIndex = playerSlots.findIndex((slot, slotIndex) =>
                     slot && slot.type === 'Open' &&
-                    !game.players.some(p => p.index === index)
+                    !game.players.some(p => p.slotIndex === slotIndex)
                 );
 
                 if (targetSlotIndex === -1) {
@@ -124,7 +124,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             // Count how many open slots are still unfilled
             const unfilledOpenSlots = openSlots.filter((slot, index) => {
                 const slotIndex = playerSlots.findIndex(s => s === slot);
-                return !updatedPlayers.some(p => p.index === slotIndex);
+                return !updatedPlayers.some(p => p.slotIndex === slotIndex);
             });
 
             // Auto-start if no open slots remain unfilled

@@ -25,9 +25,10 @@ export class GameStateValidator {
             warnings.push(`Map has fewer than recommended minimum regions (${GAME_CONSTANTS.MIN_REGIONS})`);
         }
 
-        // Validate current player index
-        if (gameData.playerIndex >= gameData.players.length) {
-            errors.push("Current player index is out of bounds");
+        //  Validate if there's a player with this slot index
+        const currentPlayer = gameData.players.find(p => p.slotIndex === gameData.currentPlayerSlot);
+        if (!currentPlayer) {
+            errors.push(`No player found with slot index ${gameData.currentPlayerSlot}`);
         }
 
         // Validate soldier ownership consistency
@@ -58,10 +59,10 @@ export class GameStateValidator {
 
         // Validate faith consistency
         gameData.players.forEach(player => {
-            if (!(player.index in gameData.faithByPlayer)) {
+            if (!(player.slotIndex in gameData.faithByPlayer)) {
                 warnings.push(`Player ${player.index} has no faith entry`);
-            } else if (gameData.faithByPlayer[player.index] < 0) {
-                errors.push(`Player ${player.index} has negative faith`);
+            } else if (gameData.faithByPlayer[player.slotIndex] < 0) {
+                errors.push(`Player ${player.slotIndex} has negative faith`);
             }
         });
 

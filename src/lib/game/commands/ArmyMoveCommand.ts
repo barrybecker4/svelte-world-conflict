@@ -64,7 +64,7 @@ export class ArmyMoveCommand extends Command {
         destination: this.destination,
         targetSoldiers: targetSoldiers.length,
         targetOwner: targetOwner?.index || 'neutral',
-        playerIndex: this.player.index,
+        playerSlotIndex: this.player.slotIndex,
         needsCombat
       });
 
@@ -117,7 +117,7 @@ export class ArmyMoveCommand extends Command {
         const conqueredRegion = (wasEnemyRegion && toList.length === 0) || wasNeutralRegion;
 
         if (conqueredRegion) {
-            console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.index);
+            console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.slotIndex);
             state.setOwner(this.destination, this.player);
 
             // Move remaining attackers to conquered region (only for enemy regions after combat)
@@ -183,7 +183,7 @@ export class ArmyMoveCommand extends Command {
     serialize(): any {
         return {
             type: 'ArmyMoveCommand',
-            playerId: this.player.index,
+            playerId: this.player.slotIndex,
             source: this.source,
             destination: this.destination,
             count: this.count,

@@ -319,18 +319,18 @@ export class MoveSystem {
     }
   }
 
-  private isPlayerRegion(regionIndex: number): boolean {
-    const currentPlayer = this.getCurrentPlayer();
-    if (!currentPlayer) return false;
-
-    return this.gameState?.ownersByRegion?.[regionIndex] === currentPlayer.index;
+  private getCurrentPlayer(): any {
+     if (!this.gameState?.players || this.gameState.currentPlayerSlot === undefined) {
+         return null;
+     }
+     return this.gameState.players.find(p => p.slotIndex === this.gameState.currentPlayerSlot);
   }
 
-  private getCurrentPlayer(): any {
-    if (!this.gameState?.players || this.gameState.playerIndex === undefined) {
-        return null;
-    }
-    return this.gameState.players.find(p => p.index === this.gameState.playerIndex);
+  private isPlayerRegion(regionIndex: number): boolean {
+     const currentPlayer = this.getCurrentPlayer();
+     if (!currentPlayer) return false;
+
+     return this.gameState?.ownersByRegion?.[regionIndex] === currentPlayer.slotIndex;
   }
 
   private getSoldierCountAtRegion(regionIndex: number): number {

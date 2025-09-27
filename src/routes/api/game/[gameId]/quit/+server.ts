@@ -31,8 +31,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         // Find the player - convert playerId to number since it's stored as index
-        const playerIndex = parseInt(playerId);
-        const player = game.players.find(p => p.index === playerIndex);
+        const playerSlotIndex = parseInt(playerId);
+        const player = game.players.find(p => p.slotIndex === playerSlotIndex);
 
         if (!player) {
             return json({ error: 'Player not found in game' }, { status: 400 });
@@ -65,7 +65,7 @@ async function quitFromPendingGame(gameId: string, game: GameRecord, gameStorage
         });
     } else {
         // Remove this player from the game
-        const updatedPlayers = game.players.filter(p => p.index !== playerIndex);
+        const updatedPlayers = game.players.filter(p => p.slotIndex !== playerSlotIndex);
         const updatedGame = {
             ...game,
             players: updatedPlayers,

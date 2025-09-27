@@ -42,10 +42,10 @@ export class BattleManager {
 
     const targetSoldiers = gameState.soldiersByRegion?.[targetRegionIndex] || [];
     const targetOwner = gameState.ownersByRegion?.[targetRegionIndex];
-    const playerIndex = gameState.playerIndex;
+    const currentPlayerSlot = gameState.currentPlayerSlot;
 
     const isNeutralWithSoldiers = targetOwner === undefined && targetSoldiers.length > 0;
-    const isEnemyTerritory = targetOwner !== undefined && targetOwner !== playerIndex && targetSoldiers.length > 0;
+    const isEnemyTerritory = targetOwner !== undefined && targetOwner !== currentPlayerSlot && targetSoldiers.length > 0;
 
     return isNeutralWithSoldiers || isEnemyTerritory;
   }

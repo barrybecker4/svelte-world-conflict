@@ -115,7 +115,7 @@
     <WorldConflictGame
       gameId={$page.params.gameId}
       playerId={currentPlayer.playerId}
-      playerIndex={currentPlayer.playerIndex}
+      playerSlotIndex={currentPlayer.playerSlotIndex}
     />
   {/if}
   {#if import.meta.env.DEV}

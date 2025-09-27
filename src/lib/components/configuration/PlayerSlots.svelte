@@ -28,11 +28,12 @@
   });
 
   function createInitialSlots() {
-    return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(index => ({
-      ...getPlayerConfig(index),
-      type: 'Off',
-      customName: ''
-    }));
+      return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(slotIndex => ({
+        ...getPlayerConfig(slotIndex),
+        slotIndex,
+        type: 'Off',
+        customName: ''
+      }));
   }
 
   function initializeWithPlayer(playerName: string) {

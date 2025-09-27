@@ -38,8 +38,8 @@
       await audioSystem.playSound(SOUNDS.GAME_CREATED);
 
       saveGameCreator(result.gameId, {
-        playerId: player.index.toString(),  // Use player index as string
-        playerIndex: player.index,
+        playerId: player.slotIndex.toString(),  // Use player slot index as string
+        playerSlotIndex: player.slotIndex,
         playerName: player.name
       });
 

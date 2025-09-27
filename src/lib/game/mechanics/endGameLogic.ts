@@ -69,7 +69,7 @@ function checkTurnLimit(gameState: GameStateData, players: Player[]): GameEndRes
  */
 function checkElimination(gameState: GameStateData, players: Player[]): GameEndResult {
   const scoreCalculator = new ScoreCalculator(gameState);
-  const activePlayers = players.filter(player => scoreCalculator.getRegionCount(player.index) > 0);
+  const activePlayers = players.filter(player => scoreCalculator.getRegionCount(player.slotIndex) > 0);
 
   if (activePlayers.length <= 1) {
     const winner = activePlayers.length === 1 ? activePlayers[0] : 'DRAWN_GAME';
@@ -95,7 +95,7 @@ function determineWinnerByScore(gameState: GameStateData, players: Player[]): Pl
   const scoreCalculator = new ScoreCalculator(gameState);
   const playerScores = players.map(player => ({
     player,
-    score: scoreCalculator.calculatePlayerScore(player.index)
+    score: scoreCalculator.calculatePlayerScore(player.slotIndex)
   }));
 
   // Sort by score descending

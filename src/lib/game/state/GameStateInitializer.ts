@@ -1,12 +1,8 @@
-import { assignHomeBaseRegions, createOwnerAssignments } from '$lib/game/map/homeBasePlacement';
+import { assignHomeBaseRegions, type HomeBaseAssignment } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { Regions } from '$lib/game/entities/Regions';
 
-interface Assignment {
-  playerIndex: number;
-  regionIndex: number;
-}
 
 export class GameStateInitializer {
     /**
@@ -38,25 +34,24 @@ export class GameStateInitializer {
         this.initializeStartingPositions(stateData);
 
         players.forEach(player => {
-            stateData.faithByPlayer[player.index] = GAME_CONSTANTS.STARTING_FAITH;
+            stateData.faithByPlayer[player.slotIndex] = GAME_CONSTANTS.STARTING_FAITH;
         });
         return stateData;
     }
 
     private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number): GameStateData {
+        const sortedPlayers = [...players].sort((a, b) => a.slotIndex - b.slotIndex);
+        const sortedPlayerIndices = sortedPlayers.map(p => p.slotIndex);
+        const currentPlayerSlot = sortedPlayerIndices[0];
 
-        const sortedPlayers = [...players].sort((a, b) => a.index - b.index);
-        const sortedPlayerIndices = sortedPlayers.map(p => p.index);
-        const playerIndex = sortedPlayerIndices[0];
-
-        console.log(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.index})`));
-        console.log(`Setting initial playerIndex to ${playerIndex}`);
+        console.log(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.slotIndex})`));
+        console.log(`Setting initial currentPlayerSlot to ${currentPlayerSlot}`);
 
         return {
             id: Date.now(),
             gameId,
             turnNumber: 0,
-            playerIndex,
+            currentPlayerSlot,
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             maxTurns: maxTurns || GAME_CONSTANTS.STANDARD_TURN_COUNT,
             players: [...players],
@@ -88,9 +83,9 @@ export class GameStateInitializer {
         }
     }
 
-    private setupPlayerHomes(stateData: GameStateData, assignments: Assignment[]): void {
+    private setupPlayerHomes(stateData: GameStateData, assignments: HomeBaseAssignment[]): void {
         assignments.forEach(assignment => {
-            stateData.ownersByRegion[assignment.regionIndex] = assignment.playerIndex;
+            stateData.ownersByRegion[assignment.regionIndex] = assignment.playerSlotIndex;
 
             // Add initial soldiers
             stateData.soldiersByRegion[assignment.regionIndex] =
@@ -107,7 +102,7 @@ export class GameStateInitializer {
     }
 
     // Add neutral temples to all remaining temple regions
-    private setupNeutralTemples(stateData: GameStateData, assignments: Assignment[]): void {
+    private setupNeutralTemples(stateData: GameStateData, assignments: HomeBaseAssignment[]): void {
         const assignedRegionIndices = new Set(assignments.map(a => a.regionIndex));
 
         // Get all temple regions that aren't already assigned as home bases

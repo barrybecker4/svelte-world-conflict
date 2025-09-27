@@ -28,8 +28,7 @@ describe('GameMap Utilities', () => {
 
     mockGameState = {
       gameId: 'test-game',
-      playerIndex: 0,
-      currentPlayerIndex: 0,
+      currentPlayerSlot: 0,
       players: mockPlayers,
       movesRemaining: 3,
       ownersByRegion: { 0: 0, 1: 1 },

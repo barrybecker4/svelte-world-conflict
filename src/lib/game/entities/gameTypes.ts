@@ -1,3 +1,4 @@
+import type { PlayerSlot } from './PlayerSlot';
 import type { Region } from '$lib/game/entities/Region';
 import type { Regions } from '$lib/game/entities/Regions';
 
@@ -7,15 +8,8 @@ export interface GameSettings {
     maxTurns: number;
 }
 
-export interface PlayerSlot {
-    index: number;
-    type: 'Human' | 'AI' | 'Empty';
-    name: string;
-    color: string;
-}
-
 export interface Player {
-    index: number;
+    slotIndex: number;
     name: string;
     color: string;
     isAI: boolean;
@@ -41,14 +35,14 @@ export interface FloatingText {
 export interface GameStateData {
     id: number;
     gameId: string;
-    turnNumber: number;
-    playerIndex: number;
+    turnNumber: number;F
+    currentPlayerSlot: number;
     movesRemaining: number;
 
-    ownersByRegion: Record<number, number>; regionIndex -> playerIndex // Index -> playerIndex
+    ownersByRegion: Record<number, number>; // regionIndex -> playerSlotIndex
     templesByRegion: Record<number, Temple>; // regionIndex -> Temple
     soldiersByRegion: Record<number, Soldier[]>; // regionIndex -> soldiers[]
-    faithByPlayer: Record<number, number>; // playerIndex -> amount
+    faithByPlayer: Record<number, number>; // playerSlotIndex -> amount
 
     players: Player[];
     regions: Regions;

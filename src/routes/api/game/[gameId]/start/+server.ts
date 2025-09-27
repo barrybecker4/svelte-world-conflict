@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         // Check if first player is AI and process AI turns if needed
         const initialGameState = new GameState(updatedGame.worldConflictState);
-        const firstPlayer = initialGameState.activePlayer();
+        const firstPlayer = initialGameState.getCurrentPlayer();
 
         if (firstPlayer?.isAI) {
             console.log(`First player is AI (${firstPlayer.name}), processing AI turns after manual start...`);
@@ -63,10 +63,10 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
             // Update the game with the processed state
             updatedGame.worldConflictState = processedGameState.toJSON();
-            updatedGame.currentPlayerIndex = processedGameState.playerIndex;
+            updatedGame.currentPlayerSlot = processedGameState.playerSlotIndex;
             updatedGame.lastMoveAt = Date.now();
 
-            console.log(`AI processing complete after manual start, current player: ${processedGameState.playerIndex}`);
+            console.log(`AI processing complete after manual start, current player slot: ${processedGameState.currentPlayerSlot}`);
 
             // Save the updated game record
             await gameStorage.saveGame(updatedGame);
@@ -99,7 +99,7 @@ function fillRemainingSlotsWithAI(game: any): any[] {
         const activeSlots = playerSlots.filter((slot: any) => slot && slot.type !== 'Off');
 
         for (const slot of activeSlots) {
-            if (slot.type === 'Open' && !players.find(p => p.index === slot.index)) {
+            if (slot.type === 'Open' && !players.find(p => p.slotIndex === slot.index)) {
                 console.log(`Adding AI player to open slot ${slot.index}:`, {
                     index: slot.index,
                     name: slot.defaultName || `AI Player ${slot.index + 1}`,

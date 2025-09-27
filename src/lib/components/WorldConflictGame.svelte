@@ -18,17 +18,17 @@
 
   export let gameId: string;
   export let playerId: string;
-  export let playerIndex: number;
+  export let playerSlotIndex: number;
 
   // destructure the individual stores
-  const gameStore = createGameStateStore(gameId, playerId, playerIndex);
+  const gameStore = createGameStateStore(gameId, playerId, playerSlotIndex);
   const {
     gameState,
     regions,
     players,
     loading,
     error,
-    currentPlayerIndex,
+    currentPlayerSlot,
     currentPlayer,
     isMyTurn,
     movesRemaining,
@@ -84,7 +84,7 @@
   }
 
   onMount(async () => {
-    console.log('🎮 WorldConflict Game mounting with:', { gameId, playerId, playerIndex });
+    console.log('🎮 WorldConflict Game mounting with:', { gameId, playerId, playerSlotIndex });
     battleManager = new BattleManager(gameId, mapContainer);
     await gameStore.initializeGame(handleMoveComplete, handleMoveStateChange);
     await initializeWebSocket();
@@ -396,7 +396,7 @@
         gameState={$gameState}
         players={$players}
         currentPlayer={$currentPlayer}
-        currentPlayerIndex={$currentPlayerIndex}
+        currentPlayerSlot={$currentPlayerSlot}
         movesRemaining={$movesRemaining}
         moveInstruction={gameStore.getMoveSystem()?.getCurrentInstruction() || ''}
         showCancelButton={moveState.mode !== 'IDLE'}

@@ -56,21 +56,19 @@ class TurnManager {
    * Initialize the turn manager with game data
    */
   public initialize(gameState: GameStateData, players: Player[]): void {
-    this.gameState.set(gameState);
-    this.players.set(players);
+      this.gameState.set(gameState);
+      this.players.set(players);
 
-    // playerIndex is slot index, find the array position
-    const currentPlayer = players.find(p => p.index === gameState.playerIndex);
-    const arrayIndex = currentPlayer ? players.indexOf(currentPlayer) : 0;
+      // currentPlayerSlot is slot index, find the array position
+      const currentPlayer = players.find(p => p.slotIndex === gameState.currentPlayerSlot);
+      const arrayIndex = currentPlayer ? players.indexOf(currentPlayer) : 0;
 
-    this.turnState.update(state => ({
-      ...state,
-      currentPlayerIndex: arrayIndex, // Store array index for internal use
-      turnStartTime: Date.now(),
-      bannerComplete: false,
-      showBanner: true,
-      isTransitioning: false
-    }));
+      this.turnState.update(state => ({
+          ...state,
+          currentPlayerIndex: arrayIndex,
+          previousPlayerIndex: null,
+          turnStartTime: Date.now()
+      }));
   }
 
   /**
@@ -109,7 +107,7 @@ class TurnManager {
 
   private findArrayIndexForSlot(slotIndex: number): number {
     const players = get(this.players);
-    const newPlayer = players.find(p => p.index === slotIndex);
+    const newPlayer = players.find(p => p.slotIndex === slotIndex);
     return newPlayer ? players.indexOf(newPlayer) : 0;
   }
 
@@ -169,8 +167,8 @@ class TurnManager {
       if (!currentPlayer) return [];
 
       return Object.keys(gameState.ownersByRegion)
-        .map(k => parseInt(k))
-        .filter(regionIndex => gameState.ownersByRegion[regionIndex] === currentPlayer.index);
+          .map(k => parseInt(k))
+          .filter(regionIndex => gameState.ownersByRegion[regionIndex] === currentPlayer.slotIndex);
   }
 
   /**
@@ -190,7 +188,7 @@ class TurnManager {
     const currentPlayer = players[currentPlayerIndex];
     if (!currentPlayer) return false;
 
-    return gameState.ownersByRegion[regionIndex] === currentPlayer.index;
+    return gameState.ownersByRegion[regionIndex] === currentPlayer.slotIndex;
   }
 
   /**

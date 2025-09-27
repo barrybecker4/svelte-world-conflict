@@ -23,7 +23,7 @@ import type { Player } from '$lib/game/entities/Player';
  */
 export async function processAiTurns(gameState: GameState, gameStorage: GameStorage, gameId: string, platform: any): Promise<GameState> {
     let currentState = gameState;
-    let currentPlayer = currentState.activePlayer();
+    let currentPlayer = currentState.getCurrentPlayer();
     let turnCount = 0;
     const maxTurns = 50; // Safety limit to prevent infinite loops
 
@@ -32,7 +32,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
     // Continue processing AI turns until we reach a human player or game ends
     while (currentPlayer?.isAI && !currentState.isGameComplete() && turnCount < maxTurns) {
         turnCount++;
-        console.log(`Processing AI turn ${turnCount} for player ${currentPlayer.index} (${currentPlayer.name})`);
+        console.log(`Processing AI turn ${turnCount} for player ${currentPlayer.slotIndex} (${currentPlayer.name})`);
 
         try {
             // Generate AI move decision
@@ -49,7 +49,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     const updatedGame = {
                         ...await gameStorage.getGame(gameId),
                         worldConflictState: currentState.toJSON(),
-                        currentPlayerIndex: currentState.playerIndex,
+                        currentPlayerSlot: currentState.playerSlotIndex,
                         lastMoveAt: Date.now()
                     };
 
@@ -80,7 +80,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     const updatedGame = {
                         ...await gameStorage.getGame(gameId),
                         worldConflictState: currentState.toJSON(),
-                        currentPlayerIndex: currentState.playerIndex,
+                        currentPlayerSlot: currentState.playerSlotIndex,
                         lastMoveAt: Date.now()
                     };
                     await gameStorage.saveGame(updatedGame);
@@ -90,7 +90,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                 }
             }
 
-            currentPlayer = currentState.activePlayer();
+            currentPlayer = currentState.getCurrentPlayer();
 
         } catch (error) {
             console.error('Error processing AI turn:', error);
@@ -102,7 +102,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
         console.warn(`AI processing stopped after ${maxTurns} turns to prevent infinite loop`);
     }
 
-    const finalPlayer = currentState.activePlayer();
+    const finalPlayer = currentState.getCurrentPlayer();
     console.log(`AI processing complete after ${turnCount} turns - current player: ${finalPlayer?.name} (isAI: ${finalPlayer?.isAI})`);
 
     return currentState;
@@ -125,7 +125,7 @@ export async function generateAiMove(gameState: GameState, player: Player): Prom
 
     try {
         // Get regions owned by this AI player
-        const playerRegions = gameState.getRegionsOwnedByPlayer(player.index);
+        const playerRegions = gameState.getRegionsOwnedByPlayer(player.slotIndex);
 
         if (playerRegions.length === 0) {
             console.log(`AI player ${player.name} has no regions`);
@@ -155,7 +155,7 @@ export async function generateAiMove(gameState: GameState, player: Player): Prom
         // Prioritize attacking enemy regions over moving to empty/friendly ones
         const enemyNeighbors = neighbors.filter(neighborIndex => {
             const owner = gameState.ownersByRegion[neighborIndex];
-            return owner !== undefined && owner !== player.index;
+            return owner !== undefined && owner !== player.slotIndex;
         });
 
         const neutralNeighbors = neighbors.filter(neighborIndex => {

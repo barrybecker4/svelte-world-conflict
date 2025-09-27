@@ -84,8 +84,8 @@ export class GameState {
     get turnNumber(): number { return this.state.turnNumber; }
     set turnNumber(value: number) { this.state.turnNumber = value; }
 
-    get playerIndex(): number { return this.state.playerIndex; }
-    set playerIndex(value: number) { this.state.playerIndex = value; }
+    get currentPlayerSlot(): number { return this.state.currentPlayerSlot; }
+    set currentPlayerSlot(value: number) { this.state.currentPlayerSlot = value; }
 
     get movesRemaining(): number { return this.state.movesRemaining; }
     set movesRemaining(value: number) { this.state.movesRemaining = value; }
@@ -109,39 +109,31 @@ export class GameState {
     // ==================== GAME OPERATIONS ====================
 
     getCurrentPlayer(): Player {
-        // playerIndex is now slot index, so find player with that slot
-        return this.state.players.find(p => p.index === this.state.playerIndex) || this.state.players[0];
-    }
-
-    activePlayer(): Player {
-        return this.getCurrentPlayer();
+        return this.state.players.find(p => p.slotIndex === this.state.currentPlayerSlot) || this.state.players[0];
     }
 
     getPlayerBySlot(slotIndex: number): Player | undefined {
-        return this.state.players.find(p => p.index === slotIndex);
+        return this.state.players.find(p => p.slotIndex === slotIndex);
     }
 
-    getPlayer(index: number): Player | undefined {
-        return this.state.players.find(p => p.index === index);
+    getPlayer(slotIndex: number): Player | undefined {
+        return this.state.players.find(p => p.slotIndex === slotIndex);
     }
 
-    getPlayerById(id: string): Player | undefined {
-        return this.state.players.find(p => p.id === id);
-    }
-
-    getRegionsOwnedByPlayer(playerIndex: number): Region[] {
+    getRegionsOwnedByPlayer(playerSlotIndex: number): Region[] {
         return this.state.regions.filter(region =>
-            this.state.ownersByRegion[region.index] === playerIndex
+            this.state.ownersByRegion[region.index] === playerSlotIndex
         );
     }
 
     owner(regionIndex: number): Player | null {
         const ownerIndex = this.state.ownersByRegion[regionIndex];
-        return ownerIndex !== undefined ? this.state.players[ownerIndex] : null;
+        return ownerIndex !== undefined ?
+            this.state.players.find(p => p.slotIndex === ownerIndex) || null : null;
     }
 
     isOwnedBy(regionIndex: number, player: Player): boolean {
-        return this.state.ownersByRegion[regionIndex] === player.index;
+        return this.state.ownersByRegion[regionIndex] === player.slotIndex;
     }
 
     soldiersAtRegion(regionIndex: number): any[] {
@@ -157,16 +149,16 @@ export class GameState {
 
     regionCount(player: Player): number {
         return this.state.regions.filter(region =>
-            this.state.ownersByRegion[region.index] === player.index
+            this.state.ownersByRegion[region.index] === player.slotIndex
         ).length;
     }
 
-    faith(playerIndex: number): number {
-        return this.state.faithByPlayer[playerIndex] || 0;
+    faith(playerSlotIndex: number): number {
+        return this.state.faithByPlayer[playerSlotIndex] || 0;
     }
 
     setOwner(regionIndex: number, player: Player): void {
-        this.state.ownersByRegion[regionIndex] = player.index;
+        this.state.ownersByRegion[regionIndex] = player.slotIndex;
     }
 
     addSoldiers(regionIndex: number, count: number): void {
@@ -188,12 +180,18 @@ export class GameState {
         );
     }
 
-    advanceToNextPlayer(): void {
-        this.state.playerIndex = (this.state.playerIndex + 1) % this.state.players.length;
-        this.state.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN;
-        this.state.turnNumber++;
-        this.state.conqueredRegions = [];
-    }
+   advanceToNextPlayer(): void {
+       // Find current player's position in the array
+       const currentIndex = this.state.players.findIndex(p => p.slotIndex === this.state.currentPlayerSlot);
+       // Get next player's position (wrapping around)
+       const nextIndex = (currentIndex + 1) % this.state.players.length;
+       // Set to next player's slot index
+       this.state.currentPlayerSlot = this.state.players[nextIndex].slotIndex;
+
+       this.state.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN;
+       this.state.turnNumber++;
+       this.state.conqueredRegions = [];
+   }
 
     /**
      * Get the current upgrade level for specified player and upgrade type

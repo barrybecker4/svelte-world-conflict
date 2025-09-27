@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         return json({
             gameId: gameRecord.gameId,
             player: creatorPlayer,
-            playerIndex: creatorPlayer.index,
+            playerSlotIndex: creatorPlayer.slotIndex,
             gameState: gameRecord.worldConflictState,
             message: `Game created successfully as ${gameRecord.status}`
         });
@@ -79,7 +79,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       gameId,
       regions,
       players,
-      currentPlayerIndex: 0,
+      currentPlayerSlot: 0,
       turnCount: 0,
       maxTurns,
       gamePhase: 'SETUP'
@@ -94,12 +94,12 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       name: p.name,
       color: p.color,
       isAI: p.isAI,
-      index: p.index
+      slotIndex: p.slotIndex
     })),
     worldConflictState: gameStatus === 'ACTIVE' ? initialGameState.toJSON() : initialGameState,
     createdAt: Date.now(),
     lastMoveAt: Date.now(),
-    currentPlayerIndex: 0,
+    currentPlayerSlot: 0,
     gameType: finalGameType,
     pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
       settings,
@@ -152,6 +152,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
             // Configured game from GameConfiguration component
             const activeSlots = playerSlots.filter((slot: any) => slot.type !== 'Off');
             console.log("activeSlots = ", activeSlots);
+            console.log("First slot properties:", Object.keys(activeSlots[0]));
 
             if (activeSlots.length < 2) {
                 return json({ error: 'At least 2 players are required' }, { status: 400 });
@@ -172,13 +173,13 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
                 const slot = activeSlots[i];
                 if (slot.type === 'Set') {
                     // Human player
-                    players.push(createPlayer(slot.customName || slot.name, slot.index, false));
+                    players.push(createPlayer(slot.customName || slot.name, slot.slotIndex, false));
                 } else if (slot.type === 'Open') {
                     // Open slot - don't add a player yet, they'll join later
                     continue;
                 } else if (slot.type === 'AI') {
                     // AI player - create regardless of game status (PENDING or ACTIVE)
-                    players.push(createPlayer(slot.defaultName, slot.index, true));
+                    players.push(createPlayer(slot.defaultName, slot.slotIndex, true));
                 }
             }
         }

@@ -28,8 +28,8 @@
   };
 
   // Reactive statements - these will update whenever gameState changes
-  $: currentPlayerIndex = gameState?.playerIndex ?? 0;
-  $: currentPlayer = players[currentPlayerIndex];
+  $: currentPlayerSlot = gameState?.currentPlayerSlot ?? 0;
+  $: currentPlayer = players.find(p => p.slotIndex === currentPlayerSlot);
   $: turnNumber = (gameState?.turnNumber ?? 0) + 1;
   $: maxTurns = gameState?.maxTurns && gameState.maxTurns !== GAME_CONSTANTS.UNLIMITED_TURNS ? gameState.maxTurns : null;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
@@ -46,12 +46,12 @@
   }
 
   function getRegionCount(slotIndex: number): number {
-    if (!gameState?.ownersByRegion) return 0;
-    return Object.values(gameState.ownersByRegion).filter(owner => owner === slotIndex).length;
+      if (!gameState?.ownersByRegion) return 0;
+      return Object.values(gameState.ownersByRegion).filter(owner => owner === slotIndex).length;
   }
 
   function isPlayerAlive(slotIndex: number): boolean {
-    return getRegionCount(slotIndex) > 0;
+      return getRegionCount(slotIndex) > 0;
   }
 
   function getCurrentInstruction(): string {
@@ -77,12 +77,12 @@
   $: if (gameState) {
     console.log('🎯 GameInfoPanel - Faith values updated:', {
       turnNumber: gameState.turnNumber,
-      currentPlayer: currentPlayerIndex,
+      currentPlayer: currentPlayerSlot,
       faithByPlayer: gameState.faithByPlayer,
       playerFaithCounts: players.map(player => ({
-        index: player.index,
+        index: player.slotIndex,
         name: player.name,
-        faith: faithByPlayer[player.index]
+        faith: faithByPlayer[player.slotIndex]
       }))
     });
   }
@@ -101,17 +101,14 @@
 
   <!-- Players Section -->
   <Section title="" flex={true} flexDirection="column" gap="8px" customClass="flex-1">
-    {#each players.slice().sort((a, b) => a.index - b.index) as player, slotOrderIndex}
-      {@const isActive = player.index === currentPlayerIndex}
-      {@const isAlive = isPlayerAlive(player.index)}
-      {@const regionCount = getRegionCount(player.index)}
-      {@const faithCount = faithByPlayer[player.index]}
+    {#each players.slice().sort((a, b) => a.slotIndex - b.slotIndex) as player, slotOrderIndex}
+      {@const isActive = player.slotIndex === currentPlayerSlot}
+      {@const isAlive = isPlayerAlive(player.slotIndex)}
+      {@const regionCount = getRegionCount(player.slotIndex)}
+      {@const faithCount = faithByPlayer[player.slotIndex]}
 
       <div class="player-box" class:active={isActive}>
-        <div
-          class="player-color"
-          style="background: linear-gradient(135deg, {getPlayerColor(player.index)}, {getPlayerEndColor(player.index)});"
-        ></div>
+        <div class="player-color" style="background: {player.color};" />
         <div class="player-info">
           <div class="player-name">{player.name}</div>
           <div class="player-stats">
@@ -149,7 +146,7 @@
         <div class="stat-label">moves</div>
       </div>
       <div class="stat-item">
-        <div class="stat-value">{faithByPlayer[currentPlayerIndex]} <span class="symbol">{@html SYMBOLS.FAITH}</span></div>
+        <div class="stat-value">{faithByPlayer[currentPlayerSlot]} <span class="symbol">{@html SYMBOLS.FAITH}</span></div>
         <div class="stat-label">faith</div>
       </div>
     </div>

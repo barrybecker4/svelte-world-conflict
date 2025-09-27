@@ -26,11 +26,7 @@
     mapContainer = mapContainerElement;
   }
 
-  $: currentTurnPlayer = (() => {
-    if (!gameState?.players) return null;
-    const playerIndex = gameState.playerIndex ?? gameState.currentPlayerIndex;
-    return gameState.players.find(p => p.index === playerIndex) || null;
-  })();
+  $: currentTurnPlayer = gameState?.players?.find(p => p.slotIndex === gameState.currentPlayerSlot) || null;
 
   // Auto-detect preview mode
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
@@ -53,13 +49,25 @@
   });
 
   function getRegionColor(region: Region): string {
-    if (!gameState?.ownersByRegion) return NEUTRAL_COLOR;
+    if (!gameState?.ownersByRegion) {
+        console.log('❌ No ownersByRegion');
+        return NEUTRAL_COLOR;
+    }
 
     const ownerIndex = gameState.ownersByRegion[region.index];
-    if (ownerIndex === undefined || ownerIndex === -1) return NEUTRAL_COLOR;
+    console.log(`Region ${region.index}: ownerIndex=${ownerIndex}`);
 
-    const owner = gameState.players?.find(p => p.index === ownerIndex);
-    return owner ? getPlayerMapColor(owner.index) : NEUTRAL_COLOR;
+    if (ownerIndex === undefined || ownerIndex === -1) {
+        return NEUTRAL_COLOR;
+    }
+
+    const owner = gameState.players?.find(p => p.slotIndex === ownerIndex);
+    console.log(`Region ${region.index}: owner found=${!!owner}, slotIndex=${owner?.slotIndex}`);
+
+    const color = owner ? getPlayerMapColor(owner.slotIndex) : NEUTRAL_COLOR;
+    console.log(`Region ${region.index}: color=${color}`);
+
+    return color;
   }
 
   function getBorderColor(region: Region): string {
@@ -89,7 +97,7 @@
     const turnPlayer = currentTurnPlayer;
     if (!turnPlayer) return false;
 
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === turnPlayer.index;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === turnPlayer.slotIndex;
     const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
     const hasMovableSoldiers = soldierCount > 0;
 

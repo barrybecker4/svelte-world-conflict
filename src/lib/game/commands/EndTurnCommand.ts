@@ -14,8 +14,8 @@ export class EndTurnCommand extends Command {
     validate(): ValidationResult {
       const errors: string[] = [];
 
-      const activePlayer = this.gameState.activePlayer();
-      if (activePlayer.index !== this.player.index) {
+      const activePlayer = this.gameState.getCurrentPlayer();
+      if (activePlayer.slotIndex !== this.player.slotIndex) {
           errors.push("Not your turn");
       }
 
@@ -29,13 +29,13 @@ export class EndTurnCommand extends Command {
         this.previousState = this.gameState;
         const newState = this.gameState.copy() as GameState;
 
-        const beforeFaith = newState.state.faithByPlayer[this.player.index] || 0;
+        const beforeFaith = newState.state.faithByPlayer[this.player.slotIndex] || 0;
         const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
 
         this.income = this.calculateIncome(newState);
 
-        newState.state.faithByPlayer[this.player.index] = beforeFaith + this.income;
-        newState.faithByPlayer[this.player.index] = beforeFaith + this.income;
+        newState.state.faithByPlayer[this.player.slotIndex] = beforeFaith + this.income;
+        newState.faithByPlayer[this.player.slotIndex] = beforeFaith + this.income;
 
         this.generateSoldiersAtTemples(newState);
 
@@ -53,22 +53,22 @@ export class EndTurnCommand extends Command {
         const players = newState.players;
 
         console.log('🔄 EndTurnCommand - Before turn advance:', {
-          'currentPlayerSlotIndex': newState.playerIndex, // This is the slot index
+          'currentPlayerSlotIndex': newState.currentPlayerSlot,
           'currentPlayerName': this.player.name,
           'players': players.map(p => ({
-            slotIndex: p.index,
+            slotIndex: p.slotIndex,
             name: p.name,
             isAI: p.isAI
           }))
         });
 
-        const nextSlotIndex = this.getNextActiveSlot(newState.playerIndex, players);
-        newState.playerIndex = nextSlotIndex;
+        const nextSlotIndex = this.getNextActiveSlot(newState.currentPlayerSlot, players);
+        newState.currentPlayerSlot = nextSlotIndex;
 
         console.log('🔄 Turn advanced:', {
-          'from': `${this.player.name} (slot ${this.player.index})`,
+          'from': `${this.player.name} (slot ${this.player.slotIndex})`,
           'to': `${this.getPlayerBySlot(nextSlotIndex, players)?.name} (slot ${nextSlotIndex})`,
-          'newPlayerSlotIndex': newState.playerIndex
+          'newPlayerSlotIndex': newState.currentPlayerSlot
         });
 
         // Check if we completed a full round (back to first active slot)
@@ -94,11 +94,11 @@ export class EndTurnCommand extends Command {
     }
 
     private getActiveSlots(players: Player[]): number[] {
-        return players.map(p => p.index).sort((a, b) => a - b);
+        return players.map(p => p.slotIndex).sort((a, b) => a - b);
     }
 
     private getPlayerBySlot(slotIndex: number, players: Player[]): Player | undefined {
-        return players.find(p => p.index === slotIndex);
+        return players.find(p => p.slotIndex === slotIndex);
     }
 
     /**
@@ -108,7 +108,7 @@ export class EndTurnCommand extends Command {
      */
     private calculateIncome(state: GameState): number {
         const regionCount = state.regionCount(this.player);
-        console.log(`Player ${this.player.index} owns ${regionCount} regions`);
+        console.log(`Player ${this.player.slotIndex} owns ${regionCount} regions`);
 
         // Calculate soldiers praying at temples (soldiers stationed at temple regions owned by player)
         let soldiersAtTemples = 0;
@@ -125,19 +125,19 @@ export class EndTurnCommand extends Command {
                 if (soldiers && soldiers.length > 0) {
                     // All soldiers at owned temple regions generate faith
                     soldiersAtTemples += soldiers.length;
-                    console.log(`Player ${this.player.index} has ${soldiers.length} soldiers praying at temple region ${regionIdx}`);
+                    console.log(`Player ${this.player.slotIndex} has ${soldiers.length} soldiers praying at temple region ${regionIdx}`);
                 }
             }
         }
 
         const totalIncome = regionCount + soldiersAtTemples;
-        console.log(`Player ${this.player.index} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${totalIncome} faith`);
+        console.log(`Player ${this.player.slotIndex} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${totalIncome} faith`);
 
         return totalIncome;
     }
 
     private generateSoldiersAtTemples(state: GameState): void {
-        console.log(`Checking temples for player ${this.player.index}:`);
+        console.log(`Checking temples for player ${this.player.slotIndex}:`);
 
         for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);
@@ -154,12 +154,12 @@ export class EndTurnCommand extends Command {
         }
 
         if (this.generatedSoldiers.length === 0) {
-            console.log(`   No temples owned by player ${this.player.index}`);
+            console.log(`   No temples owned by player ${this.player.slotIndex}`);
         }
     }
 
     private logTemplesSoldiers(state: GameState, phase: string): any {
-        console.log(`${phase} - Temples and soldiers for player ${this.player.index}:`);
+        console.log(`${phase} - Temples and soldiers for player ${this.player.slotIndex}:`);
         const temples = [];
 
         for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
@@ -177,7 +177,7 @@ export class EndTurnCommand extends Command {
     serialize(): any {
         return {
             type: 'EndTurnCommand',
-            playerId: this.player.index,
+            playerId: this.player.slotIndex,
             income: this.income,
             generatedSoldiers: this.generatedSoldiers,
             timestamp: this.timestamp,

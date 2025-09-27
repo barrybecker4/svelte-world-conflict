@@ -34,7 +34,7 @@ function getResponse(game: GameRecord) {
         worldConflictState: game.worldConflictState || {},
         createdAt: game.createdAt || Date.now(),
         lastMoveAt: game.lastMoveAt || Date.now(),
-        currentPlayerIndex: game.currentPlayerIndex || 0,
+        currentPlayerSlot: game.currentPlayerSlot || 0,
         gameType: game.gameType || 'AI' // Default to AI if not specified
     };
 

@@ -6,6 +6,7 @@ import { EndTurnCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
 import { getErrorMessage } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 interface EndTurnRequest {
     playerId: string;
@@ -33,23 +34,23 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         // Parse playerId as integer to get player index
-        const playerIndex = parseInt(playerId);
-        if (isNaN(playerIndex) || playerIndex < 0 || playerIndex > 3) {
+        const playerSlotIndex = parseInt(playerId);
+        if (isNaN(playerSlotIndex) || playerSlotIndex < 0 || playerSlotIndex >= GAME_CONSTANTS.MAX_PLAYERS) {
             return json({ error: `Invalid player ID: ${playerId}` }, { status: 400 });
         }
 
         const gameState = new GameState(game.worldConflictState);
 
-        const currentTurnPlayer = gameState.players.find(p => p.index === gameState.playerIndex);
-        if (!currentTurnPlayer || currentTurnPlayer.index !== playerIndex) {
+        const currentTurnPlayer = gameState.players.find(p => p.slotIndex === gameState.currentPlayerSlot);
+        if (!currentTurnPlayer || currentTurnPlayer.slotIndex !== playerSlotIndex) {
             return json({ error: 'Not your turn' }, { status: 400 });
         }
         else {
-          console.log(`currentTurnPlayer.index = ${currentTurnPlayer.index}, game.currentPlayerIndex = ${game.currentPlayerIndex}`);
+          console.log(`currentTurnPlayer.slotIndex = ${currentTurnPlayer.slotIndex}, game.currentPlayerSlot = ${game.currentPlayerSlot}`);
         }
 
         // Verify the player exists in the game
-        const player = game.players.find(p => p.index === playerIndex);
+        const player = game.players.find(p => p.slotIndex === playerSlotIndex);
         if (!player) {
             return json({ error: 'Player not found in game' }, { status: 400 });
         }
@@ -72,7 +73,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const updatedGame = {
             ...game,
             worldConflictState: finalGameState.toJSON(),
-            currentPlayerIndex: finalGameState.playerIndex,
+            currentPlayerSlot: finalGameState.currentPlayerSlot,
             lastMoveAt: Date.now()
         };
 
@@ -81,7 +82,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Notify other players via WebSocket
         await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!.env);
 
-        console.log(`Turn processing completed, current player: ${finalGameState.playerIndex}`);
+        console.log(`Turn processing completed, current player slot: ${finalGameState.currentPlayerSlot}`);
 
         return json({
             success: true,

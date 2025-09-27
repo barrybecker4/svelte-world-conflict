@@ -8,24 +8,24 @@ export class ScoreCalculator {
     this.gameState = gameState;
   }
 
-  calculatePlayerScore(playerIndex: number): number {
-    const regionCount = this.getRegionCount(playerIndex);
-    const soldierCount = this.getTotalSoldiers(playerIndex);
+  calculatePlayerScore(playeSlotrIndex: number): number {
+    const regionCount = this.getRegionCount(playerSlotIndex);
+    const soldierCount = this.getTotalSoldiers(playerSlotIndex);
     return (1000 * regionCount) + soldierCount;
   }
 
-  getRegionCount(playerIndex: number): number {
+  getRegionCount(playerSlotIndex: number): number {
     const owners = this.gameState.ownersByRegion;
     if (!owners) {
       return 0;
     }
-    return Object.values(owners).filter(owner => owner === playerIndex).length;
+    return Object.values(owners).filter(owner => owner === playerSlotIndex).length;
   }
 
   /**
    * Get total number of soldiers owned by a player across all regions
    */
-  private getTotalSoldiers(playerIndex: number): number {
+  private getTotalSoldiers(playerSlotIndex: number): number {
     const { ownersByRegion, soldiersByRegion } = this.gameState;
 
     if (!ownersByRegion || !soldiersByRegion) {
@@ -40,7 +40,7 @@ export class ScoreCalculator {
         const owner = ownersByRegion[regionIndexStr];
         const soldiers = soldiersByRegion[regionIndexStr];
 
-        if (owner === playerIndex && soldiers) {
+        if (owner === playerSlotIndex && soldiers) {
           totalSoldiers += soldiers.length;
         }
       }
@@ -49,7 +49,7 @@ export class ScoreCalculator {
     return totalSoldiers;
   }
 
-  private isPlayerEliminated(playerIndex: number): boolean {
-    return this.getRegionCount(playerIndex) === 0;
+  private isPlayerEliminated(playerSlotIndex: number): boolean {
+    return this.getRegionCount(playerSlotIndex) === 0;
   }
 }

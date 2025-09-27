@@ -112,7 +112,7 @@ export class MoveReplayer {
       const newCount = (newSoldiers[regionIndex] || []).length;
       const oldCount = (oldSoldiers[regionIndex] || []).length;
 
-      if (newCount > oldCount && newOwners[regionIndex] === previousState.playerIndex) {
+      if (newCount > oldCount && newOwners[regionIndex] === previousState.playerSlotIndex) {
         // Soldiers were recruited (only if same owner)
         moves.push({
           type: 'recruitment',

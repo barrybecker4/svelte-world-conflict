@@ -9,7 +9,7 @@ export interface GameRecord {
     worldConflictState: GameStateData;
     createdAt: number;
     lastMoveAt: number;
-    currentPlayerIndex: number;
+    currentPlayerSlot: number;
     gameType: 'MULTIPLAYER' | 'AI';
 
     // Optional configuration for PENDING games that need to be completed
@@ -142,7 +142,7 @@ export class GameStorage {
             if (!game) return null;
 
             // Check if player already in game
-            if (game.players.some(p => p.index === player.index)) {
+            if (game.players.some(p => p.slotIndex === player.slotIndex)) {
                 return game;
             }
 
@@ -156,7 +156,7 @@ export class GameStorage {
             // 2. Creator clicks "Start anyway" (handled in separate endpoint)
 
             // Map player to game
-            await this.kv.put(`wc_player:${player.index}:game`, gameId);
+            await this.kv.put(`wc_player:${player.slotIndex}:game`, gameId);
 
             await this.saveGame(game);
             return game;
@@ -224,7 +224,7 @@ export class GameStorage {
 
             // Remove player mappings
             for (const player of game.players) {
-                await this.kv.delete(`wc_player:${player.index}:game`);
+                await this.kv.delete(`wc_player:${player.slotIndex}:game`);
             }
 
             await this.kv.delete(`wc_game:${gameId}`);

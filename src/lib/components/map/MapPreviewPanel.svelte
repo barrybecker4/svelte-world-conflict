@@ -69,7 +69,7 @@
       .filter(slot => slot.type !== 'Empty')
       .slice(0, playerCount)
       .map((slot, index) => ({
-        index,
+        slotIndex: index,  // ✅ Correct property name
         name: slot.type === 'Human' ? slot.name : `AI ${index + 1}`,
         color: slot.color,
         isAI: slot.type === 'AI'

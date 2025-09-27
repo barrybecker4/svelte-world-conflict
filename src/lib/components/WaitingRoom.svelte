@@ -22,7 +22,7 @@
   onMount(async () => {
     const gameCreator = loadGameCreator(gameId);
     if (gameCreator) {
-      currentPlayerId = gameCreator.playerIndex;
+      currentPlayerId = gameCreator.playerSlotIndex;
     }
 
     if (!game) {
@@ -116,16 +116,16 @@
 
   /**
    * The creator is whoever created this game (stored in localStorage).
-   * currentPlayerId should match the playerIndex of whoever created the game
+   * currentPlayerId should match the playerSlotIndex of whoever created the game
    */
   function checkIfCreator() {
     const gameCreator = loadGameCreator(gameId);
 
-    if (game && gameCreator && gameCreator.playerIndex !== undefined) {
+    if (game && gameCreator && gameCreator.playerSlotIndex !== undefined) {
       // Check if the current player is the same as the stored creator
-      isCreator = currentPlayerId === gameCreator.playerIndex;
+      isCreator = currentPlayerId === gameCreator.playerSlotIndex;
 
-      console.log(`🔍 Creator check: currentPlayerId=${currentPlayerId}, creatorIndex=${gameCreator.playerIndex}, isCreator=${isCreator}`);
+      console.log(`🔍 Creator check: currentPlayerId=${currentPlayerId}, creatorIndex=${gameCreator.playerSlotIndex}, isCreator=${isCreator}`);
     } else { // if (game && currentPlayerId !== null) {
       throw new Error("insufficient data ", game, gameCreator);
     }
@@ -193,7 +193,7 @@
       }
       if (slot.type === 'Open') {
         // Check if this slot is taken by a player
-        const player = game.players?.find(p => p.index === slotIndex);
+        const player = game.players?.find(p => p.slotIndex === slotIndex);
         if (player) {
           return {
             type: 'taken',
@@ -207,7 +207,7 @@
     }
 
     // Fallback for games without proper configuration
-    const player = game?.players?.find(p => p.index === slotIndex);
+    const player = game?.players?.find(p => p.slotIndex === slotIndex);
     if (player) {
       return {
         type: 'taken',
@@ -222,9 +222,9 @@
   function getOpenSlotsCount() {
     if (!game?.pendingConfiguration?.playerSlots) return 0;
 
-    return game.pendingConfiguration.playerSlots.filter((slot, index) => {
+    return game.pendingConfiguration.playerSlots.filter((slot, slotIndex) => {
       if (!slot || slot.type !== 'Open') return false;
-      return !game.players?.some(p => p.index === index);
+      return !game.players?.some(p => p.slotIndex === slotIndex);
     }).length;
   }
 

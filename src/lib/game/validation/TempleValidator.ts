@@ -12,7 +12,7 @@ export class TempleValidator {
         regionIndex: number,
         operationType: 'build' | 'upgrade'
     ): MoveValidationResult {
-        const currentPlayer = gameData.players[gameData.playerIndex];
+        const currentPlayer = gameData.players[gameData.currentPlayerSlot];
         const region = gameData.regions.find(r => r.index === regionIndex);
 
         if (!region) {
@@ -20,7 +20,7 @@ export class TempleValidator {
         }
 
         // Check ownership
-        if (gameData.ownersByRegion[regionIndex] !== currentPlayer.index) {
+        if (gameData.ownersByRegion[regionIndex] !== currentPlayer.slotIndex) {
             return { isValid: false, error: "Cannot build on region you don't own" };
         }
 

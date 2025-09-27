@@ -21,7 +21,7 @@
     return () => clearTimeout(timer);
   });
 
-  $: playerColor = getPlayerColor(player.index);
+  $: playerColor = getPlayerColor(player.slotIndex);
   $: isAI = player.type === 'AI';
 
   function skipBanner() {
