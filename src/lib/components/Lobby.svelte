@@ -1,41 +1,65 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { createEventDispatcher } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import Panel from '$lib/components/ui/Panel.svelte';
-  import PlayerNameInput from '$lib/components/configuration/PlayerNameInput.svelte';
+  import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
-  import { loadPlayerName, savePlayerName, saveGameCreator } from '$lib/client/stores/clientStorage';
+  import { saveGameCreator } from '$lib/client/stores/clientStorage';
 
   const dispatch = createEventDispatcher();
 
   let openGames = [];
   let loading = true;
   let error = null;
-
-  // Name prompt state
-  let showNamePrompt = false;
-  let pendingJoinGameId = null;
-  let pendingJoinSlot = null;
-  let joiningPlayerName = '';
-  let nameError = '';
+  let wsConnected = false;
+  let shouldRender = true; // Control whether component should render
 
   onMount(() => {
     loadOpenGames();
-    // Auto-refresh every 10 seconds as backup (reduced or remove this since we have real-time updates)
-    const intervalId = setInterval(loadOpenGames, 5000);
-    return () => clearInterval(intervalId);
+    setupRealtimeUpdates();
+
+    // Auto-refresh every 10 seconds as backup
+    const interval = setInterval(loadOpenGames, 10000);
+    return () => clearInterval(interval);
   });
+
+  async function setupRealtimeUpdates() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const { multiplayerActions, gameUpdates } = await import('$lib/client/stores/multiplayerStore');
+
+      await multiplayerActions.connectToGame('lobby');
+      wsConnected = true;
+      console.log('🔌 Connected to lobby WebSocket');
+
+      const unsubscribe = gameUpdates.subscribe(update => {
+        if (update && (update.type === 'playerJoined' || update.type === 'gameUpdate')) {
+          console.log('🔄 Real-time update received, refreshing lobby...');
+          loadOpenGames();
+        }
+      });
+
+      return () => {
+        unsubscribe();
+        multiplayerActions.disconnect();
+        wsConnected = false;
+      };
+    } catch (error) {
+      console.log('Real-time updates not available:', error.message);
+      wsConnected = false;
+    }
+  }
 
   async function loadOpenGames() {
     try {
+      console.log('🔄 Loading open games...');
       const response = await fetch('/api/games/open');
-
       if (response.ok) {
-        openGames = await response.json();
-        openGames.sort((a, b) => b.createdAt - a.createdAt);
-        console.log(`✅ Loaded ${openGames.length} open games`);
+        const games = await response.json();
+        console.log(`✅ Received ${games.length} games:`, games);
+
+        openGames = games.sort((a, b) => b.createdAt - a.createdAt);
       } else {
         console.error('❌ Failed to fetch open games:', response.status);
         openGames = [];
@@ -45,69 +69,26 @@
       openGames = [];
     } finally {
       loading = false;
+
+      // After loading completes, if no games, skip to configuration
+      if (openGames.length === 0) {
+        console.log('📝 No open games after loading, switching to configuration');
+        shouldRender = false;
+        dispatch('close');
+      }
     }
   }
 
   async function joinGameInSlot(gameId, slotIndex) {
-    // First, check if player has a stored name
-    const storedName = loadPlayerName();
-
-    if (storedName) {
-      // Check if name conflicts with existing players in this game
-      const game = openGames.find(g => g.gameId === gameId);
-      const nameInUse = game?.players?.some(p => p.name === storedName);
-
-      if (nameInUse) {
-        // Name conflict - prompt for different name
-        pendingJoinGameId = gameId;
-        pendingJoinSlot = slotIndex;
-        joiningPlayerName = '';
-        nameError = `Name "${storedName}" is already in use. Please choose another.`;
-        showNamePrompt = true;
-      } else {
-        // Use stored name
-        await performJoin(gameId, slotIndex, storedName);
-      }
-    } else {
-      // No stored name - prompt for one
-      pendingJoinGameId = gameId;
-      pendingJoinSlot = slotIndex;
-      joiningPlayerName = '';
-      nameError = '';
-      showNamePrompt = true;
-    }
-  }
-
-  function handleNameSubmitted(event) {
-    const { name } = event.detail;
-    const trimmedName = name.trim();
-
-    if (!trimmedName) {
-      nameError = 'Please enter a name';
-      return;
-    }
-
-    // Check for name conflicts in the target game
-    const game = openGames.find(g => g.gameId === pendingJoinGameId);
-    const nameInUse = game?.players?.some(p => p.name === trimmedName);
-
-    if (nameInUse) {
-      nameError = `Name "${trimmedName}" is already in use. Please choose another.`;
-      return;
-    }
-
-    // Save the name for future use
-    savePlayerName(trimmedName);
-
-    // Perform the join
-    performJoin(pendingJoinGameId, pendingJoinSlot, trimmedName);
-
-    // Close dialog
-    cancelNamePrompt();
-  }
-
-  async function performJoin(gameId, slotIndex, playerName) {
     try {
+      let playerName;
+      try {
+        playerName = getPlayerConfig(slotIndex).defaultName;
+      } catch (error) {
+        const defaultNames = ['Crimson', 'Azure', 'Emerald', 'Golden'];
+        playerName = defaultNames[slotIndex] || `Player${slotIndex + 1}`;
+      }
+
       console.log(`🎮 Attempting to join game ${gameId} in slot ${slotIndex} as "${playerName}"`);
 
       const response = await fetch(`/api/game/${gameId}/join`, {
@@ -139,14 +120,6 @@
       console.error('❌ Network error joining game:', err);
       setTimeout(() => error = null, 3000);
     }
-  }
-
-  function cancelNamePrompt() {
-    showNamePrompt = false;
-    pendingJoinGameId = null;
-    pendingJoinSlot = null;
-    joiningPlayerName = '';
-    nameError = '';
   }
 
   function close() {
@@ -188,7 +161,6 @@
       }
     }
 
-    // Fallback for games without proper configuration
     const player = game.players?.find(p => p.slotIndex === slotIndex);
     if (player) {
       return { type: 'taken', name: player.name, canJoin: false };
@@ -208,6 +180,8 @@
   }
 </script>
 
+<!-- Only render if shouldRender is true -->
+{#if shouldRender}
 <div class="lobby-overlay">
   <div class="lobby-container">
 
@@ -216,267 +190,295 @@
         <br />
         <span class="title-subheader">
           Click on an open player slot to join a game
+          {#if wsConnected}
+            <span class="connection-status connected">● Live</span>
+          {:else}
+            <span class="connection-status disconnected">○ Updating</span>
+          {/if}
         </span>
       </h1>
-      <Button variant="secondary" on:click={close}>
-        Create New Game
+    </div>
+
+    <div class="lobby-content">
+      {#if error}
+        <div class="error-message">
+          ⚠️ {error}
+        </div>
+      {/if}
+
+      <LoadingState
+        {loading}
+        loadingText="Loading available games..."
+        showRetry={true}
+        on:retry={loadOpenGames}
+      >
+        {#if openGames.length > 0}
+          <div class="games-list">
+            <h3>Available Games ({openGames.length})</h3>
+            {#each openGames as game}
+              <div class="game-card">
+                <div class="game-header">
+                  <div class="game-title">
+                    {game.creator}'s Game
+                  </div>
+                  <div class="game-details">
+                    <span class="player-count">
+                      {game.playerCount}/{game.maxPlayers} players
+                    </span>
+                    <span class="separator">•</span>
+                    <span class="game-age">
+                      {formatTimeAgo(game.createdAt)}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="player-slots">
+                  {#each Array(4) as _, slotIndex}
+                    {@const slotInfo = getSlotInfo(game, slotIndex)}
+                    <div class="player-slot">
+                      <div class="slot-label">Player {slotIndex + 1}</div>
+                      <Button
+                        variant={getSlotButtonVariant(slotInfo)}
+                        size="sm"
+                        disabled={!slotInfo.canJoin}
+                        on:click={() => slotInfo.canJoin && joinGameInSlot(game.gameId, slotIndex)}
+                        class="slot-button {slotInfo.type}"
+                      >
+                        {slotInfo.name}
+                      </Button>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </LoadingState>
+    </div>
+
+    <div class="bottom-box">
+      <Button variant="primary" size="lg" on:click={close}>
+        New Game
+      </Button>
+      <Button variant="ghost" size="lg" on:click={close}>
+        Back
       </Button>
     </div>
 
-    {#if error}
-      <div class="error-banner">{error}</div>
-    {/if}
-
-    {#if loading}
-      <div class="loading">Loading games...</div>
-    {:else if openGames.length === 0}
-      <div class="no-games">
-        <p>No open games available</p>
-        <p class="no-games-hint">Create a new game to get started!</p>
-        <Button variant="primary" on:click={close}>
-          Create New Game
-        </Button>
-      </div>
-    {:else}
-      <div class="games-list">
-        {#each openGames as game (game.gameId)}
-          <Panel variant="dark" blur={true}>
-            <div class="game-card">
-              <div class="game-info">
-                <div class="game-title">{game.creator}'s Game</div>
-                <div class="game-meta">
-                  <span>Created {formatTimeAgo(game.createdAt)}</span>
-                  <span>•</span>
-                  <span>{game.players?.length || 0}/{game.maxPlayers} players</span>
-                </div>
-              </div>
-
-              <div class="player-slots">
-                {#each Array(game.maxPlayers) as _, slotIndex}
-                  {@const slotInfo = getSlotInfo(game, slotIndex)}
-                  <Button
-                    variant={getSlotButtonVariant(slotInfo)}
-                    disabled={!slotInfo.canJoin}
-                    on:click={() => slotInfo.canJoin && joinGameInSlot(game.gameId, slotIndex)}
-                  >
-                    {slotInfo.name}
-                  </Button>
-                {/each}
-              </div>
-            </div>
-          </Panel>
-        {/each}
-      </div>
-    {/if}
   </div>
-
-  {#if showNamePrompt}
-    <div class="modal-overlay" on:click={cancelNamePrompt}>
-      <div class="modal-content" on:click|stopPropagation>
-        <div class="modal-header">
-          <h2>Join Game</h2>
-          <button class="close-button" on:click={cancelNamePrompt}>×</button>
-        </div>
-
-        <PlayerNameInput
-          initialName={joiningPlayerName}
-          error={nameError}
-          on:nameSubmitted={handleNameSubmitted}
-        />
-
-        <div class="modal-footer">
-          <Button variant="secondary" on:click={cancelNamePrompt}>
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>
+{/if}
 
 <style>
   .lobby-overlay {
     position: fixed;
-    inset: 0;
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--color-gray-800, #1e293b) 0%, var(--color-gray-700, #334155) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
-    padding: 20px;
+    z-index: var(--z-modal, 1000);
+    color: var(--text-primary, white);
+    font-family: system-ui, sans-serif;
   }
 
   .lobby-container {
-    width: 100%;
-    max-width: 900px;
-    max-height: 90vh;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
     display: flex;
     flex-direction: column;
-    gap: 20px;
   }
 
   .lobby-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
+    text-align: center;
+    margin-bottom: 2rem;
   }
 
   .lobby-header h1 {
-    color: #f8fafc;
-    font-size: 2rem;
-    margin: 0;
+    font-size: 3rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, var(--color-primary-400, #60a5fa), #a855f7, #ec4899);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
   }
 
   .title-subheader {
-    font-size: 1rem;
-    color: #cbd5e1;
+    font-size: 1.2rem;
+    color: var(--text-tertiary, #94a3b8);
     font-weight: normal;
+    position: relative;
   }
 
-  .error-banner {
-    background: #dc2626;
-    color: white;
-    padding: 12px;
-    border-radius: 6px;
-    text-align: center;
+  .connection-status {
+    font-size: 0.9rem;
+    margin-left: 1rem;
   }
 
-  .loading, .no-games {
-    text-align: center;
-    color: #cbd5e1;
-    padding: 40px;
+  .connection-status.connected {
+    color: #10b981;
   }
 
-  .no-games {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    align-items: center;
+  .connection-status.disconnected {
+    color: #f59e0b;
   }
 
-  .no-games p {
-    margin: 0;
-    font-size: 1.125rem;
-  }
-
-  .no-games-hint {
-    font-size: 0.875rem;
-    color: #94a3b8;
-  }
-
-  .games-list {
+  .lobby-content {
+    background: var(--bg-panel-glass, rgba(31, 41, 55, 0.9));
+    border: 2px solid var(--border-light, #475569);
+    border-radius: 12px;
+    padding: 2rem;
+    min-height: 300px;
+    max-height: 500px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    backdrop-filter: blur(10px);
+    flex: 1;
+  }
+
+  .error-message {
+    background: var(--bg-error, rgba(239, 68, 68, 0.2));
+    border: 1px solid var(--color-error, #ef4444);
+    border-radius: var(--radius-lg, 8px);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    color: #fecaca;
+  }
+
+  .games-list h3 {
+    margin-bottom: 1.5rem;
+    color: var(--text-primary, #f8fafc);
+    font-size: 1.3rem;
   }
 
   .game-card {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .game-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .game-title {
-    color: #f8fafc;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .game-meta {
-    color: #94a3b8;
-    font-size: 0.875rem;
-    display: flex;
-    gap: 8px;
-  }
-
-  .player-slots {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .player-slots :global(button) {
-    flex: 1;
-    min-width: 120px;
-  }
-
-  /* Modal styles */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-  }
-
-  .modal-content {
-    background: #1f2937;
-    border-radius: 12px;
-    padding: 0;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 24px 24px 16px;
-    border-bottom: 1px solid #374151;
-  }
-
-  .modal-header h2 {
-    color: #f8fafc;
-    font-size: 1.5rem;
-    margin: 0;
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    color: #94a3b8;
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
+    background: var(--bg-panel-light, rgba(30, 41, 59, 0.8));
+    border: 1px solid var(--border-light, #475569);
+    border-radius: var(--radius-lg, 8px);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
     transition: all 0.2s;
   }
 
-  .close-button:hover {
-    background: #374151;
-    color: #f8fafc;
+  .game-card:hover {
+    border-color: var(--color-primary-400, #60a5fa);
+    background: var(--bg-panel-light, rgba(30, 41, 59, 0.95));
   }
 
-  .modal-content :global(.name-input-section) {
-    padding: 24px;
-    border-bottom: 1px solid #374151;
-  }
-
-  .modal-content :global(.name-input-section h2) {
-    display: none;
-  }
-
-  .modal-footer {
-    padding: 16px 24px;
+  .game-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .game-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+  }
+
+  .game-details {
+    font-size: 0.9rem;
+    color: var(--text-tertiary, #94a3b8);
+  }
+
+  .separator {
+    margin: 0 0.5rem;
+    opacity: 0.5;
+  }
+
+  .player-slots {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+  }
+
+  .player-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .slot-label {
+    font-size: 0.8rem;
+    color: var(--text-tertiary, #94a3b8);
+    font-weight: 500;
+  }
+
+  :global(.slot-button) {
+    min-width: 120px;
+    transition: all 0.2s;
+  }
+
+  :global(.slot-button.open:hover) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  :global(.slot-button.creator) {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  }
+
+  :global(.slot-button.taken) {
+    opacity: 0.7;
+  }
+
+  :global(.slot-button.ai) {
+    opacity: 0.6;
+    font-style: italic;
+  }
+
+  :global(.slot-button.disabled) {
+    opacity: 0.4;
+  }
+
+  .bottom-box {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem 0 0;
+  }
+
+  @media (max-width: 640px) {
+    .lobby-container {
+      width: 95%;
+      max-height: 90vh;
+    }
+
+    .lobby-header h1 {
+      font-size: 2rem;
+    }
+
+    .title-subheader {
+      font-size: 1rem;
+    }
+
+    .connection-status {
+      display: block;
+      margin-top: 0.5rem;
+      margin-left: 0;
+    }
+
+    .player-slots {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .game-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    :global(.slot-button) {
+      min-width: 100px;
+    }
   }
 </style>
