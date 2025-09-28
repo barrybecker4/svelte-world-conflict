@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { getErrorMessage } from '$lib/server/api-utils';
 
 interface RouteParams {
@@ -109,7 +109,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(updatedGame);
 
         // Notify other players via WebSocket
-        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+        await WebSocketNotifications.gameUpdate(updatedGame, platform!);
         console.log(`Player ${playerId} quit game ${gameId} (${reason})`);
 
         return json({

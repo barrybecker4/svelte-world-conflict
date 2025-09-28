@@ -54,19 +54,12 @@
     }
 
     const ownerIndex = gameState.ownersByRegion[region.index];
-    console.log(`Region ${region.index}: ownerIndex=${ownerIndex}`);
-
     if (ownerIndex === undefined || ownerIndex === -1) {
         return NEUTRAL_COLOR;
     }
 
     const owner = gameState.players?.find(p => p.slotIndex === ownerIndex);
-    console.log(`Region ${region.index}: owner found=${!!owner}, slotIndex=${owner?.slotIndex}`);
-
-    const color = owner ? getPlayerMapColor(owner.slotIndex) : NEUTRAL_COLOR;
-    console.log(`Region ${region.index}: color=${color}`);
-
-    return color;
+    return owner ? getPlayerMapColor(owner.slotIndex) : NEUTRAL_COLOR;
   }
 
   function getBorderColor(region: Region): string {

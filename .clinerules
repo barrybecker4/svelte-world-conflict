@@ -1,3 +1,4 @@
 Prefer simplicity and fast failure over fallbacks, polling, or other convoluted workarounds.
 Prefer small, single purpose files, classes, and functions.
+Use minimal comments. Do not comment things that are obvious from the code itself.
 Work towards a generic, reusable, muliplayer game framework.

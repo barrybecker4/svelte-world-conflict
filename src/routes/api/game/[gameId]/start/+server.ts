@@ -5,8 +5,7 @@ import { GameState } from '$lib/game/state/GameState';
 import { Region } from '$lib/game/entities/Region';
 import { getErrorMessage } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
-import { GameNotifications } from '$lib/server/websocket/websocket';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 
 /**
@@ -73,8 +72,8 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         }
 
         // Notify all connected clients
-        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!.env);
-        await GameNotifications.gameStarted(gameId, updatedGame);
+        await WebSocketNotifications.gameUpdate(updatedGame, platform!.env);
+        await WebSocketNotifications.gameStarted(gameId, updatedGame);
 
         return json({
             success: true,

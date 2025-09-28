@@ -7,7 +7,7 @@ import type { Player } from '$lib/game/entities/gameTypes';
 import { generateGameId, generatePlayerId, createPlayer, getErrorMessage } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 
 /**
  * Create a new game
@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
                 // Notify via WebSocket if available
                 if (platform?.env) {
-                    await WebSocketNotificationHelper.sendGameUpdate(gameRecord, platform.env);
+                    await WebSocketNotifications.gameUpdate(gameRecord, platform.env);
                 }
 
                 console.log(`AI processing complete after game creation, current player slot: ${processedGameState.playerSlotIndex}`);

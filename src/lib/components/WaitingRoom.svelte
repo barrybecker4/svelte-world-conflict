@@ -124,8 +124,6 @@
     if (game && gameCreator && gameCreator.playerSlotIndex !== undefined) {
       // Check if the current player is the same as the stored creator
       isCreator = currentPlayerId === gameCreator.playerSlotIndex;
-
-      console.log(`🔍 Creator check: currentPlayerId=${currentPlayerId}, creatorIndex=${gameCreator.playerSlotIndex}, isCreator=${isCreator}`);
     } else { // if (game && currentPlayerId !== null) {
       throw new Error("insufficient data ", game, gameCreator);
     }

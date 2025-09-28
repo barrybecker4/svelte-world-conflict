@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { EndTurnCommand, CommandProcessor } from '$lib/game/commands';
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { getErrorMessage } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(updatedGame);
 
         // Notify other players via WebSocket
-        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!.env);
+        await WebSocketNotifications.gameUpdate(updatedGame, platform!.env);
 
         console.log(`Turn processing completed, current player slot: ${finalGameState.currentPlayerSlot}`);
 

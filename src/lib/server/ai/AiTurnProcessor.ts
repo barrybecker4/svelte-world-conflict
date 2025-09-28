@@ -8,7 +8,7 @@
 import { GameState } from '$lib/game/state/GameState';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { ArmyMoveCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import type { Player } from '$lib/game/entities/gameTypes';
 
 /**
@@ -57,7 +57,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
 
                     // Notify players of AI move (if websocket environment exists)
                     if (platform?.env) {
-                        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform.env);
+                        await WebSocketNotifications.gameUpdate(updatedGame, platform.env);
                     }
 
                     // Small delay to make AI moves visible (shorter during game creation)

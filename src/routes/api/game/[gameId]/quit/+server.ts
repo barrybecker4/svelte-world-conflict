@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { GameNotifications } from '$lib/server/websocket/websocket';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import type { Player } from '$lib/game/state/GameState';
 
@@ -86,7 +86,7 @@ async function quitFromPendingGame(
         console.log(`Player ${player.name} left pending game ${gameId}`);
 
         // Notify other players
-        await GameNotifications.playerLeft(gameId, playerId, updatedGame, platform);
+        await WebSocketNotifications.playerLeft(gameId, playerId, updatedGame, platform);
 
         return json({
             success: true,
@@ -113,7 +113,7 @@ async function quitFromActiveGame(
     console.log(`Player ${player.name} resigned from active game ${gameId}`);
 
     // Notify other players
-    await GameNotifications.gameEnded(gameId, updatedGame, platform);
+    await WebSocketNotifications.gameEnded(gameId, updatedGame, platform);
 
     return json({
         success: true,

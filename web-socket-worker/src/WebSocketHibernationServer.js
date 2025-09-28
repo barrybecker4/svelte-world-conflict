@@ -47,7 +47,7 @@ export class WebSocketHibernationServer {
                 console.error('Error parsing WebSocket message:', error);
                 this.sessionManager.sendToSession(sessionId, {
                     type: 'error',
-                    data: { error: 'Invalid message format' },
+                    gameState: { error: 'Invalid message format' },
                     timestamp: Date.now()
                 });
             }
@@ -80,13 +80,8 @@ export class WebSocketHibernationServer {
                 });
             }
 
-            // Use SessionManager to broadcast
             console.log('handleNotification received:', message);
-            const sentCount = this.sessionManager.broadcastToGame(gameId, {
-                type: message.type,
-                data: message.gameState,
-                timestamp: Date.now()
-            });
+            const sentCount = this.sessionManager.broadcastToGame(gameId, message);
 
             return new Response(JSON.stringify({
                 success: true,
@@ -131,7 +126,7 @@ export class WebSocketHibernationServer {
                 console.warn(`Unknown message type: ${message.type}`);
                 this.sessionManager.sendToSession(sessionId, {
                     type: 'error',
-                    data: { error: `Unknown message type: ${message.type}` },
+                    gameState: { error: `Unknown message type: ${message.type}` },
                     timestamp: Date.now()
                 });
         }
@@ -141,7 +136,7 @@ export class WebSocketHibernationServer {
         if (!gameId) {
             this.sessionManager.sendToSession(sessionId, {
                 type: 'error',
-                data: { error: 'Missing gameId' },
+                gameState: { error: 'Missing gameId' },
                 timestamp: Date.now()
             });
             return;
@@ -157,7 +152,7 @@ export class WebSocketHibernationServer {
         } catch (error) {
             this.sessionManager.sendToSession(sessionId, {
                 type: 'error',
-                data: { error: error.message },
+                gameState: { error: error.message },
                 timestamp: Date.now()
             });
         }

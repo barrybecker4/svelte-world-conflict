@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import { GameStorage } from '$lib/server/storage/GameStorage';
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import type { Player } from '$lib/game/state/GameState';
 import { getErrorMessage } from '$lib/server/api-utils';
 
@@ -86,7 +86,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             if (game.players.length === 1) {
                 // Last player leaving, delete the game
                 await gameStorage.deleteGame(gameId);
-                console.log(`🗑️ Deleted pending game ${gameId} - last player left`);
+                console.log(`Deleted pending game ${gameId} - last player left`);
 
                 return json({
                     success: true,
@@ -104,7 +104,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
                  console.log("saveGame after removing player. gameId: " + updatedGame.gameId);
                 await gameStorage.saveGame(updatedGame);
-                await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+                await WebSocketNotifications.gameUpdate(updatedGame, platform!);
 
                 console.log(`Player ${player.name} left pending game ${gameId}`);
 
@@ -126,7 +126,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
             console.log("saveGame after resign. gameId: " + updatedGame.gameId);
             await gameStorage.saveGame(updatedGame);
-            await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+            await WebSocketNotifications.gameUpdate(updatedGame, platform!);
 
             console.log(`Player ${player.name} ${reason.toLowerCase()} from active game ${gameId}`);
 

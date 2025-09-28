@@ -29,19 +29,19 @@ export class MessageHandler {
                     break;
 
                 case 'gameUpdate':
-                    this.callbacks.gameUpdate?.(message.data);
+                    this.callbacks.gameUpdate?.(message.gameState);
                     break;
 
                 case 'gameStarted':
-                    this.callbacks.gameStarted?.(message.data);
+                    this.callbacks.gameStarted?.(message.gameState);
                     break;
 
                 case 'playerJoined':
-                    this.callbacks.playerJoined?.(message.data);
+                    this.callbacks.playerJoined?.(message.gameState);
                     break;
 
                 case 'gameEnded':
-                    this.callbacks.gameEnded?.(message.data);
+                    this.callbacks.gameEnded?.(message.gameState);
                     break;
 
                 case 'pong':
@@ -50,8 +50,8 @@ export class MessageHandler {
                     break;
 
                 case 'error':
-                    console.error('❌ Server error:', message.data?.error);
-                    this.callbacks.error?.(message.data?.error || 'Unknown server error');
+                    console.error('❌ Server error:', message.gameState?.error);
+                    this.callbacks.error?.(message.gameState?.error || 'Unknown server error');
                     break;
 
                 case 'unsubscribed':

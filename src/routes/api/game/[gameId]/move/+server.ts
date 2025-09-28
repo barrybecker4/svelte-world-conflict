@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.ts';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
-import { WebSocketNotificationHelper } from '$lib/server/websocket/WebSocketNotificationHelper';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { getErrorMessage } from '$lib/server/api-utils';
 
 interface MoveRequest {
@@ -106,7 +106,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(updatedGame);
 
         // Send WebSocket updates - pass the game record
-        await WebSocketNotificationHelper.sendGameUpdate(updatedGame, platform!);
+        await WebSocketNotifications.gameUpdate(updatedGame, platform!);
 
         return json({
             success: true,
