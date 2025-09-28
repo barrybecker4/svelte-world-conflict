@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameNotifications } from '$lib/server/websocket/websocket';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
+import type { Player } from '$lib/game/state/GameState';
 
 interface QuitGameRequest {
     playerId: string;
@@ -40,9 +41,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         // Handle different scenarios
         if (game.status === 'PENDING') {
-            return await quitFromPendingGame(gameId, game, gameStorage);
+            return await quitFromPendingGame(gameId, game, playerSlotIndex, player, playerId, gameStorage, platform);
         } else {
-            return await quitFromActiveGame(gameId, game, player, gameStorage);
+            return await quitFromActiveGame(gameId, game, player, gameStorage, platform);
         }
 
     } catch (error) {
@@ -51,12 +52,20 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     }
 };
 
-async function quitFromPendingGame(gameId: string, game: GameRecord, gameStorage: GameStorage) {
+async function quitFromPendingGame(
+    gameId: string,
+    game: GameRecord,
+    playerSlotIndex: number,
+    player: Player,
+    playerId: string,
+    gameStorage: GameStorage,
+    platform: any
+) {
     // Game hasn't started yet - remove player or delete game
     if (game.players.length === 1) {
         // Last player leaving, delete the game
         await gameStorage.deleteGame(gameId);
-        console.log(`🗑️ Deleted pending game ${gameId} - last player left`);
+        console.log(`Deleted pending game ${gameId} - last player left`);
 
         return json({
             success: true,
@@ -77,7 +86,7 @@ async function quitFromPendingGame(gameId: string, game: GameRecord, gameStorage
         console.log(`Player ${player.name} left pending game ${gameId}`);
 
         // Notify other players
-        await GameNotifications.playerLeft(gameId, playerId, updatedGame);
+        await GameNotifications.playerLeft(gameId, playerId, updatedGame, platform);
 
         return json({
             success: true,
@@ -87,7 +96,13 @@ async function quitFromPendingGame(gameId: string, game: GameRecord, gameStorage
     }
 }
 
-async function quitFromActiveGame(gameId: string, game: GameRecord, player: Player, gameStorage: GameStorage) {
+async function quitFromActiveGame(
+    gameId: string,
+    game: GameRecord,
+    player: Player,
+    gameStorage: GameStorage,
+    platform: any
+) {
     const updatedGame = {
         ...game,
         status: 'COMPLETED' as const,
@@ -98,7 +113,7 @@ async function quitFromActiveGame(gameId: string, game: GameRecord, player: Play
     console.log(`Player ${player.name} resigned from active game ${gameId}`);
 
     // Notify other players
-    await GameNotifications.gameEnded(gameId, updatedGame);
+    await GameNotifications.gameEnded(gameId, updatedGame, platform);
 
     return json({
         success: true,

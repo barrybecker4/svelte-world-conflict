@@ -160,7 +160,10 @@
       console.log('🚪 Leaving game...');
       const response = await fetch(`/api/game/${gameId}/quit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: currentPlayerId.toString()
+        })
       });
 
       if (response.ok) {
@@ -173,6 +176,7 @@
         setTimeout(() => error = null, 3000);
       }
     } catch (err) {
+      console.error('❌ Error leaving game:', err);
       error = 'Network error leaving game';
       setTimeout(() => error = null, 3000);
     }
