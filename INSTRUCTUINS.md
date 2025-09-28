@@ -1,0 +1,1 @@
+prefer simplicity and fast failure over fallbacks, polling, or other convoluted workarounds.
