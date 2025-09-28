@@ -7,6 +7,7 @@
   import PlayerSummaryRow from './PlayerSummaryRow.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import type { Player, GameStateData } from '$lib/game/state/GameState';
+  import { PlayerStatisticsCalculator, type PlayerStats } from './PlayerStatisticsCalculator';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';
 
@@ -17,16 +18,15 @@
 
   const dispatch = createEventDispatcher();
 
-  interface PlayerStats {
-    player: Player;
-    regionCount: number;
-    soldierCount: number;
-    faithCount: number;
-    totalScore: number;
-    rank: number;
+  let statisticsCalculator: PlayerStatisticsCalculator;
+
+  $: {
+    if (gameState) {
+      statisticsCalculator = new PlayerStatisticsCalculator(gameState);
+    }
   }
 
-  $: playerStats = calculatePlayerStats();
+  $: playerStats = statisticsCalculator ? statisticsCalculator.calculatePlayerStats(players) : [];
   $: gameEndReason = getGameEndReason();
 
   onMount(async () => {
@@ -40,55 +40,6 @@
       }
     }
   });
-
-  function calculatePlayerStats(): PlayerStats[] {
-    if (!gameState || !players.length) return [];
-
-    const stats = players.map(player => {
-      const regionCount = getRegionCount(player.slotIndex);
-      const soldierCount = getTotalSoldiers(player.slotIndex);
-      const faithCount = gameState.faithByPlayer[player.slotIndex] || 0;
-
-      // Calculate total score (same as game logic: 1000 * regions + soldiers)
-      const totalScore = (1000 * regionCount) + soldierCount;
-
-      return {
-        player,
-        regionCount,
-        soldierCount,
-        faithCount,
-        totalScore,
-        rank: 0 // Will be calculated after sorting
-      };
-    });
-
-    // Sort by score descending and assign ranks
-    stats.sort((a, b) => b.totalScore - a.totalScore);
-    stats.forEach((stat, index) => {
-      stat.rank = index + 1;
-    });
-
-    return stats;
-  }
-
-  function getRegionCount(playerSlotIndex: number): number {
-    if (!gameState?.ownersByRegion) return 0;
-    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerSlotIndex).length;
-  }
-
-  function getTotalSoldiers(playerSlotIndex: number): number {
-    if (!gameState?.soldiersByRegion) return 0;
-
-    let total = 0;
-    Object.entries(gameState.soldiersByRegion).forEach(([regionIndexStr, soldiers]) => {
-      const regionIndex = parseInt(regionIndexStr);
-      if (gameState.ownersByRegion[regionIndex] === playerSlotIndex) {
-        total += soldiers.length;
-      }
-    });
-
-    return total;
-  }
 
   function getPlayerColor(index: number): string {
     return getPlayerConfig(index).colorStart;
@@ -112,9 +63,11 @@
     }
 
     // Check if all but one player eliminated
-    const activePlayers = playerStats.filter(stat => stat.regionCount > 0);
-    if (activePlayers.length <= 1) {
-      return winner ? 'All other players eliminated' : 'All players eliminated';
+    if (statisticsCalculator) {
+      const activePlayers = statisticsCalculator.getActivePlayers(players);
+      if (activePlayers.length <= 1) {
+        return winner ? 'All other players eliminated' : 'All players eliminated';
+      }
     }
 
     return 'Game completed';
@@ -158,7 +111,6 @@
           </div>
         </div>
 
-        <!-- Actions -->
         <div class="actions">
           <Button
             variant="primary"
