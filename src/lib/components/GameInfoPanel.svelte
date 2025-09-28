@@ -8,6 +8,7 @@
   import { useAudio } from '$lib/client/audio/useAudio';
   import AudioButton from '$lib/components/configuration/AudioButton.svelte';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { SYMBOLS } from '$lib/game/constants/symbols';
 
   export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
@@ -17,15 +18,6 @@
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
   export let moveMode: string = 'IDLE';
-
-  // Unicode symbols matching original game but using yin-yang for faith
-  const SYMBOLS = {
-    FAITH: '☯', // Yin-yang symbol for faith (originally used ☧)
-    DEAD: '☠',
-    VICTORY: '♛',
-    REGION: '★',
-    MOVES: '➊'
-  };
 
   // Reactive statements - these will update whenever gameState changes
   $: currentPlayerSlot = gameState?.currentPlayerSlot ?? 0;
@@ -181,47 +173,49 @@
 </Panel>
 
 <style>
-  /* Main container uses Panel component, just override sizing */
+  /* Main container */
   :global(.game-info-panel) {
     width: 280px;
     height: 100vh;
-    border-right: 2px solid var(--border-light, #4a5568);
-    font-family: system-ui, sans-serif;
-    overflow-y: auto;
-    flex-direction: column;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+    border: 1px solid var(--border-light, #374151);
     display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Turn section */
+  :global(.turn-section) {
+    background: rgba(15, 23, 42, 0.6);
+    border-bottom: 1px solid var(--border-light, #374151);
   }
 
   .turn-box {
-    background: linear-gradient(135deg, var(--color-warning, #fbbf24), #f59e0b);
-    color: var(--color-gray-900, #1f2937);
-    padding: var(--space-3, 12px) var(--space-4, 16px);
-    border-radius: var(--radius-lg, 8px);
     text-align: center;
-    font-weight: var(--font-bold, bold);
-    border: 2px solid #d97706;
+    padding: var(--space-3, 12px);
   }
 
   .turn-header {
-    font-size: var(--text-lg, 1.1rem);
-    margin-bottom: 2px;
+    font-size: var(--text-lg, 1.125rem);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-primary, #f7fafc);
   }
 
   .turn-number {
-    font-size: var(--text-xl, 1.3rem);
-    font-weight: var(--font-extrabold, 900);
+    color: var(--accent-primary, #60a5fa);
+    font-weight: var(--font-bold, bold);
   }
 
-  /* Player cards */
+  /* Player boxes */
   .player-box {
-    background: var(--bg-panel-light, rgba(30, 41, 59, 0.6));
-    border: 2px solid transparent;
-    border-radius: var(--radius-md, 6px);
-    padding: var(--space-3, 10px);
-    transition: var(--transition-normal, all 0.2s ease);
     display: flex;
     align-items: center;
-    gap: var(--space-3, 10px);
+    gap: var(--space-3, 12px);
+    padding: var(--space-3, 12px);
+    border-radius: var(--radius-md, 6px);
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
   }
 
   .player-box.active {
@@ -244,10 +238,13 @@
   }
 
   .player-name {
-    font-weight: var(--font-bold, bold);
-    font-size: var(--text-sm, 0.95rem);
-    margin-bottom: 4px;
+    font-weight: var(--font-semibold, 600);
     color: var(--text-primary, #f7fafc);
+    font-size: var(--text-sm, 0.875rem);
+    margin-bottom: 4px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
   }
 

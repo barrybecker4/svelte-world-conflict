@@ -6,7 +6,6 @@ import { GameWebSocketClient } from '../websocket/GameWebSocketClient';
 import { multiplayerState, gameUpdates } from './multiplayerStore';
 import { type MultiplayerState, initialState } from './multiplayerTypes';
 
-// WebSocket client instance
 let wsClient: GameWebSocketClient | null = null;
 
 export const multiplayerActions = {

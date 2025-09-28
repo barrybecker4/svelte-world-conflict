@@ -7,6 +7,7 @@
   import type { Player, GameStateData } from '$lib/game/state/GameState';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';
+  import { SYMBOLS } from '$lib/game/constants/symbols';
 
   export let gameState: GameStateData;
   export let players: Player[];
@@ -14,15 +15,6 @@
   export let winner: Player | 'DRAWN_GAME' | null = null;
 
   const dispatch = createEventDispatcher();
-
-  // Symbols for UI
-  const SYMBOLS = {
-    FAITH: '&#9775;',
-    REGION: '&#9733;',
-    SOLDIER: '&#9813;',
-    VICTORY: '&#9819;',
-    CROWN: '&#128081;'
-  };
 
   interface PlayerStats {
     player: Player;
@@ -78,50 +70,32 @@
     return stats;
   }
 
-  function getRegionCount(playerSlotIndex: number): number {
+  function getRegionCount(slotIndex: number): number {
     if (!gameState?.ownersByRegion) return 0;
-    return Object.values(gameState.ownersByRegion).filter(owner => owner === playerSlotIndex).length;
+    return Object.values(gameState.ownersByRegion).filter(owner => owner === slotIndex).length;
   }
 
-  function getTotalSoldiers(playerSlotIndex: number): number {
+  function getTotalSoldiers(slotIndex: number): number {
     if (!gameState?.soldiersByRegion) return 0;
-
-    let total = 0;
-    Object.entries(gameState.soldiersByRegion).forEach(([regionIndexStr, soldiers]) => {
-      const regionIndex = parseInt(regionIndexStr);
-      if (gameState.ownersByRegion[regionIndex] === playerSlotIndex) {
-        total += soldiers.length;
-      }
-    });
-
-    return total;
-  }
-
-  function getPlayerColor(index: number): string {
-    return getPlayerConfig(index).color;
-  }
-
-  function getPlayerEndColor(index: number): string {
-    return getPlayerConfig(index).colorEnd;
+    return Object.entries(gameState.soldiersByRegion)
+      .filter(([regionIdx, soldiers]) => gameState.ownersByRegion[regionIdx] === slotIndex)
+      .reduce((total, [_, soldiers]) => total + soldiers.length, 0);
   }
 
   function getGameEndReason(): string {
     if (winner === 'DRAWN_GAME') {
-      return 'Game ended in a draw!';
+      return 'Game ended in a draw';
     }
 
-    // Check if game ended due to turn limit
-    const maxTurns = gameState.maxTurns;
-    const currentTurn = gameState.turnNumber + 1;
+    if (winner) {
+      // Check if all other players eliminated
+      const alivePlayers = players.filter(p => getRegionCount(p.slotIndex) > 0);
+      if (alivePlayers.length === 1) {
+        return `${winner.name} conquered all regions!`;
+      }
 
-    if (maxTurns && currentTurn >= maxTurns) {
-      return `Turn limit reached (${maxTurns} turns)`;
-    }
-
-    // Check if all but one player eliminated
-    const activePlayers = playerStats.filter(stat => stat.regionCount > 0);
-    if (activePlayers.length <= 1) {
-      return winner ? 'All other players eliminated' : 'All players eliminated';
+      // Otherwise it was turn limit
+      return `${winner.name} had the most regions when time ran out!`;
     }
 
     return 'Game completed';
@@ -130,56 +104,48 @@
   function handlePlayAgain() {
     dispatch('playAgain');
   }
+
+  function handleClose() {
+    dispatch('close');
+  }
 </script>
 
 {#if isVisible}
-  <div class="modal-overlay" on:click={handlePlayAgain}>
+  <div class="modal-overlay" on:click={handleClose}>
     <div class="modal-content" on:click|stopPropagation>
-      <Panel variant="primary" padding={true} customClass="summary-panel">
+      <Panel variant="glass" padding="lg" customClass="summary-panel">
 
-        <!-- Header -->
         <div class="summary-header">
-          {#if winner === 'DRAWN_GAME'}
-            <h1 class="title draw">Game Draw!</h1>
-            <p class="subtitle">The game ended in a tie</p>
-          {:else if winner}
-            <h1 class="title victory">{@html SYMBOLS.CROWN} {winner.name} Wins! {@html SYMBOLS.CROWN}</h1>
-            <p class="subtitle">Congratulations!</p>
-          {:else}
-            <h1 class="title">Game Over</h1>
-            <p class="subtitle">Final Results</p>
-          {/if}
-
-          <div class="game-info">
-            <span class="end-reason">{gameEndReason}</span>
-          </div>
+          <h1 class="title">
+            {#if winner === 'DRAWN_GAME'}
+              Game Draw!
+            {:else if winner}
+              {winner.name} Wins! {@html SYMBOLS.VICTORY}
+            {:else}
+              Game Complete
+            {/if}
+          </h1>
+          <p class="subtitle">{gameEndReason}</p>
         </div>
 
-        <!-- Player Rankings -->
-        <div class="rankings">
-          <h2>Final Rankings</h2>
+        <div class="results-section">
+          <h2 class="section-title">Final Standings</h2>
 
-          <div class="ranking-list">
+          <div class="player-rankings">
             {#each playerStats as stat, index}
-              {@const isWinner = stat.player === winner}
-              {@const isEliminated = stat.regionCount === 0}
-
-              <div class="ranking-item" class:winner={isWinner} class:eliminated={isEliminated}>
-                <div class="rank-number">
-                  {#if isWinner && winner !== 'DRAWN_GAME'}
+              <div class="ranking-item" class:winner={stat.player === winner}>
+                <div class="rank-badge">
+                  {#if stat.rank === 1}
                     {@html SYMBOLS.VICTORY}
                   {:else}
-                    #{stat.rank}
+                    {stat.rank}
                   {/if}
                 </div>
 
-                <div
-                  class="player-color-badge"
-                  style="background: linear-gradient(135deg, {getPlayerColor(stat.player.slotIndex)}, {getPlayerEndColor(stat.player.slotIndex)});"
-                ></div>
-
-                <div class="player-details">
-                  <div class="player-name">{stat.player.name}</div>
+                <div class="player-info">
+                  <div class="player-name" style="color: {stat.player.color};">
+                    {stat.player.name}
+                  </div>
                   <div class="player-score">Score: {stat.totalScore.toLocaleString()}</div>
                 </div>
 
@@ -253,172 +219,141 @@
   }
 
   .title {
-    font-size: 2.5rem;
-    font-weight: 900;
+    font-size: var(--text-3xl, 1.875rem);
+    font-weight: var(--font-bold, bold);
+    color: var(--text-primary, #f7fafc);
     margin-bottom: 0.5rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  }
-
-  .title.victory {
-    color: var(--color-yellow-400, #facc15);
-    animation: glow 2s ease-in-out infinite alternate;
-  }
-
-  .title.draw {
-    color: var(--color-blue-400, #60a5fa);
-  }
-
-  @keyframes glow {
-    from {
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(250, 204, 21, 0.5);
-    }
-    to {
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 20px rgba(250, 204, 21, 0.8);
-    }
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
   }
 
   .subtitle {
-    font-size: 1.2rem;
-    color: var(--color-gray-300, #d1d5db);
-    margin-bottom: 1rem;
+    font-size: var(--text-lg, 1.125rem);
+    color: var(--text-secondary, #cbd5e1);
+    font-style: italic;
   }
 
-  .game-info {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
+  .results-section {
+    margin-bottom: 2rem;
   }
 
-  .end-reason {
-    background: rgba(96, 165, 250, 0.1);
-    color: var(--color-blue-300, #93c5fd);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    border: 1px solid var(--border-accent, #60a5fa);
-  }
-
-  .rankings h2 {
-    color: var(--color-gray-100, #f3f4f6);
-    font-size: 1.5rem;
+  .section-title {
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-primary, #f7fafc);
     margin-bottom: 1rem;
     text-align: center;
   }
 
-  .ranking-list {
+  .player-rankings {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-3, 12px);
   }
 
   .ranking-item {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    background: rgba(30, 41, 59, 0.4);
-    border: 2px solid transparent;
-    border-radius: 8px;
+    gap: var(--space-4, 16px);
+    padding: var(--space-4, 16px);
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: var(--radius-lg, 8px);
+    border: 1px solid var(--border-light, #374151);
     transition: all 0.2s ease;
   }
 
   .ranking-item.winner {
-    border-color: var(--color-yellow-400, #facc15);
-    background: rgba(250, 204, 21, 0.1);
-    box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+    background: rgba(34, 197, 94, 0.1);
+    border-color: var(--color-success, #22c55e);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.2);
   }
 
-  .ranking-item.eliminated {
-    opacity: 0.6;
-    background: rgba(15, 23, 42, 0.4);
-  }
-
-  .rank-number {
-    font-size: 1.5rem;
-    font-weight: 900;
-    color: var(--color-yellow-400, #facc15);
-    min-width: 2.5rem;
-    text-align: center;
-  }
-
-  .player-color-badge {
-    width: 2rem;
-    height: 2rem;
+  .rank-badge {
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    border: 2px solid var(--border-medium, #374151);
+    background: var(--accent-primary, #3b82f6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-bold, bold);
+    font-size: var(--text-lg, 1.125rem);
     flex-shrink: 0;
   }
 
-  .player-details {
+  .ranking-item.winner .rank-badge {
+    background: var(--color-success, #22c55e);
+  }
+
+  .player-info {
     flex: 1;
     min-width: 0;
   }
 
   .player-name {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--color-gray-100, #f3f4f6);
-    margin-bottom: 0.25rem;
+    font-size: var(--text-lg, 1.125rem);
+    font-weight: var(--font-semibold, 600);
+    margin-bottom: 2px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   }
 
   .player-score {
-    font-size: 0.9rem;
-    color: var(--color-gray-400, #9ca3af);
+    font-size: var(--text-sm, 0.875rem);
+    color: var(--text-secondary, #94a3b8);
   }
 
   .player-stats {
     display: flex;
-    gap: 1rem;
-    flex-shrink: 0;
+    gap: var(--space-4, 16px);
+    align-items: center;
   }
 
   .stat-item {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    background: rgba(15, 23, 42, 0.6);
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(15, 23, 42, 0.8);
+    border-radius: var(--radius-sm, 4px);
     border: 1px solid var(--border-light, #374151);
   }
 
   .stat-value {
-    font-weight: 600;
-    color: var(--color-gray-200, #e5e7eb);
-    font-size: 0.9rem;
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-primary, #f7fafc);
+    font-size: var(--text-sm, 0.875rem);
   }
 
   .stat-symbol {
-    color: var(--color-gray-400, #9ca3af);
-    font-size: 0.8rem;
+    font-size: 0.8em;
+    opacity: 0.8;
   }
 
   .actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 2px solid var(--border-light, #374151);
+    text-align: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light, #374151);
   }
 
+  /* Mobile responsive */
   @media (max-width: 640px) {
     .ranking-item {
       flex-direction: column;
-      gap: 0.75rem;
+      gap: var(--space-2, 8px);
       text-align: center;
     }
 
     .player-stats {
       justify-content: center;
-    }
-
-    .actions {
-      flex-direction: column;
+      gap: var(--space-2, 8px);
     }
 
     .title {
-      font-size: 2rem;
+      font-size: var(--text-2xl, 1.5rem);
+    }
+
+    .subtitle {
+      font-size: var(--text-base, 1rem);
     }
   }
 </style>
