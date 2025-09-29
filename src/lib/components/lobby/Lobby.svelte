@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
+  import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
   import OpenGameRow from './OpenGameRow.svelte';
   import { OpenGamesManager } from './OpenGamesManager';
 
@@ -9,8 +10,6 @@
 
   let gamesManager: OpenGamesManager;
   let shouldRender = true;
-
-  // Local reactive variables
   let games = [];
   let loading = true;
   let error = null;
@@ -19,10 +18,8 @@
   onMount(async () => {
     gamesManager = new OpenGamesManager();
 
-    // Load games first
     await gamesManager.loadOpenGames();
 
-    // Subscribe to stores
     const unsubGames = gamesManager.games.subscribe(value => games = value);
     const unsubLoading = gamesManager.loading.subscribe(value => {
       loading = value;
@@ -69,11 +66,7 @@
         <br />
         <span class="title-subheader">
           Click on an open player slot to join a game
-          {#if wsConnected}
-            <span class="connection-status connected">● Live</span>
-          {:else}
-            <span class="connection-status disconnected">○ Updating</span>
-          {/if}
+          <ConnectionStatus isConnected={wsConnected} />
         </span>
       </h1>
     </div>
@@ -160,19 +153,6 @@
     position: relative;
   }
 
-  .connection-status {
-    font-size: 0.9rem;
-    margin-left: 1rem;
-  }
-
-  .connection-status.connected {
-    color: #10b981;
-  }
-
-  .connection-status.disconnected {
-    color: #f59e0b;
-  }
-
   .lobby-content {
     background: var(--bg-panel-glass, rgba(31, 41, 55, 0.9));
     border: 2px solid var(--border-light, #475569);
@@ -220,12 +200,6 @@
 
     .title-subheader {
       font-size: 1rem;
-    }
-
-    .connection-status {
-      display: block;
-      margin-top: 0.5rem;
-      margin-left: 0;
     }
   }
 </style>

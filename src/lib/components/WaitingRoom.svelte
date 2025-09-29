@@ -2,6 +2,7 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
+  import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { loadGameCreator, removeGameCreator } from '$lib/client/stores/clientStorage';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
@@ -180,7 +181,6 @@
     }
   }
 
-  // Helper function to get player slot display info
   function getSlotInfo(slotIndex) {
     if (game?.pendingConfiguration?.playerSlots) {
       const slot = game.pendingConfiguration.playerSlots[slotIndex];
@@ -194,7 +194,6 @@
         return { type: 'ai', name: slot.name, color: '#8b5cf6' };
       }
       if (slot.type === 'Open') {
-        // Check if this slot is taken by a player
         const player = game.players?.find(p => p.slotIndex === slotIndex);
         if (player) {
           return {
@@ -208,7 +207,6 @@
       }
     }
 
-    // Fallback for games without proper configuration
     const player = game?.players?.find(p => p.slotIndex === slotIndex);
     if (player) {
       return {
@@ -248,11 +246,7 @@
       <div class="header">
         <h1>
           🎮 Waiting Room
-          {#if wsConnected}
-            <span class="connection-status connected">● Live</span>
-          {:else}
-            <span class="connection-status disconnected">○ Updating</span>
-          {/if}
+          <ConnectionStatus isConnected={wsConnected} />
         </h1>
         {#if game}
           <div class="game-info">
@@ -316,7 +310,7 @@
         <div class="status-section">
           {#if getOpenSlotsCount() > 0}
             <p class="waiting-text">
-              ⏳ Waiting for {getOpenSlotsCount()} more player{getOpenSlotsCount() > 1 ? 's' : ''} to join...
+              ⏳ Waiting for {getOpenSlotsCount()} player{getOpenSlotsCount() !== 1 ? 's' : ''} to join...
             </p>
             <p class="help-text">Share this game ID with friends: <strong>{gameId}</strong></p>
           {:else}
@@ -405,20 +399,6 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     position: relative;
-  }
-
-  .connection-status {
-    font-size: 0.8rem;
-    margin-left: 1rem;
-    font-weight: 500;
-  }
-
-  .connection-status.connected {
-    color: #10b981;
-  }
-
-  .connection-status.disconnected {
-    color: #f59e0b;
   }
 
   .game-info {
@@ -597,7 +577,6 @@
     flex-wrap: wrap;
   }
 
-  /* Responsive */
   @media (max-width: 640px) {
     .waiting-room-container {
       width: 95%;
