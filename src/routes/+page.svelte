@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import GameInstructions from '$lib/components/modals/GameInstructionsModal.svelte';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
-  import Lobby from '$lib/components/Lobby.svelte';
+  import Lobby from '$lib/components/lobby/Lobby.svelte';
   import { useAudio } from '$lib/client/audio/useAudio';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';

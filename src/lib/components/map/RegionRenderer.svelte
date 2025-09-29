@@ -7,7 +7,6 @@
 
   export let region: Region;
   export let gameState: GameStateData | null = null;
-  export let isSelected: boolean = false;
   export let isPreviewMode: boolean = false;
   export let canHighlight: boolean = false;
   export let highlightVisible: boolean = true;
