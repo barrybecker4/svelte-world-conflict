@@ -1,5 +1,4 @@
 import { writable, type Writable } from 'svelte/store';
-import { countOpenSlots, countActivePlayers, countTotalActiveSlots } from '$lib/client/slots/slotUtils';
 
 export interface WaitingRoomSlotInfo {
   type: 'open' | 'creator' | 'taken' | 'ai' | 'disabled';
@@ -50,12 +49,6 @@ export class WaitingRoomManager {
       }
 
       const gameData = await response.json();
-      console.log('📊 Game state loaded:', {
-        status: gameData.status,
-        players: gameData.players?.length
-      });
-
-      // Check if game has started
       if (gameData.status === 'ACTIVE') {
         console.log('🎮 Game is now ACTIVE - triggering gameStarted');
         this.onGameStarted?.();
@@ -163,18 +156,6 @@ export class WaitingRoomManager {
       };
     }
     return { type: 'open', name: 'Waiting...', color: '#10b981' };
-  }
-
-  getOpenSlotsCount(game: any): number {
-    return countOpenSlots(game);
-  }
-
-  getActivePlayersCount(game: any): number {
-    return countActivePlayers(game);
-  }
-
-  getTotalActiveSlots(game: any): number {
-    return countTotalActiveSlots(game);
   }
 
   async startGame(onSuccess: () => void) {

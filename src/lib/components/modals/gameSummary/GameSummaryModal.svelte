@@ -31,9 +31,9 @@
 
   onMount(async () => {
     if (winner) {
-      const localPlayer = gameState.getLocalPlayer();
+      const currentPlayerSlot = gameState.currentPlayerSlot;
 
-      if (winner !== 'DRAWN_GAME' && winner.slotIndex === localPlayer.slotIndex) {
+      if (winner !== 'DRAWN_GAME' && winner.slotIndex === currentPlayerSlot) {
         await audioSystem.playSound(SOUNDS.GAME_WON);
       } else {
         await audioSystem.playSound(SOUNDS.GAME_LOST);

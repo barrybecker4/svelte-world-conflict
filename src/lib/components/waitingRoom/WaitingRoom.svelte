@@ -8,6 +8,8 @@
   import { WaitingRoomManager } from './WaitingRoomManager';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { loadGameCreator } from '$lib/client/stores/clientStorage';
+  import { countOpenSlots, countActivePlayers, countTotalActiveSlots } from '$lib/client/slots/slotUtils';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   const dispatch = createEventDispatcher();
 
@@ -70,9 +72,9 @@
     });
   }
 
-  $: openSlotsCount = game ? manager.getOpenSlotsCount(game) : 0;
-  $: activePlayersCount = game ? manager.getActivePlayersCount(game) : 0;
-  $: totalActiveSlots = game ? manager.getTotalActiveSlots(game) : 4;
+  $: openSlotsCount = game ? countOpenSlots(game) : 0;
+  $: activePlayersCount = game ? countActivePlayers(game) : 0;
+  $: totalActiveSlots = game ? countTotalActiveSlots(game) : GAME_CONSTANTS.MAX_PLAYERS;
 </script>
 
 <div class="waiting-room-overlay">
