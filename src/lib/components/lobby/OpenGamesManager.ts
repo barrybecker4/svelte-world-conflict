@@ -1,8 +1,12 @@
 import { writable, type Writable } from 'svelte/store';
+import {
+  getSlotButtonVariant,
+  formatTimeAgo,
+  getDefaultPlayerName,
+  type BaseSlotInfo
+} from '$lib/client/slots/slotUtils';
 
-export interface GameSlotInfo {
-  type: 'open' | 'creator' | 'taken' | 'ai' | 'disabled';
-  name: string;
+export interface GameSlotInfo extends BaseSlotInfo {
   canJoin: boolean;
 }
 
@@ -33,8 +37,6 @@ export class OpenGamesManager {
         const games = await response.json();
         console.log(`✅ Received ${games.length} games:`, games);
         this.games.set(games.sort((a, b) => b.createdAt - a.createdAt));
-
-        // Return the count for the component to decide what to do
         return games.length;
       } else {
         console.error('❌ Failed to fetch open games:', response.status);
@@ -84,8 +86,7 @@ export class OpenGamesManager {
         const { getPlayerConfig } = await import('$lib/game/constants/playerConfigs');
         playerName = getPlayerConfig(slotIndex).defaultName;
       } catch (error) {
-        const defaultNames = ['Crimson', 'Azure', 'Emerald', 'Golden'];
-        playerName = defaultNames[slotIndex] || `Player${slotIndex + 1}`;
+        playerName = getDefaultPlayerName(slotIndex);
       }
 
       console.log(`Attempting to join game ${gameId} in slot ${slotIndex} as "${playerName}"`);
@@ -155,28 +156,11 @@ export class OpenGamesManager {
   }
 
   getSlotButtonVariant(slotInfo: GameSlotInfo): string {
-    switch (slotInfo.type) {
-      case 'open': return 'success';
-      case 'creator': return 'primary';
-      case 'taken': return 'secondary';
-      case 'ai': return 'ghost';
-      case 'disabled': return 'ghost';
-      default: return 'secondary';
-    }
+    return getSlotButtonVariant(slotInfo);
   }
 
   formatTimeAgo(timestamp: number): string {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / (1000 * 60));
-
-    if (minutes < 1) return 'Just now';
-    if (minutes === 1) return '1 minute ago';
-    if (minutes < 60) return `${minutes} minutes ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours === 1) return '1 hour ago';
-    return `${hours} hours ago`;
+    return formatTimeAgo(timestamp);
   }
 
   destroy() {
