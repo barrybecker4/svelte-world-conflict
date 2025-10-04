@@ -36,7 +36,6 @@ export class WaitingRoomManager {
     }
 
     await this.setupRealtimeUpdates();
-    this.startPolling();
   }
 
   async loadGameState() {
@@ -101,19 +100,6 @@ export class WaitingRoomManager {
       console.log('Real-time updates not available:', error.message);
       this.wsConnected.set(false);
     }
-  }
-
-  private startPolling() {
-    // Fallback polling if WebSocket fails
-    this.pollInterval = setInterval(() => {
-      let connected = false;
-      const unsubscribe = this.wsConnected.subscribe(value => connected = value);
-      unsubscribe();
-
-      if (!connected) {
-        this.loadGameState();
-      }
-    }, 5000);
   }
 
   getSlotInfo(game: any, slotIndex: number, getPlayerConfig: (index: number) => any): WaitingRoomSlotInfo {
@@ -214,21 +200,14 @@ export class WaitingRoomManager {
   }
 
   destroy() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-
     if (this.wsUnsubscribe) {
       this.wsUnsubscribe();
       this.wsUnsubscribe = null;
     }
-
     if (this.wsStateUnsubscribe) {
       this.wsStateUnsubscribe();
       this.wsStateUnsubscribe = null;
     }
-
     this.wsConnected.set(false);
   }
 }
