@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(updatedGame);
 
         // Notify other players via WebSocket
-        await WebSocketNotifications.gameUpdate(updatedGame, platform!.env);
+        await WebSocketNotifications.gameUpdate(updatedGame);
 
         console.log(`Turn processing completed, current player slot: ${finalGameState.currentPlayerSlot}`);
 

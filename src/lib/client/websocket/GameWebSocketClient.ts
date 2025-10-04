@@ -26,7 +26,7 @@ export class GameWebSocketClient {
         return new Promise((resolve, reject) => {
             try {
                 const wsUrl = buildWebSocketUrl(gameId);
-                console.log('🔌 Connecting to WebSocket:', wsUrl);
+                console.log('Connecting to WebSocket:', wsUrl);
 
                 this.ws = new WebSocket(wsUrl);
 

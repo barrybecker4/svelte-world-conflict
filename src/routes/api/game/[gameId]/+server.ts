@@ -104,7 +104,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
                  console.log("saveGame after removing player. gameId: " + updatedGame.gameId);
                 await gameStorage.saveGame(updatedGame);
-                await WebSocketNotifications.gameUpdate(updatedGame, platform!);
+                await WebSocketNotifications.gameUpdate(updatedGame);
 
                 console.log(`Player ${player.name} left pending game ${gameId}`);
 
@@ -126,7 +126,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
             console.log("saveGame after resign. gameId: " + updatedGame.gameId);
             await gameStorage.saveGame(updatedGame);
-            await WebSocketNotifications.gameUpdate(updatedGame, platform!);
+            await WebSocketNotifications.gameUpdate(updatedGame);
 
             console.log(`Player ${player.name} ${reason.toLowerCase()} from active game ${gameId}`);
 

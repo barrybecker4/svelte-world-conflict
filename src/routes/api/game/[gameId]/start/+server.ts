@@ -72,7 +72,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         }
 
         // Notify all connected clients
-        await WebSocketNotifications.gameUpdate(updatedGame, platform!.env);
+        await WebSocketNotifications.gameUpdate(updatedGame);
         await WebSocketNotifications.gameStarted(gameId, updatedGame);
 
         return json({

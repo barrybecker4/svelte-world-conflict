@@ -109,7 +109,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(updatedGame);
 
         // Notify other players via WebSocket
-        await WebSocketNotifications.gameUpdate(updatedGame, platform!);
+        await WebSocketNotifications.gameUpdate(updatedGame);
         console.log(`Player ${playerId} quit game ${gameId} (${reason})`);
 
         return json({

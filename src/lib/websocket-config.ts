@@ -4,7 +4,7 @@
  */
 
 // Update with your deployed worker URL
-const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
+export const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
 
 /**
  * Build WebSocket URL for a specific game
@@ -13,6 +13,11 @@ const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecke
  */
 export function buildWebSocketUrl(gameId: string): string {
     if (typeof window === 'undefined') return '';
+
+    // Validate gameId - allow 'lobby' as a special case
+    if (!gameId || gameId === 'null' || gameId === 'undefined') {
+        throw new Error(`Invalid gameId for WebSocket connection: ${gameId}`);
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const isLocal = window.location.hostname === 'localhost' ||

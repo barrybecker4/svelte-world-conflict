@@ -57,7 +57,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
 
                     // Notify players of AI move (if websocket environment exists)
                     if (platform?.env) {
-                        await WebSocketNotifications.gameUpdate(updatedGame, platform.env);
+                        await WebSocketNotifications.gameUpdate(updatedGame);
                     }
 
                     // Small delay to make AI moves visible (shorter during game creation)

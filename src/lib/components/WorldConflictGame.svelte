@@ -97,34 +97,40 @@
     gameStore.resetTurnManager();
   });
 
-  async function initializeWebSocket() {
-    try {
-      wsClient = new GameWebSocketClient();
+ async function initializeWebSocket() {
+   try {
+     if (!gameId || gameId === 'null' || gameId === 'undefined' || gameId === '') {
+       console.warn('Skipping WebSocket initialization - invalid gameId:', gameId);
+       return;
+     }
 
-      wsClient.onGameUpdate((gameData) => {
-        console.log('Received game update via WebSocket:', gameData);
-        gameStore.handleGameStateUpdate(gameData);
-      });
+     wsClient = new GameWebSocketClient();
 
-      wsClient.onConnected(() => {
-        console.log('Connected to game WebSocket');
-      });
+     // Register callbacks BEFORE connecting
+     wsClient.onError((error) => {
+       console.error('WebSocket error:', error);
+     });
 
-      wsClient.onDisconnected(() => {
-        console.log('Disconnected from game WebSocket');
-      });
+     wsClient.onGameUpdate((gameData) => {
+       console.log('Received game update via WebSocket:', gameData);
+       gameStore.handleGameStateUpdate(gameData);
+     });
 
-      wsClient.onError((error) => {
-        console.error('WebSocket error:', error);
-      });
+     wsClient.onConnected(() => {
+       console.log('Connected to game WebSocket');
+     });
 
-      // Connect to the WebSocket for this specific game
-      await wsClient.connect(gameId);
+     wsClient.onDisconnected(() => {
+       console.log('Disconnected from game WebSocket');
+     });
 
-    } catch (error) {
-      console.error('Failed to initialize WebSocket:', error);
-    }
-  }
+     // Connect to the WebSocket for this specific game
+     await wsClient.connect(gameId);
+
+   } catch (error) {
+     console.error('Failed to initialize WebSocket:', error);
+   }
+ }
 
   function cleanupWebSocket() {
     if (wsClient) {

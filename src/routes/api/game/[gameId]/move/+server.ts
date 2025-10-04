@@ -106,7 +106,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(updatedGame);
 
         // Send WebSocket updates - pass the game record
-        await WebSocketNotifications.gameUpdate(updatedGame, platform!);
+        await WebSocketNotifications.gameUpdate(updatedGame);
 
         return json({
             success: true,
