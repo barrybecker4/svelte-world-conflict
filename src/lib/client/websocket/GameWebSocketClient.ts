@@ -1,5 +1,4 @@
 import { MessageHandler } from './MessageHandler';
-import { ReconnectionManager } from './ReconnectionManager';
 import { buildWebSocketUrl } from '$lib/websocket-config';
 
 /**
@@ -9,12 +8,10 @@ export class GameWebSocketClient {
     private ws: WebSocket | null = null;
     private gameId: string | null = null;
     private messageHandler: MessageHandler;
-    private reconnectionManager: ReconnectionManager;
     private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
     constructor() {
         this.messageHandler = new MessageHandler();
-        this.reconnectionManager = new ReconnectionManager();
     }
 
     /**
@@ -47,11 +44,9 @@ export class GameWebSocketClient {
                     if (settled) return;
                     settled = true;
 
-                    console.log('✅ WebSocket connected');
+                    console.log('WebSocket connected');
                     this.clearConnectionTimeout();
-                    this.reconnectionManager.reset();
 
-                    // Send subscribe message
                     this.send({ type: 'subscribe', gameId });
                     this.messageHandler.onConnected?.();
 
@@ -82,12 +77,6 @@ export class GameWebSocketClient {
                     if (!settled) {
                         settled = true;
                         reject(new Error(`WebSocket closed before connection established: ${event.code}`));
-                    }
-
-                    // Auto-reconnect on unexpected close (but not if it's a clean close)
-                    if (event.code !== 1000 && this.gameId) {
-                        console.log('🔄 Scheduling reconnection...');
-                        this.reconnectionManager.start(() => this.connect(this.gameId!));
                     }
                 };
 
@@ -122,8 +111,8 @@ export class GameWebSocketClient {
 
     private cleanup(): void {
         this.clearConnectionTimeout();
+        this.stopKeepAlive();
         if (this.ws) {
-            // Remove event listeners to prevent callbacks after cleanup
             this.ws.onopen = null;
             this.ws.onclose = null;
             this.ws.onerror = null;
@@ -137,8 +126,8 @@ export class GameWebSocketClient {
     }
 
     disconnect(): void {
-        console.log('🔌 Disconnecting WebSocket');
-        this.reconnectionManager.stop();
+        console.log('Disconnecting WebSocket');
+        this.stopKeepAlive();
         this.cleanup();
         this.gameId = null;
         this.messageHandler.clearCallbacks();
@@ -161,7 +150,13 @@ export class GameWebSocketClient {
         }
     }
 
+    private keepAliveInterval: number | null = null;
+
     startKeepAlive(intervalMs: number = 30000): void {
+        if (this.keepAliveInterval) {
+            clearInterval(this.keepAliveInterval);
+        }
+
         const keepAlive = () => {
             if (this.isConnected()) {
                 this.send({ type: 'ping', timestamp: Date.now() });
@@ -169,7 +164,14 @@ export class GameWebSocketClient {
         };
 
         setTimeout(keepAlive, 1000);
-        setInterval(keepAlive, intervalMs);
+        this.keepAliveInterval = window.setInterval(keepAlive, intervalMs);
+    }
+
+    private stopKeepAlive(): void {
+        if (this.keepAliveInterval) {
+            clearInterval(this.keepAliveInterval);
+            this.keepAliveInterval = null;
+        }
     }
 
     // Delegate callback registration to MessageHandler
