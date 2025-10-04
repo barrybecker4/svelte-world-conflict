@@ -1,9 +1,6 @@
 import type { Player } from '$lib/game/state/GameState';
 import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 
-// Update with your deployed worker URL. i.e. replace "barrybecker4", with your username, if needed.
-export const WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
-
 /**
  * Helper function to safely get error message from unknown error type
  */
@@ -27,7 +24,6 @@ export function generateGameId(): string {
 export function generatePlayerId(): string {
     return `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
-
 
 /**
  * Create a properly typed World Conflict Player object

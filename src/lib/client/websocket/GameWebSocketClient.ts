@@ -1,5 +1,6 @@
 import { MessageHandler } from './MessageHandler';
 import { ReconnectionManager } from './ReconnectionManager';
+import { buildWebSocketUrl } from '$lib/websocket-config';
 
 /**
  * WebSocket client for World Conflict multiplayer communication
@@ -24,7 +25,7 @@ export class GameWebSocketClient {
 
         return new Promise((resolve, reject) => {
             try {
-                const wsUrl = this.buildWebSocketUrl(gameId);
+                const wsUrl = buildWebSocketUrl(gameId);
                 console.log('🔌 Connecting to WebSocket:', wsUrl);
 
                 this.ws = new WebSocket(wsUrl);
@@ -102,16 +103,6 @@ export class GameWebSocketClient {
         } else {
             console.warn('⚠️ Cannot send message: WebSocket not connected');
         }
-    }
-
-    private buildWebSocketUrl(gameId: string): string {
-        if (typeof window === 'undefined') return '';
-
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const host = isLocal ? 'localhost:8787' : 'svelte-world-conflict-websocket.YOUR_USERNAME.workers.dev';
-
-        return `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
     }
 
     startKeepAlive(intervalMs: number = 30000): void {
