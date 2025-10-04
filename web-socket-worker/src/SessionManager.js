@@ -29,7 +29,7 @@ export class SessionManager {
 
     isSessionConnected(sessionId) {
         const ws = this.sessions.get(sessionId);
-        return ws && ws.readyState === WebSocket.READY_STATE_OPEN;
+        return ws && ws.readyState === 1;
     }
 
     subscribeToGame(sessionId, gameId) {
@@ -50,6 +50,7 @@ export class SessionManager {
         }
         return null;
     }
+
     getSessionGame(sessionId) {
         return this.gameSubscriptions.get(sessionId);
     }
@@ -66,7 +67,8 @@ export class SessionManager {
 
     sendToSession(sessionId, message) {
         const ws = this.sessions.get(sessionId);
-        if (ws && ws.readyState === WebSocket.READY_STATE_OPEN) {
+        // FIX: Use numeric constant 1 for OPEN state
+        if (ws && ws.readyState === 1) {
             try {
                 const serialized = JSON.stringify(message);
                 console.log(`📤 SessionManager sending to ${sessionId}:`, {
@@ -83,13 +85,17 @@ export class SessionManager {
                 this.removeSession(sessionId);
                 return false;
             }
+        } else {
+            console.warn(`⚠Cannot send to session ${sessionId}: WebSocket not open (readyState: ${ws?.readyState})`);
+            return false;
         }
-        return false;
     }
 
     broadcastToGame(gameId, message) {
         let sentCount = 0;
         const gameSessions = this.getGameSessions(gameId);
+
+        console.log(`Broadcasting to ${gameSessions.length} sessions for game ${gameId}`);
 
         for (const sessionId of gameSessions) {
             if (this.sendToSession(sessionId, message)) {
@@ -97,7 +103,7 @@ export class SessionManager {
             }
         }
 
-        console.log(`Broadcast to ${sentCount} sessions for game ${gameId}`);
+        console.log(`Successfully broadcast to ${sentCount}/${gameSessions.length} sessions`);
         return sentCount;
     }
 
@@ -105,7 +111,7 @@ export class SessionManager {
         let cleanedCount = 0;
 
         for (const [sessionId, ws] of this.sessions.entries()) {
-            if (ws.readyState !== WebSocket.READY_STATE_OPEN) {
+            if (ws.readyState !== 1) {
                 this.removeSession(sessionId);
                 cleanedCount++;
             }

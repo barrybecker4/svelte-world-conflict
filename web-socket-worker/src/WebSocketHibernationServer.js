@@ -34,17 +34,19 @@ export class WebSocketHibernationServer {
         const [client, server] = Object.values(webSocketPair);
 
         const sessionId = this.sessionManager.generateSessionId();
+        server.accept();
         this.sessionManager.addSession(sessionId, server);
 
-        server.accept();
+        console.log(`WebSocket connection established for session ${sessionId}`);
 
         // Handle incoming messages
         server.addEventListener('message', event => {
             try {
                 const message = JSON.parse(event.data);
+                console.log(`Received message from ${sessionId}:`, message.type);
                 this.handleMessage(sessionId, message);
             } catch (error) {
-                console.error('Error parsing WebSocket message:', error);
+                console.error(`Error parsing message from ${sessionId}:`, error);
                 this.sessionManager.sendToSession(sessionId, {
                     type: 'error',
                     gameState: { error: 'Invalid message format' },
@@ -53,10 +55,17 @@ export class WebSocketHibernationServer {
             }
         });
 
-        server.addEventListener('close', () => {
+        server.addEventListener('close', (event) => {
+            console.log(`WebSocket closed for session ${sessionId}: code=${event.code}, reason=${event.reason}`);
             this.sessionManager.removeSession(sessionId);
         });
 
+        server.addEventListener('error', (event) => {
+            console.error(`WebSocket error for session ${sessionId}:`, event);
+            this.sessionManager.removeSession(sessionId);
+        });
+
+        // Return the client side of the WebSocket pair
         return new Response(null, {
             status: 101,
             webSocket: client
@@ -80,19 +89,20 @@ export class WebSocketHibernationServer {
                 });
             }
 
-            console.log('handleNotification received:', message);
+            console.log(`📬 Notification received for game ${gameId}:`, message.type);
             const sentCount = this.sessionManager.broadcastToGame(gameId, message);
 
             return new Response(JSON.stringify({
                 success: true,
-                sentCount
+                sentCount,
+                gameId
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' }
             });
 
         } catch (error) {
-            console.error('Error handling notification:', error);
+            console.error('❌ Error handling notification:', error);
             return new Response(JSON.stringify({
                 error: 'Error processing notification',
                 details: error.message
@@ -104,7 +114,7 @@ export class WebSocketHibernationServer {
     }
 
     handleMessage(sessionId, message) {
-        console.log(`Message from ${sessionId}:`, JSON.stringify(message));
+        console.log(`📨 Processing message from ${sessionId}: ${message.type}`);
 
         switch (message.type) {
             case 'subscribe':
@@ -123,7 +133,7 @@ export class WebSocketHibernationServer {
                 break;
 
             default:
-                console.warn(`Unknown message type: ${message.type}`);
+                console.warn(`Unknown message type from ${sessionId}: ${message.type}`);
                 this.sessionManager.sendToSession(sessionId, {
                     type: 'error',
                     gameState: { error: `Unknown message type: ${message.type}` },
@@ -150,6 +160,7 @@ export class WebSocketHibernationServer {
                 timestamp: Date.now()
             });
         } catch (error) {
+            console.error(`Error subscribing session ${sessionId}:`, error);
             this.sessionManager.sendToSession(sessionId, {
                 type: 'error',
                 gameState: { error: error.message },
@@ -161,6 +172,7 @@ export class WebSocketHibernationServer {
     handleUnsubscribe(sessionId) {
         const gameId = this.sessionManager.unsubscribeFromGame(sessionId);
         if (gameId) {
+            console.log(`Session ${sessionId} unsubscribed from game ${gameId}`);
             this.sessionManager.sendToSession(sessionId, {
                 type: 'unsubscribed',
                 gameId,
