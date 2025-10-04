@@ -97,40 +97,61 @@
     gameStore.resetTurnManager();
   });
 
- async function initializeWebSocket() {
-   try {
-     if (!gameId || gameId === 'null' || gameId === 'undefined' || gameId === '') {
-       console.warn('Skipping WebSocket initialization - invalid gameId:', gameId);
-       return;
-     }
+  async function initializeWebSocket() {
+    console.log('[WS INIT] Starting WebSocket initialization');
+    console.log('[WS INIT] gameId:', gameId, 'type:', typeof gameId);
 
-     wsClient = new GameWebSocketClient();
+    try {
+      // Validate gameId
+      if (!gameId || gameId === 'null' || gameId === 'undefined' || gameId === '') {
+        const error = `Invalid gameId: "${gameId}"`;
+        console.error('[WS INIT]', error);
+        throw new Error(error);
+      }
 
-     // Register callbacks BEFORE connecting
-     wsClient.onError((error) => {
-       console.error('WebSocket error:', error);
-     });
+      console.log('[WS INIT] gameId is valid');
 
-     wsClient.onGameUpdate((gameData) => {
-       console.log('Received game update via WebSocket:', gameData);
-       gameStore.handleGameStateUpdate(gameData);
-     });
+      // Create WebSocket client
+      wsClient = new GameWebSocketClient();
+      console.log('[WS INIT] GameWebSocketClient created');
 
-     wsClient.onConnected(() => {
-       console.log('Connected to game WebSocket');
-     });
+      // Register callbacks BEFORE connecting
+      wsClient.onError((error) => {
+        console.error('[WS ERROR]', error);
+      });
 
-     wsClient.onDisconnected(() => {
-       console.log('Disconnected from game WebSocket');
-     });
+      wsClient.onGameUpdate((gameData) => {
+        console.log('📨 [WS UPDATE] Received game update');
+        gameStore.handleGameStateUpdate(gameData);
+      });
 
-     // Connect to the WebSocket for this specific game
-     await wsClient.connect(gameId);
+      wsClient.onConnected(() => {
+        console.log('[WS CONNECTED] Successfully connected to game WebSocket');
+      });
 
-   } catch (error) {
-     console.error('Failed to initialize WebSocket:', error);
-   }
- }
+      wsClient.onDisconnected(() => {
+        console.warn('[WS DISCONNECTED] Disconnected from game WebSocket');
+      });
+
+      console.log('[WS INIT] Callbacks registered, attempting connection...');
+
+      // Connect to the WebSocket - THIS IS THE CRITICAL PART
+      await wsClient.connect(gameId);
+
+      console.log('[WS INIT] Connection established successfully');
+
+    } catch (error) {
+      console.error('[WS INIT] Failed to initialize WebSocket:', error);
+      console.error('[WS INIT] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        gameId: gameId
+      });
+
+      // FAIL FAST - throw error instead of silently continuing
+      throw new Error(`WebSocket connection required but failed: ${error.message}`);
+    }
+  }
 
   function cleanupWebSocket() {
     if (wsClient) {

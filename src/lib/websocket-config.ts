@@ -12,11 +12,18 @@ export const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.bar
  * @returns WebSocket URL (ws:// for local, wss:// for production)
  */
 export function buildWebSocketUrl(gameId: string): string {
-    if (typeof window === 'undefined') return '';
+    console.log('[buildWebSocketUrl] Called with gameId:', gameId, 'type:', typeof gameId);
+
+    if (typeof window === 'undefined') {
+        console.log('[buildWebSocketUrl] Window is undefined, returning empty string');
+        return '';
+    }
 
     // Validate gameId - allow 'lobby' as a special case
     if (!gameId || gameId === 'null' || gameId === 'undefined') {
-        throw new Error(`Invalid gameId for WebSocket connection: ${gameId}`);
+        const error = `Invalid gameId for WebSocket connection: ${gameId}`;
+        console.error('❌ [buildWebSocketUrl]', error);
+        throw new Error(error);
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -27,7 +34,10 @@ export function buildWebSocketUrl(gameId: string): string {
         ? 'localhost:8787'
         : WEBSOCKET_WORKER_URL.replace('https://', '').replace('http://', '');
 
-    return `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
+    const url = `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
+
+    console.log('[buildWebSocketUrl] Built URL:', url);
+    return url;
 }
 
 /**

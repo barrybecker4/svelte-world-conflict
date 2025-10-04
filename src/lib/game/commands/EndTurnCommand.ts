@@ -30,7 +30,7 @@ export class EndTurnCommand extends Command {
         const newState = this.gameState.copy() as GameState;
 
         const beforeFaith = newState.state.faithByPlayer[this.player.slotIndex] || 0;
-        const beforeSoldiers = this.logTemplesSoldiers(newState, "BEFORE");
+        const beforeSoldiers = this.getTemplesSoldiers(newState, "BEFORE");
 
         this.income = this.calculateIncome(newState);
 
@@ -158,15 +158,13 @@ export class EndTurnCommand extends Command {
         }
     }
 
-    private logTemplesSoldiers(state: GameState, phase: string): any {
-        console.log(`${phase} - Temples and soldiers for player ${this.player.slotIndex}:`);
+    private getTemplesSoldiers(state: GameState, phase: string): any {
         const temples = [];
 
         for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);
             if (state.isOwnedBy(regionIdx, this.player)) {
                 const soldiers = state.soldiersByRegion[regionIdx]?.length || 0;
-                console.log(`   Region ${regionIdx}: ${soldiers} soldiers`);
                 temples.push({ regionIdx, soldiers });
             }
         }
