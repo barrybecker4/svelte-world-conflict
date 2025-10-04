@@ -50,7 +50,7 @@ export class OpenGamesManager {
     }
   }
 
-  async setupRealtimeUpdates() {
+  private async setupRealtimeUpdates() {
     if (typeof window === 'undefined') return;
 
     try {

@@ -27,7 +27,7 @@
       </span>
     </div>
   </div>
-F
+
   <div class="player-slots">
     {#each Array(4) as _, slotIndex}
       {@const slotInfo = gamesManager.getSlotInfo(game, slotIndex)}

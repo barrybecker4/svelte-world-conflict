@@ -17,8 +17,7 @@
 
   onMount(async () => {
     gamesManager = new OpenGamesManager();
-
-    await gamesManager.loadOpenGames();
+    await gamesManager.initialize();
 
     const unsubGames = gamesManager.games.subscribe(value => games = value);
     const unsubLoading = gamesManager.loading.subscribe(value => {
@@ -33,12 +32,6 @@
     });
     const unsubError = gamesManager.error.subscribe(value => error = value);
     const unsubWsConnected = gamesManager.wsConnected.subscribe(value => wsConnected = value);
-
-    // Only setup realtime if we have games
-    if (games.length > 0) {
-      await gamesManager.setupRealtimeUpdates();
-      gamesManager.startAutoRefresh();
-    }
 
     return () => {
       unsubGames();
