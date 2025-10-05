@@ -16,6 +16,7 @@ export interface Player {
     name: string;
     color: string;
     isAI: boolean;
+    personality?: string; // AI personality type if AI player
 }
 
 export interface Soldier {
@@ -36,6 +37,12 @@ export interface FloatingText {
     duration: number;
 }
 
+export interface PendingMove {
+    fromRegion: number;
+    toRegion: number;
+    soldierCount: number;
+}
+
 export interface GameStateData {
     id: number;
     gameId: string;
@@ -49,12 +56,13 @@ export interface GameStateData {
     faithByPlayer: Record<number, number>; // playerSlotIndex -> amount
 
     players: Player[];
-    regions: Regions;
+    regions: Region[]; // Keep as array for simplicity
 
     floatingText?: FloatingText[];
     conqueredRegions?: number[];
     battlesInProgress?: number[];
     endResult?: Player | 'DRAWN_GAME' | null;
+    pendingMoves?: PendingMove[];
 
     moveTimeLimit?: number;
     maxTurns?: number;

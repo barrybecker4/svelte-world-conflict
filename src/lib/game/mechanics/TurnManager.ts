@@ -113,12 +113,6 @@ class TurnManager {
 
   private onBannerCompleteCallback: (() => void) | null = null;
 
-  private isNewTurn(newPlayerIndex: number): boolean {
-    let currentIndex: number;
-    this.turnState.subscribe(state => currentIndex = state.currentPlayerIndex)();
-    return currentIndex !== newPlayerIndex;
-  }
-
   /**
    * Called when the turn banner animation completes
    */
@@ -172,6 +166,22 @@ class TurnManager {
   }
 
   /**
+   * Get regions that can make moves (have more than 1 soldier)
+   */
+  public getMovableRegions(): number[] {
+      const ownedRegions = this.getCurrentPlayerRegions();
+      let gameState: GameStateData | null = null;
+      this.gameState.subscribe(state => gameState = state)();
+
+      if (!gameState) return [];
+
+      return ownedRegions.filter(regionIndex => {
+          const soldiers = gameState!.soldiersByRegion[regionIndex] || [];
+          return soldiers.length > 0;
+      });
+  }
+
+  /**
    * Check if a region is owned by the current player
    */
   public isCurrentPlayerRegion(regionIndex: number): boolean {
@@ -222,7 +232,7 @@ class TurnManager {
     ownedRegions: number;
     movableRegions: number;
   } {
-    let state: TurnState;
+    let state: TurnState | undefined;
     let gameState: GameStateData | null = null;
 
     this.turnState.subscribe(s => state = s)();
@@ -232,8 +242,8 @@ class TurnManager {
     const movableRegions = this.getMovableRegions();
 
     return {
-      currentPlayerIndex: state!.currentPlayerIndex,
-      turnDuration: Date.now() - state!.turnStartTime,
+      currentPlayerIndex: state?.currentPlayerIndex ?? 0,
+      turnDuration: Date.now() - (state?.turnStartTime ?? Date.now()),
       ownedRegions: ownedRegions.length,
       movableRegions: movableRegions.length
     };

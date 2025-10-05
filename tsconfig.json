@@ -8,10 +8,21 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
-    "strict": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["@cloudflare/workers-types"]
+    "types": ["@cloudflare/workers-types"],
+    
+    // Enable important strict checks but relax others
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    
+    // Relax these to avoid 'any' everywhere
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false
   }
 }

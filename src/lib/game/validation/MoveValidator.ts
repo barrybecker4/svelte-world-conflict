@@ -24,7 +24,7 @@ export class MoveValidator {
         }
 
         // Check if regions are adjacent
-        const sourceRegion = gameData.regions.getByIndex(fromRegion);
+        const sourceRegion = gameData.regions.find(r => r.index === fromRegion);
         if (!sourceRegion?.neighbors.includes(toRegion)) {
             return { isValid: false, error: "Regions are not adjacent" };
         }
@@ -35,9 +35,9 @@ export class MoveValidator {
             return { isValid: false, error: `Not enough soldiers (have ${availableSoldiers}, need ${soldierCount})` };
         }
 
-        // Check moves remaining
-        if (gameData.movesRemaining <= 0) {
-            return { isValid: false, error: "No moves remaining this turn" };
+        // Must leave at least 1 soldier in source region
+        if (availableSoldiers - soldierCount < 1) {
+            return { isValid: false, error: "Must leave at least 1 soldier in source region" };
         }
 
         return { isValid: true };
