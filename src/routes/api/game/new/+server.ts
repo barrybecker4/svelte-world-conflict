@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
         // Find the creator player by matching the playerName from the request
         const creatorPlayer = gameRecord.players.find(p =>
-            p.name === playerName.trim() && !p.isAI
+            p.name === (playerName?.trim() || '') && !p.isAI
         );
 
         if (!creatorPlayer) {
@@ -167,7 +167,7 @@ function calculateRegions(selectedMapRegions: any, settings: any): Region[] {
 /**
  * Determines player attributes and initialize players in the process
  */
-function determineGameAttributes(gameType: string, playerSlots: any[], playerName: string, players: Player[]) {
+function determineGameAttributes(gameType: string, playerSlots: any[], playerName: string, players: Player[]): { hasOpenSlots: boolean, gameStatus: 'PENDING' | 'ACTIVE', finalGameType: 'MULTIPLAYER' | 'AI' } {
     let hasOpenSlots = false;
     let gameStatus: 'PENDING' | 'ACTIVE' = 'ACTIVE';
     let finalGameType: 'MULTIPLAYER' | 'AI' = 'AI';
@@ -186,7 +186,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
             console.log("First slot properties:", Object.keys(activeSlots[0]));
 
             if (activeSlots.length < 2) {
-                return json({ error: 'At least 2 players are required' }, { status: 400 });
+                throw new Error('At least 2 players are required');
             }
 
             // Check if ANY slots are "Open" - if so, game should be PENDING

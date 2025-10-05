@@ -65,6 +65,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             }
         }
 
+        // Ensure targetSlotIndex is defined
+        if (targetSlotIndex === undefined) {
+            return json({ error: 'Could not determine slot index' }, { status: 400 });
+        }
+
         // Create new player
         const newPlayer = createPlayer(playerName.trim(), targetSlotIndex, false);
         const updatedPlayers = [...game.players, newPlayer];

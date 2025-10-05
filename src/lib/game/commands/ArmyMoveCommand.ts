@@ -59,12 +59,12 @@ export class ArmyMoveCommand extends Command {
 
       // Generate attack sequence for any region with defenders that we don't own
       const needsCombat = targetSoldiers.length > 0 &&
-                         (!targetOwner || targetOwner !== this.player);
+                         (targetOwner === undefined || targetOwner !== this.player.slotIndex);
 
       console.log('🎯 Combat check:', {
         destination: this.destination,
         targetSoldiers: targetSoldiers.length,
-        targetOwner: targetOwner?.index || 'neutral',
+        targetOwner: targetOwner !== undefined ? targetOwner : 'neutral',
         playerSlotIndex: this.player.slotIndex,
         needsCombat
       });

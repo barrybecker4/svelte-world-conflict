@@ -10,6 +10,7 @@
   export let type: 'button' | 'submit' | 'reset' = 'button';
   export let title = '';
   export let uppercase = false;
+  export let customClass = '';
 
   function handleClick(event: MouseEvent) {
     if (!disabled && !loading) {
@@ -23,7 +24,8 @@
     `btn-${size}`,
     uppercase && 'btn-uppercase',
     disabled && 'btn-disabled',
-    loading && 'btn-loading'
+    loading && 'btn-loading',
+    customClass
   ].filter(Boolean).join(' ');
 </script>
 

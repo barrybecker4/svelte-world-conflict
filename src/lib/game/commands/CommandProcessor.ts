@@ -1,4 +1,5 @@
 import { Command } from "./Command";
+import type { GameState } from "$lib/game/state/GameState";
 
 export interface CommandResult {
     success: boolean;
