@@ -120,11 +120,11 @@ export class ArmyMoveCommand extends Command {
             console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.slotIndex);
             state.setOwner(this.destination, this.player);
 
-            // Move remaining attackers to conquered region (only for enemy regions after combat)
-            if (wasEnemyRegion && fromList.length > 0) {
+            // Move remaining attackers to conquered region (after combat with enemy or neutral defenders)
+            if ((wasEnemyRegion || wasNeutralRegion) && fromList.length > 0 && this.attackSequence && this.attackSequence.length > 0) {
                 const attackersToMove = Math.min(this.count, fromList.length);
                 this.transferSoldiers(state, fromList, toList, attackersToMove);
-                console.log('🏆 Moved', attackersToMove, 'attackers to conquered region');
+                console.log('🏆 Moved', attackersToMove, 'surviving attackers to conquered region');
             }
 
             // Update conquered regions list

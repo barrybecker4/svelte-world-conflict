@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         // Find player by matching playerId with player index or name
         const playerIndex = parseInt(moveData.playerId);
-        const player = worldConflictState.getPlayer(playerIndex);
+        const player = worldConflictState.getPlayerBySlotIndex(playerIndex);
 
         if (!player) {
             return json({ error: 'Player not found' }, { status: 404 });

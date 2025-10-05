@@ -34,9 +34,9 @@ export class OpenGamesManager {
       const response = await fetch('/api/games/open');
 
       if (response.ok) {
-        const games = await response.json();
+        const games = await response.json() as any[];
         console.log(`✅ Received ${games.length} games:`, games);
-        this.games.set(games.sort((a, b) => b.createdAt - a.createdAt));
+        this.games.set(games.sort((a: any, b: any) => b.createdAt - a.createdAt));
         return games.length;
       } else {
         console.error('❌ Failed to fetch open games:', response.status);
@@ -68,7 +68,7 @@ export class OpenGamesManager {
           this.loadOpenGames();
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.log('Real-time updates not available:', error.message);
       this.wsConnected.set(false);
     }
@@ -98,7 +98,7 @@ export class OpenGamesManager {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const result = await response.json() as { player: any };
         const player = result.player;
 
         const { goto } = await import('$app/navigation');
@@ -113,13 +113,13 @@ export class OpenGamesManager {
         console.log(`Successfully joined as player ${player.slotIndex}: ${player.name}`);
         await goto(`/game/${gameId}`);
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         const errorMsg = errorData.error || 'Failed to join game';
         console.error('Join game failed:', errorData);
         this.error.set(errorMsg);
         setTimeout(() => this.error.set(null), 3000);
       }
-    } catch (err) {
+    } catch (err: any) {
       const errorMsg = 'Network error: ' + err.message;
       console.error('Network error joining game:', err);
       this.error.set(errorMsg);

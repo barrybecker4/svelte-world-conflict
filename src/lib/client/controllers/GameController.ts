@@ -67,8 +67,12 @@ export class GameController {
   /**
    * Initialize the game - call this from onMount
    */
-  async initialize(mapContainer: HTMLElement): Promise<void> {
-    this.battleManager.setMapContainer(mapContainer);
+  async initialize(mapContainer: HTMLElement | undefined): Promise<void> {
+    if (mapContainer) {
+      this.battleManager.setMapContainer(mapContainer);
+    } else {
+      console.warn('⚠️ GameController: Map container not provided, animations will be disabled');
+    }
     
     // Initialize game store with our callbacks
     await this.gameStore.initializeGame(
@@ -78,6 +82,14 @@ export class GameController {
     
     await this.websocket.initialize();
     await audioSystem.enable();
+  }
+
+  /**
+   * Set the map container for battle animations (can be called after initialization)
+   */
+  setMapContainer(container: HTMLElement): void {
+    console.log('🗺️ GameController: Setting map container');
+    this.battleManager.setMapContainer(container);
   }
 
   /**
@@ -138,34 +150,17 @@ export class GameController {
       gameState: currentState!
     };
 
-    // Handle battle if required
-    if (this.battleManager.isBattleRequired(battleMove)) {
-      const regions = this.gameStore.regions;
-      let currentRegions: any[];
-      regions.subscribe((value: any[]) => {
-        currentRegions = value;
-      })();
-      await this.battleManager.executeBattle(battleMove, this.playerId, currentRegions!);
-      await audioSystem.playSound(SOUNDS.ATTACK);
-    } else {
-      await audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
-    }
+    // Handle battle or peaceful move through BattleManager
+    const regions = this.gameStore.regions;
+    let currentRegions: any[];
+    regions.subscribe((value: any[]) => {
+      currentRegions = value;
+    })();
 
-    // Send move to server
-    const response = await fetch(`/api/game/${this.gameId}/move`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        playerId: this.playerId,
-        moveType: 'ARMY_MOVE',
-        source: sourceRegionIndex,
-        destination: targetRegionIndex,
-        count: soldierCount
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Move failed');
+    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Move failed');
     }
   }
 
@@ -290,7 +285,7 @@ export class GameController {
         throw new Error(errorData.error || 'Failed to end turn');
       }
 
-      const result = await response.json();
+      const result = await response.json() as { success?: boolean; gameState?: any; message?: string };
       console.log('✅ Turn ended successfully:', result);
 
       // Reset move state

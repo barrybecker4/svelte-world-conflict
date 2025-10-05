@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
@@ -34,14 +34,27 @@
 
   $: selectedRegion = $moveState.sourceRegion !== null ? { index: $moveState.sourceRegion } : null;
 
+  // Get valid target regions when a source is selected
+  $: validTargetRegions = $moveState.sourceRegion !== null && gameStore.getMoveSystem()
+    ? gameStore.getMoveSystem().getValidTargetRegions()
+    : [];
+
   // Check for game end
   $: if ($gameState && $players.length > 0) {
     controller.checkGameEnd($gameState, $players);
   }
 
   onMount(async () => {
-    await controller.initialize(mapContainer);
+    console.log('🎮 WorldConflictGame mounted');
+    // Initialize without waiting for map container - it will be set later
+    await controller.initialize(undefined);
   });
+
+  // Set map container when it becomes available
+  $: if (mapContainer) {
+    console.log('🗺️ Map container available, setting in battle manager');
+    controller.setMapContainer(mapContainer);
+  }
 
   onDestroy(() => {
     controller.destroy();
@@ -81,6 +94,7 @@
         regions={$regions}
         currentPlayer={$currentPlayer}
         {selectedRegion}
+        {validTargetRegions}
         gameState={$gameState}
         showTurnHighlights={$shouldHighlightRegions ?? true}
         onRegionClick={(region) => {

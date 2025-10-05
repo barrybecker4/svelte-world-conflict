@@ -53,7 +53,7 @@ export class GameStateInitializer {
             turnNumber: 0,
             currentPlayerSlot,
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
-            maxTurns: maxTurns || GAME_CONSTANTS.STANDARD_TURN_COUNT,
+            maxTurns: maxTurns || GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX],
             players: [...players],
             regions,
             ownersByRegion: {},

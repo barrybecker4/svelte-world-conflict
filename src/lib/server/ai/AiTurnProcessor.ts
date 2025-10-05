@@ -37,6 +37,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
         try {
             // Generate AI move decision
             const aiMove = await generateAiMove(currentState, currentPlayer);
+            let moveMade = false;
 
             if (aiMove) {
                 const commandProcessor = new CommandProcessor();
@@ -44,12 +45,13 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
 
                 if (result.success && result.newState) {
                     currentState = result.newState;
+                    moveMade = true;
 
                     // Save the updated game state
                     const updatedGame = {
                         ...await gameStorage.getGame(gameId),
                         worldConflictState: currentState.toJSON(),
-                        currentPlayerSlot: currentState.playerSlotIndex,
+                        currentPlayerSlot: currentState.currentPlayerSlot,
                         lastMoveAt: Date.now()
                     };
 
@@ -63,12 +65,14 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     // Small delay to make AI moves visible (shorter during game creation)
                     await new Promise(resolve => setTimeout(resolve, 300));
                 } else {
-                    console.error('AI move failed:', result.error);
-                    break;
+                    // Move failed - will end turn below
+                    console.log(`AI move failed: ${result.error}. Will end turn.`);
                 }
-            } else {
-                // AI couldn't make a move, end turn
-                console.log(`AI player ${currentPlayer.name} ending turn (no valid moves)`);
+            }
+            
+            // If no move was made (either no move generated or move failed), end turn
+            if (!moveMade) {
+                console.log(`AI player ${currentPlayer.name} ending turn`);
                 const endTurnCommand = new EndTurnCommand(currentState, currentPlayer);
                 const commandProcessor = new CommandProcessor();
                 const result = commandProcessor.process(endTurnCommand);
@@ -80,7 +84,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     const updatedGame = {
                         ...await gameStorage.getGame(gameId),
                         worldConflictState: currentState.toJSON(),
-                        currentPlayerSlot: currentState.playerSlotIndex,
+                        currentPlayerSlot: currentState.currentPlayerSlot,
                         lastMoveAt: Date.now()
                     };
                     await gameStorage.saveGame(updatedGame);
@@ -135,7 +139,7 @@ export async function generateAiMove(gameState: GameState, player: Player): Prom
         // Find regions with soldiers that can move
         const regionsWithSoldiers = playerRegions.filter(region => {
             const soldierCount = gameState.soldierCount(region.index);
-            return soldierCount > 1; // Need more than 1 to move (leave 1 behind)
+            return soldierCount > 0; // Need at least 1 soldier to move
         });
 
         if (regionsWithSoldiers.length === 0) {
@@ -174,8 +178,8 @@ export async function generateAiMove(gameState: GameState, player: Player): Prom
             return null;
         }
 
-        // Determine how many soldiers to move
-        const availableSoldiers = gameState.soldierCount(sourceRegion.index) - 1; // Leave one behind
+        // Determine how many soldiers to move (can move all soldiers now)
+        const availableSoldiers = gameState.soldierCount(sourceRegion.index);
         const soldierCount = Math.min(
             availableSoldiers,
             Math.max(1, Math.floor(availableSoldiers * 0.7)) // Move up to 70% of available

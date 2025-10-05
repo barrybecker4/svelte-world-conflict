@@ -47,7 +47,7 @@ export class WaitingRoomManager {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const gameData = await response.json();
+      const gameData = await response.json() as any;
       if (gameData.status === 'ACTIVE') {
         console.log('🎮 Game is now ACTIVE - triggering gameStarted');
         this.onGameStarted?.();

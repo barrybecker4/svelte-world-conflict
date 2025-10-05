@@ -7,6 +7,8 @@
 
   export let region: Region;
   export let gameState: GameStateData | null = null;
+  export let isSelected: boolean = false;
+  export let isValidTarget: boolean = false;
   export let isPreviewMode: boolean = false;
   export let canHighlight: boolean = false;
   export let highlightVisible: boolean = true;
@@ -28,6 +30,7 @@
     'region-path',
     isPreviewMode && 'preview-mode',
     canHighlight && 'can-move',
+    isValidTarget && 'valid-target',
     isBattleInProgress && 'battle-in-progress'
   ].filter(Boolean).join(' ');
 
@@ -121,6 +124,18 @@
   .region-path.can-move:hover {
     stroke: #10b981;
     stroke-width: 2;
+  }
+
+  .region-path.valid-target {
+    stroke: #fbbf24;
+    stroke-width: 2;
+    stroke-dasharray: 4 2;
+    animation: highlight-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes highlight-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
   }
 
   .pulse-overlay {

@@ -91,13 +91,20 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     let currentState: any;
     gameState.subscribe(state => currentState = state)();
 
-    const isNewTurn = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
+    // Check if turn changed (either player changed OR turn number increased, indicating a full round)
+    const playerChanged = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
+    const turnNumberIncreased = currentState && updatedState.turnNumber > currentState.turnNumber;
+    const isNewTurn = playerChanged || turnNumberIncreased;
     const isOtherPlayersTurn = updatedState.currentPlayerSlot !== playerSlotIndex;
 
     console.log('🎯 Turn transition check:', {
         'currentState.currentPlayerSlot': currentState?.currentPlayerSlot,
+        'currentState.turnNumber': currentState?.turnNumber,
         'updatedState.currentPlayerSlot': updatedState.currentPlayerSlot,
+        'updatedState.turnNumber': updatedState.turnNumber,
         'my playerSlotIndex': playerSlotIndex,
+        'playerChanged': playerChanged,
+        'turnNumberIncreased': turnNumberIncreased,
         'isNewTurn': isNewTurn,
         'isOtherPlayersTurn': isOtherPlayersTurn
     });

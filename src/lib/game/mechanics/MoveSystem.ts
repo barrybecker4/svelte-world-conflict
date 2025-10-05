@@ -123,8 +123,8 @@ export class MoveSystem {
 
     // Count soldiers
     const soldiers = this.gameState.soldiersByRegion[regionIndex] || [];
-    if (soldiers.length <= 1) {
-      console.log('❌ Cannot select region - not enough soldiers (need at least 2)');
+    if (soldiers.length === 0) {
+      console.log('❌ Cannot select region - no soldiers to move');
       return;
     }
 
@@ -133,8 +133,8 @@ export class MoveSystem {
       mode: 'ADJUST_SOLDIERS',
       sourceRegion: regionIndex,
       targetRegion: null,
-      maxSoldiers: soldiers.length - 1, // Must leave at least 1
-      selectedSoldierCount: Math.min(soldiers.length - 1, 1), // Default to 1 soldier
+      maxSoldiers: soldiers.length, // Can move all soldiers
+      selectedSoldierCount: Math.min(soldiers.length, 1), // Default to 1 soldier
       isMoving: false,
       availableMoves: this.state.availableMoves
     });
@@ -321,6 +321,25 @@ export class MoveSystem {
    */
   getState(): MoveState {
     return { ...this.state };
+  }
+
+  /**
+   * Get valid target regions for the currently selected source region
+   * Returns empty array if no source selected or source is invalid
+   */
+  getValidTargetRegions(): number[] {
+    if (this.state.sourceRegion === null) return [];
+
+    const sourceRegion = this.gameState.regions.find((r: any) => r.index === this.state.sourceRegion);
+    if (!sourceRegion) return [];
+
+    // Check if source region is conquered this turn
+    if (this.gameState.conqueredRegions?.includes(this.state.sourceRegion)) {
+      return []; // Can't move from conquered regions
+    }
+
+    // Return neighboring regions
+    return sourceRegion.neighbors || [];
   }
 
   /**

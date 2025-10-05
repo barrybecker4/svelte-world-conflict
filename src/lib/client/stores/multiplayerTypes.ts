@@ -7,7 +7,7 @@ export interface MultiplayerState {
 }
 
 export interface GameUpdateEvent {
-    type: 'gameUpdate' | 'playerJoined' | 'playerLeft';
+    type: 'gameUpdate' | 'playerJoined' | 'playerLeft' | 'gameStarted';
     gameId: string;
     data: any;
     timestamp: number;

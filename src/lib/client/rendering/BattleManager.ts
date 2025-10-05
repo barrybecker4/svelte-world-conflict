@@ -87,12 +87,18 @@ export class BattleManager {
       return result;
 
     } catch (error) {
-      console.error('❌ BattleManager: Battle failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown battle error';
+      // Don't log validation errors as console errors - they're expected game rules
+      if (errorMessage.includes('conquered') || errorMessage.includes('No moves remaining')) {
+        console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
+      } else {
+        console.error('❌ BattleManager: Battle failed:', error);
+      }
       this.clearBattleTimeout(targetRegionIndex);
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown battle error',
+        error: errorMessage,
         gameState: this.clearBattleState(move.gameState)
       };
     }
@@ -116,10 +122,16 @@ export class BattleManager {
       console.log('✅ BattleManager: Peaceful move completed successfully');
       return result;
     } catch (error) {
-      console.error('❌ BattleManager: Peaceful move failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown move error';
+      // Don't log validation errors as console errors - they're expected game rules
+      if (errorMessage.includes('conquered') || errorMessage.includes('No moves remaining')) {
+        console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
+      } else {
+        console.error('❌ BattleManager: Peaceful move failed:', error);
+      }
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown move error'
+        error: errorMessage
       };
     }
   }
@@ -147,9 +159,9 @@ export class BattleManager {
       pendingMoves: [
         ...(gameState.pendingMoves || []),
         {
-          from: move.sourceRegionIndex,
-          to: move.targetRegionIndex,
-          count: move.soldierCount
+          fromRegion: move.sourceRegionIndex,
+          toRegion: move.targetRegionIndex,
+          soldierCount: move.soldierCount
         }
       ]
     };

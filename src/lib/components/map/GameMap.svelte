@@ -10,6 +10,7 @@
   export let currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
   export let selectedRegion: Region | null = null;
+  export let validTargetRegions: number[] = [];
   export let isPreviewMode = false;
   export let showTurnHighlights: boolean = true;
   export let previewMode: boolean = false;
@@ -115,6 +116,7 @@
         {region}
         {gameState}
         isSelected={selectedRegion?.index === region.index}
+        isValidTarget={validTargetRegions.includes(region.index)}
         isPreviewMode={effectivePreviewMode}
         canHighlight={canHighlightForTurn(region)}
         {highlightVisible}
