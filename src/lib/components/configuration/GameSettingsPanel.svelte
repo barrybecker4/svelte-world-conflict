@@ -6,6 +6,7 @@
   const difficultyOptions = ['Nice', 'Normal', 'Hard'];
   const mapSizeOptions = ['Small', 'Medium', 'Large'];
   const turnOptions = createTurnOptions();
+  const timeLimitOptions = createTimeLimitOptions();
 
   // Reactive updates to ensure parent component stays in sync
   $: if (gameSettings) {
@@ -19,13 +20,26 @@
     if (!GAME_CONSTANTS.MAX_TURN_OPTIONS.includes(gameSettings.maxTurns)) {
       gameSettings.maxTurns = GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX];
     }
+    if (!GAME_CONSTANTS.TIME_LIMITS.includes(gameSettings.timeLimit)) {
+      gameSettings.timeLimit = GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
+    }
   }
 
   // Turn options with labels and values
   function createTurnOptions() {
-      const turnOptions = GAME_CONSTANTS.MAX_TURN_OPTIONS.map(v => ({label: `${v} Turns`, value: v }));
+      const turnOptions: Array<{label: string, value: number}> = GAME_CONSTANTS.MAX_TURN_OPTIONS.map(v => ({label: `${v} Turns`, value: v }));
       turnOptions.push({ label: 'Endless', value: GAME_CONSTANTS.UNLIMITED_TURNS });
       return turnOptions;
+  }
+
+  // Time limit options with labels and values
+  function createTimeLimitOptions() {
+      return GAME_CONSTANTS.TIME_LIMITS.map(v => {
+          if (v === GAME_CONSTANTS.UNLIMITED_TIME) {
+              return { label: 'Unlimited', value: v };
+          }
+          return { label: `${v}s`, value: v };
+      });
   }
 </script>
 
@@ -51,15 +65,12 @@
   </div>
 
   <div class="setting">
-    <label for="time-limit">Time Limit (sec):</label>
-    <input
-      id="time-limit"
-      type="number"
-      min="10"
-      max="300"
-      bind:value={gameSettings.timeLimit}
-      class="number-input"
-    />
+    <label for="time-limit">Time Limit:</label>
+    <select id="time-limit" bind:value={gameSettings.timeLimit}>
+      {#each timeLimitOptions as option}
+        <option value={option.value}>{option.label}</option>
+      {/each}
+    </select>
   </div>
 
   <div class="setting">
@@ -95,7 +106,7 @@
     color: #f8fafc;
   }
 
-  .setting select, .number-input {
+  .setting select {
     padding: 6px 10px;
     border: 1px solid #374151;
     border-radius: 4px;
@@ -105,7 +116,7 @@
     min-width: 80px;
   }
 
-  .setting select:focus, .number-input:focus {
+  .setting select:focus {
     border-color: #60a5fa;
     outline: none;
   }

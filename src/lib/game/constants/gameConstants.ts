@@ -1,3 +1,6 @@
+const STANDARD_HUMAN_TIME_LIMIT = 30;
+const UNLIMITED_TIME = 3600;
+
 export const GAME_CONSTANTS = {
     // Grid and map
     GRID_WIDTH: 35,
@@ -10,8 +13,9 @@ export const GAME_CONSTANTS = {
     UNLIMITED_TURNS: 999,
 
     // Time limits (in seconds)
-    STANDARD_HUMAN_TIME_LIMIT: 30,
-    UNLIMITED_TIME: 0,
+    STANDARD_HUMAN_TIME_LIMIT,
+    UNLIMITED_TIME,
+    TIME_LIMITS: [10, STANDARD_HUMAN_TIME_LIMIT, 60, UNLIMITED_TIME] as const,
 
     // Game timing
     MOVE_DELAY: 500,

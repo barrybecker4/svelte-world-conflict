@@ -1,5 +1,14 @@
 <script lang="ts">
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+
   export let game: any;
+
+  function formatTimeLimit(timeLimit: number): string {
+    if (timeLimit === GAME_CONSTANTS.UNLIMITED_TIME) {
+      return 'Unlimited';
+    }
+    return `${timeLimit}s`;
+  }
 </script>
 
 <div class="game-settings-section">
@@ -19,7 +28,7 @@
     </div>
     <div class="setting-item">
       <span class="setting-label">Time Limit:</span>
-      <span class="setting-value">{game.pendingConfiguration?.settings?.timeLimit || 'None'}</span>
+      <span class="setting-value">{formatTimeLimit(game.pendingConfiguration?.settings?.timeLimit ?? GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT)}</span>
     </div>
   </div>
 </div>
