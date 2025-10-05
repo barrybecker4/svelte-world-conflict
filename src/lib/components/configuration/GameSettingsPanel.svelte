@@ -44,8 +44,6 @@
 </script>
 
 <div class="settings-section">
-  <h3>Game Settings</h3>
-
   <div class="setting">
     <label for="ai-difficulty">AI Difficulty:</label>
     <select id="ai-difficulty" bind:value={gameSettings.aiDifficulty}>

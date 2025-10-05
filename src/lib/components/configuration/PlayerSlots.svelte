@@ -100,14 +100,22 @@
       slots = [...slots];
     }
   }
+
+  function handlePlayerNameChange(event) {
+    const { name } = event.detail;
+    playerName = name;
+    dispatch('nameChange', { name });
+  }
 </script>
 
-<Section title="Players">
+<Section title="" padding="12px 16px" borderBottom={true}>
   {#each slots as slot, index}
     <PlayerConfiguration
       playerSlot={slot}
       {index}
+      {playerName}
       on:slotUpdated={handleSlotUpdated}
+      on:nameChange={handlePlayerNameChange}
     />
   {/each}
 </Section>

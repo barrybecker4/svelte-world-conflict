@@ -5,8 +5,14 @@
 
   export let playerSlot;
   export let index;
+  export let playerName: string = '';
 
   const slotTypes = ['Off', 'Set', 'Open', 'AI'];
+  
+  let editingName = false;
+  let nameInput: HTMLInputElement;
+  
+  $: isSetSlot = playerSlot.type === 'Set';
 
   function handleSlotTypeChange(event) {
     const newType = event.target.value;
@@ -29,23 +35,78 @@
 
     dispatch('slotUpdated', { index, slot: updatedSlot });
   }
+
+  function startEditingName() {
+    if (isSetSlot) {
+      editingName = true;
+      setTimeout(() => {
+        nameInput?.focus();
+        nameInput?.select();
+      }, 0);
+    }
+  }
+
+  function handleNameBlur() {
+    editingName = false;
+  }
+
+  function handleNameKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      editingName = false;
+      nameInput?.blur();
+    } else if (event.key === 'Escape') {
+      editingName = false;
+    }
+  }
+
+  function handleNameInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const newName = target.value;
+    
+    // Update the slot with the new name
+    const updatedSlot = {
+      ...playerSlot,
+      customName: newName
+    };
+    dispatch('slotUpdated', { index, slot: updatedSlot });
+    
+    // Notify parent about name change
+    dispatch('nameChange', { name: newName });
+  }
 </script>
 
 <div class="player-slot">
   <div class="player-color" style="background: {playerSlot.colorStart}"></div>
 
   <div class="player-info">
-    <span class="player-name">
-      {#if playerSlot.type === 'Set'}
-        {playerSlot.customName || playerSlot.defaultName}
-      {:else if playerSlot.type === 'Open'}
-        &lt;open&gt;
-      {:else if playerSlot.type === 'AI'}
-        {playerSlot.defaultName} (AI)
-      {:else}
-        {playerSlot.defaultName}
-      {/if}
-    </span>
+    {#if isSetSlot && editingName}
+      <input
+        bind:this={nameInput}
+        type="text"
+        value={playerSlot.customName || playerSlot.defaultName}
+        on:input={handleNameInput}
+        on:blur={handleNameBlur}
+        on:keydown={handleNameKeydown}
+        class="name-edit-input"
+      />
+    {:else}
+      <button 
+        class="player-name" 
+        class:editable={isSetSlot}
+        on:click={startEditingName}
+        type="button"
+      >
+        {#if playerSlot.type === 'Set'}
+          {playerSlot.customName || playerSlot.defaultName}
+        {:else if playerSlot.type === 'Open'}
+          &lt;open&gt;
+        {:else if playerSlot.type === 'AI'}
+          {playerSlot.defaultName} (AI)
+        {:else}
+          {playerSlot.defaultName}
+        {/if}
+      </button>
+    {/if}
   </div>
 
   <select
@@ -57,17 +118,15 @@
       <option value={type}>{type}</option>
     {/each}
   </select>
-
-  <!-- Remove the custom name input for Set slots since player can change name at top -->
 </div>
 
 <style>
   .player-slot {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
-    padding: 8px;
+    gap: 10px;
+    margin-bottom: 6px;
+    padding: 6px 8px;
     background: #374151;
     border-radius: 6px;
   }
@@ -86,6 +145,41 @@
   .player-name {
     color: #f8fafc;
     font-weight: 500;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    cursor: default;
+    font-size: inherit;
+    font-family: inherit;
+  }
+
+  .player-name.editable {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+  }
+
+  .player-name.editable:hover {
+    color: #60a5fa;
+  }
+
+  .name-edit-input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #60a5fa;
+    border-radius: 4px;
+    background: #1f2937;
+    color: #f8fafc;
+    font-size: inherit;
+    font-weight: 500;
+    font-family: inherit;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+  }
+
+  .name-edit-input:focus {
+    outline: none;
   }
 
   .slot-type-select {
@@ -119,20 +213,5 @@
   .slot-type-select option:checked {
     background: #60a5fa;
     color: white;
-  }
-
-  .custom-name-input {
-    padding: 4px 8px;
-    border: 1px solid #475569;
-    border-radius: 4px;
-    background: #1f2937;
-    color: white;
-    font-size: 0.9rem;
-    width: 120px;
-  }
-
-  .custom-name-input:focus {
-    border-color: #60a5fa;
-    outline: none;
   }
 </style>

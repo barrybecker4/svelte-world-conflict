@@ -82,6 +82,13 @@
     hasCurrentPlayerSet = hasPlayerSet;
   }
 
+  // Handle name changes from PlayerSlots
+  function handleNameChange(event) {
+    const { name } = event.detail;
+    playerName = name;
+    savePlayerName(name);
+  }
+
   // Reactive statement to refresh map preview when map size changes
   $: if (mapPreviewPanel && gameSettings.mapSize) {
     mapPreviewPanel.refreshPreview();
@@ -151,23 +158,14 @@
     <div class="configuration-main">
       <!-- Left Panel: Configuration -->
       <Panel variant="dark" blur={true} customClass="config-panel">
-        <Section title="Game Setup" borderBottom={true}>
-        </Section>
-
-        <Section title="Current Player" customClass="current-player-section">
-          <div class="current-player">
-            <span class="player-label">Playing as:</span>
-            <span class="player-name-display">{playerName}</span>
-            <Button variant="ghost" size="sm" on:click={changeName}>
-              Change
-            </Button>
-          </div>
+        <Section title="Player {playerName} Setup" borderBottom={true} padding="12px">
         </Section>
 
         <PlayerSlots
           bind:slots={playerSlots}
-          {playerName}
+          bind:playerName={playerName}
           on:update={handleSlotsUpdated}
+          on:nameChange={handleNameChange}
         />
 
         <Section title="" borderBottom={true}>
@@ -214,10 +212,6 @@
     padding: var(--space-5, 20px);
   }
 
-  .name-input-container {
-    /* PlayerNameInput handles its own styling */
-  }
-
   .configuration-main {
     display: flex;
     gap: var(--space-8, 32px);
@@ -232,23 +226,6 @@
     max-height: 100%;
     flex-direction: column;
     display: flex;
-  }
-
-  .current-player {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3, 12px);
-  }
-
-  .player-label {
-    color: var(--color-gray-300, #d1d5db);
-    font-size: var(--text-sm, 0.875rem);
-  }
-
-  .player-name-display {
-    color: var(--color-white, white);
-    font-weight: 600;
-    font-size: var(--text-base, 1rem);
   }
 
   .error-message {
