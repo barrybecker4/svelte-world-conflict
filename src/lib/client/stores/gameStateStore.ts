@@ -5,17 +5,18 @@ import { MoveReplayer } from '$lib/client/feedback/MoveReplayer';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
+import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 
 /**
  * Svelte Store for managing game state loading, initialization, and updates
  */
 export function createGameStateStore(gameId: string, playerId: string, playerSlotIndex: number) {
 
-  const gameState = writable(null);
-  const regions = writable([]);
-  const players = writable([]);
-  const loading = writable(true);
-  const error = writable(null);
+  const gameState = writable<GameStateData | null>(null);
+  const regions = writable<Region[]>([]);
+  const players = writable<Player[]>([]);
+  const loading = writable<boolean>(true);
+  const error = writable<string | null>(null);
 
   let moveSystem: MoveSystem | null = null;
   const moveReplayer = new MoveReplayer();
@@ -141,7 +142,9 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
       turnManager.updateGameState(cleanState);
     }
 
-     moveSystem.updateGameState(cleanState);
+    if (moveSystem) {
+      moveSystem.updateGameState(cleanState);
+    }
   }
 
   /**
@@ -167,17 +170,17 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     turnManager.reset();
   }
 
-  const currentPlayerSlot = derived(gameState, ($gameState: any) =>
+  const currentPlayerSlot = derived(gameState, ($gameState: GameStateData | null) =>
     $gameState?.currentPlayerSlot ?? 0
   );
 
-  const currentPlayer = derived([players, currentPlayerSlot], ([$players, $currentPlayerSlot]: [any[], number]) => {
+  const currentPlayer = derived([players, currentPlayerSlot], ([$players, $currentPlayerSlot]: [Player[], number]): Player | null => {
     // Return null if players haven't loaded yet
     if (!$players || $players.length === 0) {
       return null;
     }
 
-    const player = $players.find((p: any) => p.slotIndex === $currentPlayerSlot);
+    const player = $players.find((p: Player) => p.slotIndex === $currentPlayerSlot);
 
     if (!player) {
       console.warn(`⚠️ Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);

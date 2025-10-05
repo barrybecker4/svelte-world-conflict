@@ -48,22 +48,25 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     moveMade = true;
 
                     // Save the updated game state
-                    const updatedGame = {
-                        ...await gameStorage.getGame(gameId),
-                        worldConflictState: currentState.toJSON(),
-                        currentPlayerSlot: currentState.currentPlayerSlot,
-                        lastMoveAt: Date.now()
-                    };
+                    const existingGame = await gameStorage.getGame(gameId);
+                    if (existingGame) {
+                        const updatedGame = {
+                            ...existingGame,
+                            worldConflictState: currentState.toJSON(),
+                            currentPlayerSlot: currentState.currentPlayerSlot,
+                            lastMoveAt: Date.now()
+                        };
 
-                    await gameStorage.saveGame(updatedGame);
+                        await gameStorage.saveGame(updatedGame);
 
-                    // Notify players of AI move (if websocket environment exists)
-                    if (platform?.env) {
-                        await WebSocketNotifications.gameUpdate(updatedGame);
+                        // Notify players of AI move (if websocket environment exists)
+                        if (platform?.env) {
+                            await WebSocketNotifications.gameUpdate(updatedGame);
+                        }
+
+                        // Small delay to make AI moves visible (shorter during game creation)
+                        await new Promise(resolve => setTimeout(resolve, 300));
                     }
-
-                    // Small delay to make AI moves visible (shorter during game creation)
-                    await new Promise(resolve => setTimeout(resolve, 300));
                 } else {
                     // Move failed - will end turn below
                     console.log(`AI move failed: ${result.error}. Will end turn.`);
@@ -81,13 +84,16 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     currentState = result.newState;
 
                     // Save the state after ending turn
-                    const updatedGame = {
-                        ...await gameStorage.getGame(gameId),
-                        worldConflictState: currentState.toJSON(),
-                        currentPlayerSlot: currentState.currentPlayerSlot,
-                        lastMoveAt: Date.now()
-                    };
-                    await gameStorage.saveGame(updatedGame);
+                    const existingGame = await gameStorage.getGame(gameId);
+                    if (existingGame) {
+                        const updatedGame = {
+                            ...existingGame,
+                            worldConflictState: currentState.toJSON(),
+                            currentPlayerSlot: currentState.currentPlayerSlot,
+                            lastMoveAt: Date.now()
+                        };
+                        await gameStorage.saveGame(updatedGame);
+                    }
                 } else {
                     console.error('Failed to end AI turn:', result.error);
                     break;

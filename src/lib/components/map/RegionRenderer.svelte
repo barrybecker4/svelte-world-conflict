@@ -7,7 +7,6 @@
 
   export let region: Region;
   export let gameState: GameStateData | null = null;
-  export let isSelected: boolean = false;
   export let isValidTarget: boolean = false;
   export let isPreviewMode: boolean = false;
   export let canHighlight: boolean = false;
@@ -80,10 +79,9 @@
       <Temple
         x={region.x}
         y={region.y}
-        size="12"
-        borderColor="#fbfbf4"
-        level={templeData.level || 0}
-        upgradeType={templeData.upgradeIndex}
+        upgradeLevel={templeData.level || 0}
+        isPlayerOwned={gameState?.ownersByRegion?.[region.index] !== undefined}
+        regionIndex={region.index}
       />
     {/if}
 

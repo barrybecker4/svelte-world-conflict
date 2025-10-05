@@ -8,8 +8,11 @@ export class GameStateInitializer {
     /**
      * Create initial game state data with starting positions
      * Returns the data object, not the GameState instance
+     * 
+     * Note: Accepts Region[] (not Regions) because GameStateData must be JSON-serializable.
+     * Use Regions.getAll() to convert from Regions to Region[] before calling this.
      */
-    createInitialStateData(gameId: string, players: Player[], regions: Regions, maxTurns?: number): GameStateData {
+    createInitialStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number): GameStateData {
         return this.createInitializedGameStateData(gameId, players, regions, maxTurns);
     }
 
@@ -17,7 +20,7 @@ export class GameStateInitializer {
      * Create preview state data for map configuration
      * Similar to createInitialStateData but designed for previews
      */
-    createPreviewStateData(players: Player[], regions: Regions): GameStateData {
+    createPreviewStateData(players: Player[], regions: Region[]): GameStateData {
         const stateData = this.createInitializedGameStateData('preview', players, regions);
 
         // Set preview-specific values
@@ -27,7 +30,7 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createInitializedGameStateData(gameId: string, players: Player[], regions: Regions, maxTurns?: number): GameStateData {
+    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number): GameStateData {
         console.log(`Creating preview state with ${regions.length} regions`);
 
         const stateData = this.createGameStateData(gameId, players, regions, maxTurns);
@@ -122,7 +125,7 @@ export class GameStateInitializer {
     }
 
     private createSoldiers(index: number, numSoldiers: number): { i: number }[] {
-        const soldiers = [];
+        const soldiers: { i: number }[] = [];
         for (let s = 0; s < numSoldiers; s++) {
             soldiers.push({ i: index * 10 + s + 1 });
         }

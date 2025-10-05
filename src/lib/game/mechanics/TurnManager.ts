@@ -146,23 +146,22 @@ class TurnManager {
    * Get regions owned by the current player
    */
   public getCurrentPlayerRegions(): number[] {
-      let gameState: GameStateData | null = null;
-      let players: Player[] = [];
-      let currentPlayerIndex: number = 0;
+      const gameState = get(this.gameState);
+      const players = get(this.players);
+      const { currentPlayerIndex } = get(this.turnState);
 
-      this.gameState.subscribe(state => gameState = state)();
-      this.players.subscribe(p => players = p)();
-      this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
-
-      if (!gameState?.ownersByRegion) return [];
+      if (!gameState || !gameState.ownersByRegion) return [];
 
       // Get current player by array index, then use their slot index
       const currentPlayer = players[currentPlayerIndex];
       if (!currentPlayer) return [];
 
-      return Object.keys(gameState.ownersByRegion)
+      const ownersByRegion = gameState.ownersByRegion;
+      const playerSlotIndex = currentPlayer.slotIndex;
+
+      return Object.keys(ownersByRegion)
           .map(k => parseInt(k))
-          .filter(regionIndex => gameState.ownersByRegion[regionIndex] === currentPlayer.slotIndex);
+          .filter(regionIndex => ownersByRegion[regionIndex] === playerSlotIndex);
   }
 
   /**
@@ -170,13 +169,12 @@ class TurnManager {
    */
   public getMovableRegions(): number[] {
       const ownedRegions = this.getCurrentPlayerRegions();
-      let gameState: GameStateData | null = null;
-      this.gameState.subscribe(state => gameState = state)();
+      const gameState = get(this.gameState);
 
       if (!gameState) return [];
 
       return ownedRegions.filter(regionIndex => {
-          const soldiers = gameState!.soldiersByRegion[regionIndex] || [];
+          const soldiers = gameState.soldiersByRegion[regionIndex] || [];
           return soldiers.length > 0;
       });
   }
@@ -185,20 +183,17 @@ class TurnManager {
    * Check if a region is owned by the current player
    */
   public isCurrentPlayerRegion(regionIndex: number): boolean {
-    let gameState: GameStateData | null = null;
-    let players: Player[] = [];
-    let currentPlayerIndex: number = 0;
+    const gameState = get(this.gameState);
+    const players = get(this.players);
+    const { currentPlayerIndex } = get(this.turnState);
 
-    this.gameState.subscribe(state => gameState = state)();
-    this.players.subscribe(p => players = p)();
-    this.turnState.subscribe(state => currentPlayerIndex = state.currentPlayerIndex)();
-
-    if (!gameState?.ownersByRegion) return false;
+    if (!gameState || !gameState.ownersByRegion) return false;
 
     const currentPlayer = players[currentPlayerIndex];
     if (!currentPlayer) return false;
 
-    return gameState.ownersByRegion[regionIndex] === currentPlayer.slotIndex;
+    const ownersByRegion = gameState.ownersByRegion;
+    return ownersByRegion[regionIndex] === currentPlayer.slotIndex;
   }
 
   /**
@@ -232,11 +227,8 @@ class TurnManager {
     ownedRegions: number;
     movableRegions: number;
   } {
-    let state: TurnState | undefined;
-    let gameState: GameStateData | null = null;
-
-    this.turnState.subscribe(s => state = s)();
-    this.gameState.subscribe(gs => gameState = gs)();
+    const state = get(this.turnState);
+    const gameState = get(this.gameState);
 
     const ownedRegions = this.getCurrentPlayerRegions();
     const movableRegions = this.getMovableRegions();

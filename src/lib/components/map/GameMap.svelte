@@ -115,7 +115,6 @@
       <RegionRenderer
         {region}
         {gameState}
-        isSelected={selectedRegion?.index === region.index}
         isValidTarget={validTargetRegions.includes(region.index)}
         isPreviewMode={effectivePreviewMode}
         canHighlight={canHighlightForTurn(region)}

@@ -33,7 +33,8 @@ export class GameState {
 
         let regions: Region[];
 
-        // Convert to Region[] array for simplicity
+        // Use Regions class for validation/processing, then extract to plain array
+        // GameStateData must use Region[] (not Regions) for proper JSON serialization
         regions = (regionData?.length > 0)
             ? Regions.fromJSON(regionData).getAll()
             : Regions.createBasic(Math.max(players.length * 3, 12)).getAll();

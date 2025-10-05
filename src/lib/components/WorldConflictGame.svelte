@@ -32,11 +32,13 @@
 
   let mapContainer: HTMLElement;
 
-  $: selectedRegion = $moveState.sourceRegion !== null ? { index: $moveState.sourceRegion } : null;
+  $: selectedRegion = $moveState.sourceRegion !== null 
+    ? $regions.find(r => r.index === $moveState.sourceRegion) || null
+    : null;
 
   // Get valid target regions when a source is selected
   $: validTargetRegions = $moveState.sourceRegion !== null && gameStore.getMoveSystem()
-    ? gameStore.getMoveSystem().getValidTargetRegions()
+    ? gameStore.getMoveSystem()?.getValidTargetRegions() ?? []
     : [];
 
   // Check for game end
@@ -92,7 +94,7 @@
     <div class="map-wrapper" bind:this={mapContainer}>
       <GameMap
         regions={$regions}
-        currentPlayer={$currentPlayer}
+        currentPlayer={$currentPlayer ?? null}
         {selectedRegion}
         {validTargetRegions}
         gameState={$gameState}
