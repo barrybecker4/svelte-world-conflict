@@ -48,7 +48,7 @@ export class GameWebSocketClient {
                     this.clearConnectionTimeout();
 
                     this.send({ type: 'subscribe', gameId });
-                    this.messageHandler.onConnected?.();
+                    this.messageHandler.triggerConnected();
 
                     resolve();
                 };
@@ -64,14 +64,14 @@ export class GameWebSocketClient {
                         this.messageHandler.handleMessage(message);
                     } catch (error) {
                         console.error('❌ Error parsing WebSocket message:', error);
-                        this.messageHandler.onError?.('Failed to parse message');
+                        this.messageHandler.triggerError('Failed to parse message');
                     }
                 };
 
                 this.ws.onclose = (event) => {
                     console.log(`🔌 WebSocket closed: code=${event.code}, reason=${event.reason || 'none'}`);
                     this.clearConnectionTimeout();
-                    this.messageHandler.onDisconnected?.();
+                    this.messageHandler.triggerDisconnected();
 
                     // If we haven't settled yet, this is an error
                     if (!settled) {
@@ -83,7 +83,7 @@ export class GameWebSocketClient {
                 this.ws.onerror = (error) => {
                     console.error('❌ WebSocket error:', error);
                     this.clearConnectionTimeout();
-                    this.messageHandler.onError?.('WebSocket connection failed');
+                    this.messageHandler.triggerError('WebSocket connection failed');
 
                     // Only reject if we haven't already settled
                     if (!settled) {

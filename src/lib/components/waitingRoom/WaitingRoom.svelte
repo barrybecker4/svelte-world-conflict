@@ -17,21 +17,21 @@
   export let initialGame: any = null;
 
   let manager: WaitingRoomManager;
-  let game = null;
+  let game: any = null;
   let loading = true;
-  let error = null;
+  let error: string | null = null;
   let wsConnected = false;
-  let currentPlayerId = null;
+  let currentPlayerId: number | null = null;
   let isCreator = false;
 
-  onMount(async () => {
+  onMount(() => {
     const gameCreator = loadGameCreator(gameId);
     if (gameCreator) {
       currentPlayerId = gameCreator.playerSlotIndex;
     }
 
     manager = new WaitingRoomManager(gameId, currentPlayerId);
-    await manager.initialize(initialGame, () => {
+    manager.initialize(initialGame, () => {
       // Auto-start callback when game starts via WebSocket
       dispatch('gameStarted', { gameId });
     });

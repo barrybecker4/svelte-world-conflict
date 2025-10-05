@@ -3,7 +3,7 @@
   import Button from './Button.svelte';
 
   export let loading = false;
-  export let error = null;
+  export let error: string | null | undefined = null;
   export let loadingText = 'Loading...';
   export let spinnerSize = 'lg';
   export let spinnerColor = 'teal';

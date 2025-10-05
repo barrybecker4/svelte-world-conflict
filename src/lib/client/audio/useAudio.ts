@@ -47,7 +47,7 @@ export function useAudio() {
 
       // Play confirmation sound
       if (newState) {
-        setTimeout(() => playUISound('CLICK'), 100);
+        setTimeout(() => playUISound(SOUNDS.CLICK), 100);
       }
 
       return newState;
@@ -78,7 +78,7 @@ export function useAudio() {
   // Play UI sounds (click, hover, etc.)
   const playUISound = async (soundType: SoundType): Promise<void> => {
       // Validate it's a UI sound
-      const uiSounds = [SOUNDS.CLICK, SOUNDS.HOVER, SOUNDS.ERROR];
+      const uiSounds: SoundType[] = [SOUNDS.CLICK, SOUNDS.HOVER, SOUNDS.ERROR];
       if (!uiSounds.includes(soundType)) {
           console.warn(`${soundType} is not a UI sound`);
           return;

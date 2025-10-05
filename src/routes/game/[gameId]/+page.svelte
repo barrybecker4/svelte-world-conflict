@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
@@ -11,9 +11,9 @@
   import { SOUNDS } from '$lib/client/audio/sounds';
 
   let gameState = 'loading'; // 'loading', 'waiting', 'playing', 'error'
-  let game = null;
-  let currentPlayer = null;
-  let error = null;
+  let game: any = null;
+  let currentPlayer: any = null;
+  let error: string | null = null;
   let loading = true;
 
   onMount(async () => {
@@ -49,7 +49,7 @@
       }
     } catch (err) {
       console.error('❌ Error loading game:', err);
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
       gameState = 'error';
     } finally {
       loading = false;
@@ -64,7 +64,7 @@
     goto('/');
   }
 
-  function handleGameStarted(event) {
+  function handleGameStarted(event: CustomEvent) {
     console.log('🚀 Game started event received:', event.detail);
     // Refresh game data to get the latest state
     loadGameData();
@@ -80,13 +80,14 @@
 
     for (const sound of sounds) {
       console.log(`🔊 Playing: ${sound}`);
-      await audioSystem.playSound(SOUNDS[sound]);
+      const soundKey = sound as keyof typeof SOUNDS;
+      await audioSystem.playSound(SOUNDS[soundKey]);
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
   if (typeof window !== 'undefined' && import.meta.env.DEV) {
-    window.testGameSounds = testGameSounds;
+    (window as any).testGameSounds = testGameSounds;
   }
 </script>
 

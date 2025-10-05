@@ -119,4 +119,16 @@ export class MessageHandler {
     clearCallbacks(): void {
         this.callbacks = {};
     }
+
+    triggerConnected(): void {
+        this.callbacks.connected?.();
+    }
+
+    triggerDisconnected(): void {
+        this.callbacks.disconnected?.();
+    }
+
+    triggerError(error: string): void {
+        this.callbacks.error?.(error);
+    }
 }

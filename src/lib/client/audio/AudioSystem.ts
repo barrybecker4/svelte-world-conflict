@@ -1,5 +1,3 @@
-export type SoundType = typeof SOUNDS[keyof typeof SOUNDS];
-
 import { SOUNDS, type SoundType } from './sounds';
 
 /**
@@ -15,14 +13,9 @@ export class AudioSystem {
 
     // Sound frequencies and durations (similar to original GAS simple sounds)
     private readonly soundConfig = {
-        [SOUNDS.START]: { frequency: 440, duration: 0.3, type: 'sine' as OscillatorType },
-        [SOUNDS.MOVE]: { frequency: 220, duration: 0.1, type: 'sine' as OscillatorType },
         [SOUNDS.ATTACK]: { frequency: 150, duration: 0.2, type: 'square' as OscillatorType },
         [SOUNDS.COMBAT]: { frequency: 185, duration: 0.25, type: 'square' as OscillatorType },
-        [SOUNDS.VICTORY]: { frequency: 523, duration: 0.5, type: 'sine' as OscillatorType },
-        [SOUNDS.DEFEAT]: { frequency: 200, duration: 0.8, type: 'sawtooth' as OscillatorType },
         [SOUNDS.INCOME]: { frequency: 330, duration: 0.2, type: 'sine' as OscillatorType },
-        [SOUNDS.UPGRADE]: { frequency: 400, duration: 0.3, type: 'triangle' as OscillatorType },
         [SOUNDS.OUT_OF_TIME]: { frequency: 180, duration: 1.0, type: 'square' as OscillatorType },
         [SOUNDS.ALMOST_OUT_OF_TIME]: { frequency: 250, duration: 0.15, type: 'triangle' as OscillatorType },
         [SOUNDS.GAME_CREATED]: { frequency: 392, duration: 0.4, type: 'sine' as OscillatorType }, // G4 - welcoming

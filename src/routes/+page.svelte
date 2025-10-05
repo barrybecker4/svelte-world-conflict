@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import GameInstructions from '$lib/components/modals/GameInstructionsModal.svelte';
@@ -25,7 +25,7 @@
     showLobby = true;
   }
 
-  async function handleGameCreated(event) {
+  async function handleGameCreated(event: CustomEvent) {
     const gameConfig = event.detail;
     const humanPlayer = extractHumanPlayer(gameConfig);
 
@@ -52,7 +52,7 @@
     }
   }
 
-  async function createNewGame(gameConfig, humanPlayer) {
+  async function createNewGame(gameConfig: any, humanPlayer: any) {
     return await fetch('/api/game/new', {
       method: 'POST',
       headers: {
@@ -73,8 +73,8 @@
     });
   }
 
-  function extractHumanPlayer(gameConfig) {
-    const humanPlayer = gameConfig.playerSlots.find(slot => slot.type === 'Set');
+  function extractHumanPlayer(gameConfig: any) {
+    const humanPlayer = gameConfig.playerSlots.find((slot: any) => slot.type === 'Set');
     if (!humanPlayer) {
       throw new Error('No human player found in game configuration');
     }

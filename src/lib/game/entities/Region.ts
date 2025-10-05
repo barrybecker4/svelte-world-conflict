@@ -18,6 +18,7 @@ export class Region {
     public readonly x: number;
     public readonly y: number;
     public readonly hasTemple: boolean;
+    public readonly points: Array<{ x: number; y: number }> | undefined;
 
     constructor(data: RegionData) {
         this.index = data.index;
