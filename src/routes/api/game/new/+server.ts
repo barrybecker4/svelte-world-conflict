@@ -14,12 +14,12 @@ import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier'
  */
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
-        const body = await request.json();
+        const body = await request.json() as { playerName?: string, [key: string]: any };
         const { playerName } = body;
 
-        const gameRecord = createGameRecord(body, platform);
+        const gameRecord = createGameRecord(body, platform!);
         console.log("gameRecord gameId = ", gameRecord.gameId);
-        await save(gameRecord, platform);
+        await save(gameRecord, platform!);
 
         // Find the creator player by matching the playerName from the request
         const creatorPlayer = gameRecord.players.find(p =>
@@ -49,18 +49,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
                 // Update the game record with the processed state
                 gameRecord.worldConflictState = processedGameState.toJSON();
-                gameRecord.currentPlayerSlot = processedGameState.playerSlotIndex;
+                gameRecord.currentPlayerSlot = processedGameState.currentPlayerSlot;
                 gameRecord.lastMoveAt = Date.now();
 
                 // Save the updated state
                 await gameStorage.saveGame(gameRecord);
 
                 // Notify via WebSocket if available
-                if (platform?.env) {
-                    await WebSocketNotifications.gameUpdate(gameRecord, platform.env);
-                }
+                await WebSocketNotifications.gameUpdate(gameRecord);
 
-                console.log(`AI processing complete after game creation, current player slot: ${processedGameState.playerSlotIndex}`);
+                console.log(`AI processing complete after game creation, current player slot: ${processedGameState.currentPlayerSlot}`);
             }
         }
 
@@ -95,7 +93,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
   } = body;
 
   if (!playerName?.trim()) {
-      return json({ error: 'Player name is required' }, { status: 400 });
+      throw new Error('Player name is required');
   }
 
   const gameId = generateGameId();
@@ -126,11 +124,10 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
     gameId,
     status: gameStatus,
     players: players.map(p => ({
-      id: p.id || generatePlayerId(),
+      slotIndex: p.slotIndex,
       name: p.name,
       color: p.color,
-      isAI: p.isAI,
-      slotIndex: p.slotIndex
+      isAI: p.isAI
     })),
     worldConflictState: gameStatus === 'ACTIVE' ? initialGameState.toJSON() : initialGameState,
     createdAt: Date.now(),
@@ -138,16 +135,14 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
     currentPlayerSlot: 0,
     gameType: finalGameType,
     pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
-      settings,
       playerSlots,
-      maxTurns,
-      timeLimit,
-      selectedMapRegions // Store the selected map for pending games too
+      mapSize: settings?.mapSize || 'Medium',
+      aiDifficulty: settings?.aiDifficulty || 'Normal'
     } : undefined
   };
 }
 
-function calculateRegions(selectedMapRegions, settings): Region[] {
+function calculateRegions(selectedMapRegions: any, settings: any): Region[] {
   let regions: Region[];
 
   if (selectedMapRegions && selectedMapRegions.length > 0) {
@@ -163,7 +158,7 @@ function calculateRegions(selectedMapRegions, settings): Region[] {
     const mapGenerator = new MapGenerator(800, 600);
     regions = mapGenerator.generateMap({
       size: mapSize as 'Small' | 'Medium' | 'Large',
-      playerCount: Math.max(players.length, 2)
+      playerCount: 2
     });
   }
   return regions;
@@ -231,7 +226,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
     return { hasOpenSlots, gameStatus, finalGameType };
 }
 
-async function save(gameRecord: GameRecord, platform: App.Platform): void {
+async function save(gameRecord: GameRecord, platform: App.Platform): Promise<void> {
     const gameStorage = GameStorage.create(platform!);
     console.log("saveGame after new. gameId: " + gameRecord.gameId);
     await gameStorage.saveGame(gameRecord);

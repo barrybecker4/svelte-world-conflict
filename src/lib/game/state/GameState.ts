@@ -1,4 +1,4 @@
-import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes';
+import type { Player, Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitions';
 import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
@@ -7,7 +7,7 @@ import type { ValidationResult, MoveValidationResult } from '$lib/game/validatio
 import { Regions } from '$lib/game/entities/Regions';
 
 // Re-export types for convenience
-export type { Player, Region, GameStateData };
+export type { Player, Region, GameStateData, Soldier };
 
 export class GameState {
     public state: GameStateData;

@@ -66,11 +66,11 @@
 
     // Create players from slots
     const activePlayers: Player[] = playerSlots
-      .filter(slot => slot.type !== 'Empty')
+      .filter(slot => slot.type !== 'Off')
       .slice(0, playerCount)
       .map((slot, index) => ({
         slotIndex: index,  // ✅ Correct property name
-        name: slot.type === 'Human' ? slot.name : `AI ${index + 1}`,
+        name: (slot.type === 'Set' || slot.type === 'Open') ? (slot.name || `Player ${index + 1}`) : `AI ${index + 1}`,
         color: slot.color,
         isAI: slot.type === 'AI'
       }));

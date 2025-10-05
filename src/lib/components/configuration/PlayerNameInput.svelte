@@ -3,7 +3,7 @@
   import Button from '$lib/components/ui/Button.svelte';
 
   export let initialName = '';
-  export let error = '';
+  export let error: string | null | undefined = '';
   export let loading = false;
 
   let playerName = initialName;

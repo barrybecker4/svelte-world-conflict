@@ -10,9 +10,9 @@ describe('GameMap Utilities', () => {
   beforeEach(() => {
     // Initialize mock players first
     mockPlayers = [
-      { index: 0, name: 'Player 1', color: '#ff0000', isAI: false },
-      { index: 1, name: 'Player 2', color: '#00ff00', isAI: true }
-    ] as Player[];
+      { slotIndex: 0, name: 'Player 1', color: '#ff0000', isAI: false },
+      { slotIndex: 1, name: 'Player 2', color: '#00ff00', isAI: true }
+    ];
 
     mockRegion = {
       index: 0,
@@ -27,18 +27,22 @@ describe('GameMap Utilities', () => {
     } as Region;
 
     mockGameState = {
+      id: 1,
       gameId: 'test-game',
+      turnNumber: 1,
       currentPlayerSlot: 0,
       players: mockPlayers,
       movesRemaining: 3,
+      regions: [mockRegion],
       ownersByRegion: { 0: 0, 1: 1 },
       soldiersByRegion: { 
-        0: [{ id: '1' }, { id: '2' }], 
-        1: [{ id: '3' }] 
+        0: [{ i: 1 }, { i: 2 }], 
+        1: [{ i: 3 }] 
       },
-      templesByRegion: { 0: { level: 1 } },
+      templesByRegion: { 0: { regionIndex: 0, level: 1 } },
+      faithByPlayer: { 0: 0, 1: 0 },
       conqueredRegions: []
-    } as GameStateData;
+    };
   });
 
   describe('SVG Path Utilities', () => {

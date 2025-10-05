@@ -86,7 +86,7 @@ async function quitFromPendingGame(
         console.log(`Player ${player.name} left pending game ${gameId}`);
 
         // Notify other players
-        await WebSocketNotifications.playerLeft(gameId, playerId, updatedGame, platform);
+        await WebSocketNotifications.playerLeft(gameId, playerId, updatedGame);
 
         return json({
             success: true,

@@ -1,4 +1,5 @@
-import { Command } from "./Command";
+import { Command, type CommandValidationResult } from "./Command";
+import type { GameState, Player } from "$lib/game/state/GameState";
 
 export class BuildCommand extends Command {
     public regionIndex: number;
@@ -15,7 +16,7 @@ export class BuildCommand extends Command {
         this.upgradeIndex = upgradeIndex;
     }
 
-    validate(): ValidationResult {
+    validate(): CommandValidationResult {
         const errors: string[] = [];
 
         if (!this.gameState.isOwnedBy(this.regionIndex, this.player)) {

@@ -25,8 +25,8 @@ export class AttackSequenceGenerator {
     private soldiers: number;
     private state: GameState | null = null;
     private incomingSoldiers: number;
-    private fromOwner: Player | null;
-    private toOwner: Player | null;
+    private fromOwner: number | undefined;
+    private toOwner: number | undefined;
 
     private static readonly WIN_THRESHOLD = 120;
 
@@ -35,8 +35,8 @@ export class AttackSequenceGenerator {
         this.toRegion = armyMove.destination;
         this.soldiers = armyMove.count;
         this.incomingSoldiers = 0;
-        this.fromOwner = null;
-        this.toOwner = null;
+        this.fromOwner = undefined;
+        this.toOwner = undefined;
     }
 
     /**
@@ -78,7 +78,8 @@ export class AttackSequenceGenerator {
 
             // Check if defenders won
             if (toList.length > 0) {
-                const color = this.toOwner?.color || '#fff';
+                const toOwnerPlayer = this.toOwner !== undefined ? players.find(p => p.slotIndex === this.toOwner) : undefined;
+                const color = toOwnerPlayer?.color || '#fff';
                 attackSequence.push({
                     floatingText: [{
                         regionIdx: this.toRegion,
@@ -236,7 +237,7 @@ export class AttackSequenceGenerator {
      * Roll the specified number of 6-sided dice
      */
     private rollDice(count: number): number[] {
-        const rolls = [];
+        const rolls: number[] = [];
         for (let i = 0; i < count; i++) {
             rolls.push(Math.floor(Math.random() * 6) + 1); // 1-6
         }

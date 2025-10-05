@@ -1,4 +1,4 @@
-import { Command } from './Command';
+import { Command, type CommandValidationResult } from './Command';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { GameState, Player } from '$lib/game/state/GameState';
@@ -11,11 +11,11 @@ export class EndTurnCommand extends Command {
       super(gameState, player);
     }
 
-    validate(): ValidationResult {
+    validate(): CommandValidationResult {
       const errors: string[] = [];
 
       const activePlayer = this.gameState.getCurrentPlayer();
-      if (activePlayer.slotIndex !== this.player.slotIndex) {
+      if (!activePlayer || activePlayer.slotIndex !== this.player.slotIndex) {
           errors.push("Not your turn");
       }
 
@@ -86,7 +86,7 @@ export class EndTurnCommand extends Command {
         const currentIndex = activeSlots.indexOf(currentSlotIndex);
 
         if (currentIndex === -1) {
-            throw new Error(`Current slot ${currentSlotIndex} not found in active slots:`, activeSlots);
+            throw new Error(`Current slot ${currentSlotIndex} not found in active slots: ${JSON.stringify(activeSlots)}`);
         }
 
         const nextIndex = (currentIndex + 1) % activeSlots.length;
@@ -158,8 +158,8 @@ export class EndTurnCommand extends Command {
         }
     }
 
-    private getTemplesSoldiers(state: GameState, phase: string): any {
-        const temples = [];
+    private getTemplesSoldiers(state: GameState, phase: string): Array<{ regionIdx: number, soldiers: number }> {
+        const temples: Array<{ regionIdx: number, soldiers: number }> = [];
 
         for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);

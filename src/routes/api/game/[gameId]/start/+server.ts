@@ -62,7 +62,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
             // Update the game with the processed state
             updatedGame.worldConflictState = processedGameState.toJSON();
-            updatedGame.currentPlayerSlot = processedGameState.playerSlotIndex;
+            updatedGame.currentPlayerSlot = processedGameState.currentPlayerSlot;
             updatedGame.lastMoveAt = Date.now();
 
             console.log(`AI processing complete after manual start, current player slot: ${processedGameState.currentPlayerSlot}`);

@@ -15,9 +15,9 @@
   let error: string | null = null;
   let wsConnected = false;
 
-  onMount(async () => {
+  onMount(() => {
     gamesManager = new OpenGamesManager();
-    await gamesManager.initialize();
+    gamesManager.initialize();
 
     const unsubGames = gamesManager.games.subscribe(value => games = value);
     const unsubLoading = gamesManager.loading.subscribe(value => {

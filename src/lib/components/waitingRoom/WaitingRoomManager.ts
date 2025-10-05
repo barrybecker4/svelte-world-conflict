@@ -161,7 +161,7 @@ export class WaitingRoomManager {
 
         onSuccess();
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         this.error.set(errorData.error || 'Failed to start game');
         setTimeout(() => this.error.set(null), 3000);
       }
@@ -188,7 +188,7 @@ export class WaitingRoomManager {
         console.log('✅ Successfully left game');
         onSuccess();
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json() as { error?: string };
         this.error.set(errorData.error || 'Failed to leave game');
         setTimeout(() => this.error.set(null), 3000);
       }

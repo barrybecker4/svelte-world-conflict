@@ -38,7 +38,7 @@
           size="sm"
           disabled={!slotInfo.canJoin}
           on:click={() => handleSlotClick(slotIndex, slotInfo)}
-          class="slot-button {slotInfo.type}"
+          customClass="slot-button {slotInfo.type}"
         >
           {slotInfo.name}
         </Button>

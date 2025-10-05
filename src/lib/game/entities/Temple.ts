@@ -1,5 +1,8 @@
-import { TEMPLE_LEVELS, MAX_TEMPLE_LEVEL } from '$lib/game/constants/gameConstants';
-import type { UPGRADES, UpgradeDefinition } from '$lib/game/constants/upgradeDefinitions';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { UPGRADES, type UpgradeDefinition } from '$lib/game/constants/upgradeDefinitions';
+
+const TEMPLE_LEVELS = ['Basic', 'Minor', 'Major', 'Grand'] as const;
+const MAX_TEMPLE_LEVEL = GAME_CONSTANTS.MAX_TEMPLE_LEVEL;
 
 export class Temple {
     regionIndex: number;
@@ -16,7 +19,7 @@ export class Temple {
         if (this.upgradeIndex === undefined) {
             return null;
         }
-        return getUpgradeByIndex(this.upgradeIndex);
+        return this.getUpgradeByIndex(this.upgradeIndex);
     }
 
     hasUpgrade(upgradeName: string): boolean {

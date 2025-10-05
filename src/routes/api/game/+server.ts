@@ -39,16 +39,16 @@ function getResponse(game: GameRecord) {
     };
 
     if (!response.worldConflictState.regions) {
-         console.error(`❌ Game ${gameId} missing regions in worldConflictState`);
+         console.error(`❌ Game ${game.gameId} missing regions in worldConflictState`);
          return json({ error: 'Game data is corrupted - missing regions' }, { status: 500 });
     }
 
      if (!response.worldConflictState.players) {
-         console.error(`❌ Game ${gameId} missing players in worldConflictState`);
+         console.error(`❌ Game ${game.gameId} missing players in worldConflictState`);
          return json({ error: 'Game data is corrupted - missing players' }, { status: 500 });
      }
 
-     console.log(`✅ Returning game data for ${gameId}:`, {
+     console.log(`✅ Returning game data for ${game.gameId}:`, {
          regions: response.worldConflictState.regions?.length,
          players: response.worldConflictState.players?.length,
          owners: Object.keys(response.worldConflictState.ownersByRegion || {}).length,
@@ -67,7 +67,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             return json({ error: 'Game ID is required' }, { status: 400 });
         }
 
-        const game = await getGame(gameId, platform);
+        const game = await getGame(gameId, platform!);
         if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
@@ -76,14 +76,14 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         return json(response);
 
     } catch (error) {
-        console.error(`Error getting World Conflict game ${params.gameId}:`, error);
+        console.error(`Error getting World Conflict game:`, error);
         return json({ error: 'Failed to load game: ' + getErrorMessage(error) }, { status: 500 });
     }
 };
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
-        const gameId = params.gameId;
+        const { gameId } = params as RouteParams;
         const { playerId, reason = 'RESIGN' } = await request.json() as QuitGameRequest;
 
         if (!gameId) {
@@ -106,6 +106,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             lastMoveAt: Date.now()
         };
 
+        const gameStorage = GameStorage.create(platform!);
         await gameStorage.saveGame(updatedGame);
 
         // Notify other players via WebSocket

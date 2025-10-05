@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GameState, Player } from '$lib/game/class/GameState';
+  import type { GameState, Player } from '$lib/game/state/GameState';
   import Button from '$lib/components/ui/Button.svelte';
 
   // gameState.currentPlayerSlot = Whose turn it is (slot)

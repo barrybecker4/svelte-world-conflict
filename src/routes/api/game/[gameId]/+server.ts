@@ -64,8 +64,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Player ID is required' }, { status: 400 });
         }
 
-        const kv = new KVStorage(platform!);
-        const gameStorage = new GameStorage(kv);
+        const gameStorage = GameStorage.create(platform!);
 
         const game = await gameStorage.getGame(gameId);
         if (!game) {

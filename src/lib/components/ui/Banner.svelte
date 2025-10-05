@@ -22,7 +22,7 @@
   });
 
   $: playerColor = getPlayerColor(player.slotIndex);
-  $: isAI = player.type === 'AI';
+  $: isAI = player.isAI;
 
   function skipBanner() {
     animationComplete = true;

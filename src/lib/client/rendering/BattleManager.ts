@@ -143,7 +143,7 @@ export class BattleManager {
     console.log('🎬 BattleManager: Playing attack sequence');
 
     try {
-      await this.battleAnimationSystem.playAttackSequence(attackSequence, regions);
+      await this.battleAnimationSystem.playAttackSequence(attackSequence, regions || []);
     } catch (error) {
       console.warn('⚠️ BattleManager: Animation failed, continuing without animation:', error);
     }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS } from '$lib/client/audio/sounds';
   import { onMount, onDestroy } from 'svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
 

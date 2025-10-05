@@ -10,7 +10,8 @@ import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier'
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const gameId = params.gameId;
-        const { playerName, preferredSlot } = await request.json();
+        const body = await request.json() as { playerName?: string, preferredSlot?: number };
+        const { playerName, preferredSlot } = body;
 
         if (!gameId || !playerName?.trim()) {
             return json({

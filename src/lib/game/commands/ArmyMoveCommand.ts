@@ -1,5 +1,6 @@
-import { Command, type ValidationResult } from './Command';
+import { Command, type CommandValidationResult } from './Command';
 import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
+import type { GameState, Player, Region, Soldier } from '$lib/game/state/GameState';
 
 export class ArmyMoveCommand extends Command {
     public source: number;
@@ -15,7 +16,7 @@ export class ArmyMoveCommand extends Command {
         this.count = count;
     }
 
-    validate(): ValidationResult {
+    validate(): CommandValidationResult {
         const errors: string[] = [];
 
         if (!this.gameState.isOwnedBy(this.source, this.player)) {

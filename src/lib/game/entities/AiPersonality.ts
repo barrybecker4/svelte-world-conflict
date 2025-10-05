@@ -30,7 +30,7 @@ export class AiPersonality {
      */
     getPreferredUpgrade(preferenceIndex: number): number {
         if (preferenceIndex < 0 || preferenceIndex >= this.upgradePreference.length) {
-            return UPGRADES.WATER.index; // Default fallback
+            return 2; // Default fallback to WATER (index 2)
         }
         return this.upgradePreference[preferenceIndex];
     }

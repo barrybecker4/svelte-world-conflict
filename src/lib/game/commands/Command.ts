@@ -5,8 +5,7 @@ import {
     GameState
 } from "$lib/game/state/GameState.ts";
 
-
-export interface ValidationResult {
+export interface CommandValidationResult {
     valid: boolean;
     errors: string[];
 }
@@ -25,7 +24,7 @@ export abstract class Command {
         this.id = this.generateId();
     }
 
-    abstract validate(): ValidationResult;
+    abstract validate(): CommandValidationResult;
     abstract execute(): GameState;
     abstract serialize(): any;
 
