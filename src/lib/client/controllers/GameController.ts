@@ -108,8 +108,8 @@ export class GameController {
     console.log('🔄 GameController.handleMoveStateChange:', newState);
     this.moveState.set(newState);
 
-    // Show soldier selection modal when needed
-    if (newState.mode === 'ADJUST_SOLDIERS' && newState.sourceRegion !== null) {
+    // Show soldier selection modal when needed (after both source and target are selected)
+    if (newState.mode === 'ADJUST_SOLDIERS' && newState.sourceRegion !== null && newState.targetRegion !== null) {
       console.log('✅ Opening soldier selection modal');
       this.modalState.update(s => ({
         ...s,
@@ -260,6 +260,9 @@ export class GameController {
       showSoldierSelection: false,
       soldierSelectionData: null
     }));
+    
+    const moveSystem = this.gameStore.getMoveSystem();
+    moveSystem?.processAction({ type: 'CANCEL' });
   }
 
   /**

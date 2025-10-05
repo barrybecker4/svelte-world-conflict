@@ -128,9 +128,9 @@ export class MoveSystem {
       return;
     }
 
-    // Set state and notify
+    // Set state and notify - go directly to target selection
     this.updateState({
-      mode: 'ADJUST_SOLDIERS',
+      mode: 'SELECT_TARGET',
       sourceRegion: regionIndex,
       targetRegion: null,
       maxSoldiers: soldiers.length, // Can move all soldiers
@@ -139,7 +139,7 @@ export class MoveSystem {
       availableMoves: this.state.availableMoves
     });
 
-    console.log('✅ Source region selected, transitioning to ADJUST_SOLDIERS');
+    console.log('✅ Source region selected, transitioning to SELECT_TARGET');
   }
 
   /**
@@ -154,14 +154,15 @@ export class MoveSystem {
       return;
     }
 
-    // Update soldier count and move to target selection
+    // Update soldier count and execute the move
     this.updateState({
       ...this.state,
       selectedSoldierCount: count,
-      mode: 'SELECT_TARGET'
+      isMoving: true
     });
 
-    console.log('✅ Soldier count adjusted, transitioning to SELECT_TARGET');
+    console.log('✅ Soldier count adjusted, executing move');
+    this.executeMove();
   }
 
   /**
@@ -194,15 +195,15 @@ export class MoveSystem {
       return;
     }
 
-    // Set target and execute move
+    // Set target and transition to soldier selection
     this.updateState({
       ...this.state,
       targetRegion: regionIndex,
-      isMoving: true
+      mode: 'ADJUST_SOLDIERS',
+      isMoving: false
     });
 
-    console.log('✅ Target region selected, executing move');
-    this.executeMove();
+    console.log('✅ Target region selected, transitioning to ADJUST_SOLDIERS');
   }
 
   /**
@@ -249,12 +250,13 @@ export class MoveSystem {
   private confirmMove(): void {
     console.log('✅ MoveSystem.confirmMove');
     
-    if (this.state.mode === 'ADJUST_SOLDIERS' && this.state.sourceRegion !== null) {
-      // Transition to target selection
+    if (this.state.mode === 'ADJUST_SOLDIERS' && this.state.sourceRegion !== null && this.state.targetRegion !== null) {
+      // Execute the move with the selected soldier count
       this.updateState({
         ...this.state,
-        mode: 'SELECT_TARGET'
+        isMoving: true
       });
+      this.executeMove();
     }
   }
 

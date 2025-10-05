@@ -2,8 +2,8 @@
  * Represents the current state of the move system
  * Used to track progress through the three-step move process:
  * 1. Select source region
- * 2. Adjust soldier count
- * 3. Select destination region
+ * 2. Select destination region
+ * 3. Adjust soldier count
  */
 export interface MoveState {
   /** Current mode of the move system */
