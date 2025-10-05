@@ -21,12 +21,8 @@
     players,
     loading,
     error,
-    currentPlayerSlot,
     currentPlayer,
     isMyTurn,
-    movesRemaining,
-    turnState,
-    currentPlayerFromTurnManager,
     shouldShowBanner,
     shouldHighlightRegions
   } = gameStore;
@@ -76,6 +72,7 @@
         controller.endTurn();
       }}
       onShowInstructions={() => controller.showInstructions()}
+      onResign={() => controller.resign()}
     />
 
     <!-- Game Map -->

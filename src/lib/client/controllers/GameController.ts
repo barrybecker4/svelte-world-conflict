@@ -317,6 +317,48 @@ export class GameController {
   }
 
   /**
+   * Resign from the game
+   */
+  async resign(): Promise<void> {
+    console.log('🏳️ GameController.resign called');
+    
+    if (!confirm('Are you sure you want to resign from this game?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/game/${this.gameId}/quit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: this.playerId,
+          reason: 'RESIGN'
+        })
+      });
+
+      console.log('Resign response:', response.status, response.ok);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Resign failed:', errorData);
+        throw new Error(errorData.error || 'Failed to resign from game');
+      }
+
+      const result = await response.json();
+      console.log('✅ Resigned successfully:', result);
+
+      // If game ended, show summary or redirect
+      if (result.gameEnded) {
+        // Redirect to home page
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('❌ Resign error:', error);
+      alert('Failed to resign from game: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  /**
    * Get stores for component binding
    */
   getStores() {
