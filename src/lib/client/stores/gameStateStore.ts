@@ -30,7 +30,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
         throw new Error('Failed to load game state');
       }
 
-      const data = await response.json();
+      const data = await response.json() as { worldConflictState: any };
       gameState.set(data.worldConflictState);
       regions.set(data.worldConflictState.regions || []);
       players.set(data.worldConflictState.players || []);
@@ -74,7 +74,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
       return { gameState: initialGameState, moveSystem };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize game';
-      error.set(errorMessage);
+      error.set(errorMessage as any);
       loading.set(false);
       throw err;
     }
@@ -125,7 +125,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
         }, GAME_CONSTANTS.BANNER_TIME); // Delay to show moves after banner
       } else {
         // It's now our turn
-        audioSystem.playSound(SOUNDS.START);
+        audioSystem.playSound(SOUNDS.GAME_STARTED);
       }
 
       turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
@@ -160,17 +160,17 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     turnManager.reset();
   }
 
-  const currentPlayerSlot = derived(gameState, $gameState =>
+  const currentPlayerSlot = derived(gameState, ($gameState: any) =>
     $gameState?.currentPlayerSlot ?? 0
   );
 
-  const currentPlayer = derived([players, currentPlayerSlot], ([$players, $currentPlayerSlot]) => {
+  const currentPlayer = derived([players, currentPlayerSlot], ([$players, $currentPlayerSlot]: [any[], number]) => {
     // Return null if players haven't loaded yet
     if (!$players || $players.length === 0) {
       return null;
     }
 
-    const player = $players.find(p => p.slotIndex === $currentPlayerSlot);
+    const player = $players.find((p: any) => p.slotIndex === $currentPlayerSlot);
 
     if (!player) {
       console.warn(`⚠️ Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);
@@ -187,7 +187,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
         if (!$gameState || !$players.length) return false;
 
         // Find the player whose turn it is (by slot index)
-        const currentTurnPlayer = $players.find(p => p.slotIndex === $gameState.currentPlayerSlot);
+        const currentTurnPlayer = $players.find((p: any) => (p as any).slotIndex === ($gameState as any).currentPlayerSlot);
 
         const isMySlot = $gameState.currentPlayerSlot === playerSlotIndex;
         const isHumanPlayer = currentTurnPlayer && !currentTurnPlayer.personality;

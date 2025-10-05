@@ -51,7 +51,7 @@
   }
 
   // Handle individual slot updates
-  function handleSlotUpdated(event) {
+  function handleSlotUpdated(event: CustomEvent) {
     const { index, slot } = event.detail;
 
     // Handle player switching - only one slot can be "Set"
@@ -101,7 +101,7 @@
     }
   }
 
-  function handlePlayerNameChange(event) {
+  function handlePlayerNameChange(event: CustomEvent) {
     const { name } = event.detail;
     playerName = name;
     dispatch('nameChange', { name });

@@ -19,12 +19,12 @@
   };
 
   let playerName = '';
-  let playerSlots = [];
+  let playerSlots: any[] = [];
 
   let creating = false;
-  let error = null;
+  let error: string | null = null;
   let showNameInput = true;
-  let mapPreviewPanel;
+  let mapPreviewPanel: any;
 
   // Player slot state from PlayerSlotManager
   let activePlayerCount = 0;
@@ -53,7 +53,7 @@
   }
 
   // Handle player name submission from the PlayerNameInput component
-  function handleNameSubmitted(event) {
+  function handleNameSubmitted(event: CustomEvent) {
     const { name } = event.detail;
     playerName = name;
     proceedWithName();
@@ -75,7 +75,7 @@
   }
 
   // Handle updates from PlayerSlots
-  function handleSlotsUpdated(event) {
+  function handleSlotsUpdated(event: CustomEvent) {
     const { slots, activeSlotCount, hasPlayerSet } = event.detail;
     playerSlots = slots;
     activePlayerCount = activeSlotCount;
@@ -83,7 +83,7 @@
   }
 
   // Handle name changes from PlayerSlots
-  function handleNameChange(event) {
+  function handleNameChange(event: CustomEvent) {
     const { name } = event.detail;
     playerName = name;
     savePlayerName(name);
@@ -111,7 +111,7 @@
       const gameConfig = buildGameConfig();
       dispatch('gameCreated', gameConfig);
     } catch (err) {
-      error = err.message;
+      error = (err as Error).message;
     } finally {
       creating = false;
     }
@@ -133,7 +133,7 @@
     return {
       settings: gameSettings,
       playerSlots: updatedPlayerSlots,
-      selectedMapRegions: currentPreviewRegions.map(region => region.toJSON ? region.toJSON() : region),
+      selectedMapRegions: currentPreviewRegions.map((region: any) => region.toJSON ? region.toJSON() : region),
       selectedMapState: currentPreviewState
     };
   }
@@ -193,7 +193,7 @@
       <!-- Right Panel: Map Preview -->
       <MapPreviewPanel
         bind:this={mapPreviewPanel}
-        mapSize={gameSettings.mapSize}
+        mapSize={gameSettings.mapSize as 'Small' | 'Medium' | 'Large'}
         playerCount={Math.max(activePlayerCount, 2)}
         {playerSlots}
       />

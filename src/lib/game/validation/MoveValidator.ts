@@ -1,4 +1,4 @@
-import type { MoveValidationResult } from '$lib/game/types/validation';
+import type { MoveValidationResult } from './validation';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 
 export class MoveValidator {
@@ -24,8 +24,8 @@ export class MoveValidator {
         }
 
         // Check if regions are adjacent
-        const sourceRegion = gameData.regions.find(r => r.index === fromRegion);
-        if (!sourceRegion?.neighborIndices.includes(toRegion)) {
+        const sourceRegion = gameData.regions.getByIndex(fromRegion);
+        if (!sourceRegion?.neighbors.includes(toRegion)) {
             return { isValid: false, error: "Regions are not adjacent" };
         }
 

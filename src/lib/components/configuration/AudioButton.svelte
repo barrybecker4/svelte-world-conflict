@@ -20,7 +20,7 @@
       // Play a test sound when enabling
       if (isEnabled) {
         setTimeout(async () => {
-          await audioSystem.playSound('CLICK');
+          await audioSystem.playSound(SOUNDS.CLICK);
         }, 100);
       }
     } catch (error) {
@@ -36,7 +36,7 @@
 
   async function testSound() {
     if (isEnabled) {
-      await audioSystem.playSound('CLICK');
+      await audioSystem.playSound(SOUNDS.CLICK);
     }
   }
 </script>

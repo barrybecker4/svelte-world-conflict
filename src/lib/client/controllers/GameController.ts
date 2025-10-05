@@ -3,9 +3,9 @@ import { BattleManager } from '$lib/client/rendering/BattleManager';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
-import type { MoveState } from '$lib/gamemechanics/moveTypes';
+import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
-import { useGameWebSocket } from '$lib/client/composables/useGameWebSocket';
+import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
 
 interface ModalState {
   showSoldierSelection: boolean;
@@ -77,7 +77,7 @@ export class GameController {
     );
     
     await this.websocket.initialize();
-    await audioSystem.initializeAudio();
+    await audioSystem.enable();
   }
 
   /**
@@ -140,10 +140,15 @@ export class GameController {
 
     // Handle battle if required
     if (this.battleManager.isBattleRequired(battleMove)) {
-      await this.battleManager.executeBattle(battleMove);
-      await audioSystem.playSound(SOUNDS.BATTLE);
+      const regions = this.gameStore.regions;
+      let currentRegions: any[];
+      regions.subscribe((value: any[]) => {
+        currentRegions = value;
+      })();
+      await this.battleManager.executeBattle(battleMove, this.playerId, currentRegions!);
+      await audioSystem.playSound(SOUNDS.ATTACK);
     } else {
-      await audioSystem.playSound(SOUNDS.MOVE);
+      await audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
     }
 
     // Send move to server
@@ -182,7 +187,7 @@ export class GameController {
         endResult.winner !== 'DRAWN_GAME' && 
         endResult.winner?.slotIndex?.toString() === this.playerId;
       
-      audioSystem.playSound(isWinner ? SOUNDS.VICTORY : SOUNDS.DEFEAT);
+      audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
 
       // Show modal
       this.modalState.update(s => ({
@@ -280,7 +285,7 @@ export class GameController {
       console.log('📡 End turn response:', response.status, response.ok);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
         console.error('❌ End turn failed:', errorData);
         throw new Error(errorData.error || 'Failed to end turn');
       }
@@ -339,12 +344,12 @@ export class GameController {
       console.log('Resign response:', response.status, response.ok);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
         console.error('❌ Resign failed:', errorData);
         throw new Error(errorData.error || 'Failed to resign from game');
       }
 
-      const result = await response.json();
+      const result = await response.json() as { gameEnded?: boolean };
       console.log('✅ Resigned successfully:', result);
 
       // If game ended, show summary or redirect

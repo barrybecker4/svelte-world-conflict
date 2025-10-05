@@ -6,6 +6,9 @@ import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/va
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
 import { Regions } from '$lib/game/entities/Regions';
 
+// Re-export types for convenience
+export type { Player, Region, GameStateData };
+
 export class GameState {
     public state: GameStateData;
 

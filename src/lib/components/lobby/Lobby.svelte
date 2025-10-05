@@ -10,9 +10,9 @@
 
   let gamesManager: OpenGamesManager;
   let shouldRender = true;
-  let games = [];
+  let games: any[] = [];
   let loading = true;
-  let error = null;
+  let error: string | null = null;
   let wsConnected = false;
 
   onMount(async () => {

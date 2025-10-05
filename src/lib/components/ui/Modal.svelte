@@ -17,7 +17,7 @@
     dispatch('close');
   }
 
-  function handleKeydown(event) {
+  function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       handleClose();
     }

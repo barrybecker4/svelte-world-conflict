@@ -32,8 +32,8 @@
     const response = await createNewGame(gameConfig, humanPlayer);
 
     if (response.ok) {
-      const result = await response.json();
-      const player = result.player || { index: 0, name: humanPlayer.name };
+      const result = await response.json() as { gameId: string; player?: { slotIndex: number; name: string } };
+      const player = result.player || { slotIndex: 0, name: humanPlayer.name };
 
       await audioSystem.playSound(SOUNDS.GAME_CREATED);
 
@@ -47,7 +47,7 @@
       await goto(`/game/${result.gameId}`);
 
     } else {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({})) as { error?: string };
       throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
   }

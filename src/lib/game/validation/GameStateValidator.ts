@@ -1,4 +1,4 @@
-import type { ValidationResult } from '$lib/game/types/validation';
+import type { ValidationResult } from './validation';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
@@ -60,7 +60,7 @@ export class GameStateValidator {
         // Validate faith consistency
         gameData.players.forEach(player => {
             if (!(player.slotIndex in gameData.faithByPlayer)) {
-                warnings.push(`Player ${player.index} has no faith entry`);
+                warnings.push(`Player ${player.slotIndex} has no faith entry`);
             } else if (gameData.faithByPlayer[player.slotIndex] < 0) {
                 errors.push(`Player ${player.slotIndex} has negative faith`);
             }

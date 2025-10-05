@@ -86,12 +86,6 @@
     margin-bottom: 24px;
   }
 
-  h3 {
-    font-size: 20px;
-    color: #f8fafc;
-    margin-bottom: 8px;
-  }
-
   .setting {
     display: flex;
     justify-content: space-between;

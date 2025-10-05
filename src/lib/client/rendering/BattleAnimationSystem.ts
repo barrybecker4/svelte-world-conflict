@@ -1,7 +1,8 @@
 import type { AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
-import { SOUNDS } from '$lib/client/audio/sounds';
+import { SOUNDS, type SoundType } from '$lib/client/audio/sounds';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import type { Region } from '$lib/game/entities/gameTypes';
 
 export interface FloatingTextEvent {
   regionIdx: number;
@@ -37,7 +38,7 @@ export class BattleAnimationSystem {
   private mapContainer: HTMLElement | null = null;
 
   constructor(mapContainer?: HTMLElement) {
-    this.mapContainer = mapContainer;
+    this.mapContainer = mapContainer ?? null;
   }
 
   setMapContainer(container: HTMLElement) {
@@ -70,10 +71,10 @@ export class BattleAnimationSystem {
     }
   }
 
-  showFloatingText(textEvent: FloatingTextEvent, regions: Regions) {
+  showFloatingText(textEvent: FloatingTextEvent, regions: Region[]) {
     if (!this.isValid(textEvent, regions)) return;
 
-    const region = regions.find(r => r.index === textEvent.regionIdx);
+    const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
     if (!region) {
       console.warn('Region not found for floating text:', textEvent.regionIdx);
       return;
@@ -124,10 +125,12 @@ export class BattleAnimationSystem {
   }
 
   // Calculate the actual screen position accounting for SVG scaling
-  private getScreenCoords(region: Region, regions: Regions): {x: number, y: number} {
+  private getScreenCoords(region: Region, regions: Region[]): {x: number, y: number} {
     // Get the bounding rectangle of the map container and SVG
+    if (!this.mapContainer) throw new Error('Map container not set');
     const containerRect = this.mapContainer.getBoundingClientRect();
     const svgElement = this.mapContainer.querySelector('svg');
+    if (!svgElement) throw new Error('SVG element not found');
     const svgRect = svgElement.getBoundingClientRect();
 
     const svgViewBox = svgElement.viewBox.baseVal;
@@ -141,13 +144,13 @@ export class BattleAnimationSystem {
     return { x: screenX, y: screenY };
   }
 
-  private isValid(textEvent: FloatingTextEvent, regions: Regions) {
+  private isValid(textEvent: FloatingTextEvent, regions: Region[]) {
     if (!this.mapContainer) {
       console.warn('No map container for floating text');
       return false;
     }
 
-    const region = regions.find(r => r.index === textEvent.regionIdx);
+    const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
     if (!region) {
       console.warn('Region not found for floating text:', textEvent.regionIdx);
       return false;

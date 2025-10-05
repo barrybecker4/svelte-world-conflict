@@ -99,13 +99,13 @@ export class Regions {
 
         let closest = this.regions[0];
         let minDistance = closest.getDistanceTo(new Region({
-            index: -1, name: 'temp', neighbors: [], x, y
+            index: -1, name: 'temp', neighbors: [], x, y, points: undefined
         }));
 
         for (let i = 1; i < this.regions.length; i++) {
             const region = this.regions[i];
             const distance = region.getDistanceTo(new Region({
-                index: -1, name: 'temp', neighbors: [], x, y
+                index: -1, name: 'temp', neighbors: [], x, y, points: undefined
             }));
             if (distance < minDistance) {
                 minDistance = distance;

@@ -1,6 +1,7 @@
 import { BattleAnimationSystem } from './BattleAnimationSystem';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
+import type { GameStateData, Region } from '$lib/game/entities/gameTypes';
 
 export interface BattleMove {
   sourceRegionIndex: number;
@@ -110,7 +111,7 @@ export class BattleManager {
     });
 
     try {
-      audioSystem.playSound(SOUNDS.MOVE);
+      audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
       const result = await this.sendMoveToServer(move, playerId);
       console.log('✅ BattleManager: Peaceful move completed successfully');
       return result;
@@ -182,11 +183,11 @@ export class BattleManager {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
       throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { gameState: GameStateData; attackSequence: any[] };
     return {
       success: true,
       gameState: result.gameState,
@@ -205,7 +206,7 @@ export class BattleManager {
       this.clearBattleTimeout(regionIndex);
     }, 3000);
 
-    this.battleTimeouts.set(regionIndex, timeoutId);
+    this.battleTimeouts.set(regionIndex, timeoutId as unknown as number);
   }
 
   /**

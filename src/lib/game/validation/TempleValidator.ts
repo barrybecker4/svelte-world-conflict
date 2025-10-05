@@ -1,4 +1,4 @@
-import type { MoveValidationResult } from '$lib/game/types/validation';
+import type { MoveValidationResult } from './validation';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 

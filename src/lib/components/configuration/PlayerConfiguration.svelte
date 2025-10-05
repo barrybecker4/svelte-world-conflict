@@ -3,8 +3,8 @@
 
   const dispatch = createEventDispatcher();
 
-  export let playerSlot;
-  export let index;
+  export let playerSlot: any;
+  export let index: number;
   export let playerName: string = '';
 
   const slotTypes = ['Off', 'Set', 'Open', 'AI'];
@@ -14,8 +14,8 @@
   
   $: isSetSlot = playerSlot.type === 'Set';
 
-  function handleSlotTypeChange(event) {
-    const newType = event.target.value;
+  function handleSlotTypeChange(event: Event) {
+    const newType = (event.target as HTMLSelectElement).value;
 
     const updatedSlot = {
       ...playerSlot,
@@ -27,10 +27,10 @@
     dispatch('slotUpdated', { index, slot: updatedSlot });
   }
 
-  function handleCustomNameChange(event) {
+  function handleCustomNameChange(event: Event) {
     const updatedSlot = {
       ...playerSlot,
-      customName: event.target.value
+      customName: (event.target as HTMLInputElement).value
     };
 
     dispatch('slotUpdated', { index, slot: updatedSlot });

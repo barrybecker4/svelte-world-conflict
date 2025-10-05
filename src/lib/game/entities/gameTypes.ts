@@ -2,6 +2,9 @@ import type { PlayerSlot } from './PlayerSlot';
 import type { Region } from '$lib/game/entities/Region';
 import type { Regions } from '$lib/game/entities/Regions';
 
+// Re-export types that are used throughout the application
+export type { Region, Regions, PlayerSlot };
+
 export interface GameSettings {
     mapSize: 'Small' | 'Medium' | 'Large';
     moveTimeLimit: number;
@@ -22,6 +25,7 @@ export interface Soldier {
 export interface Temple {
     regionIndex: number;
     level: number;
+    upgradeIndex?: number;
 }
 
 export interface FloatingText {
@@ -35,7 +39,7 @@ export interface FloatingText {
 export interface GameStateData {
     id: number;
     gameId: string;
-    turnNumber: number;F
+    turnNumber: number;
     currentPlayerSlot: number;
     movesRemaining: number;
 
@@ -49,6 +53,8 @@ export interface GameStateData {
 
     floatingText?: FloatingText[];
     conqueredRegions?: number[];
+    battlesInProgress?: number[];
+    endResult?: Player | 'DRAWN_GAME' | null;
 
     moveTimeLimit?: number;
     maxTurns?: number;

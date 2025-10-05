@@ -7,11 +7,11 @@
   export let size = 'md'; // sm, md, lg
   export let disabled = false;
   export let loading = false;
-  export let type = 'button';
+  export let type: 'button' | 'submit' | 'reset' = 'button';
   export let title = '';
   export let uppercase = false;
 
-  function handleClick(event) {
+  function handleClick(event: MouseEvent) {
     if (!disabled && !loading) {
       dispatch('click', event);
     }

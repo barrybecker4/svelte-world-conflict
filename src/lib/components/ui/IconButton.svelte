@@ -8,7 +8,7 @@
   export let size = 'md'; // sm, md, lg
   export let variant = 'default'; // default, primary, danger
 
-  function handleClick(event) {
+  function handleClick(event: MouseEvent) {
     if (!disabled) {
       dispatch('click', event);
     }

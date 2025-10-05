@@ -17,7 +17,7 @@
     });
   }
 
-  function handleKeydown(event) {
+  function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       handleProceed();
     }

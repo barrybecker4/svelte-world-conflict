@@ -54,7 +54,7 @@
 </script>
 
 {#if $loading}
-  <LoadingState message="Loading game..." />
+  <LoadingState loading={true} loadingText="Loading game..." />
 {:else if $error}
   <div class="error-container">
     <h2>Error Loading Game</h2>
@@ -79,15 +79,13 @@
     <div class="map-wrapper" bind:this={mapContainer}>
       <GameMap
         regions={$regions}
-        players={$players}
         currentPlayer={$currentPlayer}
-        moveMode={$moveState.mode}
         {selectedRegion}
         gameState={$gameState}
-        showTurnHighlights={$shouldHighlightRegions}
+        showTurnHighlights={$shouldHighlightRegions ?? true}
         onRegionClick={(region) => {
           console.log('🗺️ GameMap click received in component:', { region, isMyTurn: $isMyTurn });
-          controller.handleRegionClick(region, $isMyTurn);
+          controller.handleRegionClick(region, $isMyTurn ?? false);
         }}
       />
     </div>
@@ -102,7 +100,7 @@
       <SoldierSelectionModal
         maxSoldiers={$modalState.soldierSelectionData.maxSoldiers}
         currentSelection={$modalState.soldierSelectionData.currentSelection}
-        onConfirm={(count) => controller.handleSoldierCountChange(count) || controller.confirmSoldierSelection()}
+        onConfirm={(count) => { controller.handleSoldierCountChange(count); controller.confirmSoldierSelection(); }}
         onCancel={() => controller.cancelSoldierSelection()}
       />
     {/if}
