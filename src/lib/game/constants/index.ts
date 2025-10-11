@@ -1,2 +1,2 @@
 export * from './gameConstants';
-export * from './upgradeDefinitions';
+export * from './templeUpgradeDefinitions';

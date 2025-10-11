@@ -19,6 +19,7 @@ export class MoveSystem {
       mode: 'IDLE',
       sourceRegion: null,
       targetRegion: null,
+      buildRegion: null,
       selectedSoldierCount: 0,
       maxSoldiers: 0,
       availableMoves: 3,
@@ -133,6 +134,7 @@ export class MoveSystem {
       mode: 'SELECT_TARGET',
       sourceRegion: regionIndex,
       targetRegion: null,
+      buildRegion: null,
       maxSoldiers: soldiers.length, // Can move all soldiers
       selectedSoldierCount: Math.min(soldiers.length, 1), // Default to 1 soldier
       isMoving: false,
@@ -140,6 +142,41 @@ export class MoveSystem {
     });
 
     console.log('✅ Source region selected, transitioning to SELECT_TARGET');
+  }
+
+  /**
+   * Handle temple click - enters BUILD mode
+   */
+  handleTempleClick(regionIndex: number): void {
+    console.log(`🏛️ MoveSystem.handleTempleClick: ${regionIndex}`);
+
+    const currentPlayerSlot = this.gameState.currentPlayerSlot;
+    const owner = this.gameState.ownersByRegion[regionIndex];
+
+    // Validate ownership
+    if (owner !== currentPlayerSlot) {
+      console.log('❌ Cannot select temple - not owned by current player');
+      return;
+    }
+
+    // Check if this region has a temple
+    const temple = this.gameState.templesByRegion[regionIndex];
+    if (!temple) {
+      console.log('❌ No temple at this region');
+      return;
+    }
+
+    console.log('🏛️ Temple click confirmed - entering BUILD mode');
+    this.updateState({
+      mode: 'BUILD',
+      sourceRegion: null,
+      targetRegion: null,
+      buildRegion: regionIndex,
+      selectedSoldierCount: 0,
+      maxSoldiers: 0,
+      isMoving: false,
+      availableMoves: this.state.availableMoves
+    });
   }
 
   /**
@@ -232,6 +269,7 @@ export class MoveSystem {
         mode: 'IDLE',
         sourceRegion: null,
         targetRegion: null,
+        buildRegion: null,
         selectedSoldierCount: 0,
         maxSoldiers: 0,
         availableMoves: Math.max(0, this.state.availableMoves - 1),
@@ -270,6 +308,7 @@ export class MoveSystem {
       mode: 'IDLE',
       sourceRegion: null,
       targetRegion: null,
+      buildRegion: null,
       selectedSoldierCount: 0,
       maxSoldiers: 0,
       isMoving: false,
@@ -287,6 +326,7 @@ export class MoveSystem {
       mode: 'IDLE',
       sourceRegion: null,
       targetRegion: null,
+      buildRegion: null,
       selectedSoldierCount: 0,
       maxSoldiers: 0,
       availableMoves: 3,
@@ -304,6 +344,7 @@ export class MoveSystem {
       mode: 'BUILD',
       sourceRegion: null,
       targetRegion: null,
+      buildRegion: null,
       selectedSoldierCount: 0,
       maxSoldiers: 0,
       isMoving: false,

@@ -9,6 +9,7 @@
   export let gameState: GameStateData | null = null;
   export let currentPlayer: Player | null = null;
   export let onRegionClick: (region: Region) => void = () => {};
+  export let onTempleClick: (regionIndex: number) => void = () => {};
   export let selectedRegion: Region | null = null;
   export let validTargetRegions: number[] = [];
   export let isPreviewMode = false;
@@ -102,6 +103,12 @@
       onRegionClick(region);
     }
   }
+
+  function handleTempleClick(regionIndex: number): void {
+    if (!effectivePreviewMode) {
+      onTempleClick(regionIndex);
+    }
+  }
 </script>
 
 <div class="game-map" bind:this={mapContainerElement}>
@@ -124,6 +131,7 @@
         borderColor={getBorderColor(region)}
         borderWidth={getBorderWidth(region)}
         onRegionClick={handleRegionClick}
+        onTempleClick={handleTempleClick}
       />
     {/each}
   </svg>

@@ -63,6 +63,7 @@ export interface GameStateData {
     battlesInProgress?: number[];
     endResult?: Player | 'DRAWN_GAME' | null;
     pendingMoves?: PendingMove[];
+    numBoughtSoldiers?: number; // Track soldiers bought this turn for pricing
 
     moveTimeLimit?: number;
     maxTurns?: number;

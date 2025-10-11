@@ -2,6 +2,7 @@ import { Command, type CommandValidationResult } from './Command';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { GameState, Player } from '$lib/game/state/GameState';
+import { Temple } from '$lib/game/entities/Temple';
 
 export class EndTurnCommand extends Command {
     private income: number = 0;
@@ -105,6 +106,7 @@ export class EndTurnCommand extends Command {
      * Faith income rules:
      * 1. One faith for each region owned
      * 2. One faith for each soldier stationed at owned temples
+     * 3. Water temples provide percentage bonus to total income
      */
     private calculateIncome(state: GameState): number {
         const regionCount = state.regionCount(this.player);
@@ -130,8 +132,26 @@ export class EndTurnCommand extends Command {
             }
         }
 
-        const totalIncome = regionCount + soldiersAtTemples;
-        console.log(`Player ${this.player.slotIndex} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${totalIncome} faith`);
+        let baseIncome = regionCount + soldiersAtTemples;
+        
+        // Apply Water temple percentage bonuses
+        let waterBonusPercent = 0;
+        for (const regionIndex in state.templesByRegion) {
+            const regionIdx = parseInt(regionIndex);
+            const templeData = state.templesByRegion[regionIdx];
+            
+            if (templeData && state.isOwnedBy(regionIdx, this.player)) {
+                const temple = Temple.deserialize(templeData);
+                const incomeBonus = temple.getIncomeBonus();
+                if (incomeBonus > 0) {
+                    waterBonusPercent += incomeBonus;
+                    console.log(`Player ${this.player.slotIndex} has Water temple at region ${regionIdx} with ${incomeBonus}% bonus`);
+                }
+            }
+        }
+        
+        const totalIncome = Math.floor(baseIncome * (1 + waterBonusPercent / 100));
+        console.log(`Player ${this.player.slotIndex} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${baseIncome} base faith, +${waterBonusPercent}% from Water temples = ${totalIncome} total faith`);
 
         return totalIncome;
     }

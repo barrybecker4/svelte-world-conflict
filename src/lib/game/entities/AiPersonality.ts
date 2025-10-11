@@ -2,7 +2,7 @@
  * AI Personality class for World Conflict
  * Defines how AI players behave in the game
  */
-import { UPGRADES } from '$lib/game/constants/upgradeDefinitions';
+import { TEMPLE_UPGRADES } from '$lib/game/constants/templeUpgradeDefinitions';
 import { type AiLevel } from './aiPersonalities';
 
 export interface AiPersonalityData {

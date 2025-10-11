@@ -1,17 +1,50 @@
 <script lang="ts">
+  import { TEMPLE_UPGRADES_BY_NAME, DEFAULT_TEMPLE_COLORS } from '$lib/game/constants/templeUpgradeDefinitions';
+
   export let x: number;
   export let y: number;
   export let upgradeLevel: number = 0;
+  export let upgradeType: string | undefined = undefined; // WATER, FIRE, AIR, EARTH
   export let isPlayerOwned: boolean = false;
   export let regionIndex: number;
+  export let onTempleClick: (regionIndex: number) => void = () => {};
 
-  // Calculate colors based on ownership
-  $: baseColor = isPlayerOwned ? "#f59e0b" : "#fbbf24";
-  $: darkColor = isPlayerOwned ? "#d97706" : "#f59e0b";
-  $: lightColor = isPlayerOwned ? "#fbbf24" : "#fde047";
+  // Get color scheme from upgrade definitions
+  $: colorScheme = upgradeType && TEMPLE_UPGRADES_BY_NAME[upgradeType]?.templeColors
+    ? TEMPLE_UPGRADES_BY_NAME[upgradeType].templeColors!
+    : DEFAULT_TEMPLE_COLORS;
+    
+  $: baseColor = colorScheme.base;
+  $: darkColor = colorScheme.dark;
+  $: lightColor = colorScheme.light;
+  $: discColor = colorScheme.disc;
+
+  function handleClick(event: MouseEvent) {
+    event.stopPropagation();
+    onTempleClick(regionIndex);
+  }
+
+  function handleKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.stopPropagation();
+      onTempleClick(regionIndex);
+    }
+  }
 </script>
 
-<g class="temple-group" role="img" aria-label="Temple in region {regionIndex + 1}, level {upgradeLevel}">
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<!-- svelte-ignore a11y-noninteractive-tabindex -->
+<g 
+  class="temple-group" 
+  class:clickable={isPlayerOwned}
+  role={isPlayerOwned ? "button" : "img"}
+  tabindex={isPlayerOwned ? 0 : -1}
+  aria-label="Temple in region {regionIndex + 1}, level {upgradeLevel}"
+  on:click={handleClick}
+  on:keydown={handleKeyDown}
+>
   <!-- Temple shadow (for 3D effect) -->
   <ellipse
     cx={x + 1}
@@ -56,15 +89,16 @@
   />
 
   <!-- Upgrade level indicators (stacked disks) -->
-  {#if upgradeLevel > 0}
+  <!-- Show first disc when temple has an upgrade (level 0+) -->
+  {#if upgradeType}
     <!-- First upgrade disk -->
     <ellipse
       cx={x}
       cy={y - 7}
       rx="2.5"
       ry="1"
-      fill="#10b981"
-      stroke="#047857"
+      fill={discColor}
+      stroke={darkColor}
       stroke-width="0.5"
     />
     <!-- Highlight on first disk -->
@@ -73,19 +107,20 @@
       cy={y - 7.5}
       rx="1.5"
       ry="0.5"
-      fill="#34d399"
+      fill={lightColor}
       opacity="0.8"
     />
 
-    {#if upgradeLevel > 1}
+    <!-- Show second disc when temple is upgraded to level 1 (Cathedral) -->
+    {#if upgradeLevel >= 1}
       <!-- Second upgrade disk (smaller, on top) -->
       <ellipse
         cx={x}
         cy={y - 9}
         rx="2"
         ry="0.8"
-        fill="#8b5cf6"
-        stroke="#7c3aed"
+        fill={discColor}
+        stroke={darkColor}
         stroke-width="0.5"
       />
       <!-- Highlight on second disk -->
@@ -94,7 +129,7 @@
         cy={y - 9.3}
         rx="1.2"
         ry="0.4"
-        fill="#a78bfa"
+        fill={lightColor}
         opacity="0.8"
       />
     {/if}
@@ -116,17 +151,22 @@
     transition: all 0.2s ease;
   }
 
-  .temple-group:hover {
+  .temple-group.clickable {
+    cursor: pointer;
+  }
+
+  .temple-group.clickable:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.2) drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+  }
+
+  .temple-group:not(.clickable):hover {
     transform: translateY(-1px);
     filter: brightness(1.1);
   }
 
-  /* Make temple upgrades glow slightly */
-  .temple-group ellipse[fill="#10b981"] {
-    filter: drop-shadow(0 0 2px #10b981);
-  }
-
-  .temple-group ellipse[fill="#8b5cf6"] {
-    filter: drop-shadow(0 0 2px #8b5cf6);
+  /* Make upgraded temple discs glow slightly */
+  .temple-group:not(:has(.no-upgrade)) ellipse:not([fill*="#000"]) {
+    filter: drop-shadow(0 0 2px currentColor);
   }
 </style>

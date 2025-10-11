@@ -1,5 +1,5 @@
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { UPGRADES, type UpgradeDefinition } from '$lib/game/constants/upgradeDefinitions';
+import { TEMPLE_UPGRADES, type TempleUpgradeDefinition } from '$lib/game/constants/templeUpgradeDefinitions';
 
 const TEMPLE_LEVELS = ['Basic', 'Minor', 'Major', 'Grand'] as const;
 const MAX_TEMPLE_LEVEL = GAME_CONSTANTS.MAX_TEMPLE_LEVEL;
@@ -15,7 +15,7 @@ export class Temple {
         this.upgradeIndex = upgradeIndex;
     }
 
-    getCurrentUpgrade(): UpgradeDefinition | null {
+    getCurrentUpgrade(): TempleUpgradeDefinition | null {
         if (this.upgradeIndex === undefined) {
             return null;
         }
@@ -49,18 +49,18 @@ export class Temple {
         };
     }
 
-    getUpgradeFormattedName(upgrade: UpgradeDefinition, level: number): string {
+    getUpgradeFormattedName(upgrade: TempleUpgradeDefinition, level: number): string {
         const templateLevel = TEMPLE_LEVELS[level] || "Unknown";
         return upgrade.displayName.replace('{level}', templateLevel);
     }
 
-    getUpgradeFormattedDescription(upgrade: UpgradeDefinition, level: number): string {
+    getUpgradeFormattedDescription(upgrade: TempleUpgradeDefinition, level: number): string {
         const value = upgrade.level[level];
         return upgrade.description.replace('{value}', value.toString());
     }
 
-    getUpgradeByIndex(index: number): UpgradeDefinition | null {
-        return UPGRADES[index] || null;
+    getUpgradeByIndex(index: number): TempleUpgradeDefinition | null {
+        return TEMPLE_UPGRADES[index] || null;
     }
 
     getUpgradeCost(): number {
@@ -97,7 +97,7 @@ export class Temple {
 
     // Calculate income bonus from this temple
     getIncomeBonus(): number {
-        if (this.hasUpgrade('INCOME')) {
+        if (this.hasUpgrade('WATER')) {
             const upgrade = this.getCurrentUpgrade();
             return upgrade?.level[this.level] || 0;
         }
@@ -106,7 +106,16 @@ export class Temple {
 
     // Calculate defense bonus from this temple
     getDefenseBonus(): number {
-        if (this.hasUpgrade('DEFENSE')) {
+        if (this.hasUpgrade('EARTH')) {
+            const upgrade = this.getCurrentUpgrade();
+            return upgrade?.level[this.level] || 0;
+        }
+        return 0;
+    }
+
+    // Calculate attack bonus from this temple
+    getAttackBonus(): number {
+        if (this.hasUpgrade('FIRE')) {
             const upgrade = this.getCurrentUpgrade();
             return upgrade?.level[this.level] || 0;
         }

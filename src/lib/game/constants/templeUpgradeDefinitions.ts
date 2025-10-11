@@ -1,4 +1,11 @@
-export interface UpgradeDefinition {
+export interface TempleColorScheme {
+    base: string;
+    dark: string;
+    light: string;
+    disc: string;
+}
+
+export interface TempleUpgradeDefinition {
     index: number;
     name: string;
     displayName: string; // For UI display
@@ -6,6 +13,7 @@ export interface UpgradeDefinition {
     cost: number[];
     level: number[];
     bgColor: string;
+    templeColors?: TempleColorScheme; // Visual colors for the temple on map
     // Behavioral flags
     isSoldierUpgrade?: boolean;
     isRebuildUpgrade?: boolean;
@@ -14,11 +22,11 @@ export interface UpgradeDefinition {
 
 const SOLDIER_COSTS = calcSoldierCosts(8, 16);
 
-function calcSoldierCosts(initial, n) {
-    return Array(n).fill().map((x, i) => initial + i)
+function calcSoldierCosts(initial: number, n: number): number[] {
+    return Array(n).fill(0).map((x, i) => initial + i);
 }
 
-export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
+export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition> = {
     NONE: {
         index: 0,
         name: 'NONE',
@@ -26,7 +34,13 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         description: 'No upgrade',
         cost: [0],
         level: [0],
-        bgColor: '#ccc'
+        bgColor: '#ccc',
+        templeColors: {
+            base: '#9ca3af',    // Gray
+            dark: '#6b7280',
+            light: '#d1d5db',
+            disc: '#9ca3af'
+        }
     },
     SOLDIER: {
         index: 1,
@@ -42,10 +56,16 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         index: 2,
         name: 'WATER',
         displayName: '{level} of Water',
-        description: 'Income: {value} extra faith per turn.',
+        description: 'Income: {value}% more each turn.',
         cost: [15, 25],
         level: [20, 40],
-        bgColor: '#8df'
+        bgColor: '#8df',
+        templeColors: {
+            base: '#3b82f6',    // Blue
+            dark: '#1e40af',
+            light: '#60a5fa',
+            disc: '#3b82f6'
+        }
     },
     FIRE: {
         index: 3,
@@ -54,7 +74,13 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         description: 'Attack: Always kill {value} defender(s).',
         cost: [20, 30],
         level: [1, 2],
-        bgColor: '#f88'
+        bgColor: '#f88',
+        templeColors: {
+            base: '#ef4444',    // Red
+            dark: '#b91c1c',
+            light: '#f87171',
+            disc: '#ef4444'
+        }
     },
     AIR: {
         index: 4,
@@ -64,7 +90,13 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         cost: [25, 35],
         level: [1, 2],
         bgColor: '#ffa',
-        grantsImmediateEffect: true
+        grantsImmediateEffect: true,
+        templeColors: {
+            base: '#fde047',    // Light yellow
+            dark: '#facc15',
+            light: '#fef08a',
+            disc: '#fde047'
+        }
     },
     EARTH: {
         index: 5,
@@ -73,7 +105,13 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         description: 'Defense: Always kill {value} invader(s).',
         cost: [30, 45],
         level: [1, 2],
-        bgColor: '#696'
+        bgColor: '#696',
+        templeColors: {
+            base: '#22c55e',    // Dark green
+            dark: '#15803d',
+            light: '#4ade80',
+            disc: '#22c55e'
+        }
     },
     REBUILD: {
         index: 6,
@@ -88,7 +126,11 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
 };
 
 // Export as array for index-based access
-export const UPGRADES: UpgradeDefinition[] = Object.values(UPGRADE_DEFINITIONS);
+export const TEMPLE_UPGRADES: TempleUpgradeDefinition[] = Object.values(TEMPLE_UPGRADE_DEFINITIONS);
 
 // Export lookup maps for convenience
-export const UPGRADES_BY_NAME = UPGRADE_DEFINITIONS;
+export const TEMPLE_UPGRADES_BY_NAME = TEMPLE_UPGRADE_DEFINITIONS;
+
+// Default color scheme for temples without upgrades
+export const DEFAULT_TEMPLE_COLORS: TempleColorScheme = TEMPLE_UPGRADE_DEFINITIONS.NONE.templeColors!;
+

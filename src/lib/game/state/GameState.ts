@@ -1,6 +1,6 @@
 import type { Player, Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
-import { UPGRADES, UPGRADES_BY_NAME } from '$lib/game/constants/upgradeDefinitions';
+import { TEMPLE_UPGRADES, TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
 import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/validation';
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
@@ -327,8 +327,7 @@ export class GameState {
             if (this.state.ownersByRegion[regionIdx] === playerSlotIndex && temple) {
                 // Check if temple has the upgrade
                 if (temple.upgradeIndex !== undefined) {
-                    const { UPGRADES } = require('$lib/game/constants/upgradeDefinitions');
-                    const upgradeKeys = Object.keys(UPGRADES);
+                    const upgradeKeys = Object.keys(TEMPLE_UPGRADES);
                     const upgrade = upgradeKeys[temple.upgradeIndex];
                     
                     if (upgrade === targetUpgradeName && temple.level) {

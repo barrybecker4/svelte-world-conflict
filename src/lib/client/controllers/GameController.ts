@@ -6,6 +6,7 @@ import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
+import type { GameState } from '$lib/game/state/GameState';
 
 interface ModalState {
   showSoldierSelection: boolean;
@@ -52,6 +53,7 @@ export class GameController {
       mode: 'IDLE',
       sourceRegion: null,
       targetRegion: null,
+      buildRegion: null,
       selectedSoldierCount: 0,
       maxSoldiers: 0,
       availableMoves: 3,
@@ -219,6 +221,31 @@ export class GameController {
   }
 
   /**
+   * Handle temple click from map
+   */
+  handleTempleClick(regionIndex: number, isMyTurn: boolean): void {
+    console.log('🏛️ GameController.handleTempleClick:', { 
+      regionIndex, 
+      isMyTurn,
+      moveSystemExists: !!this.gameStore.getMoveSystem()
+    });
+
+    if (!isMyTurn) {
+      console.log('❌ Not my turn, ignoring temple click');
+      return;
+    }
+
+    const moveSystem = this.gameStore.getMoveSystem();
+    if (!moveSystem) {
+      console.error('❌ Move system not initialized!');
+      return;
+    }
+
+    console.log('✅ Delegating temple click to move system...');
+    moveSystem.handleTempleClick(regionIndex);
+  }
+
+  /**
    * Handle soldier count change
    */
   handleSoldierCountChange(count: number): void {
@@ -266,6 +293,70 @@ export class GameController {
   }
 
   /**
+   * Close temple upgrade panel and return to normal mode
+   */
+  closeTempleUpgradePanel(): void {
+    console.log('🏛️ GameController.closeTempleUpgradePanel');
+    const moveSystem = this.gameStore.getMoveSystem();
+    moveSystem?.processAction({ type: 'CANCEL' });
+  }
+
+  /**
+   * Purchase an upgrade for a temple
+   */
+  async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
+    console.log(`🏛️ GameController.purchaseUpgrade: region ${regionIndex}, upgrade ${upgradeIndex}`);
+    
+    try {
+      const response = await fetch(`/api/game/${this.gameId}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: this.playerId,
+          moveType: 'BUILD',
+          regionIndex,
+          upgradeIndex
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
+        console.error('❌ Purchase upgrade failed:', errorData);
+        alert('Failed to purchase upgrade: ' + (errorData.error || 'Unknown error'));
+        return; // Don't throw, just return to keep panel open
+      }
+
+      const data = await response.json() as { gameState?: GameStateData };
+      console.log('✅ Upgrade purchased successfully', data);
+      
+      // Update game state
+      if (data.gameState) {
+        this.gameStore.handleGameStateUpdate(data.gameState);
+      }
+
+      // Check if player can still afford any upgrades
+      // Only auto-close if they literally cannot afford ANY option (including rebuild which is free)
+      const currentFaith = data.gameState?.faithByPlayer?.[data.gameState?.currentPlayerSlot] || 0;
+      const numBoughtSoldiers = data.gameState?.numBoughtSoldiers || 0;
+      const minSoldierCost = 8 + numBoughtSoldiers;
+      
+      // Minimum affordable option is a soldier (8+bought) or rebuild (0)
+      // So only close if they can't afford a soldier AND the temple has no upgrade to rebuild
+      const canAffordSoldier = currentFaith >= minSoldierCost;
+      
+      if (!canAffordSoldier && currentFaith < 8) {
+        // Can't even afford the base soldier cost - close only if they have < 8 faith total
+        console.log('💰 Not enough faith for any upgrades (need at least 8), closing panel');
+        this.closeTempleUpgradePanel();
+      }
+      
+    } catch (error) {
+      console.error('❌ Purchase upgrade error:', error);
+      alert('Error purchasing upgrade: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  /**
    * End turn
    */
   async endTurn(): Promise<void> {
@@ -296,6 +387,7 @@ export class GameController {
         mode: 'IDLE',
         sourceRegion: null,
         targetRegion: null,
+        buildRegion: null,
         selectedSoldierCount: 0,
         maxSoldiers: 0,
         availableMoves: 3,

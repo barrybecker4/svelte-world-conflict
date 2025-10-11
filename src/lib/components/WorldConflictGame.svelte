@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
+  import TempleUpgradePanel from './TempleUpgradePanel.svelte';
   import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
   import GameInstructions from './modals/GameInstructionsModal.svelte';
@@ -46,6 +47,18 @@
     controller.checkGameEnd($gameState, $players);
   }
 
+  // Debug: Log when BUILD mode condition changes
+  $: moveMode = $moveState.mode;
+  $: buildRegion = $moveState.buildRegion;
+  $: inBuildMode = moveMode === 'BUILD' && buildRegion !== null;
+  
+  $: console.log('🏛️ WorldConflictGame: Mode changed:', {
+    moveMode,
+    buildRegion,
+    inBuildMode,
+    timestamp: Date.now()
+  });
+
   onMount(async () => {
     console.log('🎮 WorldConflictGame mounted');
     // Initialize without waiting for map container - it will be set later
@@ -77,18 +90,28 @@
   </div>
 {:else}
   <div class="game-container">
-    <!-- Game Info Panel -->
-    <GameInfoPanel
-      gameState={$gameState}
-      players={$players}
-      moveMode={$moveState.mode}
-      onEndTurn={() => {
-        console.log('🎯 End turn button clicked in component');
-        controller.endTurn();
-      }}
-      onShowInstructions={() => controller.showInstructions()}
-      onResign={() => controller.resign()}
-    />
+    <!-- Game Info Panel or Temple Upgrade Panel -->
+    {#if inBuildMode}
+      <TempleUpgradePanel
+        regionIndex={buildRegion}
+        gameState={$gameState}
+        currentPlayer={$currentPlayer}
+        onPurchase={(upgradeIndex) => controller.purchaseUpgrade(buildRegion, upgradeIndex)}
+        onDone={() => controller.closeTempleUpgradePanel()}
+      />
+    {:else}
+      <GameInfoPanel
+        gameState={$gameState}
+        players={$players}
+        moveMode={moveMode}
+        onEndTurn={() => {
+          console.log('🎯 End turn button clicked in component');
+          controller.endTurn();
+        }}
+        onShowInstructions={() => controller.showInstructions()}
+        onResign={() => controller.resign()}
+      />
+    {/if}
 
     <!-- Game Map -->
     <div class="map-wrapper" bind:this={mapContainer}>
@@ -102,6 +125,10 @@
         onRegionClick={(region) => {
           console.log('🗺️ GameMap click received in component:', { region, isMyTurn: $isMyTurn });
           controller.handleRegionClick(region, $isMyTurn ?? false);
+        }}
+        onTempleClick={(regionIndex) => {
+          console.log('🏛️ Temple click received in component:', { regionIndex, isMyTurn: $isMyTurn });
+          controller.handleTempleClick(regionIndex, $isMyTurn ?? false);
         }}
       />
     </div>

@@ -26,6 +26,9 @@ export interface MoveState {
 
   /** Whether a move is currently being executed */
   isMoving: boolean;
+
+  /** Index of the region being upgraded in BUILD mode, null if not building */
+  buildRegion: number | null;
 }
 
 /**
