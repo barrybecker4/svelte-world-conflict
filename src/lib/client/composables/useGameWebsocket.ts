@@ -1,4 +1,5 @@
 import { GameWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
+import { writable, type Writable } from 'svelte/store';
 
 /**
  * Composable for managing WebSocket connection to a game
@@ -9,6 +10,7 @@ export function useGameWebSocket(
   onGameUpdate: (gameData: any) => void
 ) {
   let wsClient: GameWebSocketClient | null = null;
+  const connected: Writable<boolean> = writable(false);
 
   /**
    * Initialize and connect to the WebSocket server
@@ -29,6 +31,11 @@ export function useGameWebSocket(
     // Create WebSocket client
     wsClient = new GameWebSocketClient();
     console.log('[WS INIT] GameWebSocketClient created');
+
+    // Sync the client's connected store with our local store
+    wsClient.connected.subscribe((isConnected) => {
+      connected.set(isConnected);
+    });
 
     // Register callbacks BEFORE connecting
     wsClient.onError((error) => {
@@ -79,10 +86,18 @@ export function useGameWebSocket(
       wsClient.disconnect();
       wsClient = null;
     }
+    connected.set(false);
   }
 
   /**
-   * Check if WebSocket is currently connected
+   * Get the reactive connected store
+   */
+  function getConnectedStore() {
+    return connected;
+  }
+
+  /**
+   * Check if WebSocket is currently connected (for backwards compatibility)
    */
   function isConnected(): boolean {
     return wsClient?.isConnected() ?? false;
@@ -91,6 +106,7 @@ export function useGameWebSocket(
   return {
     initialize,
     cleanup,
-    isConnected
+    isConnected,
+    getConnectedStore
   };
 }

@@ -460,7 +460,7 @@ export class GameController {
     return {
       modalState: this.modalState,
       moveState: this.moveState,
-      isConnected: () => this.websocket.isConnected()
+      isConnected: this.websocket.getConnectedStore()
     };
   }
 }

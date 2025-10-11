@@ -1,5 +1,6 @@
 import { MessageHandler } from './MessageHandler';
 import { buildWebSocketUrl } from '$lib/websocket-config';
+import { writable, type Writable } from 'svelte/store';
 
 /**
  * WebSocket client for World Conflict multiplayer communication
@@ -9,9 +10,11 @@ export class GameWebSocketClient {
     private gameId: string | null = null;
     private messageHandler: MessageHandler;
     private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
+    public connected: Writable<boolean>;
 
     constructor() {
         this.messageHandler = new MessageHandler();
+        this.connected = writable(false);
     }
 
     /**
@@ -46,6 +49,7 @@ export class GameWebSocketClient {
 
                     console.log('WebSocket connected');
                     this.clearConnectionTimeout();
+                    this.connected.set(true);
 
                     this.send({ type: 'subscribe', gameId });
                     this.messageHandler.triggerConnected();
@@ -71,6 +75,7 @@ export class GameWebSocketClient {
                 this.ws.onclose = (event) => {
                     console.log(`🔌 WebSocket closed: code=${event.code}, reason=${event.reason || 'none'}`);
                     this.clearConnectionTimeout();
+                    this.connected.set(false);
                     this.messageHandler.triggerDisconnected();
 
                     // If we haven't settled yet, this is an error
@@ -112,6 +117,7 @@ export class GameWebSocketClient {
     private cleanup(): void {
         this.clearConnectionTimeout();
         this.stopKeepAlive();
+        this.connected.set(false);
         if (this.ws) {
             this.ws.onopen = null;
             this.ws.onclose = null;
@@ -128,6 +134,7 @@ export class GameWebSocketClient {
     disconnect(): void {
         console.log('Disconnecting WebSocket');
         this.stopKeepAlive();
+        this.connected.set(false);
         this.cleanup();
         this.gameId = null;
         this.messageHandler.clearCallbacks();

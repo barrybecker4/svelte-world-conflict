@@ -91,7 +91,7 @@
 {:else}
   <div class="game-container">
     <!-- Game Info Panel or Temple Upgrade Panel -->
-    {#if inBuildMode}
+    {#if inBuildMode && buildRegion !== null}
       <TempleUpgradePanel
         regionIndex={buildRegion}
         gameState={$gameState}
@@ -164,7 +164,7 @@
 
     {#if import.meta.env.DEV}
       <div class="debug-info">
-        WS: {isConnected() ? 'Connected' : 'Disconnected'} | Mode: {$moveState.mode}
+        WS: {$isConnected ? 'Connected' : 'Disconnected'} | Mode: {$moveState.mode}
       </div>
     {/if}
   </div>
