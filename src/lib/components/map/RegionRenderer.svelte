@@ -1,21 +1,24 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
   import type { Region, GameStateData } from '$lib/game/entities/gameTypes';
   import Temple from './Temple.svelte';
   import Army from './Army.svelte';
   import regionUtil from './regionUtil';
+  import { TEMPLE_UPGRADES } from '$lib/game/constants/templeUpgradeDefinitions';
 
   export let region: Region;
   export let gameState: GameStateData | null = null;
   export let isValidTarget: boolean = false;
+  export let isSelected: boolean = false;
   export let isPreviewMode: boolean = false;
   export let canHighlight: boolean = false;
-  export let highlightVisible: boolean = true;
   export let isBattleInProgress: boolean = false;
   export let fillColor: string = '#8b92a0';
   export let borderColor: string = '#4a5568';
   export let borderWidth: number = 1;
+  export let innerBorderColor: string = '';
+  export let innerBorderWidth: number = 8;
   export let onRegionClick: (region: Region) => void = () => {};
+  export let onTempleClick: (regionIndex: number) => void = () => {};
 
   $: regionPath = region.points
     ? regionUtil.pointsToPath(region.points)
@@ -24,6 +27,9 @@
   $: hasTemple = gameState?.templesByRegion?.[region.index] !== undefined;
   $: soldierCount = gameState?.soldiersByRegion?.[region.index]?.length || 0;
   $: templeData = gameState?.templesByRegion?.[region.index];
+  $: upgradeType = templeData?.upgradeIndex !== undefined 
+    ? TEMPLE_UPGRADES[templeData.upgradeIndex]?.name 
+    : undefined;
 
   $: pathClass = [
     'region-path',
@@ -33,7 +39,11 @@
     isBattleInProgress && 'battle-in-progress'
   ].filter(Boolean).join(' ');
 
-  $: filterValue = isBattleInProgress ? 'url(#battle-glow)' : undefined;
+  $: effectiveFilter = isBattleInProgress 
+    ? 'url(#battleGlow)' 
+    : canHighlight 
+      ? 'url(#brightenRegion)' 
+      : undefined;
 
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -51,7 +61,7 @@
     stroke={borderColor}
     stroke-width={borderWidth}
     class={pathClass}
-    filter={filterValue}
+    filter={effectiveFilter}
     role="button"
     tabindex={isPreviewMode ? -1 : 0}
     aria-label={`Region ${region.index}`}
@@ -59,17 +69,22 @@
     on:keydown={handleKeyDown}
   />
 
-  <!-- Pulse overlay for highlighting -->
-  {#if canHighlight}
+  <!-- Inner border highlight for movable and valid target regions -->
+  {#if (isSelected || canHighlight || isValidTarget) && innerBorderColor}
+    <defs>
+      <clipPath id="clip-{region.index}">
+        <path d={regionPath} />
+      </clipPath>
+    </defs>
     <path
       d={regionPath}
-      fill="url(#pulsePattern)"
-      stroke="#facc15"
-      stroke-width="2"
-      class="pulse-overlay"
-      opacity={highlightVisible ? 0.9 : 0.2}
-      transition:fade={{ duration: 750 }}
+      fill="none"
+      stroke={innerBorderColor}
+      stroke-width={innerBorderWidth}
+      class="inner-border"
       style="pointer-events: none;"
+      clip-path="url(#clip-{region.index})"
+      stroke-linejoin="round"
     />
   {/if}
 
@@ -80,8 +95,10 @@
         x={region.x}
         y={region.y}
         upgradeLevel={templeData.level || 0}
+        upgradeType={upgradeType}
         isPlayerOwned={gameState?.ownersByRegion?.[region.index] !== undefined}
         regionIndex={region.index}
+        {onTempleClick}
       />
     {/if}
 
@@ -99,7 +116,6 @@
 <style>
   .region-path {
     cursor: pointer;
-    transition: all 0.2s ease;
   }
 
   .region-path.preview-mode {
@@ -107,8 +123,7 @@
   }
 
   .region-path:hover:not(.preview-mode) {
-    stroke-width: 2;
-    filter: brightness(1.45);
+    opacity: 0.9;
   }
 
   .region-path:focus:not(.preview-mode) {
@@ -119,34 +134,11 @@
     cursor: pointer;
   }
 
-  .region-path.can-move:hover {
-    stroke: #10b981;
-    stroke-width: 2;
-  }
-
   .region-path.valid-target {
-    stroke: #fbbf24;
-    stroke-width: 2;
-    stroke-dasharray: 4 2;
-    animation: highlight-pulse 1.5s ease-in-out infinite;
+    cursor: pointer;
   }
 
-  @keyframes highlight-pulse {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; }
-  }
-
-  .pulse-overlay {
+  .inner-border {
     pointer-events: none;
-    transition: opacity 0.75s ease-in-out;
-  }
-
-  .battle-in-progress {
-    animation: battle-pulse 1s ease-in-out infinite alternate;
-  }
-
-  @keyframes battle-pulse {
-    from { stroke-width: 2; }
-    to { stroke-width: 4; }
   }
 </style>

@@ -57,9 +57,6 @@
     if (selectedRegion && selectedRegion.index === region.index) {
       return '#facc15';
     }
-    if (canHighlightForTurn(region)) {
-      return '#facc15';
-    }
     return '#4a5568';
   }
 
@@ -67,21 +64,19 @@
     if (selectedRegion && selectedRegion.index === region.index) {
       return 3;
     }
-    if (canHighlightForTurn(region)) {
-      return 3;
-    }
     return 1;
   }
   
-  function getInnerBorderColor(region: Region): string {
+  function getInnerBorderColor(region: Region, isSelected: boolean = false): string {
     const color = getRegionColor(region);
     // Convert hex to RGB and brighten
     const r = parseInt(color.slice(1, 3), 16);
     const g = parseInt(color.slice(3, 5), 16);
     const b = parseInt(color.slice(5, 7), 16);
     
-    // Lighten by 40%
-    const lighten = (val: number) => Math.min(255, Math.round(val + (255 - val) * 0.4));
+    // Lighten by 50% for selected, 40% for others
+    const amount = isSelected ? 0.5 : 0.4;
+    const lighten = (val: number) => Math.min(255, Math.round(val + (255 - val) * amount));
     
     return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
   }
@@ -101,26 +96,7 @@
     // Don't highlight regions that were just conquered this turn
     const wasConqueredThisTurn = gameState.conqueredRegions?.includes(region.index) || false;
 
-    const result = isOwnedByCurrentPlayer && hasMovableSoldiers && !wasConqueredThisTurn;
-    
-    // Debug logging (only for first region to avoid spam)
-    if (region.index === 0 && import.meta.env.DEV) {
-      console.log('🔍 Highlight check for region 0:', {
-        showTurnHighlights,
-        effectivePreviewMode,
-        movesRemaining: gameState.movesRemaining,
-        currentPlayerSlot: currentPlayer.slotIndex,
-        gameCurrentSlot: gameState.currentPlayerSlot,
-        isMyTurn: currentPlayer.slotIndex === gameState.currentPlayerSlot,
-        isOwnedByMe: isOwnedByCurrentPlayer,
-        soldierCount,
-        hasMovableSoldiers,
-        wasConqueredThisTurn,
-        result
-      });
-    }
-
-    return result;
+    return isOwnedByCurrentPlayer && hasMovableSoldiers && !wasConqueredThisTurn;
   }
 
   function handleRegionClick(region: Region): void {
@@ -144,22 +120,27 @@
     />
 
     <g filter="url(#regionShadow)">
-      {#each regions as region (region.index)}
-        <RegionRenderer
-          {region}
-          {gameState}
-          isValidTarget={validTargetRegions.includes(region.index)}
-          isPreviewMode={effectivePreviewMode}
-          canHighlight={canHighlightForTurn(region)}
-          isBattleInProgress={battlesInProgress.has(region.index)}
-          fillColor={getRegionColor(region)}
-          borderColor={getBorderColor(region)}
-          borderWidth={getBorderWidth(region)}
-          innerBorderColor={validTargetRegions.includes(region.index) ? getInnerBorderColor(region) : ''}
-          onRegionClick={handleRegionClick}
-          onTempleClick={handleTempleClick}
-        />
-      {/each}
+    {#each regions as region (region.index)}
+      {@const isSelected = selectedRegion ? selectedRegion.index === region.index : false}
+      {@const isValidTarget = validTargetRegions.includes(region.index)}
+      {@const isMovable = canHighlightForTurn(region)}
+      <RegionRenderer
+        {region}
+        {gameState}
+        isValidTarget={isValidTarget}
+        isSelected={isSelected}
+        isPreviewMode={effectivePreviewMode}
+        canHighlight={isMovable}
+        isBattleInProgress={battlesInProgress.has(region.index)}
+        fillColor={getRegionColor(region)}
+        borderColor={getBorderColor(region)}
+        borderWidth={getBorderWidth(region)}
+        innerBorderColor={isSelected || isMovable || isValidTarget ? getInnerBorderColor(region, isSelected) : ''}
+        innerBorderWidth={isSelected ? 10 : 8}
+        onRegionClick={handleRegionClick}
+        onTempleClick={handleTempleClick}
+      />
+    {/each}
     </g>
   </svg>
 </div>

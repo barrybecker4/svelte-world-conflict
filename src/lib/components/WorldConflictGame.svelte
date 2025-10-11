@@ -41,15 +41,6 @@
   $: validTargetRegions = $moveState.sourceRegion !== null && gameStore.getMoveSystem()
     ? gameStore.getMoveSystem()?.getValidTargetRegions() ?? []
     : [];
-  
-  // Debug logging for valid targets
-  $: if (import.meta.env.DEV) {
-    console.log('🎯 Valid target regions:', {
-      sourceRegion: $moveState.sourceRegion,
-      validTargetRegions,
-      selectedRegion: selectedRegion?.index
-    });
-  }
 
   // Check for game end
   $: if ($gameState && $players.length > 0) {
@@ -113,10 +104,7 @@
         gameState={$gameState}
         players={$players}
         moveMode={moveMode}
-        onEndTurn={() => {
-          console.log('🎯 End turn button clicked in component');
-          controller.endTurn();
-        }}
+        onEndTurn={() => controller.endTurn()}
         onShowInstructions={() => controller.showInstructions()}
         onResign={() => controller.resign()}
       />

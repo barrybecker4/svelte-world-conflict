@@ -9,7 +9,7 @@
 <defs>
   <!-- Drop shadow for region borders -->
   <filter id="regionShadow" x="-50%" y="-50%" width="200%" height="200%">
-    <feDropShadow dx="4" dy="4" stdDeviation="2" flood-color="#000000" flood-opacity="0.6"/>
+    <feDropShadow dx="4" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.6"/>
   </filter>
 
   <!-- Battle progress patterns -->
