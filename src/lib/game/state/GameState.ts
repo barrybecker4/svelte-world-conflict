@@ -369,6 +369,10 @@ export class GameState {
             ...this.state,
             players: [...this.state.players],
             regions: [...this.state.regions],
+            faithByPlayer: { ...this.state.faithByPlayer },
+            ownersByRegion: { ...this.state.ownersByRegion },
+            templesByRegion: { ...this.state.templesByRegion },
+            soldiersByRegion: { ...this.state.soldiersByRegion },
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
             conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined
         };

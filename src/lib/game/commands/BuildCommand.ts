@@ -82,7 +82,8 @@ export class BuildCommand extends Command {
         const newState = this.gameState.copy() as GameState;
 
         const cost = this.calculateCost();
-        newState.faithByPlayer[this.player.slotIndex] = (newState.faithByPlayer[this.player.slotIndex] || 0) - cost;
+        const currentFaith = newState.getPlayerFaith(this.player.slotIndex);
+        newState.setPlayerFaith(this.player.slotIndex, currentFaith - cost);
 
         const temple = newState.templesByRegion[this.regionIndex];
         if (temple) {

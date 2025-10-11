@@ -100,15 +100,35 @@
   }
 
   function handleRegionClick(region: Region): void {
-    if (!effectivePreviewMode) {
-      onRegionClick(region);
+    if (effectivePreviewMode) return;
+    
+    // Don't allow clicks if no moves remaining
+    if (!gameState || gameState.movesRemaining <= 0) {
+      return;
     }
+    
+    // Don't allow clicks if not current player's turn
+    if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) {
+      return;
+    }
+    
+    onRegionClick(region);
   }
 
   function handleTempleClick(regionIndex: number): void {
-    if (!effectivePreviewMode) {
-      onTempleClick(regionIndex);
+    if (effectivePreviewMode) return;
+    
+    // Don't allow temple clicks if no moves remaining
+    if (!gameState || gameState.movesRemaining <= 0) {
+      return;
     }
+    
+    // Don't allow clicks if not current player's turn
+    if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) {
+      return;
+    }
+    
+    onTempleClick(regionIndex);
   }
 </script>
 
@@ -124,6 +144,9 @@
       {@const isSelected = selectedRegion ? selectedRegion.index === region.index : false}
       {@const isValidTarget = validTargetRegions.includes(region.index)}
       {@const isMovable = canHighlightForTurn(region)}
+      {@const hasMovesRemaining = !!(gameState && gameState.movesRemaining > 0)}
+      {@const isMyTurn = !!(currentPlayer && gameState && currentPlayer.slotIndex === gameState.currentPlayerSlot)}
+      {@const isClickable = !!(hasMovesRemaining && isMyTurn)}
       <RegionRenderer
         {region}
         {gameState}
@@ -137,6 +160,7 @@
         borderWidth={getBorderWidth(region)}
         innerBorderColor={isSelected || isMovable || isValidTarget ? getInnerBorderColor(region, isSelected) : ''}
         innerBorderWidth={isSelected ? 10 : 8}
+        isClickable={isClickable}
         onRegionClick={handleRegionClick}
         onTempleClick={handleTempleClick}
       />

@@ -30,13 +30,12 @@ export class EndTurnCommand extends Command {
         this.previousState = this.gameState;
         const newState = this.gameState.copy() as GameState;
 
-        const beforeFaith = newState.state.faithByPlayer[this.player.slotIndex] || 0;
+        const beforeFaith = newState.getPlayerFaith(this.player.slotIndex);
         const beforeSoldiers = this.getTemplesSoldiers(newState, "BEFORE");
 
         this.income = this.calculateIncome(newState);
 
-        newState.state.faithByPlayer[this.player.slotIndex] = beforeFaith + this.income;
-        newState.faithByPlayer[this.player.slotIndex] = beforeFaith + this.income;
+        newState.setPlayerFaith(this.player.slotIndex, beforeFaith + this.income);
 
         this.generateSoldiersAtTemples(newState);
 

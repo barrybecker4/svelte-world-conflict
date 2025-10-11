@@ -17,6 +17,7 @@
   export let borderWidth: number = 1;
   export let innerBorderColor: string = '';
   export let innerBorderWidth: number = 8;
+  export let isClickable: boolean = true;
   export let onRegionClick: (region: Region) => void = () => {};
   export let onTempleClick: (regionIndex: number) => void = () => {};
 
@@ -34,6 +35,7 @@
   $: pathClass = [
     'region-path',
     isPreviewMode && 'preview-mode',
+    !isClickable && 'not-clickable',
     canHighlight && 'can-move',
     isValidTarget && 'valid-target',
     isBattleInProgress && 'battle-in-progress'
@@ -118,15 +120,16 @@
     cursor: pointer;
   }
 
-  .region-path.preview-mode {
+  .region-path.preview-mode,
+  .region-path.not-clickable {
     cursor: default;
   }
 
-  .region-path:hover:not(.preview-mode) {
+  .region-path:hover:not(.preview-mode):not(.not-clickable) {
     opacity: 0.9;
   }
 
-  .region-path:focus:not(.preview-mode) {
+  .region-path:focus:not(.preview-mode):not(.not-clickable) {
     outline: none;
   }
 
