@@ -147,26 +147,15 @@
 </g>
 
 <style>
-  .temple-group {
-    transition: all 0.2s ease;
-  }
-
   .temple-group.clickable {
     cursor: pointer;
   }
 
   .temple-group.clickable:hover {
-    transform: translateY(-1px);
-    filter: brightness(1.2) drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+    filter: brightness(1.2);
   }
 
   .temple-group:not(.clickable):hover {
-    transform: translateY(-1px);
     filter: brightness(1.1);
-  }
-
-  /* Make upgraded temple discs glow slightly */
-  .temple-group:not(:has(.no-upgrade)) ellipse:not([fill*="#000"]) {
-    filter: drop-shadow(0 0 2px currentColor);
   }
 </style>

@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
-  import { getPlayerMapColor, getPlayerHighlightColor } from '$lib/game/constants/playerConfigs';
+  import { getPlayerMapColor } from '$lib/game/constants/playerConfigs';
   import SvgDefinitions from './SvgDefinitions.svelte';
   import RegionRenderer from './RegionRenderer.svelte';
 
@@ -17,10 +16,9 @@
   export let previewMode: boolean = false;
   export let mapContainer: HTMLElement | undefined = undefined;
 
-  const NEUTRAL_COLOR = '#8b92a0';
+  const NEUTRAL_COLOR = '#c2b5a3';
 
   let mapContainerElement: HTMLDivElement;
-  let highlightVisible = true;
   let battlesInProgress = new Set<number>();
 
   // Bind the internal element to the exported prop
@@ -40,15 +38,6 @@
       battlesInProgress = new Set(gameState.battlesInProgress);
     }
   }
-
-  onMount(() => {
-    // Start the highlight pulse animation
-    const interval = setInterval(() => {
-      highlightVisible = !highlightVisible;
-    }, 1500);
-
-    return () => clearInterval(interval);
-  });
 
   function getRegionColor(region: Region): string {
     if (!gameState?.ownersByRegion) {
@@ -79,23 +68,59 @@
       return 3;
     }
     if (canHighlightForTurn(region)) {
-      return 2;
+      return 3;
     }
     return 1;
+  }
+  
+  function getInnerBorderColor(region: Region): string {
+    const color = getRegionColor(region);
+    // Convert hex to RGB and brighten
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    
+    // Lighten by 40%
+    const lighten = (val: number) => Math.min(255, Math.round(val + (255 - val) * 0.4));
+    
+    return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
   }
 
   function canHighlightForTurn(region: Region): boolean {
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
+    if (!currentPlayer) return false;
 
-    const turnPlayer = currentTurnPlayer;
-    if (!turnPlayer) return false;
+    // Only highlight if it's the current player's turn (not just any player's turn)
+    if (currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
 
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === turnPlayer.slotIndex;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === currentPlayer.slotIndex;
     const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
     const hasMovableSoldiers = soldierCount > 0;
+    
+    // Don't highlight regions that were just conquered this turn
+    const wasConqueredThisTurn = gameState.conqueredRegions?.includes(region.index) || false;
 
-    return isOwnedByCurrentPlayer && hasMovableSoldiers;
+    const result = isOwnedByCurrentPlayer && hasMovableSoldiers && !wasConqueredThisTurn;
+    
+    // Debug logging (only for first region to avoid spam)
+    if (region.index === 0 && import.meta.env.DEV) {
+      console.log('🔍 Highlight check for region 0:', {
+        showTurnHighlights,
+        effectivePreviewMode,
+        movesRemaining: gameState.movesRemaining,
+        currentPlayerSlot: currentPlayer.slotIndex,
+        gameCurrentSlot: gameState.currentPlayerSlot,
+        isMyTurn: currentPlayer.slotIndex === gameState.currentPlayerSlot,
+        isOwnedByMe: isOwnedByCurrentPlayer,
+        soldierCount,
+        hasMovableSoldiers,
+        wasConqueredThisTurn,
+        result
+      });
+    }
+
+    return result;
   }
 
   function handleRegionClick(region: Region): void {
@@ -118,28 +143,30 @@
       {battlesInProgress}
     />
 
-    {#each regions as region (region.index)}
-      <RegionRenderer
-        {region}
-        {gameState}
-        isValidTarget={validTargetRegions.includes(region.index)}
-        isPreviewMode={effectivePreviewMode}
-        canHighlight={canHighlightForTurn(region)}
-        {highlightVisible}
-        isBattleInProgress={battlesInProgress.has(region.index)}
-        fillColor={getRegionColor(region)}
-        borderColor={getBorderColor(region)}
-        borderWidth={getBorderWidth(region)}
-        onRegionClick={handleRegionClick}
-        onTempleClick={handleTempleClick}
-      />
-    {/each}
+    <g filter="url(#regionShadow)">
+      {#each regions as region (region.index)}
+        <RegionRenderer
+          {region}
+          {gameState}
+          isValidTarget={validTargetRegions.includes(region.index)}
+          isPreviewMode={effectivePreviewMode}
+          canHighlight={canHighlightForTurn(region)}
+          isBattleInProgress={battlesInProgress.has(region.index)}
+          fillColor={getRegionColor(region)}
+          borderColor={getBorderColor(region)}
+          borderWidth={getBorderWidth(region)}
+          innerBorderColor={validTargetRegions.includes(region.index) ? getInnerBorderColor(region) : ''}
+          onRegionClick={handleRegionClick}
+          onTempleClick={handleTempleClick}
+        />
+      {/each}
+    </g>
   </svg>
 </div>
 
 <style>
   .game-map {
-    --map-ocean-color: #7fb2e3;
+    --map-ocean-color: #5b9fd8;
     width: 100%;
     height: 100%;
     position: relative;

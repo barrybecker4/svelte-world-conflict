@@ -12,35 +12,35 @@ export interface PlayerColorConfig {
 export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   {
     slotIndex: 0,
-    defaultName: 'Amber',
-    colorStart: '#ffcc46',  // Muted dark goldenrod (was #e6bf2d)
-    colorEnd: '#daab1a',    // Darker muted gold (was #daab1a)
-    highlightStart: '#daa520',
-    highlightEnd: '#b8860b',
+    defaultName: 'Emerald',
+    colorStart: '#4ade80',  // Bright green
+    colorEnd: '#4ade80',    // Flat color (same as start)
+    highlightStart: '#6ee7a3',
+    highlightEnd: '#6ee7a3',
   },
   {
     slotIndex: 1,
     defaultName: 'Crimson',
-    colorStart: '#bf4f42', // Muted red (was #dc2626)
-    colorEnd: '#7a2727',   // Darker muted red (was #991b1b)
-    highlightStart: '#cd5c5c',
-    highlightEnd: '#a83232',
+    colorStart: '#ef4444', // Bright red
+    colorEnd: '#ef4444',   // Flat color (same as start)
+    highlightStart: '#f87171',
+    highlightEnd: '#f87171',
   },
   {
     slotIndex: 2,
-    defaultName: 'Lavender',
-    colorStart: '#8b61ba', // Muted purple (was #9A3BF2)
-    colorEnd: '#5d4e75',   // Darker muted purple (was #7B68EE)
-    highlightStart: '#9370db',
-    highlightEnd: '#7b68aa',
+    defaultName: 'Amber',
+    colorStart: '#facc15', // Bright yellow
+    colorEnd: '#facc15',   // Flat color (same as start)
+    highlightStart: '#fde047',
+    highlightEnd: '#fde047',
   },
   {
     slotIndex: 3,
-    defaultName: 'Emerald',
-    colorStart: '#2e8b57', // Muted sea green (was #059669)
-    colorEnd: '#1e5631',   // Darker muted green (was #047857)
-    highlightStart: '#3cb371',
-    highlightEnd: '#2e8b57',
+    defaultName: 'Magenta',
+    colorStart: '#ec4899', // Bright pink/magenta
+    colorEnd: '#ec4899',   // Flat color (same as start)
+    highlightStart: '#f472b6',
+    highlightEnd: '#f472b6',
   }
 ];
 
