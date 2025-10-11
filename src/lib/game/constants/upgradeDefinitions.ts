@@ -12,6 +12,12 @@ export interface UpgradeDefinition {
     grantsImmediateEffect?: boolean; // For Air upgrade
 }
 
+const SOLDIER_COSTS = calcSoldierCosts(8, 16);
+
+function calcSoldierCosts(initial, n) {
+    return Array(n).fill().map((x, i) => initial + i)
+}
+
 export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
     NONE: {
         index: 0,
@@ -27,8 +33,8 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         name: 'SOLDIER',
         displayName: 'Recruit Soldier',
         description: 'Recruit additional soldiers',
-        cost: [10, 15, 20, 30, 45, 70, 100, 150, 225, 350],
-        level: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        cost: SOLDIER_COSTS,
+        level: [],
         bgColor: '#8df',
         isSoldierUpgrade: true
     },
@@ -37,8 +43,8 @@ export const UPGRADE_DEFINITIONS: Record<string, UpgradeDefinition> = {
         name: 'WATER',
         displayName: '{level} of Water',
         description: 'Income: {value} extra faith per turn.',
-        cost: [20, 30],
-        level: [5, 10],
+        cost: [15, 25],
+        level: [20, 40],
         bgColor: '#8df'
     },
     FIRE: {
