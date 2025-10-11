@@ -32,6 +32,14 @@
     }
   }
 
+  $: {
+    // Update preview when player slots change (without regenerating the map)
+    if (playerSlots && previewRegions.length > 0) {
+      createPreviewGameState();
+      mapKey++; // Force re-render
+    }
+  }
+
   async function loadPreviewMap(): Promise<void> {
     loadingPreview = true;
     error = '';
@@ -68,9 +76,9 @@
     const activePlayers: Player[] = playerSlots
       .filter(slot => slot.type !== 'Off')
       .slice(0, playerCount)
-      .map((slot, index) => ({
-        slotIndex: index,  // ✅ Correct property name
-        name: (slot.type === 'Set' || slot.type === 'Open') ? (slot.name || `Player ${index + 1}`) : `AI ${index + 1}`,
+      .map((slot) => ({
+        slotIndex: slot.slotIndex,  // Use the actual slot index, not sequential index
+        name: (slot.type === 'Set' || slot.type === 'Open') ? (slot.name || `Player ${slot.slotIndex + 1}`) : `AI ${slot.slotIndex + 1}`,
         color: slot.color,
         isAI: slot.type === 'AI'
       }));
