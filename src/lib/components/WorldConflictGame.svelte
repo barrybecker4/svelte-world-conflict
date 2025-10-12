@@ -26,7 +26,9 @@
     isMyTurn,
     shouldShowBanner,
     shouldHighlightRegions,
-    completeBanner
+    completeBanner,
+    eliminationBanners,
+    completeEliminationBanner
   } = gameStore;
 
   const controller = new GameController(gameId, playerId, gameStore);
@@ -57,6 +59,8 @@
     moveMode,
     buildRegion,
     inBuildMode,
+    modalState: $modalState,
+    eliminationBanners: $eliminationBanners,
     timestamp: Date.now()
   });
 
@@ -135,6 +139,18 @@
     {#if $shouldShowBanner && $currentPlayer}
       <Banner player={$currentPlayer} onComplete={completeBanner} />
     {/if}
+
+    <!-- Elimination Banners -->
+    {#each $eliminationBanners as eliminatedPlayerSlot (eliminatedPlayerSlot)}
+      {@const eliminatedPlayer = $players.find(p => p.slotIndex === eliminatedPlayerSlot)}
+      {#if eliminatedPlayer}
+        <Banner
+          player={eliminatedPlayer}
+          type="elimination"
+          onComplete={() => completeEliminationBanner(eliminatedPlayerSlot)}
+        />
+      {/if}
+    {/each}
 
     <!-- Modals -->
     {#if $modalState.showSoldierSelection && $modalState.soldierSelectionData}

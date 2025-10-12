@@ -20,8 +20,15 @@ export interface GameRecord {
             name: string;
             customName?: string;
         }>;
-        mapSize: string;
-        aiDifficulty: string;
+        settings?: {
+            mapSize: string;
+            aiDifficulty: string;
+            maxTurns?: number;
+            timeLimit?: number;
+        };
+        // Legacy fields (deprecated, use settings instead)
+        mapSize?: string;
+        aiDifficulty?: string;
     };
 }
 

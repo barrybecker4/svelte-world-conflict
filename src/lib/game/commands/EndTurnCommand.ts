@@ -49,6 +49,7 @@ export class EndTurnCommand extends Command {
         newState.movesRemaining = GAME_CONSTANTS.MAX_MOVES_PER_TURN;
         newState.numBoughtSoldiers = 0;
         newState.conqueredRegions = [];
+        newState.state.eliminatedPlayers = []; // Clear elimination events for next turn
 
         const players = newState.players;
 

@@ -8,6 +8,7 @@
   export let player: Player;
   export let isVisible: boolean = true;
   export let onComplete: () => void = () => {};
+  export let type: 'turn' | 'elimination' = 'turn';
 
   let bannerElement: HTMLElement;
   let animationComplete = false;
@@ -23,6 +24,7 @@
 
   $: playerColor = getPlayerColor(player.slotIndex);
   $: isAI = player.isAI;
+  $: isElimination = type === 'elimination';
 
   function skipBanner() {
     animationComplete = true;
@@ -39,25 +41,36 @@
        role="button"
        tabindex="0">
     <div class="turn-banner"
+         class:elimination={isElimination}
          transition:scale={{ duration: 600, start: 0.3 }}
          style="--player-color: {playerColor}">
       <div class="banner-content">
         <div class="turn-label">
-          {isAI ? 'AI' : 'PLAYER'} TURN
+          {#if isElimination}
+            ELIMINATED
+          {:else}
+            {isAI ? 'AI' : 'PLAYER'} TURN
+          {/if}
         </div>
-        <div class="player-name">
+        <div class="player-name" class:eliminated={isElimination}>
           {player.name}
         </div>
-        <div class="player-indicator" style="background-color: {playerColor}"></div>
+        <div class="player-indicator" 
+             class:eliminated={isElimination}
+             style="background-color: {playerColor}; {isElimination ? 'opacity: 0.5;' : ''}"></div>
         <div class="banner-subtitle">
-          {isAI ? 'AI is thinking...' : 'Your move!'}
+          {#if isElimination}
+            Conquered by opponents
+          {:else}
+            {isAI ? 'AI is thinking...' : 'Your move!'}
+          {/if}
         </div>
         <div class="skip-hint">
           Click to continue
         </div>
       </div>
       <div class="banner-effects">
-        <div class="energy-pulse"></div>
+        <div class="energy-pulse" class:fade-pulse={isElimination}></div>
         <div class="corner-frame top-left"></div>
         <div class="corner-frame top-right"></div>
         <div class="corner-frame bottom-left"></div>
@@ -100,6 +113,17 @@
     overflow: hidden;
   }
 
+  .turn-banner.elimination {
+    background: linear-gradient(135deg,
+                rgba(20, 20, 20, 0.95),
+                rgba(40, 30, 30, 0.95));
+    border-color: #dc2626;
+    box-shadow:
+      0 20px 40px rgba(0, 0, 0, 0.7),
+      0 0 50px rgba(220, 38, 38, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
   .banner-content {
     position: relative;
     z-index: 2;
@@ -115,6 +139,11 @@
     text-shadow: 0 0 10px currentColor;
   }
 
+  .turn-banner.elimination .turn-label {
+    color: #dc2626;
+    text-shadow: 0 0 10px #dc2626;
+  }
+
   .player-name {
     font-size: 2.5rem;
     font-weight: 900;
@@ -124,6 +153,12 @@
       2px 2px 4px rgba(0, 0, 0, 0.8),
       0 0 20px var(--player-color);
     animation: nameGlow 2s ease-in-out infinite alternate;
+  }
+
+  .player-name.eliminated {
+    text-decoration: line-through;
+    text-decoration-color: #dc2626;
+    text-decoration-thickness: 3px;
   }
 
   .player-indicator {
@@ -136,6 +171,14 @@
       0 0 20px currentColor,
       inset 0 0 20px rgba(255, 255, 255, 0.1);
     animation: pulse 2s ease-in-out infinite;
+  }
+
+  .player-indicator.eliminated {
+    border-color: rgba(220, 38, 38, 0.5);
+    box-shadow:
+      0 0 20px rgba(220, 38, 38, 0.5),
+      inset 0 0 20px rgba(0, 0, 0, 0.5);
+    animation: fadeOut 2s ease-in-out infinite;
   }
 
   .banner-subtitle {
@@ -176,6 +219,13 @@
     opacity: 0.1;
     border-radius: 50%;
     animation: energyPulse 3s ease-in-out infinite;
+  }
+
+  .energy-pulse.fade-pulse {
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(220, 38, 38, 0.1) 0%, transparent 70%);
+    animation: fadeOut 2s ease-in-out infinite;
   }
 
   .corner-frame {
@@ -250,6 +300,15 @@
     100% {
       transform: translate(-50%, -50%) scale(0.8);
       opacity: 0.1;
+    }
+  }
+
+  @keyframes fadeOut {
+    0%, 100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.6;
     }
   }
 

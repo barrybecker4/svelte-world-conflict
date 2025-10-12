@@ -64,6 +64,7 @@ export interface GameStateData {
     endResult?: Player | 'DRAWN_GAME' | null;
     pendingMoves?: PendingMove[];
     numBoughtSoldiers?: number; // Track soldiers bought this turn for pricing
+    eliminatedPlayers?: number[]; // Track player slot indices that were eliminated this turn
 
     moveTimeLimit?: number;
     maxTurns?: number;

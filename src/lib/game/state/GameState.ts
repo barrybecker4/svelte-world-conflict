@@ -23,6 +23,7 @@ export class GameState {
         if (!this.state.soldiersByRegion) this.state.soldiersByRegion = {};
         if (!this.state.faithByPlayer) this.state.faithByPlayer = {};
         if (!this.state.conqueredRegions) this.state.conqueredRegions = [];
+        if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
     }
 
     /**
@@ -393,7 +394,8 @@ export class GameState {
             templesByRegion: templesByRegionCopy,
             soldiersByRegion: soldiersByRegionCopy,
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
-            conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined
+            conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined,
+            eliminatedPlayers: this.state.eliminatedPlayers ? [...this.state.eliminatedPlayers] : undefined
         };
     }
 

@@ -137,7 +137,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1500;
+    z-index: 2000;
     backdrop-filter: blur(1px);
   }
 

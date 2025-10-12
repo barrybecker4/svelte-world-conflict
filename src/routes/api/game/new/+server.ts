@@ -136,8 +136,12 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
     gameType: finalGameType,
     pendingConfiguration: gameStatus === 'PENDING' && playerSlots.length > 0 ? {
       playerSlots,
-      mapSize: settings?.mapSize || 'Medium',
-      aiDifficulty: settings?.aiDifficulty || 'Normal'
+      settings: {
+        mapSize: settings?.mapSize || 'Medium',
+        aiDifficulty: settings?.aiDifficulty || 'Normal',
+        maxTurns: maxTurns,
+        timeLimit: timeLimit
+      },
     } : undefined
   };
 }

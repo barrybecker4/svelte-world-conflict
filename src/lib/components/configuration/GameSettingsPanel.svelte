@@ -17,7 +17,9 @@
     if (!mapSizeOptions.includes(gameSettings.mapSize)) {
       gameSettings.mapSize = 'Large';
     }
-    if (!GAME_CONSTANTS.MAX_TURN_OPTIONS.includes(gameSettings.maxTurns)) {
+    // Check if maxTurns is valid (includes UNLIMITED_TURNS)
+    const validTurnValues = [...GAME_CONSTANTS.MAX_TURN_OPTIONS, GAME_CONSTANTS.UNLIMITED_TURNS];
+    if (!validTurnValues.includes(gameSettings.maxTurns)) {
       gameSettings.maxTurns = GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX];
     }
     if (!GAME_CONSTANTS.TIME_LIMITS.includes(gameSettings.timeLimit)) {

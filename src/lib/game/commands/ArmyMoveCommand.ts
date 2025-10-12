@@ -93,11 +93,13 @@ export class ArmyMoveCommand extends Command {
 
         const wasEnemyRegion = !state.isOwnedBy(this.destination, this.player) && toList.length > 0;
         const wasNeutralRegion = !state.isOwnedBy(this.destination, this.player) && toList.length === 0;
+        const previousOwner = wasEnemyRegion ? state.owner(this.destination) : undefined;
 
         console.log('🎯 Move logic:', {
             destination: this.destination,
             wasEnemyRegion,
             wasNeutralRegion,
+            previousOwner,
             toListBefore: toList.length,
             fromListBefore: fromList.length
         });
@@ -121,6 +123,11 @@ export class ArmyMoveCommand extends Command {
             console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.slotIndex);
             state.setOwner(this.destination, this.player);
 
+            // Check if the previous owner was eliminated
+            if (previousOwner !== undefined && wasEnemyRegion) {
+                this.checkPlayerElimination(state, previousOwner);
+            }
+
             // Move remaining attackers to conquered region (after combat with enemy or neutral defenders)
             if ((wasEnemyRegion || wasNeutralRegion) && fromList.length > 0 && this.attackSequence && this.attackSequence.length > 0) {
                 const attackersToMove = Math.min(this.count, fromList.length);
@@ -136,6 +143,31 @@ export class ArmyMoveCommand extends Command {
         }
 
         state.movesRemaining = Math.max(0, state.movesRemaining - 1);
+    }
+
+    /**
+     * Check if a player has been eliminated (owns 0 regions)
+     */
+    private checkPlayerElimination(state: GameState, playerSlotIndex: number): void {
+        // Count regions owned by this player
+        const regionCount = Object.values(state.ownersByRegion).filter(
+            owner => owner === playerSlotIndex
+        ).length;
+
+        if (regionCount === 0) {
+            // Player has been eliminated!
+            console.log(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
+            
+            // Initialize eliminatedPlayers array if it doesn't exist
+            if (!state.state.eliminatedPlayers) {
+                state.state.eliminatedPlayers = [];
+            }
+            
+            // Add to eliminated players list if not already there
+            if (!state.state.eliminatedPlayers.includes(playerSlotIndex)) {
+                state.state.eliminatedPlayers.push(playerSlotIndex);
+            }
+        }
     }
 
     // Apply attack sequence results

@@ -17,6 +17,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
   const players = writable<Player[]>([]);
   const loading = writable<boolean>(true);
   const error = writable<string | null>(null);
+  const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
 
   let moveSystem: MoveSystem | null = null;
   const moveReplayer = new MoveReplayer();
@@ -121,6 +122,15 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     regions.set(cleanState.regions || []);
     players.set(cleanState.players || []);
 
+    // Check for elimination events and always update (clear if empty)
+    if (cleanState.eliminatedPlayers && cleanState.eliminatedPlayers.length > 0) {
+      console.log('💀 Players eliminated:', cleanState.eliminatedPlayers);
+      eliminationBanners.set([...cleanState.eliminatedPlayers]);
+    } else {
+      // Clear elimination banners if no players were eliminated this update
+      eliminationBanners.set([]);
+    }
+
     if (isNewTurn) {
       // New player's turn - show banner and handle audio
       console.log('🔄 Turn transition detected');
@@ -161,6 +171,14 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
    */
   function completeBanner() {
     turnManager.onBannerComplete();
+  }
+
+  /**
+   * Complete elimination banner for a specific player
+   */
+  function completeEliminationBanner(playerSlotIndex: number) {
+    console.log(`💀 Completing elimination banner for player ${playerSlotIndex}`);
+    eliminationBanners.update(banners => banners.filter(p => p !== playerSlotIndex));
   }
 
   /**
@@ -224,6 +242,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     players,
     loading,
     error,
+    eliminationBanners,
 
     // Derived stores
     currentPlayerSlot,
@@ -244,6 +263,7 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     handleGameStateUpdate,
     retryInitialization,
     completeBanner,
+    completeEliminationBanner,
     resetTurnManager,
 
     // Move system getter

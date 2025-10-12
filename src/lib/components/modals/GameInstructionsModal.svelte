@@ -3,6 +3,8 @@
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { SYMBOLS } from '$lib/game/constants/symbols';
 
   const dispatch = createEventDispatcher();
 
@@ -15,11 +17,11 @@
       title: "How to win (1/5)",
       icon: "♛",
       content: [
-        "The standard game lasts <strong>15 turns</strong>.",
+        `The standard game lasts <strong>${GAME_CONSTANTS.STANDARD_MAX_TURNS} turns</strong>.`,
         "Once time runs out, <strong>whoever has most regions, wins</strong>.",
         "Your <strong>soldiers</strong> conquer and defend <strong>regions</strong>.",
         "Your <strong>temples</strong> make new soldiers and can be <strong>upgraded</strong> with faith.",
-        "You get <strong>faith</strong>(☥) for regions and for soldiers praying at temples."
+        `You get <strong>faith</strong>(${SYMBOLS.FAITH}) for regions and for soldiers praying at temples.`
       ]
     },
     {
@@ -59,7 +61,7 @@
       title: "Upgrades (5/5)",
       icon: "✨",
       content: [
-        "<strong>Elemental upgrades</strong> are purchased with <strong>faith</strong> (☥).",
+        `<strong>Elemental upgrades</strong> are purchased with <strong>faith</strong> (${SYMBOLS.FAITH}).`,
         "There are <strong>2 levels</strong> of each upgrade type.",
         "Instead of upgrading, you can use faith to <strong>recruit soldiers</strong>.",
         "Each soldier you recruit in a turn gets <strong>more expensive</strong>.",

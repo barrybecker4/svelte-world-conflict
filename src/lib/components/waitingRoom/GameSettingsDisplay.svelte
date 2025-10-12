@@ -9,6 +9,13 @@
     }
     return `${timeLimit}s`;
   }
+
+  function formatTurnLimit(maxTurns: number | undefined): string {
+    if (!maxTurns || maxTurns === GAME_CONSTANTS.UNLIMITED_TURNS) {
+      return 'Endless';
+    }
+    return `${maxTurns} turns`;
+  }
 </script>
 
 <div class="game-settings-section">
@@ -24,7 +31,7 @@
     </div>
     <div class="setting-item">
       <span class="setting-label">Turn Limit:</span>
-      <span class="setting-value">{game.pendingConfiguration?.settings?.maxTurns || 'Unlimited'}</span>
+      <span class="setting-value">{formatTurnLimit(game.pendingConfiguration?.settings?.maxTurns)}</span>
     </div>
     <div class="setting-item">
       <span class="setting-label">Time Limit:</span>

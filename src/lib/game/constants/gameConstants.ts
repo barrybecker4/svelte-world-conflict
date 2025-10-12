@@ -1,5 +1,6 @@
 const STANDARD_HUMAN_TIME_LIMIT = 30;
 const UNLIMITED_TIME = 3600;
+const STANDARD_MAX_TURNS = 10;
 
 export const GAME_CONSTANTS = {
     // Grid and map
@@ -8,7 +9,8 @@ export const GAME_CONSTANTS = {
 
     // Turn mechanics
     BASE_MOVES_PER_TURN: 3,
-    MAX_TURN_OPTIONS: [3, 10, 15],
+    STANDARD_MAX_TURNS,
+    MAX_TURN_OPTIONS: [3, STANDARD_MAX_TURNS, 15],
     DEFAULT_TURN_COUNT_INDEX: 1,
     UNLIMITED_TURNS: 999,
 
