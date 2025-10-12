@@ -334,6 +334,7 @@ export class GameController {
       // Only auto-close if they literally cannot afford ANY option (including rebuild which is free)
       const currentFaith = data.gameState?.faithByPlayer?.[data.gameState?.currentPlayerSlot] || 0;
       const numBoughtSoldiers = data.gameState?.numBoughtSoldiers || 0;
+      // Calculate soldier cost consistently with BuildCommand (array-based until exhausted, then formula)
       const minSoldierCost = 8 + numBoughtSoldiers;
       
       // Minimum affordable option is a soldier (8+bought) or rebuild (0)

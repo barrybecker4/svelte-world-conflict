@@ -45,12 +45,6 @@ export class EndTurnCommand extends Command {
             newState.endResult = gameEndResult.winner;
         }
 
-        // Reset turn state
-        newState.movesRemaining = GAME_CONSTANTS.MAX_MOVES_PER_TURN;
-        newState.numBoughtSoldiers = 0;
-        newState.conqueredRegions = [];
-        newState.state.eliminatedPlayers = []; // Clear elimination events for next turn
-
         const players = newState.players;
 
         console.log('🔄 EndTurnCommand - Before turn advance:', {
@@ -65,6 +59,16 @@ export class EndTurnCommand extends Command {
 
         const nextSlotIndex = this.getNextActiveSlot(newState.currentPlayerSlot, players);
         newState.currentPlayerSlot = nextSlotIndex;
+
+        // Calculate moves for next player including Air temple bonuses
+        const nextPlayer = this.getPlayerBySlot(nextSlotIndex, players);
+        const airBonus = nextPlayer ? this.calculateAirBonus(newState, nextPlayer) : 0;
+        
+        // Reset turn state
+        newState.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN + airBonus;
+        newState.numBoughtSoldiers = 0;
+        newState.conqueredRegions = [];
+        newState.state.eliminatedPlayers = []; // Clear elimination events for next turn
 
         console.log('🔄 Turn advanced:', {
           'from': `${this.player.name} (slot ${this.player.slotIndex})`,
@@ -190,6 +194,33 @@ export class EndTurnCommand extends Command {
         }
 
         return temples;
+    }
+
+    /**
+     * Calculate total Air bonus (extra moves) from all temples owned by a player
+     */
+    private calculateAirBonus(state: GameState, player: Player): number {
+        let totalAirBonus = 0;
+
+        for (const [regionIndex, templeData] of Object.entries(state.templesByRegion)) {
+            const regionIdx = parseInt(regionIndex);
+            
+            // Check if this temple is owned by the player
+            if (state.ownersByRegion[regionIdx] === player.slotIndex) {
+                const temple = Temple.deserialize(templeData);
+                const airBonus = temple.getAirBonus();
+                if (airBonus > 0) {
+                    totalAirBonus += airBonus;
+                    console.log(`Player ${player.slotIndex} has Air temple at region ${regionIdx} granting ${airBonus} extra move(s)`);
+                }
+            }
+        }
+
+        if (totalAirBonus > 0) {
+            console.log(`Player ${player.slotIndex} total Air bonus: ${totalAirBonus} extra move(s)`);
+        }
+
+        return totalAirBonus;
     }
 
     serialize(): any {

@@ -20,7 +20,7 @@ export interface TempleUpgradeDefinition {
     grantsImmediateEffect?: boolean; // For Air upgrade
 }
 
-const SOLDIER_COSTS = calcSoldierCosts(8, 16);
+const SOLDIER_COSTS = calcSoldierCosts(8, 30);
 
 function calcSoldierCosts(initial: number, n: number): number[] {
     return Array(n).fill(0).map((x, i) => initial + i);

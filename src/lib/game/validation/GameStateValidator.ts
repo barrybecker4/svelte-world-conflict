@@ -71,8 +71,10 @@ export class GameStateValidator {
             errors.push("Moves remaining cannot be negative");
         }
 
-        if (gameData.movesRemaining > GAME_CONSTANTS.BASE_MOVES_PER_TURN) {
-            warnings.push(`Moves remaining (${gameData.movesRemaining}) exceeds normal maximum`);
+        // Allow extra moves for Air upgrade
+        const maxReasonableMoves = GAME_CONSTANTS.BASE_MOVES_PER_TURN + 10; // Allow for multiple Air temples
+        if (gameData.movesRemaining > maxReasonableMoves) {
+            warnings.push(`Moves remaining (${gameData.movesRemaining}) seems unusually high`);
         }
 
         return {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
   import type { Player } from '$lib/game/state/GameState';
@@ -12,14 +12,24 @@
 
   let bannerElement: HTMLElement;
   let animationComplete = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
 
-  onMount(() => {
-    const timer = setTimeout(() => {
+  // Reset animation state when player or type changes
+  $: if (player || type) {
+    animationComplete = false;
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
       animationComplete = true;
       onComplete();
     }, GAME_CONSTANTS.BANNER_TIME);
+  }
 
-    return () => clearTimeout(timer);
+  onDestroy(() => {
+    if (timer) {
+      clearTimeout(timer);
+    }
   });
 
   $: playerColor = getPlayerColor(player.slotIndex);
@@ -27,6 +37,9 @@
   $: isElimination = type === 'elimination';
 
   function skipBanner() {
+    if (timer) {
+      clearTimeout(timer);
+    }
     animationComplete = true;
     onComplete();
   }

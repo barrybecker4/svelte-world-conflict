@@ -118,6 +118,7 @@ class TurnManager {
    */
   public onBannerComplete(): void {
     this.hideBanner();
+    this.completeTurnTransition();
 
     if (this.onBannerCompleteCallback) {
       this.onBannerCompleteCallback();

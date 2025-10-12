@@ -50,7 +50,9 @@ export class BuildCommand extends Command {
         // Special case: SOLDIER upgrade has dynamic pricing
         if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
             const numBought = this.gameState.state.numBoughtSoldiers || 0;
-            return TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost[numBought] || 8;
+            // Use array value if within bounds, otherwise continue incrementing from base cost
+            const costArray = TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost;
+            return numBought < costArray.length ? costArray[numBought] : (8 + numBought);
         }
 
         // Special case: REBUILD is free
