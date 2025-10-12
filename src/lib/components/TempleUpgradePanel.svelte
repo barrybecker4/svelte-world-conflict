@@ -46,7 +46,7 @@
 
     // Always show soldier option
     const costArray = TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost;
-    const soldierCost = soldiersBought < costArray.length ? costArray[soldiersBought] : (8 + soldiersBought);
+    const soldierCost = costArray[soldiersBought];
     options.push({
       upgrade: TEMPLE_UPGRADES_BY_NAME.SOLDIER,
       cost: soldierCost,
