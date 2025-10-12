@@ -12,7 +12,6 @@
   let showInstructions = true; // Auto-show on load
   let showLobby = false;
   let showConfiguration = false;
-  let loading = false;
 
   const { initializeAudio } = useAudio();
 

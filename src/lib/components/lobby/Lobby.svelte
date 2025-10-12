@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
@@ -15,12 +15,18 @@
   let error: string | null = null;
   let wsConnected = false;
 
+  let unsubGames: () => void;
+  let unsubLoading: () => void;
+  let unsubError: () => void;
+  let unsubWsConnected: () => void;
+
   onMount(() => {
+    console.log('🎬 Lobby component mounted');
     gamesManager = new OpenGamesManager();
     gamesManager.initialize();
 
-    const unsubGames = gamesManager.games.subscribe(value => games = value);
-    const unsubLoading = gamesManager.loading.subscribe(value => {
+    unsubGames = gamesManager.games.subscribe(value => games = value);
+    unsubLoading = gamesManager.loading.subscribe(value => {
       loading = value;
 
       // After loading completes, if no games, skip to configuration
@@ -30,16 +36,17 @@
         dispatch('close');
       }
     });
-    const unsubError = gamesManager.error.subscribe(value => error = value);
-    const unsubWsConnected = gamesManager.wsConnected.subscribe(value => wsConnected = value);
+    unsubError = gamesManager.error.subscribe(value => error = value);
+    unsubWsConnected = gamesManager.wsConnected.subscribe(value => wsConnected = value);
+  });
 
-    return () => {
-      unsubGames();
-      unsubLoading();
-      unsubError();
-      unsubWsConnected();
-      gamesManager?.destroy();
-    };
+  onDestroy(() => {
+    console.log('🧹 Lobby component being destroyed, cleaning up...');
+    unsubGames?.();
+    unsubLoading?.();
+    unsubError?.();
+    unsubWsConnected?.();
+    gamesManager?.destroy();
   });
 
   function close() {

@@ -16,8 +16,9 @@ export class OpenGamesManager {
   public error: Writable<string | null> = writable(null);
   public wsConnected: Writable<boolean> = writable(false);
 
-  private refreshInterval: NodeJS.Timeout | null = null;
+  private refreshInterval: number | null = null;
   private wsUnsubscribe: (() => void) | null = null;
+  private isDestroyed = false;
 
   async initialize() {
     await this.loadOpenGames();
@@ -26,12 +27,24 @@ export class OpenGamesManager {
   }
 
   async loadOpenGames() {
+    // Don't load if we've been destroyed
+    if (this.isDestroyed) {
+      console.log('⏹️ OpenGamesManager: Skipping load - already destroyed');
+      return 0;
+    }
+
     try {
       this.loading.set(true);
       this.error.set(null);
 
       console.log('🔄 Loading open games...');
       const response = await fetch('/api/games/open');
+
+      // Check again after async operation
+      if (this.isDestroyed) {
+        console.log('⏹️ OpenGamesManager: Cancelled load - destroyed during fetch');
+        return 0;
+      }
 
       if (response.ok) {
         const games = await response.json() as any[];
@@ -48,7 +61,9 @@ export class OpenGamesManager {
       this.error.set('Failed to connect to server');
       return 0;
     } finally {
-      this.loading.set(false);
+      if (!this.isDestroyed) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -76,7 +91,12 @@ export class OpenGamesManager {
 
   private startAutoRefresh() {
     // Auto-refresh every 10 seconds as backup
-    this.refreshInterval = setInterval(() => this.loadOpenGames(), 10000);
+    this.refreshInterval = window.setInterval(() => {
+      if (!this.isDestroyed) {
+        this.loadOpenGames();
+      }
+    }, 10000);
+    console.log(`📅 Started polling interval: ${this.refreshInterval}`);
   }
 
   async joinGameInSlot(gameId: string, slotIndex: number) {
@@ -111,6 +131,11 @@ export class OpenGamesManager {
         });
 
         console.log(`Successfully joined as player ${player.slotIndex}: ${player.name}`);
+        
+        // Cleanup BEFORE navigation to ensure polling stops immediately
+        console.log('🚪 Joining game - cleaning up lobby resources before navigation');
+        this.destroy();
+        
         await goto(`/game/${gameId}`);
       } else {
         const errorData = await response.json() as { error?: string };
@@ -164,16 +189,32 @@ export class OpenGamesManager {
   }
 
   destroy() {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
+    if (this.isDestroyed) {
+      console.log('⏹️ OpenGamesManager: Already destroyed, skipping cleanup');
+      return;
+    }
+
+    console.log('🧹 OpenGamesManager: Cleaning up...');
+    this.isDestroyed = true;
+    
+    if (this.refreshInterval !== null) {
+      console.log(`  🛑 Clearing polling interval: ${this.refreshInterval}`);
+      window.clearInterval(this.refreshInterval);
       this.refreshInterval = null;
+      console.log('  ✅ Cleared polling interval');
     }
     
     if (this.wsUnsubscribe) {
       this.wsUnsubscribe();
       this.wsUnsubscribe = null;
+      console.log('  ✅ Unsubscribed from game updates');
     }
     
+    // Note: We do NOT disconnect the WebSocket here because it's a shared singleton
+    // that may be used by other parts of the app (e.g., active game sessions).
+    // We only clean up our local subscriptions and polling.
+    
     this.wsConnected.set(false);
+    console.log('🧹 OpenGamesManager: Cleanup complete');
   }
 }

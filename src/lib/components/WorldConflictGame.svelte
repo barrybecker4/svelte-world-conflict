@@ -25,7 +25,8 @@
     currentPlayer,
     isMyTurn,
     shouldShowBanner,
-    shouldHighlightRegions
+    shouldHighlightRegions,
+    completeBanner
   } = gameStore;
 
   const controller = new GameController(gameId, playerId, gameStore);
@@ -132,7 +133,7 @@
 
     <!-- Turn Banner -->
     {#if $shouldShowBanner && $currentPlayer}
-      <Banner player={$currentPlayer} />
+      <Banner player={$currentPlayer} onComplete={completeBanner} />
     {/if}
 
     <!-- Modals -->
