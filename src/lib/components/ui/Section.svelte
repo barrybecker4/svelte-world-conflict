@@ -86,13 +86,10 @@
 
   /* Common section variants */
   .section-base.turn-section .section-content {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    color: #1f2937;
-    padding: 12px 16px;
-    border-radius: 8px;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
     text-align: center;
-    font-weight: bold;
-    border: 2px solid #d97706;
   }
 
   .section-base.stats-section .section-content {

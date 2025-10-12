@@ -27,6 +27,8 @@
   $: movesRemaining = gameState?.movesRemaining ?? 3;
   $: isMoving = moveMode !== 'IDLE';
   $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
+  $: turnLimitExceeded = maxTurns !== null && turnNumber > maxTurns;
+  $: isGameOver = (gameState?.endResult !== null && gameState?.endResult !== undefined) || turnLimitExceeded;
 
   // Make faith counts reactive to gameState changes
   $: faithByPlayer = gameState?.faithByPlayer ?? {};
@@ -86,7 +88,11 @@
   <Section title="" customClass="turn-section">
     <div class="turn-box">
       <div class="turn-header">
-        Turn <span class="turn-number">{turnNumber}</span>{#if maxTurns} / {maxTurns}{/if}
+        {#if isGameOver}
+          Game over
+        {:else}
+          Turn <span class="turn-number">{turnNumber}</span>{#if maxTurns} &nbsp;/ {maxTurns}{/if}
+        {/if}
       </div>
     </div>
   </Section>
@@ -186,13 +192,16 @@
 
   /* Turn section */
   :global(.turn-section) {
-    background: rgba(15, 23, 42, 0.6);
-    border-bottom: 1px solid var(--border-light, #374151);
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .turn-box {
-    text-align: center;
+    text-align: left;
     padding: var(--space-3, 12px);
+    background: rgba(30, 30, 30, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm, 4px);
   }
 
   .turn-header {
@@ -202,7 +211,7 @@
   }
 
   .turn-number {
-    color: var(--accent-primary, #60a5fa);
+    color: var(--text-primary, #f7fafc);
     font-weight: var(--font-bold, bold);
   }
 
