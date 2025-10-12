@@ -232,6 +232,15 @@ export class MoveSystem {
       return;
     }
 
+    // Validate move before opening soldier selection modal
+    // Check with minimum soldier count (1) to ensure move is valid
+    const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion]?.length || 0;
+    if (availableSoldiers < 1) {
+      console.log('❌ Not enough soldiers to move (need at least 1)');
+      this.cancelMove();
+      return;
+    }
+
     // Set target and transition to soldier selection
     this.updateState({
       ...this.state,
@@ -379,6 +388,12 @@ export class MoveSystem {
     // Check if source region is conquered this turn
     if (this.gameState.conqueredRegions?.includes(this.state.sourceRegion)) {
       return []; // Can't move from conquered regions
+    }
+
+    // Check if source has enough soldiers to move 
+    const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion]?.length || 0;
+    if (availableSoldiers < 1) {
+      return []; // Can't move from regions with less than 2 soldiers
     }
 
     // Return neighboring regions
