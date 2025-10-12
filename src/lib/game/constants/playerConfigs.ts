@@ -36,11 +36,11 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   },
   {
     slotIndex: 3,
-    defaultName: 'Magenta',
-    colorStart: '#ec4899', // Bright pink/magenta
-    colorEnd: '#ec4899',   // Flat color (same as start)
-    highlightStart: '#f472b6',
-    highlightEnd: '#f472b6',
+    defaultName: 'Lavender',
+    colorStart: '#a78bfa', // Bright lavender/purple
+    colorEnd: '#a78bfa',   // Flat color (same as start)
+    highlightStart: '#c4b5fd',
+    highlightEnd: '#c4b5fd',
   }
 ];
 
