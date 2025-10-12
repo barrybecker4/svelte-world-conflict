@@ -363,16 +363,35 @@ export class GameState {
 
     /**
      * Create a clean copy of the game state data suitable for JSON serialization
+     * 
+     * IMPORTANT: We deep copy templesByRegion and soldiersByRegion because commands
+     * (like BuildCommand) mutate these nested objects. Without deep copying, the old
+     * and new state would share the same temple/soldier object references, causing:
+     * 1. Mutations to affect both states
+     * 2. Svelte reactivity to fail (no reference change detected)
+     * 3. UI not updating until page refresh
      */
     toJSON(): any {
+        // Deep copy templesByRegion to avoid shared references
+        const templesByRegionCopy: Record<number, any> = {};
+        for (const [key, temple] of Object.entries(this.state.templesByRegion)) {
+            templesByRegionCopy[Number(key)] = { ...temple };
+        }
+        
+        // Deep copy soldiersByRegion to avoid shared references
+        const soldiersByRegionCopy: Record<number, any[]> = {};
+        for (const [key, soldiers] of Object.entries(this.state.soldiersByRegion)) {
+            soldiersByRegionCopy[Number(key)] = soldiers ? [...soldiers] : [];
+        }
+        
         return {
             ...this.state,
             players: [...this.state.players],
             regions: [...this.state.regions],
             faithByPlayer: { ...this.state.faithByPlayer },
             ownersByRegion: { ...this.state.ownersByRegion },
-            templesByRegion: { ...this.state.templesByRegion },
-            soldiersByRegion: { ...this.state.soldiersByRegion },
+            templesByRegion: templesByRegionCopy,
+            soldiersByRegion: soldiersByRegionCopy,
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
             conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined
         };

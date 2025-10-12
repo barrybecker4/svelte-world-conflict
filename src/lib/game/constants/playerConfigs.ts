@@ -29,10 +29,10 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   {
     slotIndex: 2,
     defaultName: 'Amber',
-    colorStart: '#fe8',
-    colorEnd: '#c81',
-    highlightStart: '#fd8',
-    highlightEnd: '#a80',
+    colorStart: '#ffe680',
+    colorEnd: '#d4a944',
+    highlightStart: '#daa520',
+    highlightEnd: '#b8860b',
   },
   {
     slotIndex: 3,
