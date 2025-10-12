@@ -140,7 +140,7 @@
       <SoldierSelectionModal
         maxSoldiers={$modalState.soldierSelectionData.maxSoldiers}
         currentSelection={$modalState.soldierSelectionData.currentSelection}
-        onConfirm={(count) => { controller.handleSoldierCountChange(count); controller.confirmSoldierSelection(); }}
+        onConfirm={(count) => controller.confirmSoldierSelection(count)}
         onCancel={() => controller.cancelSoldierSelection()}
       />
     {/if}

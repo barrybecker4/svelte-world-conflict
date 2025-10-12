@@ -246,35 +246,31 @@ export class GameController {
   }
 
   /**
-   * Handle soldier count change
+   * Handle soldier count change (for real-time updates in modal)
    */
   handleSoldierCountChange(count: number): void {
     this.moveState.update(s => ({ ...s, selectedSoldierCount: count }));
-    
-    const moveSystem = this.gameStore.getMoveSystem();
-    moveSystem?.processAction({
-      type: 'ADJUST_SOLDIERS',
-      payload: { soldierCount: count }
-    });
   }
 
   /**
    * Confirm soldier selection
    */
-  confirmSoldierSelection(): void {
+  confirmSoldierSelection(count: number): void {
+    // Update the move state with the selected count
+    this.moveState.update(s => ({ ...s, selectedSoldierCount: count }));
+    
+    // Close the modal
     this.modalState.update(s => ({
       ...s,
       showSoldierSelection: false,
       soldierSelectionData: null
     }));
     
+    // Execute the move with the selected count
     const moveSystem = this.gameStore.getMoveSystem();
-    let currentMoveState: MoveState;
-    this.moveState.subscribe(s => currentMoveState = s)();
-    
     moveSystem?.processAction({
       type: 'ADJUST_SOLDIERS',
-      payload: { soldierCount: currentMoveState!.selectedSoldierCount }
+      payload: { soldierCount: count }
     });
   }
 
