@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
-  import { getPlayerMapColor } from '$lib/game/constants/playerConfigs';
+  import { getPlayerMapColor, getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import SvgDefinitions from './SvgDefinitions.svelte';
   import RegionRenderer from './RegionRenderer.svelte';
 
@@ -68,17 +68,18 @@
   }
   
   function getInnerBorderColor(region: Region, isSelected: boolean = false): string {
-    const color = getRegionColor(region);
-    // Convert hex to RGB and brighten
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-    
-    // Lighten by 50% for selected, 40% for others
-    const amount = isSelected ? 0.5 : 0.4;
-    const lighten = (val: number) => Math.min(255, Math.round(val + (255 - val) * amount));
-    
-    return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
+    if (!gameState?.ownersByRegion) {
+        return '';
+    }
+
+    const ownerIndex = gameState.ownersByRegion[region.index];
+    if (ownerIndex === undefined || ownerIndex === -1) {
+        return '';
+    }
+
+    const config = getPlayerConfig(ownerIndex);
+    // Use highlight colors - start for less intense, end for selected
+    return isSelected ? config.highlightEnd : config.highlightStart;
   }
 
   function canHighlightForTurn(region: Region): boolean {

@@ -13,34 +13,34 @@ export const PLAYER_CONFIGS: PlayerColorConfig[] = [
   {
     slotIndex: 0,
     defaultName: 'Emerald',
-    colorStart: '#4ade80',  // Bright green
-    colorEnd: '#4ade80',    // Flat color (same as start)
-    highlightStart: '#6ee7a3',
-    highlightEnd: '#6ee7a3',
+    colorStart: '#9d9',
+    colorEnd: '#282',
+    highlightStart: '#bfb',
+    highlightEnd: '#4a4',
   },
   {
     slotIndex: 1,
     defaultName: 'Crimson',
-    colorStart: '#ef4444', // Bright red
-    colorEnd: '#ef4444',   // Flat color (same as start)
-    highlightStart: '#f87171',
-    highlightEnd: '#f87171',
+    colorStart: '#f88',
+    colorEnd: '#a44',
+    highlightStart: '#faa',
+    highlightEnd: '#944',
   },
   {
     slotIndex: 2,
     defaultName: 'Amber',
-    colorStart: '#facc15', // Bright yellow
-    colorEnd: '#facc15',   // Flat color (same as start)
-    highlightStart: '#fde047',
-    highlightEnd: '#fde047',
+    colorStart: '#fe8',
+    colorEnd: '#c81',
+    highlightStart: '#fd8',
+    highlightEnd: '#a80',
   },
   {
     slotIndex: 3,
     defaultName: 'Lavender',
-    colorStart: '#a78bfa', // Bright lavender/purple
-    colorEnd: '#a78bfa',   // Flat color (same as start)
-    highlightStart: '#c4b5fd',
-    highlightEnd: '#c4b5fd',
+    colorStart: '#d9d',
+    colorEnd: '#838',
+    highlightStart: '#faf',
+    highlightEnd: '#759',
   }
 ];
 
