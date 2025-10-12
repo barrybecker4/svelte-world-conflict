@@ -118,14 +118,20 @@ export class MoveSystem {
 
     // Validate ownership
     if (owner !== currentPlayerSlot) {
-      console.log('❌ Cannot select region - not owned by current player');
+      console.log('Cannot select region - not owned by current player');
+      return;
+    }
+
+    // Check if region was conquered this turn
+    if (this.gameState.conqueredRegions?.includes(regionIndex)) {
+      console.log('Cannot select region - conquered this turn');
       return;
     }
 
     // Count soldiers
     const soldiers = this.gameState.soldiersByRegion[regionIndex] || [];
     if (soldiers.length === 0) {
-      console.log('❌ Cannot select region - no soldiers to move');
+      console.log('Cannot select region - no soldiers to move');
       return;
     }
 
@@ -155,14 +161,14 @@ export class MoveSystem {
 
     // Validate ownership
     if (owner !== currentPlayerSlot) {
-      console.log('❌ Cannot select temple - not owned by current player');
+      console.log('Cannot select temple - not owned by current player');
       return;
     }
 
     // Check if this region has a temple
     const temple = this.gameState.templesByRegion[regionIndex];
     if (!temple) {
-      console.log('❌ No temple at this region');
+      console.log('No temple at this region');
       return;
     }
 
@@ -209,13 +215,13 @@ export class MoveSystem {
     console.log(`🎯 MoveSystem.selectTargetRegion: ${regionIndex}`);
 
     if (this.state.sourceRegion === null) {
-      console.error('❌ No source region selected');
+      console.error('No source region selected');
       return;
     }
 
     // Can't move to the same region
     if (regionIndex === this.state.sourceRegion) {
-      console.log('❌ Cannot move to the same region');
+      console.log('Cannot move to the same region');
       this.cancelMove();
       return;
     }
@@ -223,12 +229,12 @@ export class MoveSystem {
     // Check if regions are adjacent - regions is now an array
     const sourceRegion = this.gameState.regions.find((r: any) => r.index === this.state.sourceRegion);
     if (!sourceRegion) {
-      console.error('❌ Source region not found');
+      console.error('Source region not found');
       return;
     }
 
     if (!sourceRegion.neighbors.includes(regionIndex)) {
-      console.log('❌ Target region is not adjacent');
+      console.log('Target region is not adjacent');
       return;
     }
 
@@ -236,7 +242,7 @@ export class MoveSystem {
     // Check with minimum soldier count (1) to ensure move is valid
     const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion]?.length || 0;
     if (availableSoldiers < 1) {
-      console.log('❌ Not enough soldiers to move (need at least 1)');
+      console.log('Not enough soldiers to move (need at least 1)');
       this.cancelMove();
       return;
     }
@@ -259,7 +265,7 @@ export class MoveSystem {
     const { sourceRegion, targetRegion, selectedSoldierCount } = this.state;
 
     if (sourceRegion === null || targetRegion === null) {
-      console.error('❌ Cannot execute move - missing source or target');
+      console.error('Cannot execute move - missing source or target');
       return;
     }
 
@@ -286,7 +292,7 @@ export class MoveSystem {
       });
 
     } catch (error) {
-      console.error('❌ Move execution failed:', error);
+      console.error('Move execution failed:', error);
       this.cancelMove();
     }
   }
@@ -311,7 +317,7 @@ export class MoveSystem {
    * Cancel the current move
    */
   private cancelMove(): void {
-    console.log('❌ MoveSystem.cancelMove');
+    console.log('MoveSystem.cancelMove');
     
     this.updateState({
       mode: 'IDLE',
