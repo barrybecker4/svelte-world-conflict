@@ -50,19 +50,9 @@
     controller.checkGameEnd($gameState, $players);
   }
 
-  // Debug: Log when BUILD mode condition changes
   $: moveMode = $moveState.mode;
   $: buildRegion = $moveState.buildRegion;
   $: inBuildMode = moveMode === 'BUILD' && buildRegion !== null;
-  
-  $: console.log('🏛️ WorldConflictGame: Mode changed:', {
-    moveMode,
-    buildRegion,
-    inBuildMode,
-    modalState: $modalState,
-    eliminationBanners: $eliminationBanners,
-    timestamp: Date.now()
-  });
 
   onMount(async () => {
     console.log('🎮 WorldConflictGame mounted');
