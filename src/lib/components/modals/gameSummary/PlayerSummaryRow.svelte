@@ -34,15 +34,15 @@
   </div>
 
   <div class="player-stats">
-    <div class="stat-item">
+    <div class="stat-item" title="Regions controlled">
       <span class="stat-value">{regionCount}</span>
       <span class="stat-symbol">{@html SYMBOLS.REGION}</span>
     </div>
-    <div class="stat-item">
+    <div class="stat-item" title="Soldiers in army">
       <span class="stat-value">{soldierCount}</span>
       <span class="stat-symbol">{@html SYMBOLS.SOLDIER}</span>
     </div>
-    <div class="stat-item">
+    <div class="stat-item" title="Faith accumulated">
       <span class="stat-value">{faithCount}</span>
       <span class="stat-symbol">{@html SYMBOLS.FAITH}</span>
     </div>
