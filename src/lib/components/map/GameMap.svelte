@@ -67,12 +67,20 @@
     return 1;
   }
   
-  function getInnerBorderColor(region: Region, isSelected: boolean = false): string {
+  function getInnerBorderColor(region: Region, isSelected: boolean = false, isValidTarget: boolean = false): string {
     if (!gameState?.ownersByRegion) {
         return '';
     }
 
     const ownerIndex = gameState.ownersByRegion[region.index];
+    
+    // For neutral regions that are valid targets, use the current player's color
+    if ((ownerIndex === undefined || ownerIndex === -1) && isValidTarget && currentPlayer) {
+        const config = getPlayerConfig(currentPlayer.slotIndex);
+        return isSelected ? config.highlightEnd : config.highlightStart;
+    }
+    
+    // For neutral regions that aren't valid targets, no highlight
     if (ownerIndex === undefined || ownerIndex === -1) {
         return '';
     }
@@ -159,7 +167,7 @@
         fillColor={getRegionColor(region)}
         borderColor={getBorderColor(region)}
         borderWidth={getBorderWidth(region)}
-        innerBorderColor={isSelected || isMovable || isValidTarget ? getInnerBorderColor(region, isSelected) : ''}
+        innerBorderColor={isSelected || isMovable || isValidTarget ? getInnerBorderColor(region, isSelected, isValidTarget) : ''}
         innerBorderWidth={isSelected ? 10 : 8}
         isClickable={isClickable}
         onRegionClick={handleRegionClick}
