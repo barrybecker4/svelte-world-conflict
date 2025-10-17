@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
   import { getPlayerMapColor, getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import SvgDefinitions from './SvgDefinitions.svelte';
@@ -20,6 +21,22 @@
 
   let mapContainerElement: HTMLDivElement;
   let battlesInProgress = new Set<number>();
+  
+  // Movement animation state
+  interface ActiveMovement {
+    id: number;
+    sourceX: number;
+    sourceY: number;
+    targetX: number;
+    targetY: number;
+    soldierCount: number;
+    startTime: number;
+    duration: number;
+  }
+  
+  let activeMovements: ActiveMovement[] = [];
+  let animationFrameId: number | null = null;
+  let nextMovementId = 0;
 
   // Bind the internal element to the exported prop
   $: if (mapContainerElement && !mapContainer) {
@@ -139,6 +156,79 @@
     
     onTempleClick(regionIndex);
   }
+
+  function handleAnimateMovement(event: CustomEvent) {
+    const { sourceRegion, targetRegion, soldierCount, duration } = event.detail;
+    
+    // Find source and target region coordinates
+    const source = regions.find(r => r.index === sourceRegion);
+    const target = regions.find(r => r.index === targetRegion);
+    
+    if (!source || !target) {
+      console.warn('Could not find regions for movement animation:', { sourceRegion, targetRegion });
+      return;
+    }
+    
+    // Add new movement animation
+    const movement: ActiveMovement = {
+      id: nextMovementId++,
+      sourceX: source.x,
+      sourceY: source.y,
+      targetX: target.x,
+      targetY: target.y,
+      soldierCount,
+      startTime: Date.now(),
+      duration: duration || 500
+    };
+    
+    activeMovements = [...activeMovements, movement];
+    
+    // Start animation loop if not already running
+    if (animationFrameId === null) {
+      animateMovements();
+    }
+  }
+
+  function animateMovements() {
+    const now = Date.now();
+    
+    // Update active movements, removing completed ones
+    activeMovements = activeMovements.filter(movement => {
+      const elapsed = now - movement.startTime;
+      return elapsed < movement.duration;
+    });
+    
+    // Continue animation loop if there are still active movements
+    if (activeMovements.length > 0) {
+      animationFrameId = requestAnimationFrame(animateMovements);
+    } else {
+      animationFrameId = null;
+    }
+  }
+
+  function getMovementProgress(movement: ActiveMovement): number {
+    const elapsed = Date.now() - movement.startTime;
+    const progress = Math.min(elapsed / movement.duration, 1);
+    // Ease-in-out for smoother animation
+    return progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+  }
+
+  onMount(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('animateMovement', handleAnimateMovement as EventListener);
+    }
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('animateMovement', handleAnimateMovement as EventListener);
+    }
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+    }
+  });
 </script>
 
 <div class="game-map" bind:this={mapContainerElement}>
@@ -175,6 +265,45 @@
       />
     {/each}
     </g>
+
+    <!-- Movement animations -->
+    {#each activeMovements as movement (movement.id)}
+      {@const progress = getMovementProgress(movement)}
+      {@const currentX = movement.sourceX + (movement.targetX - movement.sourceX) * progress}
+      {@const currentY = movement.sourceY + (movement.targetY - movement.sourceY) * progress}
+      
+      <!-- Animated army marker -->
+      <g class="moving-army">
+        <!-- Glow effect -->
+        <circle
+          cx={currentX}
+          cy={currentY}
+          r="12"
+          fill="rgba(255, 215, 0, 0.3)"
+          opacity={1 - progress * 0.5}
+        />
+        <!-- Main marker -->
+        <circle
+          cx={currentX}
+          cy={currentY}
+          r="8"
+          fill="rgba(251, 251, 244, 0.9)"
+          stroke="#333"
+          stroke-width="1.5"
+        />
+        <!-- Soldier count -->
+        <text
+          x={currentX}
+          y={currentY + 3}
+          text-anchor="middle"
+          font-size="10"
+          font-weight="bold"
+          fill="#333"
+        >
+          {movement.soldierCount}
+        </text>
+      </g>
+    {/each}
   </svg>
 </div>
 

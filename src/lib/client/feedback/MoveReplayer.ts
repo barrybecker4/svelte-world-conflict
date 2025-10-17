@@ -13,6 +13,7 @@ interface DetectedMove {
   soldierCount?: number;
   oldCount?: number;
   newCount?: number;
+  sourceRegion?: number; // For tracking where soldiers came from
 }
 
 /**
@@ -65,16 +66,88 @@ export class MoveReplayer {
   private detectMovesFromStateDiff(newState: any, previousState: any): DetectedMove[] {
     const moves: DetectedMove[] = [];
 
+    // Build adjacency map for pairing movements
+    const movementPairs = this.buildMovementPairs(newState, previousState);
+
     // Check for region ownership changes (conquests)
     this.detectConquests(newState, previousState, moves);
 
     // Check for soldier count changes (recruitment or movement)
-    this.detectSoldierChanges(newState, previousState, moves);
+    this.detectSoldierChanges(newState, previousState, moves, movementPairs);
 
     // Check for temple upgrades
     this.detectTemplateUpgrades(newState, previousState, moves);
 
     return moves;
+  }
+
+  /**
+   * Build a map of movement pairs (source -> target) based on soldier count changes and adjacency
+   * Returns a map where key is target region index, value is source region index
+   */
+  private buildMovementPairs(newState: any, previousState: any): Map<number, number> {
+    const newSoldiers = newState.soldiersByRegion || {};
+    const oldSoldiers = previousState.soldiersByRegion || {};
+    const newOwners = newState.ownersByRegion || {};
+    const oldOwners = previousState.ownersByRegion || {};
+    const regions = newState.regions || [];
+    
+    // Find regions that lost soldiers
+    const regionsWithLosses: Array<{regionIndex: number, loss: number}> = [];
+    // Find regions that gained soldiers
+    const regionsWithGains: Array<{regionIndex: number, gain: number, wasConquest: boolean}> = [];
+    
+    Object.keys(newSoldiers).forEach(regionIndex => {
+      const newCount = (newSoldiers[regionIndex] || []).length;
+      const oldCount = (oldSoldiers[regionIndex] || []).length;
+      const owner = newOwners[regionIndex];
+      const oldOwner = oldOwners[regionIndex];
+      const idx = parseInt(regionIndex);
+      
+      if (newCount < oldCount && owner !== undefined) {
+        // Region lost soldiers (likely source of move)
+        regionsWithLosses.push({ regionIndex: idx, loss: oldCount - newCount });
+      } else if (newCount > oldCount) {
+        // Region gained soldiers (likely target of move)
+        const wasConquest = oldOwner !== undefined && oldOwner !== owner;
+        regionsWithGains.push({ regionIndex: idx, gain: newCount - oldCount, wasConquest });
+      }
+    });
+    
+    // Try to pair losses with gains based on adjacency
+    const pairs = new Map<number, number>();
+    const usedSources = new Set<number>();
+    
+    for (const gain of regionsWithGains) {
+      const targetRegion = regions.find((r: any) => r.index === gain.regionIndex);
+      if (!targetRegion) continue;
+      
+      // Find the best matching source: a region that lost soldiers and is adjacent
+      let bestSource = null;
+      for (const loss of regionsWithLosses) {
+        // Skip if already used
+        if (usedSources.has(loss.regionIndex)) continue;
+        
+        const sourceRegion = regions.find((r: any) => r.index === loss.regionIndex);
+        if (!sourceRegion) continue;
+        
+        // Check if regions are adjacent
+        const areNeighbors = sourceRegion.neighbors && sourceRegion.neighbors.includes(gain.regionIndex);
+        
+        if (areNeighbors) {
+          bestSource = loss;
+          break; // Found an adjacent source
+        }
+      }
+      
+      // If we found a valid adjacent source, record the pairing
+      if (bestSource) {
+        usedSources.add(bestSource.regionIndex);
+        pairs.set(gain.regionIndex, bestSource.regionIndex);
+      }
+    }
+    
+    return pairs;
   }
 
   /**
@@ -103,7 +176,7 @@ export class MoveReplayer {
   /**
    * Detect soldier count changes (recruitment or movement)
    */
-  private detectSoldierChanges(newState: any, previousState: any, moves: DetectedMove[]): void {
+  private detectSoldierChanges(newState: any, previousState: any, moves: DetectedMove[], movementPairs: Map<number, number>): void {
     const newSoldiers = newState.soldiersByRegion || {};
     const oldSoldiers = previousState.soldiersByRegion || {};
     const newOwners = newState.ownersByRegion || {};
@@ -111,21 +184,24 @@ export class MoveReplayer {
     Object.keys(newSoldiers).forEach(regionIndex => {
       const newCount = (newSoldiers[regionIndex] || []).length;
       const oldCount = (oldSoldiers[regionIndex] || []).length;
+      const idx = parseInt(regionIndex);
 
       if (newCount > oldCount && newOwners[regionIndex] === previousState.playerSlotIndex) {
         // Soldiers were recruited (only if same owner)
         moves.push({
           type: 'recruitment',
-          regionIndex: parseInt(regionIndex),
+          regionIndex: idx,
           soldierCount: newCount - oldCount
         });
-      } else if (newCount !== oldCount) {
-        // Soldiers moved
+      } else if (newCount > oldCount) {
+        // Soldiers moved into this region - check if we have a source
+        const sourceRegion = movementPairs.get(idx);
         moves.push({
           type: 'movement',
-          regionIndex: parseInt(regionIndex),
+          regionIndex: idx,
           oldCount,
-          newCount
+          newCount,
+          sourceRegion // Add source for animation
         });
       }
     });
@@ -209,6 +285,11 @@ export class MoveReplayer {
 
     // Visual feedback
     this.highlightRegion(move.regionIndex, 'movement');
+    
+    // If we know the source region, trigger movement animation
+    if (move.sourceRegion !== undefined) {
+      this.dispatchMovementAnimation(move.sourceRegion, move.regionIndex, move.soldierCount || 0);
+    }
   }
 
   /**
@@ -246,6 +327,25 @@ export class MoveReplayer {
           regionIndex,
           actionType,
           duration: 1500
+        }
+      }));
+    }
+  }
+
+  /**
+   * Dispatch movement animation event
+   * @param sourceRegion - Source region index
+   * @param targetRegion - Target region index
+   * @param soldierCount - Number of soldiers moving
+   */
+  private dispatchMovementAnimation(sourceRegion: number, targetRegion: number, soldierCount: number): void {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('animateMovement', {
+        detail: {
+          sourceRegion,
+          targetRegion,
+          soldierCount,
+          duration: 500 // Half second animation
         }
       }));
     }

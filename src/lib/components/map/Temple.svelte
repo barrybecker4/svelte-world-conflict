@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { TEMPLE_UPGRADES_BY_NAME, DEFAULT_TEMPLE_COLORS } from '$lib/game/constants/templeUpgradeDefinitions';
 
   export let x: number;
@@ -8,6 +9,8 @@
   export let isPlayerOwned: boolean = false;
   export let regionIndex: number;
   export let onTempleClick: (regionIndex: number) => void = () => {};
+
+  let showGlow = false;
 
   // Get color scheme from upgrade definitions
   $: colorScheme = upgradeType && TEMPLE_UPGRADES_BY_NAME[upgradeType]?.templeColors
@@ -31,6 +34,32 @@
       onTempleClick(regionIndex);
     }
   }
+
+  function handleHighlightRegion(event: CustomEvent) {
+    const { regionIndex: highlightedRegion, actionType, duration } = event.detail;
+    
+    if (highlightedRegion === regionIndex && actionType === 'upgrade') {
+      // Trigger glow animation
+      showGlow = true;
+      
+      // Remove glow after animation completes
+      setTimeout(() => {
+        showGlow = false;
+      }, duration || 2000);
+    }
+  }
+
+  onMount(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('highlightRegion', handleHighlightRegion as EventListener);
+    }
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('highlightRegion', handleHighlightRegion as EventListener);
+    }
+  });
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -39,6 +68,7 @@
 <g 
   class="temple-group" 
   class:clickable={isPlayerOwned}
+  class:glowing={showGlow}
   role={isPlayerOwned ? "button" : "img"}
   tabindex={isPlayerOwned ? 0 : -1}
   aria-label="Temple in region {regionIndex + 1}, level {upgradeLevel}"
@@ -157,5 +187,27 @@
 
   .temple-group:not(.clickable):hover {
     filter: brightness(1.1);
+  }
+
+  @keyframes templeGlow {
+    0% {
+      filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.8)) brightness(1);
+    }
+    25% {
+      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 1)) brightness(1.5);
+    }
+    50% {
+      filter: drop-shadow(0 0 12px rgba(255, 215, 0, 1)) brightness(1.8);
+    }
+    75% {
+      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8)) brightness(1.3);
+    }
+    100% {
+      filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0)) brightness(1);
+    }
+  }
+
+  .temple-group.glowing {
+    animation: templeGlow 2s ease-out forwards;
   }
 </style>

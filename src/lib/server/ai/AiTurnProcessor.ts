@@ -64,8 +64,9 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                             await WebSocketNotifications.gameUpdate(updatedGame);
                         }
 
-                        // Small delay to make AI moves visible (shorter during game creation)
-                        await new Promise(resolve => setTimeout(resolve, 300));
+                        // Delay to allow clients to animate the move (1000ms for moves, 1500ms for temple upgrades)
+                        const delayMs = 1000; // Base delay for army moves
+                        await new Promise(resolve => setTimeout(resolve, delayMs));
                     }
                 } else {
                     // Move failed - will end turn below

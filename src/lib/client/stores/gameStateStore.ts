@@ -21,6 +21,44 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
 
   let moveSystem: MoveSystem | null = null;
   const moveReplayer = new MoveReplayer();
+  
+  // Queue for handling multiple rapid state updates
+  let updateQueue: any[] = [];
+  let isProcessingUpdate = false;
+
+  /**
+   * Count the number of moves between two states for timing calculations
+   */
+  function countMoves(newState: any, previousState: any): number {
+    if (!previousState) return 0;
+    
+    let moveCount = 0;
+    
+    // Count soldier changes
+    const newSoldiers = newState.soldiersByRegion || {};
+    const oldSoldiers = previousState.soldiersByRegion || {};
+    
+    Object.keys(newSoldiers).forEach(regionIndex => {
+      const newCount = (newSoldiers[regionIndex] || []).length;
+      const oldCount = (oldSoldiers[regionIndex] || []).length;
+      if (newCount !== oldCount) {
+        moveCount++;
+      }
+    });
+    
+    // Count temple upgrades
+    if (newState.templeUpgrades && previousState.templeUpgrades) {
+      Object.keys(newState.templeUpgrades).forEach(regionIndex => {
+        const newUpgrades = newState.templeUpgrades[regionIndex] || [];
+        const oldUpgrades = previousState.templeUpgrades[regionIndex] || [];
+        if (newUpgrades.length > oldUpgrades.length) {
+          moveCount++;
+        }
+      });
+    }
+    
+    return Math.max(moveCount, 1); // At least 1 move
+  }
 
   /**
    * Load initial game state from the server
@@ -85,9 +123,31 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
   /**
    * Handle WebSocket game state updates
    * Now uses MoveReplayer for cleaner move playback logic
+   * Updates are queued to ensure banners complete before next update
    */
   function handleGameStateUpdate(updatedState: any) {
     console.log('🎮 Received game update via WebSocket:', updatedState);
+    
+    // Add to queue
+    updateQueue.push(updatedState);
+    
+    // Start processing if not already processing
+    if (!isProcessingUpdate) {
+      processNextUpdate();
+    }
+  }
+
+  /**
+   * Process queued updates one at a time
+   */
+  async function processNextUpdate() {
+    if (updateQueue.length === 0) {
+      isProcessingUpdate = false;
+      return;
+    }
+
+    isProcessingUpdate = true;
+    const updatedState = updateQueue.shift();
 
     // Get current state for comparison
     let currentState: any;
@@ -108,7 +168,8 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
         'playerChanged': playerChanged,
         'turnNumberIncreased': turnNumberIncreased,
         'isNewTurn': isNewTurn,
-        'isOtherPlayersTurn': isOtherPlayersTurn
+        'isOtherPlayersTurn': isOtherPlayersTurn,
+        'queueLength': updateQueue.length
     });
 
     // Ensure battle states are cleared from server updates
@@ -135,26 +196,56 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
       // New player's turn - show banner and handle audio
       console.log('🔄 Turn transition detected');
 
+      await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
+
       // Play appropriate sounds based on whose turn it is
       if (isOtherPlayersTurn) {
-        // It's another player's turn - use MoveReplayer after banner
-        setTimeout(() => {
-          moveReplayer.replayMoves(updatedState, currentState);
-        }, GAME_CONSTANTS.BANNER_TIME); // Delay to show moves after banner
+        // It's another player's turn - wait for banner, then replay moves
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            moveReplayer.replayMoves(updatedState, currentState);
+            resolve();
+          }, GAME_CONSTANTS.BANNER_TIME); // Banner duration
+        });
+        
+        // Wait for move replay to complete (playback delay + animation time)
+        await new Promise<void>((resolve) => {
+          // Calculate total replay time: number of moves * playback delay
+          const moveCount = countMoves(updatedState, currentState);
+          const replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+          setTimeout(() => resolve(), replayTime);
+        });
       } else {
         // It's now our turn
         audioSystem.playSound(SOUNDS.GAME_STARTED);
+        
+        // Wait for banner to complete
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
+        });
       }
-
-      turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
     } else {
-      // Same player, just update state
+      // Same player making another move - still need to replay with delay
+      console.log('🔄 Same player move detected');
       turnManager.updateGameState(cleanState);
+      
+      // Replay moves from this update
+      moveReplayer.replayMoves(updatedState, currentState);
+      
+      // Wait for move replay to complete
+      await new Promise<void>((resolve) => {
+        const moveCount = countMoves(updatedState, currentState);
+        const replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+        setTimeout(() => resolve(), replayTime);
+      });
     }
 
     if (moveSystem) {
       moveSystem.updateGameState(cleanState);
     }
+
+    // Process next update in queue
+    processNextUpdate();
   }
 
   /**

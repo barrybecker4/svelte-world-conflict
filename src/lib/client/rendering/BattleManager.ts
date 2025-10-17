@@ -69,6 +69,9 @@ export class BattleManager {
     });
 
     try {
+      // Trigger movement animation before battle
+      this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
+      
       this.startBattleTimeout(targetRegionIndex);
       const battleState = this.createBattleState(move.gameState, targetRegionIndex, move);
       const result = await this.sendBattleToServer(move, playerId);
@@ -117,6 +120,9 @@ export class BattleManager {
     });
 
     try {
+      // Trigger movement animation for immediate feedback
+      this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
+      
       audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
       const result = await this.sendMoveToServer(move, playerId);
       console.log('✅ BattleManager: Peaceful move completed successfully');
@@ -249,6 +255,22 @@ export class BattleManager {
 
   getActiveBattleRegions(): number[] {
     return Array.from(this.battleTimeouts.keys());
+  }
+
+  /**
+   * Dispatch movement animation event
+   */
+  private dispatchMovementAnimation(sourceRegion: number, targetRegion: number, soldierCount: number): void {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('animateMovement', {
+        detail: {
+          sourceRegion,
+          targetRegion,
+          soldierCount,
+          duration: 500 // Half second animation
+        }
+      }));
+    }
   }
 
   destroy(): void {
