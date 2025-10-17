@@ -95,17 +95,18 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Determine proper status
         const gameStatus: 'ACTIVE' | 'COMPLETED' | 'PENDING' = result.newState!.endResult ? 'COMPLETED' : 'ACTIVE';
 
-        // Save updated game state
+        // Save updated game state with attack sequence
         const updatedGame: GameRecord = {
             ...game,
             worldConflictState: result.newState!.toJSON(),
             lastMoveAt: Date.now(),
-            status: gameStatus
+            status: gameStatus,
+            lastAttackSequence: command.attackSequence // Store attack sequence for replay
         };
 
         await gameStorage.saveGame(updatedGame);
 
-        // Send WebSocket updates - pass the game record
+        // Send WebSocket updates - pass the game record including attack sequence
         await WebSocketNotifications.gameUpdate(updatedGame);
 
         return json({

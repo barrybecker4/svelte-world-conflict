@@ -33,6 +33,8 @@ const TEXT_CONTENT_STYLE = `
  }
 `;
 
+export type StateUpdateCallback = (attackerLosses: number, defenderLosses: number) => void;
+
 export class BattleAnimationSystem {
   private activeAnimations = new Set<HTMLElement>();
   private mapContainer: HTMLElement | null = null;
@@ -46,7 +48,11 @@ export class BattleAnimationSystem {
     console.log('🗺️ BattleAnimationSystem: Map container set:', container);
   }
 
-  async playAttackSequence(attackSequence: AttackEvent[], regions: any[]): Promise<void> {
+  async playAttackSequence(
+    attackSequence: AttackEvent[], 
+    regions: any[], 
+    onStateUpdate?: StateUpdateCallback
+  ): Promise<void> {
     console.log('Playing attack sequence:', attackSequence);
 
     // Check if we have a map container
@@ -55,6 +61,11 @@ export class BattleAnimationSystem {
     }
 
     for (const event of attackSequence) {
+      // Update state with casualties from this round
+      if (onStateUpdate && (event.attackerCasualties || event.defenderCasualties)) {
+        onStateUpdate(event.attackerCasualties || 0, event.defenderCasualties || 0);
+      }
+
       if (event.floatingText) {   // Show floating text if present
         for (const textEvent of event.floatingText) {
           this.showFloatingText(textEvent, regions);

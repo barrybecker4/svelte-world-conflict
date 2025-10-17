@@ -1,8 +1,10 @@
 import type { Player, GameState } from '$lib/game/state/GameState.ts';
 
 export interface AttackEvent {
-    attackerCasualties?: number;
-    defenderCasualties?: number;
+    attackerCasualties?: number;      // Casualties in this round only
+    defenderCasualties?: number;      // Casualties in this round only
+    runningAttackerTotal?: number;    // Total attacker casualties so far
+    runningDefenderTotal?: number;    // Total defender casualties so far
     soundCue?: string;
     delay?: number;
     floatingText?: Array<{
@@ -68,13 +70,15 @@ export class AttackSequenceGenerator {
             this.state.upgradeLevel(this.toOwner, 'DEFENSE') || 0
         );
 
+        let preemptiveCasualties = 0;
         if (preemptiveDamage > 0) {
+            preemptiveCasualties = preemptiveDamage;
             this.recordPreemptiveDamage(preemptiveDamage, attackSequence, fromList);
         }
 
         // Main combat if both sides still have forces
         if (defendingSoldiers > 0 && this.incomingSoldiers > 0) {
-            this.recordFight(defendingSoldiers, attackSequence, fromList, toList);
+            this.recordFight(defendingSoldiers, attackSequence, fromList, toList, preemptiveCasualties);
 
             // Check if defenders won
             if (toList.length > 0) {
@@ -108,8 +112,11 @@ export class AttackSequenceGenerator {
 
         attackSequence.push({
             attackerCasualties: damage,
+            defenderCasualties: 0,
+            runningAttackerTotal: damage,
+            runningDefenderTotal: 0,
             soundCue: 'ATTACK',
-            delay: 50,
+            delay: 500, // 500ms for consistency
             floatingText: [{
                 regionIdx: this.toRegion,
                 text: `Earth kills ${damage}!`,
@@ -123,7 +130,8 @@ export class AttackSequenceGenerator {
         defendingSoldiers: number,
         attackSequence: AttackEvent[],
         fromList: { i: number }[],
-        toList: { i: number }[]
+        toList: { i: number }[],
+        preemptiveCasualties: number = 0
     ): void {
         if (!this.state) return;
 
@@ -132,10 +140,12 @@ export class AttackSequenceGenerator {
         // Conduct battle rounds until one side is eliminated
         let attackersRemaining = this.incomingSoldiers;
         let defendersRemaining = defendingSoldiers;
-        let totalAttackerCasualties = 0;
+        // Start with preemptive casualties if any
+        let totalAttackerCasualties = preemptiveCasualties;
         let totalDefenderCasualties = 0;
 
         // Continue battle until one side has no soldiers
+        // Emit a separate event for each round
         while (attackersRemaining > 0 && defendersRemaining > 0) {
             const battleResult = this.resolveBattleRound(attackersRemaining, defendersRemaining);
 
@@ -145,42 +155,45 @@ export class AttackSequenceGenerator {
             totalDefenderCasualties += battleResult.defenderCasualties;
 
             console.log(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
-        }
 
-        // Remove casualties from actual soldier arrays
-        for (let i = 0; i < totalAttackerCasualties && fromList.length > 0; i++) {
-            fromList.pop();
-        }
+            // Emit a separate event for this round with running totals
+            attackSequence.push({
+                attackerCasualties: battleResult.attackerCasualties,
+                defenderCasualties: battleResult.defenderCasualties,
+                runningAttackerTotal: totalAttackerCasualties,
+                runningDefenderTotal: totalDefenderCasualties,
+                soundCue: 'COMBAT',
+                delay: 500, // 500ms between rounds
+                floatingText: [
+                    {
+                        regionIdx: this.fromRegion,
+                        text: `-${totalAttackerCasualties}`,
+                        color: '#ff0000',
+                        width: 3
+                    },
+                    {
+                        regionIdx: this.toRegion,
+                        text: `-${totalDefenderCasualties}`,
+                        color: '#ff0000',
+                        width: 3
+                    }
+                ]
+            });
 
-        for (let i = 0; i < totalDefenderCasualties && toList.length > 0; i++) {
-            toList.pop();
+            // Remove casualties from actual soldier arrays after each round
+            for (let i = 0; i < battleResult.attackerCasualties && fromList.length > 0; i++) {
+                fromList.pop();
+            }
+
+            for (let i = 0; i < battleResult.defenderCasualties && toList.length > 0; i++) {
+                toList.pop();
+            }
         }
 
         this.incomingSoldiers = attackersRemaining;
 
         const winner = defendersRemaining > 0 ? 'defender' : 'attacker';
         console.log(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
-
-        attackSequence.push({
-            attackerCasualties: totalAttackerCasualties,
-            defenderCasualties: totalDefenderCasualties,
-            soundCue: 'COMBAT',
-            delay: 100,
-            floatingText: [
-                {
-                    regionIdx: this.fromRegion,
-                    text: `-${totalAttackerCasualties}`,
-                    color: '#ff0000',
-                    width: 3
-                },
-                {
-                    regionIdx: this.toRegion,
-                    text: `-${totalDefenderCasualties}`,
-                    color: '#ff0000',
-                    width: 3
-                }
-            ]
-        });
     }
 
     /**

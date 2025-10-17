@@ -72,6 +72,10 @@ export class GameController {
   async initialize(mapContainer: HTMLElement | undefined): Promise<void> {
     if (mapContainer) {
       this.battleManager.setMapContainer(mapContainer);
+      
+      // Connect battle animation system to move replayer for AI/multiplayer battle animations
+      const battleAnimationSystem = this.battleManager.getBattleAnimationSystem();
+      this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
     } else {
       console.warn('⚠️ GameController: Map container not provided, animations will be disabled');
     }
@@ -92,6 +96,10 @@ export class GameController {
   setMapContainer(container: HTMLElement): void {
     console.log('🗺️ GameController: Setting map container');
     this.battleManager.setMapContainer(container);
+    
+    // Also connect battle animation system to move replayer
+    const battleAnimationSystem = this.battleManager.getBattleAnimationSystem();
+    this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
   }
 
   /**
@@ -163,6 +171,14 @@ export class GameController {
     
     if (!result.success) {
       throw new Error(result.error || 'Move failed');
+    }
+    
+    // Immediately update game state with the result from the API
+    // This ensures the new state is shown when animation overrides clear
+    // The WebSocket update will arrive later but will be ignored if it's the same state
+    if (result.gameState) {
+      console.log('✅ GameController: Updating game state immediately from API result');
+      this.gameStore.handleGameStateUpdate(result.gameState);
     }
   }
 

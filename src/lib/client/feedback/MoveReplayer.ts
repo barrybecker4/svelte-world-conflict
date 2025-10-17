@@ -1,6 +1,7 @@
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSystem';
 
 /**
  * Represents a detected move from comparing game states
@@ -14,6 +15,7 @@ interface DetectedMove {
   oldCount?: number;
   newCount?: number;
   sourceRegion?: number; // For tracking where soldiers came from
+  attackSequence?: any[]; // Battle animation sequence for replay
 }
 
 /**
@@ -22,8 +24,16 @@ interface DetectedMove {
  */
 export class MoveReplayer {
   private readonly MOVE_PLAYBACK_DELAY = 600; // ms between each move sound/effect
+  private battleAnimationSystem: BattleAnimationSystem | null = null;
 
   constructor() {
+  }
+
+  /**
+   * Set the battle animation system for playing battle sequences
+   */
+  setBattleAnimationSystem(system: BattleAnimationSystem): void {
+    this.battleAnimationSystem = system;
   }
 
   /**
@@ -39,8 +49,21 @@ export class MoveReplayer {
 
     console.log('Playing other player moves...');
 
+    // Extract attack sequence and regions from new state if available
+    const attackSequence = newState.attackSequence;
+    const regions = newState.regions || [];
+
     // Detect what changed between states to determine move types
     const moves = this.detectMovesFromStateDiff(newState, previousState);
+
+    // Attach attack sequence and regions to conquest moves if available
+    if (attackSequence && moves.length > 0) {
+      const conquestMove = moves.find(m => m.type === 'conquest');
+      if (conquestMove) {
+        conquestMove.attackSequence = attackSequence;
+        (conquestMove as any).regions = regions; // Attach regions for animation
+      }
+    }
 
     if (moves.length === 0) {
       console.log('No moves detected to replay');
@@ -123,7 +146,7 @@ export class MoveReplayer {
       if (!targetRegion) continue;
       
       // Find the best matching source: a region that lost soldiers and is adjacent
-      let bestSource = null;
+      let bestSource: {regionIndex: number, loss: number} | null = null;
       for (const loss of regionsWithLosses) {
         // Skip if already used
         if (usedSources.has(loss.regionIndex)) continue;
@@ -156,18 +179,26 @@ export class MoveReplayer {
   private detectConquests(newState: any, previousState: any, moves: DetectedMove[]): void {
     const newOwners = newState.ownersByRegion || {};
     const oldOwners = previousState.ownersByRegion || {};
+    const newSoldiers = newState.soldiersByRegion || {};
+    const oldSoldiers = previousState.soldiersByRegion || {};
 
     Object.keys(newOwners).forEach(regionIndex => {
       const newOwner = newOwners[regionIndex];
       const oldOwner = oldOwners[regionIndex];
 
       if (oldOwner !== undefined && newOwner !== oldOwner) {
-        // Region was conquered
+        // Region was conquered - capture starting defender count for animation
+        const idx = parseInt(regionIndex);
+        const oldCount = (oldSoldiers[regionIndex] || []).length;
+        const newCount = (newSoldiers[regionIndex] || []).length;
+        
         moves.push({
           type: 'conquest',
-          regionIndex: parseInt(regionIndex),
+          regionIndex: idx,
           newOwner,
-          oldOwner
+          oldOwner,
+          oldCount, // Starting defender count before battle
+          newCount  // Final soldier count after battle
         });
       }
     });
@@ -260,8 +291,82 @@ export class MoveReplayer {
 
   /**
    * Play conquest feedback with multiple sounds and visual highlight
+   * If attack sequence is available, play blow-by-blow battle animation
    */
-  private playConquestFeedback(move: DetectedMove): void {
+  private async playConquestFeedback(move: DetectedMove): Promise<void> {
+    // If we have an attack sequence and battle animation system, play full battle animation
+    if (move.attackSequence && move.attackSequence.length > 0 && this.battleAnimationSystem) {
+      console.log('🎬 Playing blow-by-blow battle animation for conquest');
+      
+      try {
+        // Get regions from the move object (attached during replayMoves)
+        const regions = (move as any).regions || [];
+        
+        // Need to get the previous state to know starting soldier counts
+        // For replays, we need to store this information
+        const sourceRegion = move.sourceRegion || 0;
+        const targetRegion = move.regionIndex;
+        
+        // Initialize battle animation with starting counts and ownership from BEFORE the current state
+        if (typeof window !== 'undefined' && move.oldCount !== undefined && move.oldOwner !== undefined) {
+          // For AI/multiplayer battles being replayed, oldCount is the starting defender count
+          const startingTargetCount = move.oldCount;
+          const targetOwner = move.oldOwner; // Original owner before conquest
+          
+          console.log(`🎬 Initializing replay battle animation - Target ${targetRegion}: ${startingTargetCount}, Owner: ${targetOwner}`);
+          
+          window.dispatchEvent(new CustomEvent('battleAnimationStart', {
+            detail: {
+              sourceRegion,
+              targetRegion,
+              sourceCount: 0, // Will be updated by first round
+              targetCount: startingTargetCount,
+              targetOwner: targetOwner
+            }
+          }));
+        }
+        
+        // Create state update callback for real-time soldier count updates
+        const stateUpdateCallback = (attackerLosses: number, defenderLosses: number) => {
+          // Dispatch event to update UI
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('battleRoundUpdate', {
+              detail: {
+                sourceRegion,
+                targetRegion,
+                attackerLosses,
+                defenderLosses
+              }
+            }));
+          }
+        };
+        
+        await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions, stateUpdateCallback);
+        
+        // Dispatch battle complete event to clear animation overrides
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('battleComplete'));
+        }
+        
+        // Play conquest sound at the end
+        audioSystem.playSound(SOUNDS.REGION_CONQUERED);
+      } catch (error) {
+        console.error('Failed to play battle animation, falling back to simple feedback:', error);
+        this.playSimpleConquestFeedback(move);
+      }
+    } else {
+      // Fallback to simple conquest feedback
+      this.playSimpleConquestFeedback(move);
+    }
+
+    // Visual feedback
+    this.highlightRegion(move.regionIndex, 'conquest');
+  }
+
+  /**
+   * Simple conquest feedback without blow-by-blow animation
+   */
+  private playSimpleConquestFeedback(move: DetectedMove): void {
     // Play attack and combat sounds
     audioSystem.playSound(SOUNDS.ATTACK);
 
@@ -272,9 +377,6 @@ export class MoveReplayer {
         audioSystem.playSound(SOUNDS.REGION_CONQUERED);
       }, 300);
     }, 200);
-
-    // Visual feedback
-    this.highlightRegion(move.regionIndex, 'conquest');
   }
 
   /**

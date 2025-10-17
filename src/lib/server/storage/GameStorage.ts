@@ -11,6 +11,7 @@ export interface GameRecord {
     lastMoveAt: number;
     currentPlayerSlot: number;
     gameType: 'MULTIPLAYER' | 'AI';
+    lastAttackSequence?: any[]; // Attack sequence from the last move for battle replay
 
     // Optional configuration for PENDING games that need to be completed
     pendingConfiguration?: {

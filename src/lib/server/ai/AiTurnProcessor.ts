@@ -47,14 +47,15 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     currentState = result.newState;
                     moveMade = true;
 
-                    // Save the updated game state
+                    // Save the updated game state with attack sequence
                     const existingGame = await gameStorage.getGame(gameId);
                     if (existingGame) {
                         const updatedGame = {
                             ...existingGame,
                             worldConflictState: currentState.toJSON(),
                             currentPlayerSlot: currentState.currentPlayerSlot,
-                            lastMoveAt: Date.now()
+                            lastMoveAt: Date.now(),
+                            lastAttackSequence: aiMove.attackSequence // Store AI battle sequence for replay
                         };
 
                         await gameStorage.saveGame(updatedGame);
@@ -64,8 +65,13 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                             await WebSocketNotifications.gameUpdate(updatedGame);
                         }
 
-                        // Delay to allow clients to animate the move (1000ms for moves, 1500ms for temple upgrades)
-                        const delayMs = 1000; // Base delay for army moves
+                        // Delay to allow clients to animate the move
+                        // If there's a battle, account for blow-by-blow animation (500ms per round)
+                        let delayMs = 1000; // Base delay for army moves
+                        if (aiMove.attackSequence && aiMove.attackSequence.length > 0) {
+                            // Each battle round takes 500ms, plus base movement time
+                            delayMs = 1000 + (aiMove.attackSequence.length * 500);
+                        }
                         await new Promise(resolve => setTimeout(resolve, delayMs));
                     }
                 } else {

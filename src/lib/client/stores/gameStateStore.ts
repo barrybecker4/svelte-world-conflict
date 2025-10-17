@@ -18,13 +18,133 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
   const loading = writable<boolean>(true);
   const error = writable<string | null>(null);
   const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
+  
+  // Battle animation overrides - temporarily adjust soldier counts and ownership during animations
+  const battleAnimationOverrides = writable<{
+    soldierCounts: Record<number, number>;
+    ownership: Record<number, number | undefined>;
+  }>({ soldierCounts: {}, ownership: {} });
+  
+  // Create a derived store that applies battle animation overrides to the game state
+  const displayGameState = derived(
+    [gameState, battleAnimationOverrides],
+    ([$gameState, $overrides]) => {
+      if (!$gameState || (Object.keys($overrides.soldierCounts).length === 0 && Object.keys($overrides.ownership).length === 0)) {
+        return $gameState;
+      }
+      
+      // Clone the game state and apply overrides
+      const modifiedState = { ...$gameState };
+      modifiedState.soldiersByRegion = { ...modifiedState.soldiersByRegion };
+      modifiedState.ownersByRegion = { ...modifiedState.ownersByRegion };
+      
+      // Apply soldier count overrides
+      for (const [regionIndex, newCount] of Object.entries($overrides.soldierCounts)) {
+        const regionIdx = parseInt(regionIndex);
+        const currentSoldiers = $gameState.soldiersByRegion?.[regionIdx] || [];
+        
+        // Adjust soldier array to match the override count
+        if (newCount < currentSoldiers.length) {
+          modifiedState.soldiersByRegion[regionIdx] = currentSoldiers.slice(0, newCount);
+        } else if (newCount > currentSoldiers.length) {
+          // This shouldn't happen during battle animations, but handle it anyway
+          modifiedState.soldiersByRegion[regionIdx] = [...currentSoldiers];
+        } else {
+          modifiedState.soldiersByRegion[regionIdx] = currentSoldiers;
+        }
+      }
+      
+      // Apply ownership overrides
+      for (const [regionIndex, owner] of Object.entries($overrides.ownership)) {
+        const regionIdx = parseInt(regionIndex);
+        if (owner === undefined) {
+          delete modifiedState.ownersByRegion[regionIdx];
+        } else {
+          modifiedState.ownersByRegion[regionIdx] = owner;
+        }
+      }
+      
+      return modifiedState;
+    }
+  );
 
   let moveSystem: MoveSystem | null = null;
   const moveReplayer = new MoveReplayer();
+  let battleAnimationSystemSet = false; // Track if we've set the animation system
   
   // Queue for handling multiple rapid state updates
   let updateQueue: any[] = [];
   let isProcessingUpdate = false;
+
+  // Set up battle animation event listeners
+  if (typeof window !== 'undefined') {
+    window.addEventListener('battleAnimationStart', ((event: CustomEvent) => {
+      const { sourceRegion, targetRegion, sourceCount, targetCount, targetOwner } = event.detail;
+      console.log(`🎬 Battle animation starting - initializing overrides: Source ${sourceRegion}: ${sourceCount}, Target ${targetRegion}: ${targetCount}, Owner: ${targetOwner}`);
+      
+      // Initialize overrides with starting counts and ownership to "freeze" the display before animation
+      battleAnimationOverrides.set({
+        soldierCounts: {
+          [sourceRegion]: sourceCount,
+          [targetRegion]: targetCount
+        },
+        ownership: {
+          [targetRegion]: targetOwner // Preserve original owner during animation
+        }
+      });
+    }) as EventListener);
+    
+    window.addEventListener('battleRoundUpdate', ((event: CustomEvent) => {
+      const { sourceRegion, targetRegion, attackerLosses, defenderLosses } = event.detail;
+      updateBattleAnimation(sourceRegion, targetRegion, attackerLosses, defenderLosses);
+    }) as EventListener);
+    
+    window.addEventListener('battleComplete', (() => {
+      clearBattleAnimationOverrides();
+    }) as EventListener);
+  }
+
+  // Store reference to current game state for battle animations
+  let currentGameStateSnapshot: GameStateData | null = null;
+  gameState.subscribe(state => {
+    currentGameStateSnapshot = state;
+  });
+
+  /**
+   * Update battle animation overrides for real-time soldier count display
+   */
+  function updateBattleAnimation(sourceRegion: number, targetRegion: number, attackerLosses: number, defenderLosses: number) {
+    if (!currentGameStateSnapshot) return;
+    
+    battleAnimationOverrides.update(overrides => {
+      const newOverrides = {
+        soldierCounts: { ...overrides.soldierCounts },
+        ownership: { ...overrides.ownership }
+      };
+      
+      const sourceSoldiers = currentGameStateSnapshot!.soldiersByRegion?.[sourceRegion]?.length || 0;
+      const targetSoldiers = currentGameStateSnapshot!.soldiersByRegion?.[targetRegion]?.length || 0;
+      
+      // Apply losses
+      const newSourceCount = Math.max(0, (newOverrides.soldierCounts[sourceRegion] ?? sourceSoldiers) - attackerLosses);
+      const newTargetCount = Math.max(0, (newOverrides.soldierCounts[targetRegion] ?? targetSoldiers) - defenderLosses);
+      
+      newOverrides.soldierCounts[sourceRegion] = newSourceCount;
+      newOverrides.soldierCounts[targetRegion] = newTargetCount;
+      
+      console.log(`🎯 Battle animation update: Source ${sourceRegion}: ${sourceSoldiers} -> ${newSourceCount}, Target ${targetRegion}: ${targetSoldiers} -> ${newTargetCount}`);
+      
+      return newOverrides;
+    });
+  }
+
+  /**
+   * Clear battle animation overrides after animation completes
+   */
+  function clearBattleAnimationOverrides() {
+    console.log('🎯 Clearing battle animation overrides');
+    battleAnimationOverrides.set({ soldierCounts: {}, ownership: {} });
+  }
 
   /**
    * Count the number of moves between two states for timing calculations
@@ -183,14 +303,21 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     regions.set(cleanState.regions || []);
     players.set(cleanState.players || []);
 
-    // Check for elimination events and always update (clear if empty)
+    // Check for elimination events - add new eliminations but don't auto-clear
     if (cleanState.eliminatedPlayers && cleanState.eliminatedPlayers.length > 0) {
       console.log('💀 Players eliminated:', cleanState.eliminatedPlayers);
-      eliminationBanners.set([...cleanState.eliminatedPlayers]);
-    } else {
-      // Clear elimination banners if no players were eliminated this update
-      eliminationBanners.set([]);
+      // Add new eliminations to existing banners (don't replace)
+      eliminationBanners.update(existing => {
+        const newBanners = [...existing];
+        cleanState.eliminatedPlayers.forEach((playerSlot: number) => {
+          if (!newBanners.includes(playerSlot)) {
+            newBanners.push(playerSlot);
+          }
+        });
+        return newBanners;
+      });
     }
+    // Don't auto-clear banners - they are cleared when user completes them via completeEliminationBanner
 
     if (isNewTurn) {
       // New player's turn - show banner and handle audio
@@ -212,7 +339,14 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
         await new Promise<void>((resolve) => {
           // Calculate total replay time: number of moves * playback delay
           const moveCount = countMoves(updatedState, currentState);
-          const replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+          
+          // If there's a battle sequence, add time for blow-by-blow animation
+          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
+            // Each battle round takes 500ms
+            replayTime += updatedState.attackSequence.length * 500;
+          }
+          
           setTimeout(() => resolve(), replayTime);
         });
       } else {
@@ -225,19 +359,35 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
         });
       }
     } else {
-      // Same player making another move - still need to replay with delay
-      console.log('🔄 Same player move detected');
+      // Same player slot - could be our move or another player's move (in multiplayer)
+      console.log('🔄 Same player slot move detected');
       turnManager.updateGameState(cleanState);
       
-      // Replay moves from this update
-      moveReplayer.replayMoves(updatedState, currentState);
-      
-      // Wait for move replay to complete
-      await new Promise<void>((resolve) => {
-        const moveCount = countMoves(updatedState, currentState);
-        const replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
-        setTimeout(() => resolve(), replayTime);
-      });
+      // Only replay moves if it's another player's turn (to avoid double animations)
+      // When it's our own move, BattleManager already animated it
+      if (isOtherPlayersTurn) {
+        console.log('🔄 Replaying other player\'s move');
+        // Replay moves from this update
+        moveReplayer.replayMoves(updatedState, currentState);
+        
+        // Wait for move replay to complete
+        await new Promise<void>((resolve) => {
+          const moveCount = countMoves(updatedState, currentState);
+          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+          
+          // If there's a battle sequence, add time for blow-by-blow animation
+          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
+            // Each battle round takes 500ms
+            replayTime += updatedState.attackSequence.length * 500;
+          }
+          
+          setTimeout(() => resolve(), replayTime);
+        });
+      } else {
+        console.log('✅ Skipping replay for our own move (already animated by BattleManager)');
+        // For our own moves, don't clear overrides here - let BattleManager handle it
+        // The WebSocket update just updates the underlying state, which shows through when overrides clear
+      }
     }
 
     if (moveSystem) {
@@ -327,8 +477,8 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
   const gameStateFromTurnManager = turnManager.gameData;
 
   return {
-    // Core stores
-    gameState,
+    // Core stores - use displayGameState which includes battle animation overrides
+    gameState: displayGameState,
     regions,
     players,
     loading,
@@ -361,6 +511,15 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     getMoveSystem: () => moveSystem,
 
     // Access to move replayer for configuration
-    getMoveReplayer: () => moveReplayer
+    getMoveReplayer: () => moveReplayer,
+
+    // Set battle animation system for move replayer
+    setBattleAnimationSystem: (system: any) => {
+      if (!battleAnimationSystemSet) {
+        moveReplayer.setBattleAnimationSystem(system);
+        battleAnimationSystemSet = true;
+        console.log('🎬 Battle animation system set for move replayer');
+      }
+    }
   };
 }
