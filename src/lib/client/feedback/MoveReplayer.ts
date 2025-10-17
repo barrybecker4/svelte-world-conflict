@@ -201,6 +201,7 @@ export class MoveReplayer {
           regionIndex: idx,
           oldCount,
           newCount,
+          soldierCount: newCount - oldCount, // Calculate actual soldier count for animation
           sourceRegion // Add source for animation
         });
       }
