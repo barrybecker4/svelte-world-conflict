@@ -6,7 +6,6 @@ import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
-import type { GameState } from '$lib/game/state/GameState';
 
 interface ModalState {
   showSoldierSelection: boolean;
