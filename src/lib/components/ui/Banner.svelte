@@ -130,10 +130,10 @@
     background: linear-gradient(135deg,
                 rgba(20, 20, 20, 0.95),
                 rgba(40, 30, 30, 0.95));
-    border-color: #dc2626;
+    /* Keep player color for border - don't override with red */
     box-shadow:
       0 20px 40px rgba(0, 0, 0, 0.7),
-      0 0 50px rgba(220, 38, 38, 0.3),
+      0 0 50px var(--player-color),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
@@ -153,8 +153,8 @@
   }
 
   .turn-banner.elimination .turn-label {
-    color: #dc2626;
-    text-shadow: 0 0 10px #dc2626;
+    color: var(--player-color);
+    text-shadow: 0 0 10px var(--player-color);
   }
 
   .player-name {
@@ -237,7 +237,9 @@
   .energy-pulse.fade-pulse {
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(220, 38, 38, 0.1) 0%, transparent 70%);
+    /* Use player color instead of hardcoded red */
+    background: radial-gradient(circle, var(--player-color) 0%, transparent 70%);
+    opacity: 0.05;
     animation: fadeOut 2s ease-in-out infinite;
   }
 
