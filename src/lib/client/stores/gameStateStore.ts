@@ -303,26 +303,34 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
     regions.set(cleanState.regions || []);
     players.set(cleanState.players || []);
 
-    // Check for elimination events - add new eliminations but don't auto-clear
-    if (cleanState.eliminatedPlayers && cleanState.eliminatedPlayers.length > 0) {
-      console.log('💀 Players eliminated:', cleanState.eliminatedPlayers);
-      // Add new eliminations to existing banners (don't replace)
-      eliminationBanners.update(existing => {
-        const newBanners = [...existing];
-        cleanState.eliminatedPlayers.forEach((playerSlot: number) => {
-          if (!newBanners.includes(playerSlot)) {
-            newBanners.push(playerSlot);
-          }
-        });
-        return newBanners;
-      });
-    }
-    // Don't auto-clear banners - they are cleared when user completes them via completeEliminationBanner
-
     if (isNewTurn) {
-      // New player's turn - show banner and handle audio
-      console.log('🔄 Turn transition detected');
-
+      // Check if there are elimination banners from the previous turn
+      const hasEliminations = cleanState.previousTurnEliminations && cleanState.previousTurnEliminations.length > 0;
+      
+      if (hasEliminations) {
+        console.log('💀 Players eliminated in previous turn:', cleanState.previousTurnEliminations);
+        // Set the elimination banners - they will render and block the turn transition
+        eliminationBanners.set([...cleanState.previousTurnEliminations!]);
+        
+        // Wait for user to dismiss all elimination banners before proceeding
+        console.log('💀 Waiting for elimination banners to be dismissed...');
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            let currentBanners: number[] = [];
+            const unsubscribe = eliminationBanners.subscribe(b => { currentBanners = b; });
+            unsubscribe();
+            
+            if (currentBanners.length === 0) {
+              console.log('💀 All elimination banners dismissed');
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50); // Check every 50ms
+        });
+      }
+      
+      // Now that elimination banners are done (or there were none), show turn banner
+      console.log('🔄 Turn transition detected - showing turn banner');
       await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
 
       // Play appropriate sounds based on whose turn it is

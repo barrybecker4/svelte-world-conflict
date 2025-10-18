@@ -137,6 +137,7 @@
         <Banner
           player={eliminatedPlayer}
           type="elimination"
+          duration={2000}
           onComplete={() => completeEliminationBanner(eliminatedPlayerSlot)}
         />
       {/if}

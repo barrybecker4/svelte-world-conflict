@@ -9,10 +9,14 @@
   export let isVisible: boolean = true;
   export let onComplete: () => void = () => {};
   export let type: 'turn' | 'elimination' = 'turn';
+  export let duration: number | undefined = undefined; // Optional override for banner duration
 
   let bannerElement: HTMLElement;
   let animationComplete = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
+
+  // Use custom duration if provided, otherwise use default from constants
+  $: bannerDuration = duration !== undefined ? duration : GAME_CONSTANTS.BANNER_TIME;
 
   // Reset animation state when player or type changes
   $: if (player || type) {
@@ -23,7 +27,7 @@
     timer = setTimeout(() => {
       animationComplete = true;
       onComplete();
-    }, GAME_CONSTANTS.BANNER_TIME);
+    }, bannerDuration);
   }
 
   onDestroy(() => {

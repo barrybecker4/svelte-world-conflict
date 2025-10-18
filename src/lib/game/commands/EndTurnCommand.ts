@@ -31,7 +31,7 @@ export class EndTurnCommand extends Command {
         const newState = this.gameState.copy() as GameState;
 
         const beforeFaith = newState.getPlayerFaith(this.player.slotIndex);
-        const beforeSoldiers = this.getTemplesSoldiers(newState, "BEFORE");
+     
 
         this.income = this.calculateIncome(newState);
 
@@ -63,6 +63,11 @@ export class EndTurnCommand extends Command {
         // Calculate moves for next player including Air temple bonuses
         const nextPlayer = this.getPlayerBySlot(nextSlotIndex, players);
         const airBonus = nextPlayer ? this.calculateAirBonus(newState, nextPlayer) : 0;
+        
+        // Preserve eliminated players from this turn to show at turn transition
+        newState.state.previousTurnEliminations = newState.state.eliminatedPlayers && newState.state.eliminatedPlayers.length > 0
+            ? [...newState.state.eliminatedPlayers]
+            : [];
         
         // Reset turn state
         newState.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN + airBonus;
