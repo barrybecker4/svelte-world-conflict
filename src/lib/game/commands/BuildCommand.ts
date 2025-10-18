@@ -50,7 +50,7 @@ export class BuildCommand extends Command {
      */
     private calculateCost(): number {
         const temple = this.gameState.templesByRegion[this.regionIndex];
-        
+
         // Special case: SOLDIER upgrade has dynamic pricing
         if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
             const numBought = this.gameState.state.numBoughtSoldiers || 0;
@@ -69,26 +69,12 @@ export class BuildCommand extends Command {
         if (temple?.upgradeIndex === this.upgradeIndex) {
             // Upgrading to next level of same type
             const upgrade = Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
-            console.log('💰 Same upgrade type - upgrading to next level:', {
-                upgrade: upgrade?.name,
-                currentLevel: temple.level,
-                nextLevel: temple.level + 1,
-                costArray: upgrade?.cost,
-                costAtNextLevel: upgrade?.cost?.[temple.level + 1]
-            });
             if (upgrade && upgrade.cost) {
-                const cost = upgrade.cost[temple.level + 1];
-                console.log('💰 Calculated cost for next level:', cost);
-                return cost || 0;
+                return upgrade.cost[temple.level + 1] || 0;
             }
         } else {
             // New temple type - cost for level 0
             const upgrade = Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
-            console.log('💰 Different upgrade type - cost for level 0:', {
-                upgrade: upgrade?.name,
-                costArray: upgrade?.cost,
-                costAtLevel0: upgrade?.cost?.[0]
-            });
             if (upgrade && upgrade.cost) {
                 return upgrade.cost[0] || 0;
             }

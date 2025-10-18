@@ -28,48 +28,11 @@ export class BattleReplayCoordinator {
    * If attack sequence is available, play blow-by-blow battle animation
    */
   async playConquest(move: DetectedMove, regions: any[]): Promise<void> {
-    console.log('🎯 BattleReplayCoordinator.playConquest called:', {
-      hasAttackSequence: !!move.attackSequence,
-      attackSequenceLength: move.attackSequence?.length || 0,
-      hasBattleAnimationSystem: !!this.battleAnimationSystem,
-      regionsCount: regions.length,
-      regionIndex: move.regionIndex
-    });
-
     // If we have an attack sequence and battle animation system, play full battle animation
     if (move.attackSequence && move.attackSequence.length > 0 && this.battleAnimationSystem) {
-      console.log('🎬 Playing blow-by-blow battle animation for conquest');
-
       try {
-        // Need to get the previous state to know starting soldier counts
-        // For replays, we need to store this information
         const sourceRegion = move.sourceRegion !== undefined ? move.sourceRegion : 0;
         const targetRegion = move.regionIndex;
-
-        console.log('🎯 Battle animation setup:', {
-          sourceRegion,
-          targetRegion,
-          hasSourceRegion: move.sourceRegion !== undefined
-        });
-
-        // Initialize battle animation with starting counts and ownership from BEFORE the current state
-        if (typeof window !== 'undefined' && move.oldCount !== undefined && move.oldOwner !== undefined) {
-          // For AI/multiplayer battles being replayed, oldCount is the starting defender count
-          const startingTargetCount = move.oldCount;
-          const targetOwner = move.oldOwner; // Original owner before conquest
-
-          console.log(`🎬 Initializing replay battle animation - Target ${targetRegion}: ${startingTargetCount}, Owner: ${targetOwner}`);
-
-          window.dispatchEvent(new CustomEvent('battleAnimationStart', {
-            detail: {
-              sourceRegion,
-              targetRegion,
-              sourceCount: 0, // Will be updated by first round
-              targetCount: startingTargetCount,
-              targetOwner: targetOwner
-            }
-          }));
-        }
 
         // Create state update callback for real-time soldier count updates
         const stateUpdateCallback = (attackerLosses: number, defenderLosses: number) => {

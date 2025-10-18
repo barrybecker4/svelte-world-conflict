@@ -16,7 +16,7 @@ export class FeedbackPlayer {
 
     // Visual feedback
     this.highlightRegion(move.regionIndex, 'movement');
-    
+
     // If we know the source region, trigger movement animation
     if (move.sourceRegion !== undefined) {
       this.dispatchMovementAnimation(move.sourceRegion, move.regionIndex, move.soldierCount || 0);
@@ -82,4 +82,3 @@ export class FeedbackPlayer {
     }
   }
 }
-

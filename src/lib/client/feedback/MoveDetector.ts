@@ -123,12 +123,17 @@ export class MoveDetector {
     Object.keys(newOwners).forEach(regionIndex => {
       const newOwner = newOwners[regionIndex];
       const oldOwner = oldOwners[regionIndex];
+      const idx = parseInt(regionIndex);
+      const oldCount = (oldSoldiers[regionIndex] || []).length;
+      const newCount = (newSoldiers[regionIndex] || []).length;
 
-      if (oldOwner !== undefined && newOwner !== oldOwner) {
-        // Region was conquered - capture starting defender count for animation
-        const idx = parseInt(regionIndex);
-        const oldCount = (oldSoldiers[regionIndex] || []).length;
-        const newCount = (newSoldiers[regionIndex] || []).length;
+      // Detect conquests:
+      // 1. Enemy territory conquered (oldOwner changed)
+      // 2. Neutral territory with defenders conquered (oldOwner undefined but had soldiers)
+      const isEnemyConquest = oldOwner !== undefined && newOwner !== oldOwner;
+      const isNeutralConquest = oldOwner === undefined && oldCount > 0 && newOwner !== undefined;
+      
+      if (isEnemyConquest || isNeutralConquest) {
         const sourceRegion = movementPairs.get(idx); // Get source from movement pairs
         
         console.log('⚔️ MoveDetector: Conquest detected', {
@@ -137,7 +142,8 @@ export class MoveDetector {
           newOwner,
           oldCount,
           newCount,
-          sourceRegion
+          sourceRegion,
+          isNeutral: isNeutralConquest
         });
         
         moves.push({
