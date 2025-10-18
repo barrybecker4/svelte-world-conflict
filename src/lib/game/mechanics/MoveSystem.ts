@@ -302,7 +302,7 @@ export class MoveSystem {
    */
   private confirmMove(): void {
     console.log('✅ MoveSystem.confirmMove');
-    
+
     if (this.state.mode === 'ADJUST_SOLDIERS' && this.state.sourceRegion !== null && this.state.targetRegion !== null) {
       // Execute the move with the selected soldier count
       this.updateState({
@@ -318,7 +318,7 @@ export class MoveSystem {
    */
   private cancelMove(): void {
     console.log('MoveSystem.cancelMove');
-    
+
     this.updateState({
       mode: 'IDLE',
       sourceRegion: null,
@@ -336,7 +336,7 @@ export class MoveSystem {
    */
   reset(): void {
     console.log('🔄 MoveSystem.reset');
-    
+
     this.updateState({
       mode: 'IDLE',
       sourceRegion: null,
@@ -354,7 +354,7 @@ export class MoveSystem {
    */
   private enterBuildMode(): void {
     console.log('🏗️ MoveSystem.enterBuildMode');
-    
+
     this.updateState({
       mode: 'BUILD',
       sourceRegion: null,
@@ -396,7 +396,7 @@ export class MoveSystem {
       return []; // Can't move from conquered regions
     }
 
-    // Check if source has enough soldiers to move 
+    // Check if source has enough soldiers to move
     const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion]?.length || 0;
     if (availableSoldiers < 1) {
       return []; // Can't move from regions with less than 2 soldiers
@@ -411,19 +411,9 @@ export class MoveSystem {
    */
   private updateState(newState: MoveState): void {
     this.state = { ...newState };
-    
+
     if (this.onStateChange) {
       this.onStateChange(this.state);
     }
-  }
-
-  /**
-   * Get the current player
-   */
-  private getCurrentPlayer() {
-     if (!this.gameState || !this.gameState.players) {
-       return null;
-     }
-     return this.gameState.players.find((p: any) => p.slotIndex === this.gameState.currentPlayerSlot);
   }
 }

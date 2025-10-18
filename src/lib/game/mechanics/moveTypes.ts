@@ -47,31 +47,3 @@ export interface MoveAction {
     soldierCount?: number;
   };
 }
-
-/**
- * Callback function type for move state changes
- * Used by components to react to move system state updates
- */
-export type MoveStateChangeCallback = (newState: MoveState) => void;
-
-/**
- * Callback function type for completed moves
- * Used to execute the actual move logic after UI interaction
- */
-export type MoveCompleteCallback = (
-  sourceRegionIndex: number,
-  targetRegionIndex: number,
-  soldierCount: number
-) => Promise<void>;
-
-/**
- * Helper type for move mode checks
- * Useful for component logic that needs to check specific modes
- */
-export type MoveMode = MoveState['mode'];
-
-/**
- * Utility type for creating partial move state updates
- * Useful for state management and testing
- */
-export type PartialMoveState = Partial<MoveState>;

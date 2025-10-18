@@ -1,7 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import {
   getSlotButtonVariant,
-  formatTimeAgo,
   getDefaultPlayerName,
   type BaseSlotInfo
 } from '$lib/client/slots/slotUtils';
@@ -131,11 +130,11 @@ export class OpenGamesManager {
         });
 
         console.log(`Successfully joined as player ${player.slotIndex}: ${player.name}`);
-        
+
         // Cleanup BEFORE navigation to ensure polling stops immediately
         console.log('🚪 Joining game - cleaning up lobby resources before navigation');
         this.destroy();
-        
+
         await goto(`/game/${gameId}`);
       } else {
         const errorData = await response.json() as { error?: string };
@@ -184,10 +183,6 @@ export class OpenGamesManager {
     return getSlotButtonVariant(slotInfo);
   }
 
-  formatTimeAgo(timestamp: number): string {
-    return formatTimeAgo(timestamp);
-  }
-
   destroy() {
     if (this.isDestroyed) {
       console.log('⏹️ OpenGamesManager: Already destroyed, skipping cleanup');
@@ -196,24 +191,24 @@ export class OpenGamesManager {
 
     console.log('🧹 OpenGamesManager: Cleaning up...');
     this.isDestroyed = true;
-    
+
     if (this.refreshInterval !== null) {
       console.log(`  🛑 Clearing polling interval: ${this.refreshInterval}`);
       window.clearInterval(this.refreshInterval);
       this.refreshInterval = null;
       console.log('  ✅ Cleared polling interval');
     }
-    
+
     if (this.wsUnsubscribe) {
       this.wsUnsubscribe();
       this.wsUnsubscribe = null;
       console.log('  ✅ Unsubscribed from game updates');
     }
-    
-    // Note: We do NOT disconnect the WebSocket here because it's a shared singleton
+
+    // Note: We do not disconnect the WebSocket here because it's a shared singleton
     // that may be used by other parts of the app (e.g., active game sessions).
     // We only clean up our local subscriptions and polling.
-    
+
     this.wsConnected.set(false);
     console.log('🧹 OpenGamesManager: Cleanup complete');
   }

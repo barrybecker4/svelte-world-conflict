@@ -48,8 +48,4 @@ export class ScoreCalculator {
 
     return totalSoldiers;
   }
-
-  private isPlayerEliminated(playerSlotIndex: number): boolean {
-    return this.getRegionCount(playerSlotIndex) === 0;
-  }
 }
