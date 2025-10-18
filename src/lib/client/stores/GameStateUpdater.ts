@@ -1,0 +1,234 @@
+import type { Writable } from 'svelte/store';
+import { turnManager } from '$lib/game/mechanics/TurnManager';
+import type { MoveSystem } from '$lib/game/mechanics/MoveSystem';
+import { MoveReplayer } from '$lib/client/feedback/MoveReplayer';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { audioSystem } from '$lib/client/audio/AudioSystem';
+import { SOUNDS } from '$lib/client/audio/sounds';
+import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
+
+/**
+ * Manages WebSocket game state updates with proper queuing and orchestration.
+ * 
+ * Handles the complex flow of:
+ * - Queuing multiple rapid updates
+ * - Turn transition detection and banner coordination
+ * - Elimination banner sequencing
+ * - Move replay timing for other players' actions
+ * - Audio feedback
+ */
+export class GameStateUpdater {
+  private updateQueue: any[] = [];
+  private isProcessingUpdate = false;
+  
+  constructor(
+    private gameStateStore: Writable<GameStateData | null>,
+    private regionsStore: Writable<Region[]>,
+    private playersStore: Writable<Player[]>,
+    private eliminationBannersStore: Writable<number[]>,
+    private playerSlotIndex: number,
+    private getMoveSystem: () => MoveSystem | null,
+    private moveReplayer: MoveReplayer
+  ) {}
+  
+  /**
+   * Count the number of moves between two states for timing calculations
+   */
+  private countMoves(newState: any, previousState: any): number {
+    if (!previousState) return 0;
+    
+    let moveCount = 0;
+    
+    // Count soldier changes
+    const newSoldiers = newState.soldiersByRegion || {};
+    const oldSoldiers = previousState.soldiersByRegion || {};
+    
+    Object.keys(newSoldiers).forEach(regionIndex => {
+      const newCount = (newSoldiers[regionIndex] || []).length;
+      const oldCount = (oldSoldiers[regionIndex] || []).length;
+      if (newCount !== oldCount) {
+        moveCount++;
+      }
+    });
+    
+    // Count temple upgrades
+    if (newState.templeUpgrades && previousState.templeUpgrades) {
+      Object.keys(newState.templeUpgrades).forEach(regionIndex => {
+        const newUpgrades = newState.templeUpgrades[regionIndex] || [];
+        const oldUpgrades = previousState.templeUpgrades[regionIndex] || [];
+        if (newUpgrades.length > oldUpgrades.length) {
+          moveCount++;
+        }
+      });
+    }
+    
+    return Math.max(moveCount, 1); // At least 1 move
+  }
+  
+  /**
+   * Handle WebSocket game state updates
+   * Updates are queued to ensure banners complete before next update
+   */
+  handleGameStateUpdate(updatedState: any) {
+    console.log('🎮 Received game update via WebSocket:', updatedState);
+    
+    // Add to queue
+    this.updateQueue.push(updatedState);
+    
+    // Start processing if not already processing
+    if (!this.isProcessingUpdate) {
+      this.processNextUpdate();
+    }
+  }
+  
+  /**
+   * Process queued updates one at a time
+   */
+  private async processNextUpdate() {
+    if (this.updateQueue.length === 0) {
+      this.isProcessingUpdate = false;
+      return;
+    }
+
+    this.isProcessingUpdate = true;
+    const updatedState = this.updateQueue.shift();
+
+    // Get current state for comparison
+    let currentState: any;
+    this.gameStateStore.subscribe(state => currentState = state)();
+
+    // Check if turn changed (either player changed OR turn number increased, indicating a full round)
+    const playerChanged = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
+    const turnNumberIncreased = currentState && updatedState.turnNumber > currentState.turnNumber;
+    const isNewTurn = playerChanged || turnNumberIncreased;
+    const isOtherPlayersTurn = updatedState.currentPlayerSlot !== this.playerSlotIndex;
+
+    console.log('🎯 Turn transition check:', {
+        'currentState.currentPlayerSlot': currentState?.currentPlayerSlot,
+        'currentState.turnNumber': currentState?.turnNumber,
+        'updatedState.currentPlayerSlot': updatedState.currentPlayerSlot,
+        'updatedState.turnNumber': updatedState.turnNumber,
+        'my playerSlotIndex': this.playerSlotIndex,
+        'playerChanged': playerChanged,
+        'turnNumberIncreased': turnNumberIncreased,
+        'isNewTurn': isNewTurn,
+        'isOtherPlayersTurn': isOtherPlayersTurn,
+        'queueLength': this.updateQueue.length
+    });
+
+    // Ensure battle states are cleared from server updates
+    const cleanState = {
+      ...updatedState,
+      battlesInProgress: [], // Force clear
+      pendingMoves: []       // Force clear
+    };
+
+    this.gameStateStore.set(cleanState);
+    this.regionsStore.set(cleanState.regions || []);
+    this.playersStore.set(cleanState.players || []);
+
+    if (isNewTurn) {
+      // Check if there are elimination banners from the previous turn
+      const hasEliminations = cleanState.previousTurnEliminations && cleanState.previousTurnEliminations.length > 0;
+      
+      if (hasEliminations) {
+        console.log('💀 Players eliminated in previous turn:', cleanState.previousTurnEliminations);
+        // Set the elimination banners - they will render and block the turn transition
+        this.eliminationBannersStore.set([...cleanState.previousTurnEliminations!]);
+        
+        // Wait for user to dismiss all elimination banners before proceeding
+        console.log('💀 Waiting for elimination banners to be dismissed...');
+        await new Promise<void>((resolve) => {
+          const checkInterval = setInterval(() => {
+            let currentBanners: number[] = [];
+            const unsubscribe = this.eliminationBannersStore.subscribe(b => { currentBanners = b; });
+            unsubscribe();
+            
+            if (currentBanners.length === 0) {
+              console.log('💀 All elimination banners dismissed');
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 50); // Check every 50ms
+        });
+      }
+      
+      // Now that elimination banners are done (or there were none), show turn banner
+      console.log('🔄 Turn transition detected - showing turn banner');
+      await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
+
+      // Play appropriate sounds based on whose turn it is
+      if (isOtherPlayersTurn) {
+        // It's another player's turn - wait for banner, then replay moves
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            this.moveReplayer.replayMoves(updatedState, currentState);
+            resolve();
+          }, GAME_CONSTANTS.BANNER_TIME); // Banner duration
+        });
+        
+        // Wait for move replay to complete (playback delay + animation time)
+        await new Promise<void>((resolve) => {
+          // Calculate total replay time: number of moves * playback delay
+          const moveCount = this.countMoves(updatedState, currentState);
+          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+          
+          // If there's a battle sequence, add time for blow-by-blow animation
+          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
+            // Each battle round takes 500ms
+            replayTime += updatedState.attackSequence.length * 500;
+          }
+          
+          setTimeout(() => resolve(), replayTime);
+        });
+      } else {
+        // It's now our turn
+        audioSystem.playSound(SOUNDS.GAME_STARTED);
+        
+        // Wait for banner to complete
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
+        });
+      }
+    } else {
+      // Same player slot - could be our move or another player's move (in multiplayer)
+      console.log('🔄 Same player slot move detected');
+      turnManager.updateGameState(cleanState);
+      
+      // Only replay moves if it's another player's turn (to avoid double animations)
+      // When it's our own move, BattleManager already animated it
+      if (isOtherPlayersTurn) {
+        console.log('🔄 Replaying other player\'s move');
+        // Replay moves from this update
+        this.moveReplayer.replayMoves(updatedState, currentState);
+        
+        // Wait for move replay to complete
+        await new Promise<void>((resolve) => {
+          const moveCount = this.countMoves(updatedState, currentState);
+          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
+          
+          // If there's a battle sequence, add time for blow-by-blow animation
+          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
+            // Each battle round takes 500ms
+            replayTime += updatedState.attackSequence.length * 500;
+          }
+          
+          setTimeout(() => resolve(), replayTime);
+        });
+      } else {
+        console.log('✅ Skipping replay for our own move (already animated by BattleManager)');
+        // For our own moves, don't clear overrides here - let BattleManager handle it
+        // The WebSocket update just updates the underlying state, which shows through when overrides clear
+      }
+    }
+
+    const moveSystem = this.getMoveSystem();
+    if (moveSystem) {
+      moveSystem.updateGameState(cleanState);
+    }
+
+    // Process next update in queue
+    this.processNextUpdate();
+  }
+}
+

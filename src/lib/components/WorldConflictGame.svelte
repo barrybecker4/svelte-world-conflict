@@ -15,7 +15,7 @@
   export let playerId: string;
   export let playerSlotIndex: number;
 
-  const gameStore = createGameStateStore(gameId, playerId, playerSlotIndex);
+  const gameStore = createGameStateStore(gameId, playerSlotIndex);
   const {
     gameState,
     regions,

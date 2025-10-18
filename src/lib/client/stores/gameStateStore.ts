@@ -3,14 +3,20 @@ import { turnManager } from '$lib/game/mechanics/TurnManager';
 import { MoveSystem } from '$lib/game/mechanics/MoveSystem';
 import { MoveReplayer } from '$lib/client/feedback/MoveReplayer';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { audioSystem } from '$lib/client/audio/AudioSystem';
-import { SOUNDS } from '$lib/client/audio/sounds';
+import { BattleAnimationUpdater } from './BattleAnimationUpdater';
+import { GameStateUpdater } from './GameStateUpdater';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 
 /**
- * Svelte Store for managing game state loading, initialization, and updates
+ * Svelte Store for managing game state loading, initialization, and updates.
+ * 
+ * This store orchestrates the game's reactive state management, coordinating:
+ * - Core game state (regions, players, current turn)
+ * - Battle animations (via BattleAnimationUpdater)
+ * - WebSocket updates (via GameStateUpdater)
+ * - Move system and turn manager
  */
-export function createGameStateStore(gameId: string, playerId: string, playerSlotIndex: number) {
+export function createGameStateStore(gameId: string, playerSlotIndex: number) {
 
   const gameState = writable<GameStateData | null>(null);
   const regions = writable<Region[]>([]);
@@ -19,166 +25,23 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
   const error = writable<string | null>(null);
   const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
   
-  // Battle animation overrides - temporarily adjust soldier counts and ownership during animations
-  const battleAnimationOverrides = writable<{
-    soldierCounts: Record<number, number>;
-    ownership: Record<number, number | undefined>;
-  }>({ soldierCounts: {}, ownership: {} });
+  // Battle animation updater manages visual overrides during combat
+  const battleAnimationUpdater = new BattleAnimationUpdater(gameState);
   
-  // Create a derived store that applies battle animation overrides to the game state
-  const displayGameState = derived(
-    [gameState, battleAnimationOverrides],
-    ([$gameState, $overrides]) => {
-      if (!$gameState || (Object.keys($overrides.soldierCounts).length === 0 && Object.keys($overrides.ownership).length === 0)) {
-        return $gameState;
-      }
-      
-      // Clone the game state and apply overrides
-      const modifiedState = { ...$gameState };
-      modifiedState.soldiersByRegion = { ...modifiedState.soldiersByRegion };
-      modifiedState.ownersByRegion = { ...modifiedState.ownersByRegion };
-      
-      // Apply soldier count overrides
-      for (const [regionIndex, newCount] of Object.entries($overrides.soldierCounts)) {
-        const regionIdx = parseInt(regionIndex);
-        const currentSoldiers = $gameState.soldiersByRegion?.[regionIdx] || [];
-        
-        // Adjust soldier array to match the override count
-        if (newCount < currentSoldiers.length) {
-          modifiedState.soldiersByRegion[regionIdx] = currentSoldiers.slice(0, newCount);
-        } else if (newCount > currentSoldiers.length) {
-          // This shouldn't happen during battle animations, but handle it anyway
-          modifiedState.soldiersByRegion[regionIdx] = [...currentSoldiers];
-        } else {
-          modifiedState.soldiersByRegion[regionIdx] = currentSoldiers;
-        }
-      }
-      
-      // Apply ownership overrides
-      for (const [regionIndex, owner] of Object.entries($overrides.ownership)) {
-        const regionIdx = parseInt(regionIndex);
-        if (owner === undefined) {
-          delete modifiedState.ownersByRegion[regionIdx];
-        } else {
-          modifiedState.ownersByRegion[regionIdx] = owner;
-        }
-      }
-      
-      return modifiedState;
-    }
-  );
-
   let moveSystem: MoveSystem | null = null;
   const moveReplayer = new MoveReplayer();
   let battleAnimationSystemSet = false; // Track if we've set the animation system
   
-  // Queue for handling multiple rapid state updates
-  let updateQueue: any[] = [];
-  let isProcessingUpdate = false;
-
-  // Set up battle animation event listeners
-  if (typeof window !== 'undefined') {
-    window.addEventListener('battleAnimationStart', ((event: CustomEvent) => {
-      const { sourceRegion, targetRegion, sourceCount, targetCount, targetOwner } = event.detail;
-      console.log(`🎬 Battle animation starting - initializing overrides: Source ${sourceRegion}: ${sourceCount}, Target ${targetRegion}: ${targetCount}, Owner: ${targetOwner}`);
-      
-      // Initialize overrides with starting counts and ownership to "freeze" the display before animation
-      battleAnimationOverrides.set({
-        soldierCounts: {
-          [sourceRegion]: sourceCount,
-          [targetRegion]: targetCount
-        },
-        ownership: {
-          [targetRegion]: targetOwner // Preserve original owner during animation
-        }
-      });
-    }) as EventListener);
-    
-    window.addEventListener('battleRoundUpdate', ((event: CustomEvent) => {
-      const { sourceRegion, targetRegion, attackerLosses, defenderLosses } = event.detail;
-      updateBattleAnimation(sourceRegion, targetRegion, attackerLosses, defenderLosses);
-    }) as EventListener);
-    
-    window.addEventListener('battleComplete', (() => {
-      clearBattleAnimationOverrides();
-    }) as EventListener);
-  }
-
-  // Store reference to current game state for battle animations
-  let currentGameStateSnapshot: GameStateData | null = null;
-  gameState.subscribe(state => {
-    currentGameStateSnapshot = state;
-  });
-
-  /**
-   * Update battle animation overrides for real-time soldier count display
-   */
-  function updateBattleAnimation(sourceRegion: number, targetRegion: number, attackerLosses: number, defenderLosses: number) {
-    if (!currentGameStateSnapshot) return;
-    
-    battleAnimationOverrides.update(overrides => {
-      const newOverrides = {
-        soldierCounts: { ...overrides.soldierCounts },
-        ownership: { ...overrides.ownership }
-      };
-      
-      const sourceSoldiers = currentGameStateSnapshot!.soldiersByRegion?.[sourceRegion]?.length || 0;
-      const targetSoldiers = currentGameStateSnapshot!.soldiersByRegion?.[targetRegion]?.length || 0;
-      
-      // Apply losses
-      const newSourceCount = Math.max(0, (newOverrides.soldierCounts[sourceRegion] ?? sourceSoldiers) - attackerLosses);
-      const newTargetCount = Math.max(0, (newOverrides.soldierCounts[targetRegion] ?? targetSoldiers) - defenderLosses);
-      
-      newOverrides.soldierCounts[sourceRegion] = newSourceCount;
-      newOverrides.soldierCounts[targetRegion] = newTargetCount;
-      
-      console.log(`🎯 Battle animation update: Source ${sourceRegion}: ${sourceSoldiers} -> ${newSourceCount}, Target ${targetRegion}: ${targetSoldiers} -> ${newTargetCount}`);
-      
-      return newOverrides;
-    });
-  }
-
-  /**
-   * Clear battle animation overrides after animation completes
-   */
-  function clearBattleAnimationOverrides() {
-    console.log('🎯 Clearing battle animation overrides');
-    battleAnimationOverrides.set({ soldierCounts: {}, ownership: {} });
-  }
-
-  /**
-   * Count the number of moves between two states for timing calculations
-   */
-  function countMoves(newState: any, previousState: any): number {
-    if (!previousState) return 0;
-    
-    let moveCount = 0;
-    
-    // Count soldier changes
-    const newSoldiers = newState.soldiersByRegion || {};
-    const oldSoldiers = previousState.soldiersByRegion || {};
-    
-    Object.keys(newSoldiers).forEach(regionIndex => {
-      const newCount = (newSoldiers[regionIndex] || []).length;
-      const oldCount = (oldSoldiers[regionIndex] || []).length;
-      if (newCount !== oldCount) {
-        moveCount++;
-      }
-    });
-    
-    // Count temple upgrades
-    if (newState.templeUpgrades && previousState.templeUpgrades) {
-      Object.keys(newState.templeUpgrades).forEach(regionIndex => {
-        const newUpgrades = newState.templeUpgrades[regionIndex] || [];
-        const oldUpgrades = previousState.templeUpgrades[regionIndex] || [];
-        if (newUpgrades.length > oldUpgrades.length) {
-          moveCount++;
-        }
-      });
-    }
-    
-    return Math.max(moveCount, 1); // At least 1 move
-  }
+  // Game state updater handles WebSocket updates with proper sequencing
+  const gameStateUpdater = new GameStateUpdater(
+    gameState,
+    regions,
+    players,
+    eliminationBanners,
+    playerSlotIndex,
+    () => moveSystem,
+    moveReplayer
+  );
 
   /**
    * Load initial game state from the server
@@ -242,168 +105,10 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
 
   /**
    * Handle WebSocket game state updates
-   * Now uses MoveReplayer for cleaner move playback logic
-   * Updates are queued to ensure banners complete before next update
+   * Delegates to GameStateUpdater for proper queuing and orchestration
    */
   function handleGameStateUpdate(updatedState: any) {
-    console.log('🎮 Received game update via WebSocket:', updatedState);
-    
-    // Add to queue
-    updateQueue.push(updatedState);
-    
-    // Start processing if not already processing
-    if (!isProcessingUpdate) {
-      processNextUpdate();
-    }
-  }
-
-  /**
-   * Process queued updates one at a time
-   */
-  async function processNextUpdate() {
-    if (updateQueue.length === 0) {
-      isProcessingUpdate = false;
-      return;
-    }
-
-    isProcessingUpdate = true;
-    const updatedState = updateQueue.shift();
-
-    // Get current state for comparison
-    let currentState: any;
-    gameState.subscribe(state => currentState = state)();
-
-    // Check if turn changed (either player changed OR turn number increased, indicating a full round)
-    const playerChanged = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
-    const turnNumberIncreased = currentState && updatedState.turnNumber > currentState.turnNumber;
-    const isNewTurn = playerChanged || turnNumberIncreased;
-    const isOtherPlayersTurn = updatedState.currentPlayerSlot !== playerSlotIndex;
-
-    console.log('🎯 Turn transition check:', {
-        'currentState.currentPlayerSlot': currentState?.currentPlayerSlot,
-        'currentState.turnNumber': currentState?.turnNumber,
-        'updatedState.currentPlayerSlot': updatedState.currentPlayerSlot,
-        'updatedState.turnNumber': updatedState.turnNumber,
-        'my playerSlotIndex': playerSlotIndex,
-        'playerChanged': playerChanged,
-        'turnNumberIncreased': turnNumberIncreased,
-        'isNewTurn': isNewTurn,
-        'isOtherPlayersTurn': isOtherPlayersTurn,
-        'queueLength': updateQueue.length
-    });
-
-    // Ensure battle states are cleared from server updates
-    const cleanState = {
-      ...updatedState,
-      battlesInProgress: [], // Force clear
-      pendingMoves: []       // Force clear
-    };
-
-    gameState.set(cleanState);
-    regions.set(cleanState.regions || []);
-    players.set(cleanState.players || []);
-
-    if (isNewTurn) {
-      // Check if there are elimination banners from the previous turn
-      const hasEliminations = cleanState.previousTurnEliminations && cleanState.previousTurnEliminations.length > 0;
-      
-      if (hasEliminations) {
-        console.log('💀 Players eliminated in previous turn:', cleanState.previousTurnEliminations);
-        // Set the elimination banners - they will render and block the turn transition
-        eliminationBanners.set([...cleanState.previousTurnEliminations!]);
-        
-        // Wait for user to dismiss all elimination banners before proceeding
-        console.log('💀 Waiting for elimination banners to be dismissed...');
-        await new Promise<void>((resolve) => {
-          const checkInterval = setInterval(() => {
-            let currentBanners: number[] = [];
-            const unsubscribe = eliminationBanners.subscribe(b => { currentBanners = b; });
-            unsubscribe();
-            
-            if (currentBanners.length === 0) {
-              console.log('💀 All elimination banners dismissed');
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 50); // Check every 50ms
-        });
-      }
-      
-      // Now that elimination banners are done (or there were none), show turn banner
-      console.log('🔄 Turn transition detected - showing turn banner');
-      await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
-
-      // Play appropriate sounds based on whose turn it is
-      if (isOtherPlayersTurn) {
-        // It's another player's turn - wait for banner, then replay moves
-        await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            moveReplayer.replayMoves(updatedState, currentState);
-            resolve();
-          }, GAME_CONSTANTS.BANNER_TIME); // Banner duration
-        });
-        
-        // Wait for move replay to complete (playback delay + animation time)
-        await new Promise<void>((resolve) => {
-          // Calculate total replay time: number of moves * playback delay
-          const moveCount = countMoves(updatedState, currentState);
-          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
-          
-          // If there's a battle sequence, add time for blow-by-blow animation
-          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
-            // Each battle round takes 500ms
-            replayTime += updatedState.attackSequence.length * 500;
-          }
-          
-          setTimeout(() => resolve(), replayTime);
-        });
-      } else {
-        // It's now our turn
-        audioSystem.playSound(SOUNDS.GAME_STARTED);
-        
-        // Wait for banner to complete
-        await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
-        });
-      }
-    } else {
-      // Same player slot - could be our move or another player's move (in multiplayer)
-      console.log('🔄 Same player slot move detected');
-      turnManager.updateGameState(cleanState);
-      
-      // Only replay moves if it's another player's turn (to avoid double animations)
-      // When it's our own move, BattleManager already animated it
-      if (isOtherPlayersTurn) {
-        console.log('🔄 Replaying other player\'s move');
-        // Replay moves from this update
-        moveReplayer.replayMoves(updatedState, currentState);
-        
-        // Wait for move replay to complete
-        await new Promise<void>((resolve) => {
-          const moveCount = countMoves(updatedState, currentState);
-          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
-          
-          // If there's a battle sequence, add time for blow-by-blow animation
-          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
-            // Each battle round takes 500ms
-            replayTime += updatedState.attackSequence.length * 500;
-          }
-          
-          setTimeout(() => resolve(), replayTime);
-        });
-      } else {
-        console.log('✅ Skipping replay for our own move (already animated by BattleManager)');
-        // For our own moves, don't clear overrides here - let BattleManager handle it
-        // The WebSocket update just updates the underlying state, which shows through when overrides clear
-      }
-    }
-
-    if (moveSystem) {
-      moveSystem.updateGameState(cleanState);
-    }
-
-    // Process next update in queue
-    processNextUpdate();
+    gameStateUpdater.handleGameStateUpdate(updatedState);
   }
 
   /**
@@ -485,8 +190,8 @@ export function createGameStateStore(gameId: string, playerId: string, playerSlo
   const gameStateFromTurnManager = turnManager.gameData;
 
   return {
-    // Core stores - use displayGameState which includes battle animation overrides
-    gameState: displayGameState,
+    // Core stores - use displayGameState from BattleAnimationUpdater which includes battle animation overrides
+    gameState: battleAnimationUpdater.displayGameState,
     regions,
     players,
     loading,
