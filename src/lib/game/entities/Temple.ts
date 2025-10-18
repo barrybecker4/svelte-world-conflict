@@ -2,7 +2,6 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { TEMPLE_UPGRADES, type TempleUpgradeDefinition } from '$lib/game/constants/templeUpgradeDefinitions';
 
 const TEMPLE_LEVELS = ['Basic', 'Minor', 'Major', 'Grand'] as const;
-const MAX_TEMPLE_LEVEL = GAME_CONSTANTS.MAX_TEMPLE_LEVEL;
 
 export class Temple {
     regionIndex: number;
@@ -72,7 +71,19 @@ export class Temple {
     }
 
     canUpgrade(): boolean {
-        return this.level < MAX_TEMPLE_LEVEL;
+        // Check if temple has an upgrade type set
+        if (this.upgradeIndex === undefined) {
+            return false;
+        }
+
+        const upgrade = this.getCurrentUpgrade();
+        if (!upgrade) {
+            return false;
+        }
+
+        // Check if there's a cost defined for the next level
+        const nextLevel = this.level + 1;
+        return upgrade.cost[nextLevel] !== undefined;
     }
 
     // Apply an upgrade to the temple

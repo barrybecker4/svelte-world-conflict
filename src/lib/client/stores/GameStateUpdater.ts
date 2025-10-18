@@ -80,7 +80,7 @@ export class GameStateUpdater {
       this.processNextUpdate();
     }
   }
-  
+
   /**
    * Process queued updates one at a time
    */

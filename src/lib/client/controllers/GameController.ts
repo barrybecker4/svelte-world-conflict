@@ -23,12 +23,12 @@ export class GameController {
   // Stores
   private modalState: Writable<ModalState>;
   private moveState: Writable<MoveState>;
-  
+
   // Managers
   private battleManager: BattleManager;
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
-  
+
   // State
   private gameEndChecked = false;
 
@@ -38,7 +38,7 @@ export class GameController {
     gameStore: any
   ) {
     this.gameStore = gameStore;
-    
+
     // Initialize stores
     this.modalState = writable({
       showSoldierSelection: false,
@@ -71,20 +71,20 @@ export class GameController {
   async initialize(mapContainer: HTMLElement | undefined): Promise<void> {
     if (mapContainer) {
       this.battleManager.setMapContainer(mapContainer);
-      
+
       // Connect battle animation system to move replayer for AI/multiplayer battle animations
       const battleAnimationSystem = this.battleManager.getBattleAnimationSystem();
       this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
     } else {
       console.warn('⚠️ GameController: Map container not provided, animations will be disabled');
     }
-    
+
     // Initialize game store with our callbacks
     await this.gameStore.initializeGame(
       (source: number, target: number, count: number) => this.handleMoveComplete(source, target, count),
       (newState: MoveState) => this.handleMoveStateChange(newState)
     );
-    
+
     await this.websocket.initialize();
     await audioSystem.enable();
   }
@@ -95,7 +95,7 @@ export class GameController {
   setMapContainer(container: HTMLElement): void {
     console.log('🗺️ GameController: Setting map container');
     this.battleManager.setMapContainer(container);
-    
+
     // Also connect battle animation system to move replayer
     const battleAnimationSystem = this.battleManager.getBattleAnimationSystem();
     this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
@@ -147,7 +147,7 @@ export class GameController {
   ): Promise<void> {
     const gameState = this.gameStore.gameState;
     let currentState: GameStateData;
-    
+
     gameState.subscribe((value: GameStateData) => {
       currentState = value;
     })();
@@ -167,11 +167,11 @@ export class GameController {
     })();
 
     const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
-    
+
     if (!result.success) {
       throw new Error(result.error || 'Move failed');
     }
-    
+
     // Immediately update game state with the result from the API
     // This ensures the new state is shown when animation overrides clear
     // The WebSocket update will arrive later but will be ignored if it's the same state
@@ -193,12 +193,12 @@ export class GameController {
 
     if (endResult.isGameEnded) {
       this.gameEndChecked = true;
-      
+
       // Play sound
-      const isWinner = 
-        endResult.winner !== 'DRAWN_GAME' && 
+      const isWinner =
+        endResult.winner !== 'DRAWN_GAME' &&
         endResult.winner?.slotIndex?.toString() === this.playerId;
-      
+
       audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
 
       // Show modal
@@ -214,8 +214,8 @@ export class GameController {
    * Handle region click from map
    */
   handleRegionClick(region: any, isMyTurn: boolean): void {
-    console.log('🖱️ GameController.handleRegionClick:', { 
-      regionIndex: region.index, 
+    console.log('🖱️ GameController.handleRegionClick:', {
+      regionIndex: region.index,
       isMyTurn,
       moveSystemExists: !!this.gameStore.getMoveSystem()
     });
@@ -239,8 +239,8 @@ export class GameController {
    * Handle temple click from map
    */
   handleTempleClick(regionIndex: number, isMyTurn: boolean): void {
-    console.log('🏛️ GameController.handleTempleClick:', { 
-      regionIndex, 
+    console.log('🏛️ GameController.handleTempleClick:', {
+      regionIndex,
       isMyTurn,
       moveSystemExists: !!this.gameStore.getMoveSystem()
     });
@@ -273,14 +273,14 @@ export class GameController {
   confirmSoldierSelection(count: number): void {
     // Update the move state with the selected count
     this.moveState.update(s => ({ ...s, selectedSoldierCount: count }));
-    
+
     // Close the modal
     this.modalState.update(s => ({
       ...s,
       showSoldierSelection: false,
       soldierSelectionData: null
     }));
-    
+
     // Execute the move with the selected count
     const moveSystem = this.gameStore.getMoveSystem();
     moveSystem?.processAction({
@@ -298,7 +298,7 @@ export class GameController {
       showSoldierSelection: false,
       soldierSelectionData: null
     }));
-    
+
     const moveSystem = this.gameStore.getMoveSystem();
     moveSystem?.processAction({ type: 'CANCEL' });
   }
@@ -317,7 +317,7 @@ export class GameController {
    */
   async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
     console.log(`🏛️ GameController.purchaseUpgrade: region ${regionIndex}, upgrade ${upgradeIndex}`);
-    
+
     try {
       const response = await fetch(`/api/game/${this.gameId}/move`, {
         method: 'POST',
@@ -332,36 +332,34 @@ export class GameController {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({})) as { error?: string };
-        console.error('❌ Purchase upgrade failed:', errorData);
+        console.error('❌ Purchase upgrade failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          regionIndex,
+          upgradeIndex
+        });
         alert('Failed to purchase upgrade: ' + (errorData.error || 'Unknown error'));
         return; // Don't throw, just return to keep panel open
       }
 
       const data = await response.json() as { gameState?: GameStateData };
       console.log('✅ Upgrade purchased successfully', data);
-      
+
+      // Log the temple data specifically
+      if (data.gameState?.templesByRegion?.[regionIndex]) {
+        console.log(`🏛️ Server returned temple at region ${regionIndex}:`, data.gameState.templesByRegion[regionIndex]);
+      }
+
       // Update game state
       if (data.gameState) {
         this.gameStore.handleGameStateUpdate(data.gameState);
       }
 
-      // Check if player can still afford any upgrades
-      // Only auto-close if they literally cannot afford ANY option (including rebuild which is free)
-      const currentFaith = data.gameState?.faithByPlayer?.[data.gameState?.currentPlayerSlot] || 0;
-      const numBoughtSoldiers = data.gameState?.numBoughtSoldiers || 0;
-      // Calculate soldier cost consistently with BuildCommand (array-based until exhausted, then formula)
-      const minSoldierCost = 8 + numBoughtSoldiers;
-      
-      // Minimum affordable option is a soldier (8+bought) or rebuild (0)
-      // So only close if they can't afford a soldier AND the temple has no upgrade to rebuild
-      const canAffordSoldier = currentFaith >= minSoldierCost;
-      
-      if (!canAffordSoldier && currentFaith < 8) {
-        // Can't even afford the base soldier cost - close only if they have < 8 faith total
-        console.log('💰 Not enough faith for any upgrades (need at least 8), closing panel');
-        this.closeTempleUpgradePanel();
-      }
-      
+      // Don't close the panel - keep it open so player can see updated options
+      // and potentially purchase additional upgrades (like the second level)
+      console.log('💰 Purchase complete, panel remains open for additional purchases');
+
     } catch (error) {
       console.error('❌ Purchase upgrade error:', error);
       alert('Error purchasing upgrade: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -373,7 +371,7 @@ export class GameController {
    */
   async endTurn(): Promise<void> {
     console.log('🔚 GameController.endTurn called');
-    
+
     try {
       const response = await fetch(`/api/game/${this.gameId}/end-turn`, {
         method: 'POST',
@@ -428,7 +426,7 @@ export class GameController {
    */
   async resign(): Promise<void> {
     console.log('🏳️ GameController.resign called');
-    
+
     if (!confirm('Are you sure you want to resign from this game?')) {
       return;
     }

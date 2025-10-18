@@ -35,6 +35,10 @@ export class BuildCommand extends Command {
             errors.push(`Need ${cost} faith, have ${playerFaith}`);
         }
 
+        if (errors.length > 0) {
+            console.error('❌ BuildCommand validation failed:', errors);
+        }
+
         return {
             valid: errors.length === 0,
             errors
@@ -51,7 +55,8 @@ export class BuildCommand extends Command {
         if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
             const numBought = this.gameState.state.numBoughtSoldiers || 0;
             const costArray = TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost;
-            return costArray[numBought];
+            // If we've exhausted the array, use formula: initialCost + numBought
+            return costArray[numBought] ?? (8 + numBought);
         }
 
         // Special case: REBUILD is free
@@ -64,12 +69,26 @@ export class BuildCommand extends Command {
         if (temple?.upgradeIndex === this.upgradeIndex) {
             // Upgrading to next level of same type
             const upgrade = Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
+            console.log('💰 Same upgrade type - upgrading to next level:', {
+                upgrade: upgrade?.name,
+                currentLevel: temple.level,
+                nextLevel: temple.level + 1,
+                costArray: upgrade?.cost,
+                costAtNextLevel: upgrade?.cost?.[temple.level + 1]
+            });
             if (upgrade && upgrade.cost) {
-                return upgrade.cost[temple.level + 1] || 0;
+                const cost = upgrade.cost[temple.level + 1];
+                console.log('💰 Calculated cost for next level:', cost);
+                return cost || 0;
             }
         } else {
             // New temple type - cost for level 0
             const upgrade = Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
+            console.log('💰 Different upgrade type - cost for level 0:', {
+                upgrade: upgrade?.name,
+                costArray: upgrade?.cost,
+                costAtLevel0: upgrade?.cost?.[0]
+            });
             if (upgrade && upgrade.cost) {
                 return upgrade.cost[0] || 0;
             }
@@ -86,7 +105,7 @@ export class BuildCommand extends Command {
         const currentFaith = newState.getPlayerFaith(this.player.slotIndex);
         newState.setPlayerFaith(this.player.slotIndex, currentFaith - cost);
 
-        const temple = newState.templesByRegion[this.regionIndex];
+        const temple = newState.state.templesByRegion[this.regionIndex];
         if (temple) {
             // Update temple based on upgrade type
             if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
@@ -95,24 +114,62 @@ export class BuildCommand extends Command {
                 newState.addSoldiers(this.regionIndex, 1);
             } else if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.REBUILD.index) {
                 // Rebuild temple - reset to basic
-                temple.upgradeIndex = undefined;
-                temple.level = 0;
+                // Create new temple object for Svelte reactivity
+                const rebuiltTemple = {
+                    regionIndex: this.regionIndex,
+                    upgradeIndex: undefined,
+                    level: 0
+                };
+
+                // Replace the entire templesByRegion object to ensure Svelte reactivity
+                newState.state.templesByRegion = {
+                    ...newState.state.templesByRegion,
+                    [this.regionIndex]: rebuiltTemple
+                };
             } else {
                 // Temple upgrades (WATER, FIRE, AIR, EARTH)
+                let newLevel: number;
+                let newUpgradeIndex: number;
+
                 if (temple.upgradeIndex === this.upgradeIndex) {
                     // Same type - upgrade to next level
-                    temple.level = (temple.level || 0) + 1;
+                    newLevel = (temple.level || 0) + 1;
+                    newUpgradeIndex = this.upgradeIndex;
                 } else {
                     // Different type - switch to new upgrade at level 0
-                    temple.upgradeIndex = this.upgradeIndex;
-                    temple.level = 0;
+                    newLevel = 0;
+                    newUpgradeIndex = this.upgradeIndex;
                 }
+
+                console.log(`🏛️ BuildCommand: Upgrading temple at region ${this.regionIndex}`, {
+                    oldLevel: temple.level,
+                    oldUpgradeIndex: temple.upgradeIndex,
+                    newLevel,
+                    newUpgradeIndex
+                });
+
+                // Create new temple object for Svelte reactivity
+                const updatedTemple = {
+                    regionIndex: this.regionIndex,
+                    level: newLevel,
+                    upgradeIndex: newUpgradeIndex
+                };
+
+                // IMPORTANT: Replace the entire templesByRegion object to ensure Svelte reactivity
+                // Shallow copying the Record ensures a new reference that Svelte can detect
+                newState.state.templesByRegion = {
+                    ...newState.state.templesByRegion,
+                    [this.regionIndex]: updatedTemple
+                };
+
+                console.log(`🏛️ BuildCommand: Updated temple object`, updatedTemple);
+                console.log(`🏛️ BuildCommand: Verification - temple in newState:`, newState.state.templesByRegion[this.regionIndex]);
 
                 // Air upgrade gives immediate extra move
                 if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.AIR.index) {
                     const airUpgrade = TEMPLE_UPGRADES_BY_NAME.AIR;
                     if (airUpgrade.grantsImmediateEffect) {
-                        const extraMoves = airUpgrade.level[temple.level] || 0;
+                        const extraMoves = airUpgrade.level[newLevel] || 0;
                         newState.state.movesRemaining += extraMoves;
                     }
                 }
