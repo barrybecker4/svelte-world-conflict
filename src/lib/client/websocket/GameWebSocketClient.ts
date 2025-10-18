@@ -205,12 +205,4 @@ export class GameWebSocketClient {
     onDisconnected(callback: () => void): void {
         this.messageHandler.onDisconnected(callback);
     }
-
-    onSubscribed(callback: (gameId: string) => void): void {
-        this.messageHandler.onSubscribed(callback);
-    }
-
-    onUnsubscribed(callback: (gameId: string) => void): void {
-        this.messageHandler.onUnsubscribed(callback);
-    }
 }

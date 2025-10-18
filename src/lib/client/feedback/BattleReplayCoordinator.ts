@@ -39,27 +39,27 @@ export class BattleReplayCoordinator {
     // If we have an attack sequence and battle animation system, play full battle animation
     if (move.attackSequence && move.attackSequence.length > 0 && this.battleAnimationSystem) {
       console.log('🎬 Playing blow-by-blow battle animation for conquest');
-      
+
       try {
         // Need to get the previous state to know starting soldier counts
         // For replays, we need to store this information
         const sourceRegion = move.sourceRegion !== undefined ? move.sourceRegion : 0;
         const targetRegion = move.regionIndex;
-        
+
         console.log('🎯 Battle animation setup:', {
           sourceRegion,
           targetRegion,
           hasSourceRegion: move.sourceRegion !== undefined
         });
-        
+
         // Initialize battle animation with starting counts and ownership from BEFORE the current state
         if (typeof window !== 'undefined' && move.oldCount !== undefined && move.oldOwner !== undefined) {
           // For AI/multiplayer battles being replayed, oldCount is the starting defender count
           const startingTargetCount = move.oldCount;
           const targetOwner = move.oldOwner; // Original owner before conquest
-          
+
           console.log(`🎬 Initializing replay battle animation - Target ${targetRegion}: ${startingTargetCount}, Owner: ${targetOwner}`);
-          
+
           window.dispatchEvent(new CustomEvent('battleAnimationStart', {
             detail: {
               sourceRegion,
@@ -70,7 +70,7 @@ export class BattleReplayCoordinator {
             }
           }));
         }
-        
+
         // Create state update callback for real-time soldier count updates
         const stateUpdateCallback = (attackerLosses: number, defenderLosses: number) => {
           // Dispatch event to update UI
@@ -85,14 +85,14 @@ export class BattleReplayCoordinator {
             }));
           }
         };
-        
+
         await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions, stateUpdateCallback);
-        
+
         // Dispatch battle complete event to clear animation overrides
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('battleComplete'));
         }
-        
+
         // Play conquest sound at the end
         audioSystem.playSound(SOUNDS.REGION_CONQUERED);
       } catch (error) {
@@ -124,4 +124,3 @@ export class BattleReplayCoordinator {
     }, 200);
   }
 }
-

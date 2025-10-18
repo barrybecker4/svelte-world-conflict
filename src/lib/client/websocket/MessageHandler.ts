@@ -84,10 +84,6 @@ export class MessageHandler {
         this.callbacks.playerJoined = callback;
     }
 
-    onGameEnded(callback: (data: any) => void): void {
-        this.callbacks.gameEnded = callback;
-    }
-
     onError(callback: (error: string) => void): void {
         this.callbacks.error = callback;
     }
@@ -98,22 +94,6 @@ export class MessageHandler {
 
     onDisconnected(callback: () => void): void {
         this.callbacks.disconnected = callback;
-    }
-
-    onSubscribed(callback: (gameId: string) => void): void {
-        this.callbacks.subscribed = callback;
-    }
-
-    onUnsubscribed(callback: (gameId: string) => void): void {
-        this.callbacks.unsubscribed = callback;
-    }
-
-    onPong(callback: (timestamp: number) => void): void {
-        this.callbacks.pong = callback;
-    }
-
-    hasCallback(type: keyof typeof this.callbacks): boolean {
-        return !!this.callbacks[type];
     }
 
     clearCallbacks(): void {

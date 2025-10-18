@@ -112,15 +112,6 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   }
 
   /**
-   * Retry loading game state (for error recovery)
-   */
-  async function retryInitialization(handleMoveComplete: any, handleMoveStateChange: any) {
-    error.set(null);
-    loading.set(true);
-    await initializeGame(handleMoveComplete, handleMoveStateChange);
-  }
-
-  /**
    * Complete banner transition (called when banner animation finishes)
    */
   function completeBanner() {
@@ -215,7 +206,6 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     loadGameState,
     initializeGame,
     handleGameStateUpdate,
-    retryInitialization,
     completeBanner,
     completeEliminationBanner,
     resetTurnManager,
