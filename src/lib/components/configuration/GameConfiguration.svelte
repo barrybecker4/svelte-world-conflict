@@ -7,17 +7,26 @@
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
-  import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
+  import { loadPlayerName, savePlayerName, loadGameConfiguration, saveGameConfiguration } from '$lib/client/stores/clientStorage';
+  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   const dispatch = createEventDispatcher();
 
-  let gameSettings = {
-    aiDifficulty: 'Nice',
-    maxTurns: 10,
-    timeLimit: 30,
-    mapSize: 'Large'
+  // Default game settings
+  const defaultGameSettings = {
+    aiDifficulty: 'Nice' as string,
+    maxTurns: GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX] as number,
+    timeLimit: GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT as number,
+    mapSize: 'Large' as string
   };
 
+  let gameSettings: {
+    aiDifficulty: string;
+    maxTurns: number;
+    timeLimit: number;
+    mapSize: string;
+  } = { ...defaultGameSettings };
   let playerName = '';
   let playerSlots: any[] = [];
 
@@ -42,6 +51,7 @@
 
   onMount(() => {
     loadStoredPlayerName();
+    loadStoredConfiguration();
   });
 
   function loadStoredPlayerName() {
@@ -50,6 +60,48 @@
       playerName = storedName;
       showNameInput = false;
     }
+  }
+
+  function loadStoredConfiguration() {
+    const storedConfig = loadGameConfiguration();
+    if (storedConfig) {
+      // Load game settings with validation
+      gameSettings = {
+        aiDifficulty: validateAiDifficulty(storedConfig.aiDifficulty),
+        maxTurns: validateMaxTurns(storedConfig.maxTurns),
+        timeLimit: validateTimeLimit(storedConfig.timeLimit),
+        mapSize: validateMapSize(storedConfig.mapSize)
+      };
+
+      // Load player slots
+      if (storedConfig.playerSlots && storedConfig.playerSlots.length > 0) {
+        playerSlots = storedConfig.playerSlots.map(slot => ({
+          ...getPlayerConfig(slot.slotIndex),
+          slotIndex: slot.slotIndex,
+          type: slot.type,
+          customName: slot.customName
+        }));
+      }
+    }
+  }
+
+  function validateAiDifficulty(value: string): string {
+    const validOptions = ['Nice', 'Normal', 'Hard'];
+    return validOptions.includes(value) ? value : defaultGameSettings.aiDifficulty;
+  }
+
+  function validateMaxTurns(value: number): number {
+    const validOptions: number[] = [...GAME_CONSTANTS.MAX_TURN_OPTIONS, GAME_CONSTANTS.UNLIMITED_TURNS];
+    return validOptions.includes(value) ? value : defaultGameSettings.maxTurns;
+  }
+
+  function validateTimeLimit(value: number): number {
+    return GAME_CONSTANTS.TIME_LIMITS.includes(value as any) ? value : defaultGameSettings.timeLimit;
+  }
+
+  function validateMapSize(value: string): string {
+    const validOptions = ['Small', 'Medium', 'Large'];
+    return validOptions.includes(value) ? value : defaultGameSettings.mapSize;
   }
 
   // Handle player name submission from the PlayerNameInput component
@@ -92,6 +144,26 @@
   // Reactive statement to refresh map preview when map size changes
   $: if (mapPreviewPanel && gameSettings.mapSize) {
     mapPreviewPanel.refreshPreview();
+  }
+
+  // Save configuration whenever settings or slots change
+  $: if (gameSettings && playerSlots.length > 0) {
+    saveConfiguration();
+  }
+
+  function saveConfiguration() {
+    const config = {
+      aiDifficulty: gameSettings.aiDifficulty,
+      maxTurns: gameSettings.maxTurns,
+      timeLimit: gameSettings.timeLimit,
+      mapSize: gameSettings.mapSize,
+      playerSlots: playerSlots.map(slot => ({
+        slotIndex: slot.slotIndex,
+        type: slot.type,
+        customName: slot.customName
+      }))
+    };
+    saveGameConfiguration(config);
   }
 
   async function createGame() {
