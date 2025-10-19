@@ -14,7 +14,7 @@ import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes
  * - Queuing multiple rapid updates
  * - Turn transition detection and banner coordination
  * - Elimination banner sequencing
- * - Move replay timing for other players' actions
+ * - Move replay for other players' actions (timing handled by MoveReplayer)
  * - Audio feedback
  */
 export class GameStateUpdater {
@@ -32,39 +32,6 @@ export class GameStateUpdater {
     private moveReplayer: MoveReplayer
   ) {}
 
-  /**
-   * Count the number of moves between two states for timing calculations
-   */
-  private countMoves(newState: any, previousState: any): number {
-    if (!previousState) return 0;
-
-    let moveCount = 0;
-
-    // Count soldier changes
-    const newSoldiers = newState.soldiersByRegion || {};
-    const oldSoldiers = previousState.soldiersByRegion || {};
-
-    Object.keys(newSoldiers).forEach(regionIndex => {
-      const newCount = (newSoldiers[regionIndex] || []).length;
-      const oldCount = (oldSoldiers[regionIndex] || []).length;
-      if (newCount !== oldCount) {
-        moveCount++;
-      }
-    });
-
-    // Count temple upgrades
-    if (newState.templeUpgrades && previousState.templeUpgrades) {
-      Object.keys(newState.templeUpgrades).forEach(regionIndex => {
-        const newUpgrades = newState.templeUpgrades[regionIndex] || [];
-        const oldUpgrades = previousState.templeUpgrades[regionIndex] || [];
-        if (newUpgrades.length > oldUpgrades.length) {
-          moveCount++;
-        }
-      });
-    }
-
-    return Math.max(moveCount, 1); // At least 1 move
-  }
 
   /**
    * Detect conquests and dispatch battleAnimationStart events BEFORE applying state.
@@ -246,26 +213,11 @@ export class GameStateUpdater {
       if (isOtherPlayersTurn) {
         // It's another player's turn - wait for banner, then replay moves
         await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            this.moveReplayer.replayMoves(updatedState, currentState);
-            resolve();
-          }, GAME_CONSTANTS.BANNER_TIME); // Banner duration
+          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME);
         });
 
-        // Wait for move replay to complete (playback delay + animation time)
-        await new Promise<void>((resolve) => {
-          // Calculate total replay time: number of moves * playback delay
-          const moveCount = this.countMoves(updatedState, currentState);
-          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
-
-          // If there's a battle sequence, add time for blow-by-blow animation
-          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
-            // Each battle round takes 500ms
-            replayTime += updatedState.attackSequence.length * 500;
-          }
-
-          setTimeout(() => resolve(), replayTime);
-        });
+        // Replay moves - MoveReplayer now handles all timing automatically
+        await this.moveReplayer.replayMoves(updatedState, currentState);
       } else {
         // It's now our turn
         audioSystem.playSound(SOUNDS.GAME_STARTED);
@@ -284,22 +236,8 @@ export class GameStateUpdater {
       // When it's our own move, BattleManager already animated it
       if (isOtherPlayersTurn) {
         console.log('🔄 Replaying other player\'s move');
-        // Replay moves from this update
-        this.moveReplayer.replayMoves(updatedState, currentState);
-
-        // Wait for move replay to complete
-        await new Promise<void>((resolve) => {
-          const moveCount = this.countMoves(updatedState, currentState);
-          let replayTime = moveCount * 600 + 500; // 600ms per move + 500ms for last animation
-
-          // If there's a battle sequence, add time for blow-by-blow animation
-          if (updatedState.attackSequence && updatedState.attackSequence.length > 0) {
-            // Each battle round takes 500ms
-            replayTime += updatedState.attackSequence.length * 500;
-          }
-
-          setTimeout(() => resolve(), replayTime);
-        });
+        // Replay moves from this update - MoveReplayer handles all timing automatically
+        await this.moveReplayer.replayMoves(updatedState, currentState);
       } else {
         console.log('✅ Skipping replay for our own move (already animated by BattleManager)');
         // For our own moves, don't clear overrides here - let BattleManager handle it

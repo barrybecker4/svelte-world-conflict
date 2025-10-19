@@ -3,6 +3,7 @@ import { MoveDetector } from './MoveDetector';
 import type { DetectedMove } from './MoveDetector';
 import { FeedbackPlayer } from './FeedbackPlayer';
 import { BattleReplayCoordinator } from './BattleReplayCoordinator';
+import { animationQueue } from './TaskQueue';
 
 /**
  * Orchestrates replay of other players' moves with audio and visual feedback
@@ -10,9 +11,10 @@ import { BattleReplayCoordinator } from './BattleReplayCoordinator';
  * - MoveDetector: Detects what changed between game states
  * - FeedbackPlayer: Plays simple audio/visual feedback
  * - BattleReplayCoordinator: Handles complex battle animations
+ * 
+ * Uses TaskQueue for guaranteed sequential execution of animations
  */
 export class MoveReplayer {
-  private readonly MOVE_PLAYBACK_DELAY = 600; // ms between each move sound/effect
   private moveDetector: MoveDetector;
   private feedbackPlayer: FeedbackPlayer;
   private battleCoordinator: BattleReplayCoordinator;
@@ -32,10 +34,12 @@ export class MoveReplayer {
 
   /**
    * Main entry point: Play sound effects and show visual feedback for other player moves
+   * Uses TaskQueue to ensure moves play sequentially without overlap
    * @param newState - The updated game state
    * @param previousState - The previous game state for comparison
+   * @returns Promise that resolves when all moves complete
    */
-  replayMoves(newState: any, previousState: any): void {
+  async replayMoves(newState: any, previousState: any): Promise<void> {
     if (!previousState) {
       console.log('No previous state available for move replay');
       return;
@@ -78,58 +82,43 @@ export class MoveReplayer {
 
     console.log(`Replaying ${moves.length} moves:`, moves);
 
-    // Play moves with delays
-    moves.forEach((move, index) => {
-      setTimeout(() => {
-        this.playMoveWithFeedback(move, regions);
-      }, index * this.MOVE_PLAYBACK_DELAY);
-    });
+    // Queue all moves sequentially using TaskQueue
+    // Each move's duration is determined by its actual animation time
+    for (const move of moves) {
+      await animationQueue.enqueue(0, async () => {
+        await this.playMoveWithFeedback(move, regions);
+      });
+    }
   }
 
   /**
    * Play a single move with appropriate sound and visual feedback
    * @param move - The move to play back
    * @param regions - The regions array for battle animations
+   * @returns Promise that resolves when move animation completes
    */
-  private playMoveWithFeedback(move: DetectedMove, regions: any[]): void {
+  private async playMoveWithFeedback(move: DetectedMove, regions: any[]): Promise<void> {
     console.log('Playing move:', move);
 
     switch (move.type) {
       case 'conquest':
-        this.battleCoordinator.playConquest(move, regions);
+        await this.battleCoordinator.playConquest(move, regions);
         break;
 
       case 'movement':
-        this.feedbackPlayer.playMovement(move);
+        await this.feedbackPlayer.playMovement(move);
         break;
 
       case 'recruitment':
-        this.feedbackPlayer.playRecruitment(move);
+        await this.feedbackPlayer.playRecruitment(move);
         break;
 
       case 'upgrade':
-        this.feedbackPlayer.playUpgrade(move);
+        await this.feedbackPlayer.playUpgrade(move);
         break;
 
       default:
         console.log('Unknown move type:', move.type);
     }
-  }
-
-  /**
-   * Update playback delay (useful for different game speeds or testing)
-   * @param delayMs - Delay in milliseconds between moves
-   */
-  setPlaybackDelay(delayMs: number): void {
-    if (delayMs > 0) {
-      (this as any).MOVE_PLAYBACK_DELAY = delayMs;
-    }
-  }
-
-  /**
-   * Get current playback delay
-   */
-  getPlaybackDelay(): number {
-    return this.MOVE_PLAYBACK_DELAY;
   }
 }

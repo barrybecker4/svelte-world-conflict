@@ -26,6 +26,7 @@ export class BattleReplayCoordinator {
   /**
    * Play conquest feedback with multiple sounds and visual highlight
    * If attack sequence is available, play blow-by-blow battle animation
+   * @returns Promise that resolves when all animations complete
    */
   async playConquest(move: DetectedMove, regions: any[]): Promise<void> {
     // If we have an attack sequence and battle animation system, play full battle animation
@@ -49,6 +50,7 @@ export class BattleReplayCoordinator {
           }
         };
 
+        // Play the full battle animation sequence
         await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions, stateUpdateCallback);
 
         // Dispatch battle complete event to clear animation overrides
@@ -58,32 +60,45 @@ export class BattleReplayCoordinator {
 
         // Play conquest sound at the end
         audioSystem.playSound(SOUNDS.REGION_CONQUERED);
+
+        // Visual feedback highlight
+        this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
+        
+        // Wait for highlight to show (1500ms as per FeedbackPlayer's highlight duration)
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
       } catch (error) {
         console.error('Failed to play battle animation, falling back to simple feedback:', error);
-        this.playSimpleConquestFeedback();
+        await this.playSimpleConquestFeedback(move);
       }
     } else {
       // Fallback to simple conquest feedback
-      this.playSimpleConquestFeedback();
+      await this.playSimpleConquestFeedback(move);
     }
-
-    // Visual feedback
-    this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
   }
 
   /**
    * Simple conquest feedback without blow-by-blow animation
+   * @returns Promise that resolves when feedback completes
    */
-  private playSimpleConquestFeedback(): void {
-    // Play attack and combat sounds
+  private async playSimpleConquestFeedback(move: DetectedMove): Promise<void> {
+    // Play attack and combat sounds with timing
     audioSystem.playSound(SOUNDS.ATTACK);
 
-    setTimeout(() => {
-      audioSystem.playSound(SOUNDS.COMBAT);
-      // Additional sound for conquest
+    await new Promise<void>((resolve) => {
       setTimeout(() => {
-        audioSystem.playSound(SOUNDS.REGION_CONQUERED);
-      }, 300);
-    }, 200);
+        audioSystem.playSound(SOUNDS.COMBAT);
+        // Additional sound for conquest
+        setTimeout(() => {
+          audioSystem.playSound(SOUNDS.REGION_CONQUERED);
+          resolve();
+        }, 300);
+      }, 200);
+    });
+
+    // Visual feedback highlight
+    this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
+    
+    // Wait for highlight to show
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
   }
 }
