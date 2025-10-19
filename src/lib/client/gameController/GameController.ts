@@ -124,6 +124,13 @@ export class GameController {
     // Stop any existing timer first
     turnTimerStore.stopTimer();
 
+    // Check if the game has ended - if so, don't start the timer
+    const endResult = checkGameEnd(gameState, gameState.players);
+    if (endResult.isGameEnded) {
+      console.log('⏰ Game has ended, not starting timer');
+      return;
+    }
+
     // Start timer if it's this player's turn and they're human
     const isMyTurn = currentPlayerSlot === playerSlotIndex;
     const isHumanPlayer = gameState.players.some(p => 
@@ -138,6 +145,7 @@ export class GameController {
       timeLimit,
       playerSlotIndex,
       currentPlayerSlot,
+      gameEnded: endResult.isGameEnded,
       players: gameState.players.map(p => ({
         slotIndex: p.slotIndex,
         name: p.name,
@@ -257,6 +265,9 @@ export class GameController {
 
     if (endResult.isGameEnded) {
       this.gameEndChecked = true;
+
+      // Stop the timer when the game ends
+      turnTimerStore.stopTimer();
 
       // Play sound
       const isWinner =
