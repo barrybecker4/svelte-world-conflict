@@ -6,6 +6,8 @@ import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
+import { turnTimerStore } from '$lib/client/stores/turnTimerStore';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 interface ModalState {
   showSoldierSelection: boolean;
@@ -31,6 +33,7 @@ export class GameController {
 
   // State
   private gameEndChecked = false;
+  private currentPlayerSlotIndex: number | null = null;
 
   constructor(
     private gameId: string,
@@ -61,7 +64,7 @@ export class GameController {
 
     this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
-      this.gameStore.handleGameStateUpdate(gameData);
+      this.handleGameStateUpdateWithTimer(gameData);
     });
   }
 
@@ -105,9 +108,63 @@ export class GameController {
    * Cleanup - call this from onDestroy
    */
   destroy(): void {
+    turnTimerStore.stopTimer();
     this.battleManager?.destroy();
     this.websocket.cleanup();
     this.gameStore.resetTurnManager();
+  }
+
+  /**
+   * Handle game state updates and manage turn timer
+   */
+  private handleGameStateUpdateWithTimer(gameData: GameStateData): void {
+    // Update game state first
+    this.gameStore.handleGameStateUpdate(gameData);
+
+    // Check if the current player has changed
+    const newPlayerSlot = gameData.currentPlayerSlot;
+    const playerSlotIndex = parseInt(this.playerId);
+    
+    if (this.currentPlayerSlotIndex !== newPlayerSlot) {
+      console.log(`⏰ ======== TURN TIMER CHECK ========`);
+      console.log(`⏰ Player changed from ${this.currentPlayerSlotIndex} to ${newPlayerSlot}`);
+      this.currentPlayerSlotIndex = newPlayerSlot;
+
+      // Stop any existing timer
+      turnTimerStore.stopTimer();
+
+      // Start timer if it's this player's turn and they're human
+      const isMyTurn = newPlayerSlot === playerSlotIndex;
+      const isHumanPlayer = gameData.players.some(p => 
+        p.slotIndex === playerSlotIndex && !p.isAI
+      );
+      const timeLimit = gameData.moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
+
+      console.log('⏰ Timer conditions:', {
+        isMyTurn,
+        isHumanPlayer,
+        timeLimit,
+        playerSlotIndex,
+        newPlayerSlot,
+        players: gameData.players.map(p => ({
+          slotIndex: p.slotIndex,
+          name: p.name,
+          isAI: p.isAI
+        }))
+      });
+
+      // Always show timer when it's the player's turn (human only)
+      if (isMyTurn && isHumanPlayer && timeLimit) {
+        console.log(`⏰ ✅ Starting timer for ${timeLimit} seconds`);
+        turnTimerStore.startTimer(timeLimit, () => {
+          console.log('⏰ Timer expired, auto-ending turn');
+          this.endTurn();
+        });
+      } else {
+        console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit})`);
+      }
+      console.log(`⏰ ===================================`);
+    }
   }
 
   /**
@@ -399,6 +456,9 @@ export class GameController {
    */
   async endTurn(): Promise<void> {
     console.log('🔚 GameController.endTurn called');
+
+    // Stop the timer when ending turn
+    turnTimerStore.stopTimer();
 
     try {
       const response = await fetch(`/api/game/${this.gameId}/end-turn`, {

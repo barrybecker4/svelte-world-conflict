@@ -29,8 +29,8 @@ export class GameState {
     /**
      * Create initial game state - uses GameStateInitializer to prepare data
      */
-    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number): GameState {
-        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}`);
+    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number): GameState {
+        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}`);
 
         let regions: Region[];
 
@@ -43,7 +43,7 @@ export class GameState {
         console.log(`Using ${regions.length} regions for game initialization`);
 
         const initializer = new GameStateInitializer();
-        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns);
+        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit);
 
         return new GameState(initialStateData);
     }

@@ -547,11 +547,15 @@ export class AudioSystem {
      * Toggle audio on/off
      */
     async toggle(): Promise<boolean> {
+        console.log(`🔊 Audio toggle called - current state: ${this.isEnabled}`);
         if (this.isEnabled) {
             this.disable();
+            console.log(`🔇 Audio disabled`);
         } else {
             await this.enable();
+            console.log(`🔊 Audio enabled`);
         }
+        console.log(`🔊 New audio state: ${this.isEnabled}`);
         return this.isEnabled;
     }
 
@@ -581,7 +585,11 @@ export class AudioSystem {
      * Play a sound by type
      */
     async playSound(soundType: SoundType): Promise<void> {
-        if (!this.isEnabled) return;
+        console.log(`🔊 playSound called: ${soundType}, isEnabled: ${this.isEnabled}`);
+        if (!this.isEnabled) {
+            console.log(`🔇 Sound ${soundType} blocked - audio disabled`);
+            return;
+        }
 
         switch (soundType) {
             // UI Sounds

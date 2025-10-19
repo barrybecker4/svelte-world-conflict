@@ -4,6 +4,7 @@
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
   import Section from '$lib/components/ui/Section.svelte';
+  import TurnTimer from '$lib/components/TurnTimer.svelte';
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
   import { useAudio } from '$lib/client/audio/useAudio';
   import AudioButton from '$lib/components/configuration/AudioButton.svelte';
@@ -97,7 +98,7 @@
       {@const faithCount = faithByPlayer[player.slotIndex]}
 
       <div class="player-box" class:active={isActive}>
-        <div class="player-color" style="background: {player.color};" />
+        <div class="player-color" style="background: {player.color};"></div>
         <div class="player-info">
           <div class="player-name">{player.name}</div>
           <div class="player-stats">
@@ -130,6 +131,8 @@
       </div>
     </div>
   </Section>
+
+  <TurnTimer />
 
   <Section title="">
     <div class="stat-display">

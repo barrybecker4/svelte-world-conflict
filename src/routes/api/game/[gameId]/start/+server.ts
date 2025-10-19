@@ -32,12 +32,18 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         console.log(`Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`);
         const regions = reconstructRegions(game.worldConflictState?.regions);
 
+        // Get time limit from pending configuration or use default
+        const moveTimeLimit = game.pendingConfiguration?.settings?.timeLimit || 
+                              game.worldConflictState?.moveTimeLimit || 
+                              GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
+
         // Initialize World Conflict game state with properly constructed regions
         const gameState = GameState.createInitialState(
             gameId,
             updatedPlayers,
             regions,
-            game.worldConflictState?.maxTurns
+            game.worldConflictState?.maxTurns,
+            moveTimeLimit
         );
 
         const updatedGame = {

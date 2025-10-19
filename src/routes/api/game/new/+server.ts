@@ -107,7 +107,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
   // Only initialize full game state for ACTIVE games
   let initialGameState;
   if (gameStatus === 'ACTIVE') {
-    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns);
+    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns, timeLimit);
   } else {
     initialGameState = {
       gameId,
@@ -116,6 +116,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       currentPlayerSlot: 0,
       turnCount: 0,
       maxTurns,
+      moveTimeLimit: timeLimit,
       gamePhase: 'SETUP'
     };
   }
