@@ -8,14 +8,8 @@ import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
 import { turnTimerStore } from '$lib/client/stores/turnTimerStore';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-
-interface ModalState {
-  showSoldierSelection: boolean;
-  showInstructions: boolean;
-  showGameSummary: boolean;
-  soldierSelectionData: { maxSoldiers: number; currentSelection: number } | null;
-  winner: Player | 'DRAWN_GAME' | null;
-}
+import { ModalManager } from './ModalManager';
+import { GameApiClient } from './GameApiClient';
 
 /**
  * Single controller that manages all game logic
@@ -23,10 +17,11 @@ interface ModalState {
  */
 export class GameController {
   // Stores
-  private modalState: Writable<ModalState>;
   private moveState: Writable<MoveState>;
 
   // Managers
+  private modalManager: ModalManager;
+  private apiClient: GameApiClient;
   private battleManager: BattleManager;
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
@@ -42,15 +37,11 @@ export class GameController {
   ) {
     this.gameStore = gameStore;
 
-    // Initialize stores
-    this.modalState = writable({
-      showSoldierSelection: false,
-      showInstructions: false,
-      showGameSummary: false,
-      soldierSelectionData: null,
-      winner: null
-    });
+    // Initialize managers
+    this.modalManager = new ModalManager();
+    this.apiClient = new GameApiClient(gameId);
 
+    // Initialize stores
     this.moveState = writable({
       mode: 'IDLE',
       sourceRegion: null,
@@ -176,21 +167,9 @@ export class GameController {
 
     // Show soldier selection modal when needed (after both source and target are selected)
     if (newState.mode === 'ADJUST_SOLDIERS' && newState.sourceRegion !== null && newState.targetRegion !== null) {
-      console.log('✅ Opening soldier selection modal');
-      this.modalState.update(s => ({
-        ...s,
-        soldierSelectionData: {
-          maxSoldiers: newState.maxSoldiers,
-          currentSelection: newState.selectedSoldierCount
-        },
-        showSoldierSelection: true
-      }));
+      this.modalManager.showSoldierSelection(newState.maxSoldiers, newState.selectedSoldierCount);
     } else {
-      this.modalState.update(s => ({
-        ...s,
-        showSoldierSelection: false,
-        soldierSelectionData: null
-      }));
+      this.modalManager.hideSoldierSelection();
     }
   }
 
@@ -286,12 +265,8 @@ export class GameController {
 
       audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
 
-      // Show modal
-      this.modalState.update(s => ({
-        ...s,
-        winner: endResult.winner,
-        showGameSummary: true
-      }));
+      // Show modal (winner is guaranteed to exist when game has ended)
+      this.modalManager.showGameSummary(endResult.winner!);
     }
   }
 
@@ -360,11 +335,7 @@ export class GameController {
     this.moveState.update(s => ({ ...s, selectedSoldierCount: count }));
 
     // Close the modal
-    this.modalState.update(s => ({
-      ...s,
-      showSoldierSelection: false,
-      soldierSelectionData: null
-    }));
+    this.modalManager.hideSoldierSelection();
 
     // Execute the move with the selected count
     const moveSystem = this.gameStore.getMoveSystem();
@@ -378,11 +349,7 @@ export class GameController {
    * Cancel soldier selection
    */
   cancelSoldierSelection(): void {
-    this.modalState.update(s => ({
-      ...s,
-      showSoldierSelection: false,
-      soldierSelectionData: null
-    }));
+    this.modalManager.hideSoldierSelection();
 
     const moveSystem = this.gameStore.getMoveSystem();
     moveSystem?.processAction({ type: 'CANCEL' });
@@ -401,40 +368,8 @@ export class GameController {
    * Purchase an upgrade for a temple
    */
   async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
-    console.log(`🏛️ GameController.purchaseUpgrade: region ${regionIndex}, upgrade ${upgradeIndex}`);
-
     try {
-      const response = await fetch(`/api/game/${this.gameId}/move`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.playerId,
-          moveType: 'BUILD',
-          regionIndex,
-          upgradeIndex
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: string };
-        console.error('❌ Purchase upgrade failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          regionIndex,
-          upgradeIndex
-        });
-        alert('Failed to purchase upgrade: ' + (errorData.error || 'Unknown error'));
-        return; // Don't throw, just return to keep panel open
-      }
-
-      const data = await response.json() as { gameState?: GameStateData };
-      console.log('✅ Upgrade purchased successfully', data);
-
-      // Log the temple data specifically
-      if (data.gameState?.templesByRegion?.[regionIndex]) {
-        console.log(`🏛️ Server returned temple at region ${regionIndex}:`, data.gameState.templesByRegion[regionIndex]);
-      }
+      const data = await this.apiClient.purchaseUpgrade(this.playerId, regionIndex, upgradeIndex);
 
       // Update game state
       if (data.gameState) {
@@ -455,30 +390,11 @@ export class GameController {
    * End turn
    */
   async endTurn(): Promise<void> {
-    console.log('🔚 GameController.endTurn called');
-
     // Stop the timer when ending turn
     turnTimerStore.stopTimer();
 
     try {
-      const response = await fetch(`/api/game/${this.gameId}/end-turn`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.playerId
-        })
-      });
-
-      console.log('📡 End turn response:', response.status, response.ok);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: string };
-        console.error('❌ End turn failed:', errorData);
-        throw new Error(errorData.error || 'Failed to end turn');
-      }
-
-      const result = await response.json() as { success?: boolean; gameState?: any; message?: string };
-      console.log('✅ Turn ended successfully:', result);
+      await this.apiClient.endTurn(this.playerId);
 
       // Reset move state
       this.moveState.set({
@@ -498,47 +414,27 @@ export class GameController {
   }
 
   showInstructions(): void {
-    this.modalState.update(s => ({ ...s, showInstructions: true }));
+    this.modalManager.showInstructions();
   }
 
   closeInstructions(): void {
-    this.modalState.update(s => ({ ...s, showInstructions: false }));
+    this.modalManager.closeInstructions();
   }
 
   closeGameSummary(): void {
-    this.modalState.update(s => ({ ...s, showGameSummary: false }));
+    this.modalManager.closeGameSummary();
   }
 
   /**
    * Resign from the game
    */
   async resign(): Promise<void> {
-    console.log('🏳️ GameController.resign called');
-
     if (!confirm('Are you sure you want to resign from this game?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/game/${this.gameId}/quit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.playerId,
-          reason: 'RESIGN'
-        })
-      });
-
-      console.log('Resign response:', response.status, response.ok);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as { error?: string };
-        console.error('❌ Resign failed:', errorData);
-        throw new Error(errorData.error || 'Failed to resign from game');
-      }
-
-      const result = await response.json() as { gameEnded?: boolean };
-      console.log('✅ Resigned successfully:', result);
+      const result = await this.apiClient.resign(this.playerId);
 
       // If game ended, show summary or redirect
       if (result.gameEnded) {
@@ -556,9 +452,10 @@ export class GameController {
    */
   getStores() {
     return {
-      modalState: this.modalState,
+      modalState: this.modalManager.getModalState(),
       moveState: this.moveState,
       isConnected: this.websocket.getConnectedStore()
     };
   }
 }
+

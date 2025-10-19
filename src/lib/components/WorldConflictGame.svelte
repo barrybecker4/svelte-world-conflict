@@ -9,7 +9,7 @@
   import LoadingState from './ui/LoadingState.svelte';
   import Banner from './ui/Banner.svelte';
   import { createGameStateStore } from '$lib/client/stores/gameStateStore';
-  import { GameController } from '$lib/client/controllers/GameController';
+  import { GameController } from '$lib/client/gameController/GameController';
 
   export let gameId: string;
   export let playerId: string;
