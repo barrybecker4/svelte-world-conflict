@@ -64,10 +64,31 @@ export class EndTurnCommand extends Command {
         const nextPlayer = this.getPlayerBySlot(nextSlotIndex, players);
         const airBonus = nextPlayer ? this.calculateAirBonus(newState, nextPlayer) : 0;
         
-        // Preserve eliminated players from this turn to show at turn transition
-        newState.state.previousTurnEliminations = newState.state.eliminatedPlayers && newState.state.eliminatedPlayers.length > 0
-            ? [...newState.state.eliminatedPlayers]
-            : [];
+        // Handle elimination banners:
+        // - If there were eliminations THIS turn, set previousTurnEliminations for the next turn
+        // - If no new eliminations but previousTurnEliminations exists, preserve it through AI turns
+        //   but clear it when advancing FROM a human player (who would have seen the banner)
+        const currentPlayerIsHuman = this.player && !this.player.isAI;
+        
+        if (newState.state.eliminatedPlayers && newState.state.eliminatedPlayers.length > 0) {
+            // New eliminations this turn - save them to show at next turn transition
+            newState.state.previousTurnEliminations = [...newState.state.eliminatedPlayers];
+            console.log(`💀 Setting previousTurnEliminations to show at next turn:`, newState.state.previousTurnEliminations);
+        } else if (newState.state.previousTurnEliminations && newState.state.previousTurnEliminations.length > 0) {
+            // No new eliminations, but we have old ones from a previous turn
+            // If the CURRENT player (the one ending turn) is human, clear the banner
+            // (they would have seen it at the start of their turn)
+            if (currentPlayerIsHuman) {
+                console.log(`💀 Clearing previousTurnEliminations (human player ${this.player.name} saw the banner)`);
+                newState.state.previousTurnEliminations = [];
+            } else {
+                console.log(`💀 Preserving previousTurnEliminations through AI turn (${this.player.name})`);
+            }
+            // If current player is AI, preserve previousTurnEliminations so next human sees it
+        } else {
+            // No eliminations at all
+            newState.state.previousTurnEliminations = [];
+        }
         
         // Reset turn state
         newState.movesRemaining = GAME_CONSTANTS.BASE_MOVES_PER_TURN + airBonus;
