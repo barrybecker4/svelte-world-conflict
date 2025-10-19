@@ -49,8 +49,8 @@ export class BattleAnimationSystem {
   }
 
   async playAttackSequence(
-    attackSequence: AttackEvent[], 
-    regions: any[], 
+    attackSequence: AttackEvent[],
+    regions: any[],
     onStateUpdate?: StateUpdateCallback
   ): Promise<void> {
     console.log('Playing attack sequence:', attackSequence);
@@ -173,21 +173,36 @@ export class BattleAnimationSystem {
       console.log('Playing sound cue:', soundCue);
 
       try {
-          // Map sound cues to constants
+          // Map sound cues to constants (handles both new and old GAS format)
           const soundMap: Record<string, SoundType> = {
+              // Actions
               'attack': SOUNDS.ATTACK,
               'combat': SOUNDS.COMBAT,
               'move': SOUNDS.SOLDIERS_MOVE,
               'conquest': SOUNDS.REGION_CONQUERED,
+              'recruit': SOUNDS.SOLDIERS_RECRUITED,
+              'soldiers': SOUNDS.SOLDIERS_RECRUITED,
+              'upgrade': SOUNDS.TEMPLE_UPGRADED,
+
+              // Game events
               'victory': SOUNDS.GAME_WON,
               'win': SOUNDS.GAME_WON,
               'defeat': SOUNDS.GAME_LOST,
               'lose': SOUNDS.GAME_LOST,
-              'recruit': SOUNDS.SOLDIERS_RECRUITED,
-              'soldiers': SOUNDS.SOLDIERS_RECRUITED,
-              'upgrade': SOUNDS.TEMPLE_UPGRADED,
               'start': SOUNDS.GAME_STARTED,
-              'created': SOUNDS.GAME_CREATED
+              'created': SOUNDS.GAME_CREATED,
+
+              // Economy
+              'income': SOUNDS.INCOME,
+
+              // UI
+              'click': SOUNDS.CLICK,
+              'hover': SOUNDS.HOVER,
+              'error': SOUNDS.ERROR,
+
+              // Time warnings
+              'almost_out_of_time': SOUNDS.ALMOST_OUT_OF_TIME,
+              'out_of_time': SOUNDS.OUT_OF_TIME,
           };
 
           const soundType = soundMap[soundCue.toLowerCase()];

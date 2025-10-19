@@ -2,7 +2,7 @@ import { SOUNDS, type SoundType } from './sounds';
 
 /**
  * Audio system for World Conflict game
- * Provides sound effects similar to the original GAS version
+ * Provides sound effects matching the original GAS version with ADSR envelopes
  */
 export class AudioSystem {
     private audioContext: AudioContext | null = null;
@@ -11,188 +11,473 @@ export class AudioSystem {
     private audioCache: Map<SoundType, AudioBuffer> = new Map();
     private isInitialized: boolean = false;
 
-    // Sound frequencies and durations (similar to original GAS simple sounds)
-    private readonly soundConfig = {
-        [SOUNDS.ATTACK]: { frequency: 150, duration: 0.2, type: 'square' as OscillatorType },
-        [SOUNDS.COMBAT]: { frequency: 185, duration: 0.25, type: 'square' as OscillatorType },
-        [SOUNDS.INCOME]: { frequency: 330, duration: 0.2, type: 'sine' as OscillatorType },
-        [SOUNDS.OUT_OF_TIME]: { frequency: 180, duration: 1.0, type: 'square' as OscillatorType },
-        [SOUNDS.ALMOST_OUT_OF_TIME]: { frequency: 250, duration: 0.15, type: 'triangle' as OscillatorType },
-        [SOUNDS.GAME_CREATED]: { frequency: 392, duration: 0.4, type: 'sine' as OscillatorType }, // G4 - welcoming
-        [SOUNDS.GAME_STARTED]: { frequency: 523, duration: 0.6, type: 'triangle' as OscillatorType }, // C5 - exciting start
-        [SOUNDS.SOLDIERS_MOVE]: { frequency: 294, duration: 0.15, type: 'sine' as OscillatorType }, // D4 - marching sound
+    // Volume levels matching original GAS version
+    private readonly CLICK_VOLUME = 0.1;
+    private readonly EFFECT_VOLUME = 0.2;
+    private readonly VICTORY_VOLUME = 0.6;
 
-        [SOUNDS.REGION_CONQUERED]: { frequency: 659, duration: 0.4, type: 'triangle' as OscillatorType }, // E5 - triumphant
-        [SOUNDS.GAME_WON]: { frequency: 784, duration: 0.8, type: 'sine' as OscillatorType }, // G5 - very triumphant
-        [SOUNDS.GAME_LOST]: { frequency: 147, duration: 1.0, type: 'sawtooth' as OscillatorType }, // D3 - sad/low
-        [SOUNDS.SOLDIERS_RECRUITED]: { frequency: 349, duration: 0.25, type: 'triangle' as OscillatorType }, // F4 - recruitment
-        [SOUNDS.TEMPLE_UPGRADED]: { frequency: 440, duration: 0.35, type: 'sine' as OscillatorType }, // A4 - mystical upgrade
-        
-        // UI sounds
-        [SOUNDS.CLICK]: { frequency: 800, duration: 0.05, type: 'sine' as OscillatorType },
-        [SOUNDS.HOVER]: { frequency: 600, duration: 0.03, type: 'sine' as OscillatorType },
-        [SOUNDS.ERROR]: { frequency: 120, duration: 0.4, type: 'square' as OscillatorType }
-    } as const;
+    // ADSR envelope settings
+    private readonly ENVELOPE = {
+        ATTACK: 0.01,
+        DECAY: 0.03,
+        SUSTAIN: 0.01,
+        RELEASE: 0.01,
+        LEVEL: 0.2
+    };
 
     constructor() {}
 
     /**
-     * Play enhanced game creation fanfare
+     * Creates an ADSR buffer matching the GAS version
+     * @param frequencies - Array of {time, pitch, duration} objects
+     * @param volume - Volume level
+     * @param length - Duration in seconds
      */
-    async playGameCreatedFanfare(): Promise<void> {
-        if (!this.isEnabled) return;
-        
-        // Play welcoming chord progression
-        const notes = [392, 494, 587]; // G4, B4, D5
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.3, 'sine');
-            }, i * 100);
+    private createNoteBuffer(frequencies: Array<{t: number, p: number, d: number}>, volume: number, length: number): AudioBuffer | null {
+        if (!this.audioContext) return null;
+
+        const sampleRate = this.audioContext.sampleRate;
+        const samples = Math.floor(sampleRate * length);
+        const buffer = this.audioContext.createBuffer(1, samples, sampleRate);
+        const data = buffer.getChannelData(0);
+        const dt = 1 / sampleRate;
+
+        // Generate each note with ADSR envelope
+        const noteGenerators = frequencies.map(note => {
+            const attackTime = 0.01;
+            const decayTime = 0.03;
+            const sustainTime = 0.03 * note.d;
+            const releaseTime = 0.03 * note.d;
+            const sustainLevel = 0.7;
+
+            return {
+                startTime: note.t,
+                frequency: note.p,
+                attackTime,
+                decayTime,
+                sustainTime,
+                releaseTime,
+                sustainLevel,
+                phase: 0
+            };
+        });
+
+        // Fill buffer
+        for (let i = 0; i < samples; i++) {
+            const time = i * dt;
+            let sample = 0;
+
+            // Sum all active notes
+            for (const gen of noteGenerators) {
+                if (time >= gen.startTime) {
+                    const localTime = time - gen.startTime;
+                    const totalTime = gen.attackTime + gen.decayTime + gen.sustainTime + gen.releaseTime;
+
+                    if (localTime < totalTime) {
+                        // Generate sine wave
+                        gen.phase += (2 * Math.PI * gen.frequency) / sampleRate;
+                        const sineValue = Math.sin(gen.phase);
+
+                        // Apply ADSR envelope
+                        let envelope = 0;
+                        if (localTime < gen.attackTime) {
+                            envelope = localTime / gen.attackTime; // Attack
+                        } else if (localTime < gen.attackTime + gen.decayTime) {
+                            const decayProgress = (localTime - gen.attackTime) / gen.decayTime;
+                            envelope = 1 - (1 - gen.sustainLevel) * decayProgress; // Decay
+                        } else if (localTime < gen.attackTime + gen.decayTime + gen.sustainTime) {
+                            envelope = gen.sustainLevel; // Sustain
+                        } else {
+                            const releaseProgress = (localTime - gen.attackTime - gen.decayTime - gen.sustainTime) / gen.releaseTime;
+                            envelope = gen.sustainLevel * (1 - releaseProgress); // Release
+                        }
+
+                        sample += sineValue * envelope;
+                    }
+                }
+            }
+
+            data[i] = sample * volume * this.volume;
+        }
+
+        return buffer;
+    }
+
+    /**
+     * Creates a sliding pitch sound (for death sounds)
+     */
+    private createSlidingBuffer(startFreq: number, endFreq: number, volume: number, length: number): AudioBuffer | null {
+        if (!this.audioContext) return null;
+
+        const sampleRate = this.audioContext.sampleRate;
+        const samples = Math.floor(sampleRate * length);
+        const buffer = this.audioContext.createBuffer(1, samples, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        const attackTime = 0.01;
+        const decayTime = 0.05;
+        const sustainTime = 0.05;
+        const releaseTime = 0.05;
+        const sustainLevel = 0.5;
+        const slideTime = 0.1;
+
+        let phase = 0;
+
+        for (let i = 0; i < samples; i++) {
+            const time = i / sampleRate;
+
+            // Calculate sliding frequency
+            const slideProgress = Math.min(time / slideTime, 1);
+            const currentFreq = startFreq + (endFreq - startFreq) * slideProgress;
+
+            // Generate sine wave with sliding pitch
+            phase += (2 * Math.PI * currentFreq) / sampleRate;
+            const sineValue = Math.sin(phase);
+
+            // Apply ADSR envelope
+            let envelope = 0;
+            if (time < attackTime) {
+                envelope = time / attackTime;
+            } else if (time < attackTime + decayTime) {
+                const decayProgress = (time - attackTime) / decayTime;
+                envelope = 1 - (1 - sustainLevel) * decayProgress;
+            } else if (time < attackTime + decayTime + sustainTime) {
+                envelope = sustainLevel;
+            } else {
+                const releaseProgress = (time - attackTime - decayTime - sustainTime) / releaseTime;
+                envelope = sustainLevel * Math.max(0, 1 - releaseProgress);
+            }
+
+            data[i] = sineValue * envelope * volume * this.volume;
+        }
+
+        return buffer;
+    }
+
+    /**
+     * Play a buffer
+     */
+    private playBuffer(buffer: AudioBuffer | null): void {
+        if (!buffer || !this.audioContext) return;
+
+        try {
+            const source = this.audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.audioContext.destination);
+            source.start();
+        } catch (e) {
+            console.warn('Error playing sound:', e);
         }
     }
 
     /**
-     * Play game start fanfare 
+     * Basic click sound
      */
-    async playGameStartFanfare(): Promise<void> {
+    async playClickSound(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Exciting ascending sequence
-        const notes = [392, 440, 494, 523]; // G4, A4, B4, C5
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.2, 'triangle');
-            }, i * 120);
-        }
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [{t: 0, p: 110, d: 1}],
+            this.CLICK_VOLUME,
+            this.ENVELOPE.ATTACK + this.ENVELOPE.DECAY + this.ENVELOPE.SUSTAIN + this.ENVELOPE.RELEASE
+        );
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play soldiers marching sound
+     * Enemy dead sound - sliding pitch from 300Hz down
      */
-    async playSoldiersMoving(): Promise<void> {
+    async playEnemyDead(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Quick marching rhythm
-        await this.playTone(294, 0.08, 'sine'); // D4
-        setTimeout(async () => {
-            await this.playTone(294, 0.08, 'sine');
-        }, 100);
+        await this.initializeAudio();
+
+        const buffer = this.createSlidingBuffer(300, 90, this.EFFECT_VOLUME, 0.6);
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play attack initiation sound
+     * Our soldiers dead sound - sliding pitch from 200Hz down
      */
-    async playAttackInitiated(): Promise<void> {
+    async playOursDead(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Aggressive downward sweep
-        await this.playTone(185, 0.15, 'square');
-        setTimeout(async () => {
-            await this.playTone(165, 0.1, 'square');
-        }, 150);
+        await this.initializeAudio();
+
+        const buffer = this.createSlidingBuffer(200, 60, this.EFFECT_VOLUME, 0.6);
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play region conquest celebration
+     * Region takeover sound - C-E chord
      */
     async playRegionConquered(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Triumphant rising notes
-        const notes = [523, 659, 784]; // C5, E5, G5
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.2, 'triangle');
-            }, i * 80);
-        }
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 261, d: 1},    // C
+                {t: 0.1, p: 329, d: 2}   // E
+            ],
+            this.EFFECT_VOLUME,
+            0.2
+        );
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play ultimate victory fanfare
+     * Victory fanfare - chord progression
      */
     async playVictoryFanfare(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Epic victory sequence
-        const notes = [523, 659, 784, 1047, 1319]; // C5, E5, G5, C6, E6
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.4, 'sine');
-            }, i * 200);
-        }
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                // C major chord
+                {t: 0, p: 261, d: 1},    // C
+                {t: 0, p: 329, d: 2},    // E
+                {t: 0, p: 392, d: 3},    // G
+                // F major chord
+                {t: 0.2, p: 261, d: 1},  // C
+                {t: 0.2, p: 349, d: 2},  // F
+                {t: 0.2, p: 440, d: 3}   // A
+            ],
+            this.VICTORY_VOLUME,
+            0.5  // Increased to let chords fully play
+        );
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play sad defeat sound
+     * Defeat sound - descending melody
      */
     async playDefeatSound(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Descending sad sequence
-        const notes = [294, 262, 220, 196, 147]; // D4, C4, A3, G3, D3
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.3, 'sawtooth');
-            }, i * 250);
-        }
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 392, d: 3},      // G
+                {t: 0.15, p: 329, d: 2},   // E
+                {t: 0.3, p: 261, d: 1}     // C
+            ],
+            this.VICTORY_VOLUME,
+            0.5  // Increased to let descending melody fully play
+        );
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play soldier recruitment sound
+     * Almost out of time warning
+     */
+    async playAlmostOutOfTime(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 492, d: 1},      // B
+                {t: 0.1, p: 349, d: 1}     // F
+            ],
+            this.EFFECT_VOLUME,
+            0.25  // Increased to let both notes fully play
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Out of time sound
+     */
+    async playOutOfTime(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 452, d: 2},
+                {t: 0.1, p: 339, d: 2},
+                {t: 0.2, p: 452, d: 2},
+                {t: 0.3, p: 309, d: 2}
+            ],
+            this.EFFECT_VOLUME,
+            0.5  // Increased to let all notes fully play
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Game created sound - welcoming ascending notes
+     */
+    async playGameCreated(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 261, d: 1},      // C
+                {t: 0.1, p: 329, d: 1.5},  // E
+                {t: 0.2, p: 392, d: 2}     // G - welcoming major chord arpeggio
+            ],
+            this.EFFECT_VOLUME,
+            0.4
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Game started sound - exciting fanfare
+     */
+    async playGameStarted(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 392, d: 1},      // G
+                {t: 0.08, p: 440, d: 1},   // A
+                {t: 0.16, p: 494, d: 1.5}, // B
+                {t: 0.24, p: 523, d: 2}    // C - ascending fanfare
+            ],
+            this.EFFECT_VOLUME,
+            0.4
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Soldiers move sound - marching rhythm
+     */
+    async playSoldiersMove(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 294, d: 1},      // D - first step
+                {t: 0.08, p: 294, d: 1}    // D - second step (marching)
+            ],
+            this.EFFECT_VOLUME * 0.7,
+            0.2
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Soldiers recruited sound - military call
      */
     async playSoldiersRecruited(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Military recruitment call
-        await this.playTone(349, 0.15, 'triangle'); // F4
-        setTimeout(async () => {
-            await this.playTone(392, 0.1, 'triangle'); // G4
-        }, 120);
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 349, d: 1.5},    // F - recruitment call
+                {t: 0.1, p: 392, d: 2}     // G - response
+            ],
+            this.EFFECT_VOLUME,
+            0.3
+        );
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play temple upgrade sound
+     * Temple upgraded sound - mystical ascending tones
      */
     async playTempleUpgraded(): Promise<void> {
         if (!this.isEnabled) return;
-        
-        // Mystical upgrade sound
-        const notes = [440, 554, 659]; // A4, C#5, E5
-        for (let i = 0; i < notes.length; i++) {
-            setTimeout(async () => {
-                await this.playTone(notes[i], 0.15, 'sine');
-            }, i * 60);
-        }
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 440, d: 1},      // A
+                {t: 0.06, p: 554, d: 1.5}, // C#
+                {t: 0.12, p: 659, d: 2}    // E - mystical chord arpeggio
+            ],
+            this.EFFECT_VOLUME,
+            0.25
+        );
+        this.playBuffer(buffer);
     }
 
     /**
-     * Play attack sequence with multiple sounds
+     * Income sound - pleasant chime
+     */
+    async playIncome(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 523, d: 1},      // C5
+                {t: 0.05, p: 659, d: 1.5}  // E5 - pleasant rising chime
+            ],
+            this.EFFECT_VOLUME,
+            0.2
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Hover sound - subtle high tone
+     */
+    async playHover(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [{t: 0, p: 880, d: 0.5}],  // A5 - very short, subtle
+            this.CLICK_VOLUME * 0.5,
+            0.03
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Error sound - harsh low tone
+     */
+    async playError(): Promise<void> {
+        if (!this.isEnabled) return;
+        await this.initializeAudio();
+
+        const buffer = this.createNoteBuffer(
+            [
+                {t: 0, p: 147, d: 2},      // D3 - low
+                {t: 0.15, p: 131, d: 2}    // C3 - lower (dissonant)
+            ],
+            this.EFFECT_VOLUME,
+            0.3
+        );
+        this.playBuffer(buffer);
+    }
+
+    /**
+     * Play attack sequence with multiple sounds (helper method for compatibility)
      */
     async playAttackSequence(): Promise<void> {
         if (!this.isEnabled) return;
 
-        // Play a sequence of tones for attack
-        await this.playSound(SOUNDS.ATTACK);
+        // Play attack sound followed by combat sound
+        await this.playOursDead();
         setTimeout(async () => {
-            if (Math.random() > 0.5) {
-                await this.playSound(SOUNDS.ATTACK);
-            }
-        }, 200);
+            await this.playEnemyDead();
+        }, 300);
     }
 
     /**
-     * Play time warning sound (repeating)
+     * Play time warning sound (repeating) (helper method for compatibility)
      */
     async playTimeWarning(duration: number = 3000): Promise<void> {
         if (!this.isEnabled) return;
 
-        const interval = setInterval(async () => {
-            await this.playSound(SOUNDS.ALMOST_OUT_OF_TIME);
-        }, 500);
-
-        setTimeout(() => {
-            clearInterval(interval);
-        }, duration);
+        const startTime = Date.now();
+        const playWarning = async () => {
+            if (Date.now() - startTime < duration) {
+                await this.playAlmostOutOfTime();
+                setTimeout(playWarning, 500);
+            }
+        };
+        playWarning();
     }
 
     cleanup(): void {
@@ -202,33 +487,6 @@ export class AudioSystem {
         }
         this.audioCache.clear();
         this.isInitialized = false;
-    }
-
-    /**
-     * Core tone generation method (existing method)
-     */
-    private async playTone(frequency: number, duration: number, type: OscillatorType): Promise<void> {
-        if (!this.audioContext) {
-            await this.initializeAudio();
-        }
-        
-        if (!this.audioContext) return;
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-        oscillator.type = type;
-        
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(this.volume * 0.3, this.audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
-        
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + duration);
     }
 
     /**
@@ -320,39 +578,58 @@ export class AudioSystem {
 
 
     /**
-     * Play a sound by type (enhanced existing method)
+     * Play a sound by type
      */
     async playSound(soundType: SoundType): Promise<void> {
         if (!this.isEnabled) return;
 
-        const config = this.soundConfig[soundType];
-        if (!config) {
-            console.warn(`Unknown sound type: ${soundType}`);
-            return;
-        }
-
         switch (soundType) {
+            // UI Sounds
+            case SOUNDS.CLICK:
+                return this.playClickSound();
+            case SOUNDS.HOVER:
+                return this.playHover();
+            case SOUNDS.ERROR:
+                return this.playError();
+
+            // Game Events
             case SOUNDS.GAME_CREATED:
-                return this.playGameCreatedFanfare();
+                return this.playGameCreated();
             case SOUNDS.GAME_STARTED:
-                return this.playGameStartFanfare();
-            case SOUNDS.SOLDIERS_MOVE:
-                return this.playSoldiersMoving();
-            case SOUNDS.ATTACK:
-                return this.playAttackInitiated();
-            case SOUNDS.REGION_CONQUERED:
-                return this.playRegionConquered();
+                return this.playGameStarted();
             case SOUNDS.GAME_WON:
                 return this.playVictoryFanfare();
             case SOUNDS.GAME_LOST:
                 return this.playDefeatSound();
+
+            // Player Actions
+            case SOUNDS.SOLDIERS_MOVE:
+                return this.playSoldiersMove();
             case SOUNDS.SOLDIERS_RECRUITED:
                 return this.playSoldiersRecruited();
             case SOUNDS.TEMPLE_UPGRADED:
                 return this.playTempleUpgraded();
+            case SOUNDS.REGION_CONQUERED:
+                return this.playRegionConquered();
+            case SOUNDS.COMBAT:
+                // Combat uses the enemy dead sound
+                return this.playEnemyDead();
+            case SOUNDS.ATTACK:
+                // Attack uses our dead sound (for when we lose soldiers)
+                return this.playOursDead();
+
+            // Economy
+            case SOUNDS.INCOME:
+                return this.playIncome();
+
+            // Time Warnings
+            case SOUNDS.ALMOST_OUT_OF_TIME:
+                return this.playAlmostOutOfTime();
+            case SOUNDS.OUT_OF_TIME:
+                return this.playOutOfTime();
+
             default:
-                // Use existing simple tone method for other sounds
-                return this.playTone(config.frequency, config.duration, config.type);
+                console.warn(`Unknown sound type: ${soundType}`);
         }
     }
 
