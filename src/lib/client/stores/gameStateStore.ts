@@ -247,6 +247,11 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
         battleAnimationSystemSet = true;
         console.log('🎬 Battle animation system set for move replayer');
       }
+    },
+
+    // Set callback for when turn is ready for player interaction
+    setOnTurnReadyCallback: (callback: (gameState: GameStateData) => void) => {
+      gameStateUpdater.setOnTurnReadyCallback(callback);
     }
   };
 }

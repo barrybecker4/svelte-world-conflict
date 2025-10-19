@@ -21,6 +21,7 @@ export class GameStateUpdater {
   private updateQueue: any[] = [];
   private isProcessingUpdate = false;
   private lastRawState: GameStateData | null = null; // Track raw state without overrides
+  private onTurnReadyCallback: ((gameState: GameStateData) => void) | null = null;
 
   constructor(
     private gameStateStore: Writable<GameStateData | null>,
@@ -32,6 +33,13 @@ export class GameStateUpdater {
     private moveReplayer: MoveReplayer,
     private showEliminationBanner: (playerSlotIndex: number) => void
   ) {}
+
+  /**
+   * Set callback to be called when player's turn is ready for interaction
+   */
+  setOnTurnReadyCallback(callback: (gameState: GameStateData) => void): void {
+    this.onTurnReadyCallback = callback;
+  }
 
   /**
    * Check for player eliminations and show banners immediately
@@ -227,6 +235,12 @@ export class GameStateUpdater {
         await new Promise<void>((resolve) => {
           setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
         });
+
+        // Notify that our turn is ready for interaction (after banner completes)
+        if (this.onTurnReadyCallback) {
+          console.log('⏰ Turn is ready - notifying callback');
+          this.onTurnReadyCallback(cleanState);
+        }
       }
     } else {
       // Same player slot - could be our move or another player's move (in multiplayer)

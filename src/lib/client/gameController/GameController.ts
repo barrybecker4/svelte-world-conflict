@@ -28,7 +28,6 @@ export class GameController {
 
   // State
   private gameEndChecked = false;
-  private currentPlayerSlotIndex: number | null = null;
 
   constructor(
     private gameId: string,
@@ -55,7 +54,12 @@ export class GameController {
 
     this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
-      this.handleGameStateUpdateWithTimer(gameData);
+      this.gameStore.handleGameStateUpdate(gameData);
+    });
+
+    // Set callback to start timer when player's turn is ready
+    this.gameStore.setOnTurnReadyCallback((gameState: GameStateData) => {
+      this.startTimerForPlayer(gameState);
     });
   }
 
@@ -74,13 +78,18 @@ export class GameController {
     }
 
     // Initialize game store with our callbacks
-    await this.gameStore.initializeGame(
+    const { gameState: initialGameState } = await this.gameStore.initializeGame(
       (source: number, target: number, count: number) => this.handleMoveComplete(source, target, count),
       (newState: MoveState) => this.handleMoveStateChange(newState)
     );
 
     await this.websocket.initialize();
     await audioSystem.enable();
+
+    // Start timer for initial turn if it's this player's turn
+    if (initialGameState) {
+      this.startTimerForPlayer(initialGameState);
+    }
   }
 
   /**
@@ -106,56 +115,47 @@ export class GameController {
   }
 
   /**
-   * Handle game state updates and manage turn timer
+   * Start the turn timer for the player when their turn is ready
    */
-  private handleGameStateUpdateWithTimer(gameData: GameStateData): void {
-    // Update game state first
-    this.gameStore.handleGameStateUpdate(gameData);
-
-    // Check if the current player has changed
-    const newPlayerSlot = gameData.currentPlayerSlot;
+  private startTimerForPlayer(gameState: GameStateData): void {
     const playerSlotIndex = parseInt(this.playerId);
-    
-    if (this.currentPlayerSlotIndex !== newPlayerSlot) {
-      console.log(`⏰ ======== TURN TIMER CHECK ========`);
-      console.log(`⏰ Player changed from ${this.currentPlayerSlotIndex} to ${newPlayerSlot}`);
-      this.currentPlayerSlotIndex = newPlayerSlot;
+    const currentPlayerSlot = gameState.currentPlayerSlot;
 
-      // Stop any existing timer
-      turnTimerStore.stopTimer();
+    // Stop any existing timer first
+    turnTimerStore.stopTimer();
 
-      // Start timer if it's this player's turn and they're human
-      const isMyTurn = newPlayerSlot === playerSlotIndex;
-      const isHumanPlayer = gameData.players.some(p => 
-        p.slotIndex === playerSlotIndex && !p.isAI
-      );
-      const timeLimit = gameData.moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
+    // Start timer if it's this player's turn and they're human
+    const isMyTurn = currentPlayerSlot === playerSlotIndex;
+    const isHumanPlayer = gameState.players.some(p => 
+      p.slotIndex === playerSlotIndex && !p.isAI
+    );
+    const timeLimit = gameState.moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
 
-      console.log('⏰ Timer conditions:', {
-        isMyTurn,
-        isHumanPlayer,
-        timeLimit,
-        playerSlotIndex,
-        newPlayerSlot,
-        players: gameData.players.map(p => ({
-          slotIndex: p.slotIndex,
-          name: p.name,
-          isAI: p.isAI
-        }))
+    console.log('⏰ ======== TURN TIMER CHECK ========');
+    console.log('⏰ Timer conditions:', {
+      isMyTurn,
+      isHumanPlayer,
+      timeLimit,
+      playerSlotIndex,
+      currentPlayerSlot,
+      players: gameState.players.map(p => ({
+        slotIndex: p.slotIndex,
+        name: p.name,
+        isAI: p.isAI
+      }))
+    });
+
+    // Always show timer when it's the player's turn (human only)
+    if (isMyTurn && isHumanPlayer && timeLimit) {
+      console.log(`⏰ ✅ Starting timer for ${timeLimit} seconds`);
+      turnTimerStore.startTimer(timeLimit, () => {
+        console.log('⏰ Timer expired, auto-ending turn');
+        this.endTurn();
       });
-
-      // Always show timer when it's the player's turn (human only)
-      if (isMyTurn && isHumanPlayer && timeLimit) {
-        console.log(`⏰ ✅ Starting timer for ${timeLimit} seconds`);
-        turnTimerStore.startTimer(timeLimit, () => {
-          console.log('⏰ Timer expired, auto-ending turn');
-          this.endTurn();
-        });
-      } else {
-        console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit})`);
-      }
-      console.log(`⏰ ===================================`);
+    } else {
+      console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit})`);
     }
+    console.log(`⏰ ===================================`);
   }
 
   /**
@@ -458,4 +458,5 @@ export class GameController {
     };
   }
 }
+
 
