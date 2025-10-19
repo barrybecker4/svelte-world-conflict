@@ -21,6 +21,14 @@ export class FeedbackPlayer {
     if (move.sourceRegion !== undefined) {
       this.dispatchMovementAnimation(move.sourceRegion, move.regionIndex, move.soldierCount || 0);
     }
+
+    // Dispatch battleComplete event after animation duration to clear any ownership overrides
+    // This ensures region colors update correctly after peaceful movements
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('battleComplete'));
+      }
+    }, 500); // Match the movement animation duration
   }
 
   /**
