@@ -13,7 +13,7 @@ import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes
  * Handles the complex flow of:
  * - Queuing multiple rapid updates
  * - Turn transition detection and banner coordination
- * - Elimination banner sequencing
+ * - Elimination detection and banner display
  * - Move replay for other players' actions (timing handled by MoveReplayer)
  * - Audio feedback
  */
@@ -29,9 +29,32 @@ export class GameStateUpdater {
     private eliminationBannersStore: Writable<number[]>,
     private playerSlotIndex: number,
     private getMoveSystem: () => MoveSystem | null,
-    private moveReplayer: MoveReplayer
+    private moveReplayer: MoveReplayer,
+    private showEliminationBanner: (playerSlotIndex: number) => void
   ) {}
 
+  /**
+   * Check for player eliminations and show banners immediately
+   */
+  private checkForEliminations(gameState: GameStateData): void {
+    const players = gameState.players || [];
+    const ownersByRegion = gameState.ownersByRegion || {};
+
+    // Count regions owned by each player
+    const regionCounts = new Map<number, number>();
+    for (const playerSlotIndex of Object.values(ownersByRegion)) {
+      regionCounts.set(playerSlotIndex, (regionCounts.get(playerSlotIndex) || 0) + 1);
+    }
+
+    // Check each player - if they have 0 regions, they're eliminated
+    for (const player of players) {
+      const regionCount = regionCounts.get(player.slotIndex) || 0;
+      if (regionCount === 0) {
+        console.log(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
+        this.showEliminationBanner(player.slotIndex);
+      }
+    }
+  }
 
   /**
    * Detect conquests and dispatch battleAnimationStart events BEFORE applying state.
@@ -175,37 +198,15 @@ export class GameStateUpdater {
       console.log('⏭️ Skipping battle override setup:', { isOtherPlayersTurn, hasCurrentState: !!currentState });
     }
 
+    // Check for eliminations in the updated state (e.g., from AI moves)
+    this.checkForEliminations(cleanState);
+
     this.gameStateStore.set(cleanState);
     this.regionsStore.set(cleanState.regions || []);
     this.playersStore.set(cleanState.players || []);
 
     if (isNewTurn) {
-      // Check if there are elimination banners from the previous turn
-      const hasEliminations = cleanState.previousTurnEliminations && cleanState.previousTurnEliminations.length > 0;
-
-      if (hasEliminations) {
-        console.log('💀 Players eliminated in previous turn:', cleanState.previousTurnEliminations);
-        // Set the elimination banners - they will render and block the turn transition
-        this.eliminationBannersStore.set([...cleanState.previousTurnEliminations!]);
-
-        // Wait for user to dismiss all elimination banners before proceeding
-        console.log('💀 Waiting for elimination banners to be dismissed...');
-        await new Promise<void>((resolve) => {
-          const checkInterval = setInterval(() => {
-            let currentBanners: number[] = [];
-            const unsubscribe = this.eliminationBannersStore.subscribe(b => { currentBanners = b; });
-            unsubscribe();
-
-            if (currentBanners.length === 0) {
-              console.log('💀 All elimination banners dismissed');
-              clearInterval(checkInterval);
-              resolve();
-            }
-          }, 50); // Check every 50ms
-        });
-      }
-
-      // Now that elimination banners are done (or there were none), show turn banner
+      // Show turn banner
       console.log('🔄 Turn transition detected - showing turn banner');
       await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
 

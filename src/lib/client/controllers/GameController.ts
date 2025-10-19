@@ -172,12 +172,40 @@ export class GameController {
       throw new Error(result.error || 'Move failed');
     }
 
+    // Check for player eliminations after the move
+    if (result.gameState) {
+      this.checkForEliminations(result.gameState);
+    }
+
     // Immediately update game state with the result from the API
     // This ensures the new state is shown when animation overrides clear
     // The WebSocket update will arrive later but will be ignored if it's the same state
     if (result.gameState) {
       console.log('✅ GameController: Updating game state immediately from API result');
       this.gameStore.handleGameStateUpdate(result.gameState);
+    }
+  }
+
+  /**
+   * Check for player eliminations and show banners immediately
+   */
+  private checkForEliminations(gameState: GameStateData): void {
+    const players = gameState.players || [];
+    const ownersByRegion = gameState.ownersByRegion || {};
+
+    // Count regions owned by each player
+    const regionCounts = new Map<number, number>();
+    for (const playerSlotIndex of Object.values(ownersByRegion)) {
+      regionCounts.set(playerSlotIndex, (regionCounts.get(playerSlotIndex) || 0) + 1);
+    }
+
+    // Check each player - if they have 0 regions, they're eliminated
+    for (const player of players) {
+      const regionCount = regionCounts.get(player.slotIndex) || 0;
+      if (regionCount === 0) {
+        console.log(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
+        this.gameStore.showEliminationBanner(player.slotIndex);
+      }
     }
   }
 

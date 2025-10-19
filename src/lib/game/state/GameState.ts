@@ -395,8 +395,7 @@ export class GameState {
             soldiersByRegion: soldiersByRegionCopy,
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
             conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined,
-            eliminatedPlayers: this.state.eliminatedPlayers ? [...this.state.eliminatedPlayers] : undefined,
-            previousTurnEliminations: this.state.previousTurnEliminations ? [...this.state.previousTurnEliminations] : undefined
+            eliminatedPlayers: this.state.eliminatedPlayers ? [...this.state.eliminatedPlayers] : undefined
         };
     }
 

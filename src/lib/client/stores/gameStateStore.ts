@@ -24,6 +24,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   const loading = writable<boolean>(true);
   const error = writable<string | null>(null);
   const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
+  const eliminatedPlayersTracker = writable<Set<number>>(new Set()); // Persistent tracker to prevent duplicate elimination banners
   
   // Battle animation updater manages visual overrides during combat
   const battleAnimationUpdater = new BattleAnimationUpdater(gameState);
@@ -40,7 +41,8 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     eliminationBanners,
     playerSlotIndex,
     () => moveSystem,
-    moveReplayer
+    moveReplayer,
+    (playerSlotIndex: number) => showEliminationBanner(playerSlotIndex)
   );
 
   /**
@@ -127,6 +129,27 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   }
 
   /**
+   * Show elimination banner for a player (if not already shown)
+   */
+  function showEliminationBanner(playerSlotIndex: number) {
+    let alreadyShown = false;
+    eliminatedPlayersTracker.update(tracker => {
+      alreadyShown = tracker.has(playerSlotIndex);
+      if (!alreadyShown) {
+        tracker.add(playerSlotIndex);
+      }
+      return tracker;
+    });
+
+    if (!alreadyShown) {
+      console.log(`💀 Showing elimination banner for player ${playerSlotIndex}`);
+      eliminationBanners.update(banners => [...banners, playerSlotIndex]);
+    } else {
+      console.log(`💀 Skipping duplicate elimination banner for player ${playerSlotIndex}`);
+    }
+  }
+
+  /**
    * Reset/cleanup turn manager
    */
   function resetTurnManager() {
@@ -208,6 +231,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     handleGameStateUpdate,
     completeBanner,
     completeEliminationBanner,
+    showEliminationBanner,
     resetTurnManager,
 
     // Move system getter

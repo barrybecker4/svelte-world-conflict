@@ -65,7 +65,6 @@ export interface GameStateData {
     pendingMoves?: PendingMove[];
     numBoughtSoldiers?: number; // Track soldiers bought this turn for pricing
     eliminatedPlayers?: number[]; // Track player slot indices that were eliminated this turn
-    previousTurnEliminations?: number[]; // Players eliminated in the previous turn (shown at turn transition)
 
     moveTimeLimit?: number;
     maxTurns?: number;
