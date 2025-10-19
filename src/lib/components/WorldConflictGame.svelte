@@ -36,7 +36,7 @@
 
   let mapContainer: HTMLElement;
 
-  $: selectedRegion = $moveState.sourceRegion !== null 
+  $: selectedRegion = $moveState.sourceRegion !== null
     ? $regions.find(r => r.index === $moveState.sourceRegion) || null
     : null;
 
@@ -98,6 +98,7 @@
       <GameInfoPanel
         gameState={$gameState}
         players={$players}
+        playerSlotIndex={playerSlotIndex}
         moveMode={moveMode}
         onEndTurn={() => controller.endTurn()}
         onShowInstructions={() => controller.showInstructions()}

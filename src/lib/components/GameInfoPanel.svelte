@@ -18,10 +18,14 @@
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
   export let moveMode: string = 'IDLE';
+  export let playerSlotIndex: number;
 
   // Reactive statements - these will update whenever gameState changes
   $: currentPlayerSlot = gameState?.currentPlayerSlot ?? 0;
   $: currentPlayer = players.find(p => p.slotIndex === currentPlayerSlot);
+  $: isMyTurn = currentPlayerSlot === playerSlotIndex;
+  $: currentPlayerDarkColor = currentPlayer ? getPlayerEndColor(currentPlayer.slotIndex) : '';
+
   $: turnNumber = (gameState?.turnNumber ?? 0) + 1;
   $: maxTurns = gameState?.maxTurns && gameState.maxTurns !== GAME_CONSTANTS.UNLIMITED_TURNS ? gameState.maxTurns : null;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
@@ -48,8 +52,9 @@
       return getRegionCount(slotIndex) > 0;
   }
 
-  function getCurrentInstruction(): string {
-    if (currentPlayer?.isAI) {
+  // Reactive instruction text based on game state and move mode
+  $: instructionText = (() => {
+    if (!isMyTurn && currentPlayer) {
       return `${currentPlayer.name} is taking their turn.`;
     }
 
@@ -65,21 +70,7 @@
       default:
         return 'Click on a region to move or attack with its army.\nClick on a temple to buy soldiers or upgrades.';
     }
-  }
-
-  // Debug logging to see when faith values change
-  $: if (gameState) {
-    console.log('🎯 GameInfoPanel - Faith values updated:', {
-      turnNumber: gameState.turnNumber,
-      currentPlayer: currentPlayerSlot,
-      faithByPlayer: gameState.faithByPlayer,
-      playerFaithCounts: players.map(player => ({
-        index: player.slotIndex,
-        name: player.name,
-        faith: faithByPlayer[player.slotIndex]
-      }))
-    });
-  }
+  })();
 </script>
 
 <Panel variant="glass" padding={false} customClass="game-info-panel">
@@ -130,9 +121,12 @@
   </Section>
 
   <Section title="">
-    <div class="info-panel">
+    <div
+      class="info-panel"
+      style={!isMyTurn && currentPlayerDarkColor ? `background-color: ${currentPlayerDarkColor};` : ''}
+    >
       <div class="instruction-text">
-        {getCurrentInstruction()}
+        {instructionText}
       </div>
     </div>
   </Section>
@@ -296,6 +290,13 @@
     font-size: var(--text-sm, 0.9rem);
     line-height: 1.4;
     white-space: pre-line;
+    font-weight: var(--font-semibold, 600);
+  }
+
+  /* White text when showing player turn message */
+  .info-panel[style*="background-color"] .instruction-text {
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
   }
 
   /* Current player stats */
