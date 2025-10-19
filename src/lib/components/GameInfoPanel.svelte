@@ -6,7 +6,6 @@
   import Section from '$lib/components/ui/Section.svelte';
   import TurnTimer from '$lib/components/TurnTimer.svelte';
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
-  import { useAudio } from '$lib/client/audio/useAudio';
   import AudioButton from '$lib/components/configuration/AudioButton.svelte';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { SYMBOLS } from '$lib/game/constants/symbols';
@@ -37,12 +36,6 @@
 
   // Make faith counts reactive to gameState changes
   $: faithByPlayer = gameState?.faithByPlayer ?? {};
-
-  const { toggleAudio } = useAudio();
-
-  async function onToggleAudio() {
-    await toggleAudio();
-  }
 
   function getRegionCount(slotIndex: number): number {
       if (!gameState?.ownersByRegion) return 0;
