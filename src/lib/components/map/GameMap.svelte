@@ -2,8 +2,10 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
   import { getPlayerMapColor, getPlayerConfig } from '$lib/game/constants/playerConfigs';
+  import type { TooltipData } from '$lib/client/feedback/TutorialTips';
   import SvgDefinitions from './SvgDefinitions.svelte';
   import RegionRenderer from './RegionRenderer.svelte';
+  import Tooltip from '../ui/Tooltip.svelte';
 
   export let regions: Region[] = [];
   export let gameState: GameStateData | null = null;
@@ -16,12 +18,19 @@
   export let showTurnHighlights: boolean = true;
   export let previewMode: boolean = false;
   export let mapContainer: HTMLElement | undefined = undefined;
+  export let TutorialTips: TooltipData[] = [];
+  export let onDismissTooltip: (tooltipId: string) => void = () => {};
+
+  // Debug tooltips
+  $: if (TutorialTips.length > 0) {
+    console.log('🗺️ GameMap received tooltips:', TutorialTips);
+  }
 
   const NEUTRAL_COLOR = '#c2b5a3';
 
   let mapContainerElement: HTMLDivElement;
   let battlesInProgress = new Set<number>();
-  
+
   // Movement animation state
   interface ActiveMovement {
     id: number;
@@ -33,7 +42,7 @@
     startTime: number;
     duration: number;
   }
-  
+
   let activeMovements: ActiveMovement[] = [];
   let animationFrameId: number | null = null;
   let nextMovementId = 0;
@@ -83,20 +92,20 @@
     }
     return 1;
   }
-  
+
   function getInnerBorderColor(region: Region, isSelected: boolean = false, isValidTarget: boolean = false): string {
     if (!gameState?.ownersByRegion) {
         return '';
     }
 
     const ownerIndex = gameState.ownersByRegion[region.index];
-    
+
     // For neutral regions that are valid targets, use the current player's color
     if ((ownerIndex === undefined || ownerIndex === -1) && isValidTarget && currentPlayer) {
         const config = getPlayerConfig(currentPlayer.slotIndex);
         return isSelected ? config.highlightEnd : config.highlightStart;
     }
-    
+
     // For neutral regions that aren't valid targets, no highlight
     if (ownerIndex === undefined || ownerIndex === -1) {
         return '';
@@ -118,7 +127,7 @@
     const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === currentPlayer.slotIndex;
     const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
     const hasMovableSoldiers = soldierCount > 0;
-    
+
     // Don't highlight regions that were just conquered this turn
     const wasConqueredThisTurn = gameState.conqueredRegions?.includes(region.index) || false;
 
@@ -127,48 +136,48 @@
 
   function handleRegionClick(region: Region): void {
     if (effectivePreviewMode) return;
-    
+
     // Don't allow clicks if no moves remaining
     if (!gameState || gameState.movesRemaining <= 0) {
       return;
     }
-    
+
     // Don't allow clicks if not current player's turn
     if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) {
       return;
     }
-    
+
     onRegionClick(region);
   }
 
   function handleTempleClick(regionIndex: number): void {
     if (effectivePreviewMode) return;
-    
+
     // Don't allow temple clicks if no moves remaining
     if (!gameState || gameState.movesRemaining <= 0) {
       return;
     }
-    
+
     // Don't allow clicks if not current player's turn
     if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) {
       return;
     }
-    
+
     onTempleClick(regionIndex);
   }
 
   function handleAnimateMovement(event: CustomEvent) {
     const { sourceRegion, targetRegion, soldierCount, duration } = event.detail;
-    
+
     // Find source and target region coordinates
     const source = regions.find(r => r.index === sourceRegion);
     const target = regions.find(r => r.index === targetRegion);
-    
+
     if (!source || !target) {
       console.warn('Could not find regions for movement animation:', { sourceRegion, targetRegion });
       return;
     }
-    
+
     // Add new movement animation
     const movement: ActiveMovement = {
       id: nextMovementId++,
@@ -180,9 +189,9 @@
       startTime: Date.now(),
       duration: duration || 500
     };
-    
+
     activeMovements = [...activeMovements, movement];
-    
+
     // Start animation loop if not already running
     if (animationFrameId === null) {
       animateMovements();
@@ -191,13 +200,13 @@
 
   function animateMovements() {
     const now = Date.now();
-    
+
     // Update active movements, removing completed ones
     activeMovements = activeMovements.filter(movement => {
       const elapsed = now - movement.startTime;
       return elapsed < movement.duration;
     });
-    
+
     // Continue animation loop if there are still active movements
     if (activeMovements.length > 0) {
       animationFrameId = requestAnimationFrame(animateMovements);
@@ -271,7 +280,7 @@
       {@const progress = getMovementProgress(movement)}
       {@const currentX = movement.sourceX + (movement.targetX - movement.sourceX) * progress}
       {@const currentY = movement.sourceY + (movement.targetY - movement.sourceY) * progress}
-      
+
       <!-- Animated army marker -->
       <g class="moving-army">
         <!-- Glow effect -->
@@ -305,6 +314,23 @@
       </g>
     {/each}
   </svg>
+
+  <!-- Tutorial Tooltips -->
+  {#if TutorialTips.length > 0}
+    <div style="position: absolute; top: 10px; left: 10px; background: orange; color: black; padding: 4px; z-index: 1000; font-size: 10px;">
+      DEBUG: {TutorialTips.length} tooltip(s)
+    </div>
+  {/if}
+  {#each TutorialTips as tooltip (tooltip.id)}
+    <Tooltip
+      id={tooltip.id}
+      x={tooltip.x}
+      y={tooltip.y}
+      text={tooltip.text}
+      width={tooltip.width || 7}
+      onDismiss={onDismissTooltip}
+    />
+  {/each}
 </div>
 
 <style>

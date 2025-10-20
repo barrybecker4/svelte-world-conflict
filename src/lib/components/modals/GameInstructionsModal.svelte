@@ -1,16 +1,23 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { SYMBOLS } from '$lib/game/constants/symbols';
+  import { loadPlayerName } from '$lib/client/stores/clientStorage';
+  import { VERSION } from '$lib/version';
 
   const dispatch = createEventDispatcher();
 
   let currentCard = 0;
   let isOpen = true;
   const totalCards = 5;
+  let userName = '';
+
+  onMount(() => {
+    userName = loadPlayerName();
+  });
 
   const tutorialCards = [
     {
@@ -101,6 +108,18 @@
     <div class="tutorial-header">
       <h1>World Conflict</h1>
 
+      <div class="user-info">
+        {#if userName}
+          <span>User: {userName}</span>
+        {/if}
+        <span>Version: {VERSION}</span>
+        <a href="https://github.com/barrybecker4/svelte-world-conflict/wiki/World-Conflict-History-and-Credits" 
+           target="_blank" 
+           rel="noopener noreferrer">
+          Credits
+        </a>
+      </div>
+
       <div class="close-button-wrapper">
         <IconButton variant="default" size="lg" title="Close" on:click={handleClose}>
           ✕
@@ -183,6 +202,33 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 0.5rem;
+  }
+
+  .user-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: #94a3b8;
+  }
+
+  .user-info span {
+    color: #aaa;
+  }
+
+  .user-info a {
+    color: #dde;
+    text-decoration: none;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .user-info a:hover {
+    background: #444;
+    color: #fff;
   }
 
   .tutorial-content {

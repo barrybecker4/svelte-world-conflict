@@ -3,6 +3,9 @@
 
 // See https://kit.svelte.dev/docs/types#app
 declare global {
+  // App version injected at build time from package.json
+  const __APP_VERSION__: string;
+
   namespace App {
     interface Error {}
     interface Locals {}

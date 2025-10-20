@@ -1,6 +1,7 @@
 const PLAYER_NAME_KEY = 'wc_player_name';
 const GAME_PREFIX = 'game_';
 const GAME_CONFIG_KEY = 'wc_game_config';
+const FIRST_TIME_INSTRUCTIONS_KEY = 'wc_first_time_instructions';
 
 export interface GameCreatorInfo {
   playerId: string;
@@ -20,6 +21,10 @@ export interface PlayerSlotConfig {
   slotIndex: number;
   type: string;
   customName: string;
+}
+
+export interface FirstTimeInstructions {
+  [key: string]: boolean;
 }
 
 export function loadPlayerName(): string {
@@ -104,4 +109,39 @@ function isValidConfiguration(config: any): config is GameConfiguration {
   }
   
   return true;
+}
+
+// First-time instructions tracking
+export function loadFirstTimeInstructions(): FirstTimeInstructions {
+  try {
+    const stored = localStorage.getItem(FIRST_TIME_INSTRUCTIONS_KEY);
+    if (!stored) {
+      return {};
+    }
+    return JSON.parse(stored) as FirstTimeInstructions;
+  } catch (e) {
+    console.error('Error loading first-time instructions:', e);
+    return {};
+  }
+}
+
+function saveFirstTimeInstructions(instructions: FirstTimeInstructions): void {
+  try {
+    localStorage.setItem(FIRST_TIME_INSTRUCTIONS_KEY, JSON.stringify(instructions));
+  } catch (e) {
+    console.error('Error saving first-time instructions:', e);
+  }
+}
+
+export function hasInstructionBeenShown(instructionKey: string): boolean {
+  const instructions = loadFirstTimeInstructions();
+  const result = instructions[instructionKey] === true;
+  console.log(`📖 hasInstructionBeenShown("${instructionKey}"):`, result, 'All instructions:', instructions);
+  return result;
+}
+
+export function markInstructionAsShown(instructionKey: string): void {
+  const instructions = loadFirstTimeInstructions();
+  instructions[instructionKey] = true;
+  saveFirstTimeInstructions(instructions);
 }

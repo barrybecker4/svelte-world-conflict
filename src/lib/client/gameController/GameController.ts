@@ -1,4 +1,4 @@
-import { writable, type Writable } from 'svelte/store';
+import { writable, get, type Writable } from 'svelte/store';
 import { BattleManager } from '$lib/client/rendering/BattleManager';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
@@ -10,6 +10,7 @@ import { turnTimerStore } from '$lib/client/stores/turnTimerStore';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { ModalManager } from './ModalManager';
 import { GameApiClient } from './GameApiClient';
+import { TutorialTips, type TooltipData } from '$lib/client/feedback/TutorialTips';
 
 /**
  * Single controller that manages all game logic
@@ -18,6 +19,7 @@ import { GameApiClient } from './GameApiClient';
 export class GameController {
   // Stores
   private moveState: Writable<MoveState>;
+  private TutorialTips: Writable<TooltipData[]>;
 
   // Managers
   private modalManager: ModalManager;
@@ -25,6 +27,7 @@ export class GameController {
   private battleManager: BattleManager;
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
+  private tutorialManager: TutorialTips;
 
   // State
   private gameEndChecked = false;
@@ -39,6 +42,7 @@ export class GameController {
     // Initialize managers
     this.modalManager = new ModalManager();
     this.apiClient = new GameApiClient(gameId);
+    this.tutorialManager = new TutorialTips();
 
     // Initialize stores
     this.moveState = writable({
@@ -51,10 +55,13 @@ export class GameController {
       availableMoves: 3,
       isMoving: false
     });
+    this.TutorialTips = writable([]);
 
     this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
       this.gameStore.handleGameStateUpdate(gameData);
+      // Update tooltips after game state changes from websocket
+      this.updateTooltips();
     });
 
     // Set callback to start timer when player's turn is ready
@@ -90,6 +97,10 @@ export class GameController {
     if (initialGameState) {
       this.startTimerForPlayer(initialGameState);
     }
+
+    // Initialize tooltips after game state is loaded
+    console.log('📖 GameController: Initializing tooltips after game load');
+    this.updateTooltips();
   }
 
   /**
@@ -133,7 +144,7 @@ export class GameController {
 
     // Start timer if it's this player's turn and they're human
     const isMyTurn = currentPlayerSlot === playerSlotIndex;
-    const isHumanPlayer = gameState.players.some(p => 
+    const isHumanPlayer = gameState.players.some(p =>
       p.slotIndex === playerSlotIndex && !p.isAI
     );
     const timeLimit = gameState.moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
@@ -153,15 +164,16 @@ export class GameController {
       }))
     });
 
-    // Always show timer when it's the player's turn (human only)
-    if (isMyTurn && isHumanPlayer && timeLimit) {
+    // Always show timer when it's the player's turn (human only), but not for unlimited time
+    const isUnlimitedTime = timeLimit === GAME_CONSTANTS.UNLIMITED_TIME;
+    if (isMyTurn && isHumanPlayer && timeLimit && !isUnlimitedTime) {
       console.log(`⏰ ✅ Starting timer for ${timeLimit} seconds`);
       turnTimerStore.startTimer(timeLimit, () => {
         console.log('⏰ Timer expired, auto-ending turn');
         this.endTurn();
       });
     } else {
-      console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit})`);
+      console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit}, isUnlimitedTime: ${isUnlimitedTime})`);
     }
     console.log(`⏰ ===================================`);
   }
@@ -174,11 +186,28 @@ export class GameController {
     this.moveState.set(newState);
 
     // Show soldier selection modal when needed (after both source and target are selected)
-    if (newState.mode === 'ADJUST_SOLDIERS' && newState.sourceRegion !== null && newState.targetRegion !== null) {
+    // But don't show it if we're already executing a move
+    const shouldShowModal = newState.mode === 'ADJUST_SOLDIERS'
+      && newState.sourceRegion !== null
+      && newState.targetRegion !== null
+      && !newState.isMoving;
+
+    console.log('🔄 Modal decision:', {
+      mode: newState.mode,
+      hasSource: newState.sourceRegion !== null,
+      hasTarget: newState.targetRegion !== null,
+      isMoving: newState.isMoving,
+      shouldShowModal
+    });
+
+    if (shouldShowModal) {
       this.modalManager.showSoldierSelection(newState.maxSoldiers, newState.selectedSoldierCount);
     } else {
       this.modalManager.hideSoldierSelection();
     }
+
+    // Update tutorial tooltips
+    this.updateTooltips();
   }
 
   /**
@@ -220,6 +249,9 @@ export class GameController {
     if (result.gameState) {
       this.checkForEliminations(result.gameState);
     }
+
+    // Update tutorial tooltips after move completes
+    this.updateTooltips();
 
     // Immediately update game state with the result from the API
     // This ensures the new state is shown when animation overrides clear
@@ -459,13 +491,83 @@ export class GameController {
   }
 
   /**
+   * Update tutorial tooltips based on current game state
+   */
+  private updateTooltips(): void {
+    const gameState = get(this.gameStore.gameState);
+    const regions = get(this.gameStore.regions);
+    const currentMoveState = get(this.moveState);
+    const playerSlotIndex = parseInt(this.playerId);
+
+    console.log('📖 GameController.updateTooltips called', {
+      hasGameState: !!gameState,
+      hasRegions: !!regions,
+      regionsCount: regions?.length,
+      moveState: currentMoveState
+    });
+
+    if (!gameState || !regions) {
+      console.log('📖 No game state or regions, clearing tooltips');
+      // Mark any currently visible tooltips as shown before clearing
+      const currentTooltips = get(this.TutorialTips);
+      currentTooltips.forEach(tooltip => {
+        this.tutorialManager.markTooltipAsShown(tooltip.id);
+      });
+      this.TutorialTips.set([]);
+      return;
+    }
+
+    const isMyTurn = gameState.currentPlayerSlot === playerSlotIndex;
+    const selectedRegionIndex = currentMoveState?.sourceRegion ?? null;
+
+    console.log('📖 GameController tooltip params:', {
+      playerSlotIndex,
+      currentPlayerSlot: gameState.currentPlayerSlot,
+      isMyTurn,
+      selectedRegionIndex,
+      mode: currentMoveState?.mode
+    });
+
+    // Get previous tooltips to detect what's being removed
+    const previousTooltips = get(this.TutorialTips);
+
+    const tooltips = this.tutorialManager.getTooltips(
+      gameState,
+      regions,
+      selectedRegionIndex,
+      isMyTurn
+    );
+
+    // Mark any tooltips that were visible but are now gone as "shown"
+    previousTooltips.forEach(prevTooltip => {
+      const stillVisible = tooltips.some(t => t.id === prevTooltip.id);
+      if (!stillVisible) {
+        console.log('📖 Marking tooltip as shown (no longer visible):', prevTooltip.id);
+        this.tutorialManager.markTooltipAsShown(prevTooltip.id);
+      }
+    });
+
+    console.log('📖 GameController setting tooltips:', tooltips);
+    this.TutorialTips.set(tooltips);
+  }
+
+  /**
+   * Dismiss a tutorial tooltip
+   */
+  dismissTooltip(tooltipId: string): void {
+    this.tutorialManager.dismissTooltip(tooltipId);
+    this.updateTooltips();
+  }
+
+  /**
    * Get stores for component binding
    */
   getStores() {
     return {
       modalState: this.modalManager.getModalState(),
       moveState: this.moveState,
-      isConnected: this.websocket.getConnectedStore()
+      isConnected: this.websocket.getConnectedStore(),
+      TutorialTips: this.TutorialTips
     };
   }
 }
