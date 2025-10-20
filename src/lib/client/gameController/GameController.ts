@@ -19,7 +19,7 @@ import { TutorialTips, type TooltipData } from '$lib/client/feedback/TutorialTip
 export class GameController {
   // Stores
   private moveState: Writable<MoveState>;
-  private TutorialTips: Writable<TooltipData[]>;
+  private tutorialTips: Writable<TooltipData[]>;
 
   // Managers
   private modalManager: ModalManager;
@@ -55,7 +55,7 @@ export class GameController {
       availableMoves: 3,
       isMoving: false
     });
-    this.TutorialTips = writable([]);
+    this.tutorialTips = writable([]);
 
     this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
@@ -509,11 +509,11 @@ export class GameController {
     if (!gameState || !regions) {
       console.log('📖 No game state or regions, clearing tooltips');
       // Mark any currently visible tooltips as shown before clearing
-      const currentTooltips = get(this.TutorialTips);
+      const currentTooltips = get(this.tutorialTips);
       currentTooltips.forEach(tooltip => {
         this.tutorialManager.markTooltipAsShown(tooltip.id);
       });
-      this.TutorialTips.set([]);
+      this.tutorialTips.set([]);
       return;
     }
 
@@ -529,7 +529,7 @@ export class GameController {
     });
 
     // Get previous tooltips to detect what's being removed
-    const previousTooltips = get(this.TutorialTips);
+    const previousTooltips = get(this.tutorialTips);
 
     const tooltips = this.tutorialManager.getTooltips(
       gameState,
@@ -548,7 +548,7 @@ export class GameController {
     });
 
     console.log('📖 GameController setting tooltips:', tooltips);
-    this.TutorialTips.set(tooltips);
+    this.tutorialTips.set(tooltips);
   }
 
   /**
@@ -567,7 +567,7 @@ export class GameController {
       modalState: this.modalManager.getModalState(),
       moveState: this.moveState,
       isConnected: this.websocket.getConnectedStore(),
-      TutorialTips: this.TutorialTips
+      tutorialTips: this.tutorialTips
     };
   }
 }

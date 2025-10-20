@@ -18,12 +18,12 @@
   export let showTurnHighlights: boolean = true;
   export let previewMode: boolean = false;
   export let mapContainer: HTMLElement | undefined = undefined;
-  export let TutorialTips: TooltipData[] = [];
+  export let tutorialTips: TooltipData[] = [];
   export let onDismissTooltip: (tooltipId: string) => void = () => {};
 
   // Debug tooltips
-  $: if (TutorialTips.length > 0) {
-    console.log('🗺️ GameMap received tooltips:', TutorialTips);
+  $: if (tutorialTips.length > 0) {
+    console.log('🗺️ GameMap received tooltips:', tutorialTips);
   }
 
   const NEUTRAL_COLOR = '#c2b5a3';
@@ -316,12 +316,12 @@
   </svg>
 
   <!-- Tutorial Tooltips -->
-  {#if TutorialTips.length > 0}
+  {#if tutorialTips.length > 0}
     <div style="position: absolute; top: 10px; left: 10px; background: orange; color: black; padding: 4px; z-index: 1000; font-size: 10px;">
-      DEBUG: {TutorialTips.length} tooltip(s)
+      DEBUG: {tutorialTips.length} tooltip(s)
     </div>
   {/if}
-  {#each TutorialTips as tooltip (tooltip.id)}
+  {#each tutorialTips as tooltip (tooltip.id)}
     <Tooltip
       id={tooltip.id}
       x={tooltip.x}

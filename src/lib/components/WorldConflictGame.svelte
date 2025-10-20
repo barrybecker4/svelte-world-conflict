@@ -32,7 +32,7 @@
   } = gameStore;
 
   const controller = new GameController(gameId, playerId, gameStore);
-  const { modalState, moveState, isConnected, TutorialTips } = controller.getStores();
+  const { modalState, moveState, isConnected, tutorialTips } = controller.getStores();
 
   let mapContainer: HTMLElement;
 
@@ -115,7 +115,7 @@
         {validTargetRegions}
         gameState={$gameState}
         showTurnHighlights={$shouldHighlightRegions ?? true}
-        TutorialTips={$TutorialTips}
+        tutorialTips={$tutorialTips}
         onRegionClick={(region) => {
           console.log('🗺️ GameMap click received in component:', { region, isMyTurn: $isMyTurn });
           controller.handleRegionClick(region, $isMyTurn ?? false);
