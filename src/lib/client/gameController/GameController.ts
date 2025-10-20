@@ -11,6 +11,8 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { ModalManager } from './ModalManager';
 import { GameApiClient } from './GameApiClient';
 import { TutorialTips, type TooltipData } from '$lib/client/feedback/TutorialTips';
+import { UndoManager } from './UndoManager';
+import type { PendingMove } from './types';
 
 /**
  * Single controller that manages all game logic
@@ -28,9 +30,11 @@ export class GameController {
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
   private tutorialManager: TutorialTips;
+  private undoManager: UndoManager;
 
   // State
   private gameEndChecked = false;
+  private lastTurnNumber: number = -1;
 
   constructor(
     private gameId: string,
@@ -43,6 +47,7 @@ export class GameController {
     this.modalManager = new ModalManager();
     this.apiClient = new GameApiClient(gameId);
     this.tutorialManager = new TutorialTips();
+    this.undoManager = new UndoManager();
 
     // Initialize stores
     this.moveState = writable({
@@ -59,6 +64,13 @@ export class GameController {
 
     this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
+      // Check if turn has changed - if so, reset undo manager
+      if (gameData.turnNumber !== undefined && gameData.turnNumber !== this.lastTurnNumber) {
+        console.log(`🔄 Turn changed from ${this.lastTurnNumber} to ${gameData.turnNumber} - resetting undo manager`);
+        this.lastTurnNumber = gameData.turnNumber;
+        this.undoManager.reset();
+      }
+      
       this.gameStore.handleGameStateUpdate(gameData);
       // Update tooltips after game state changes from websocket
       this.updateTooltips();
@@ -96,6 +108,9 @@ export class GameController {
     // Start timer for initial turn if it's this player's turn
     if (initialGameState) {
       this.startTimerForPlayer(initialGameState);
+      // Initialize turn tracking
+      this.lastTurnNumber = initialGameState.turnNumber || 0;
+      console.log(`🎮 Initial turn number: ${this.lastTurnNumber}`);
     }
 
     // Initialize tooltips after game state is loaded
@@ -211,7 +226,7 @@ export class GameController {
   }
 
   /**
-   * Handle move completion
+   * Handle move completion - execute through BattleManager with animations
    */
   private async handleMoveComplete(
     sourceRegionIndex: number,
@@ -225,6 +240,10 @@ export class GameController {
       currentState = value;
     })();
 
+    // Save state before making the move (for undo)
+    const playerSlotIndex = parseInt(this.playerId);
+    this.undoManager.saveState(currentState!, playerSlotIndex);
+
     const battleMove = {
       sourceRegionIndex,
       targetRegionIndex,
@@ -232,17 +251,33 @@ export class GameController {
       gameState: currentState!
     };
 
-    // Handle battle or peaceful move through BattleManager
+    // Get regions for animations
     const regions = this.gameStore.regions;
     let currentRegions: any[];
     regions.subscribe((value: any[]) => {
       currentRegions = value;
     })();
 
-    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
+    // Execute move LOCALLY through BattleManager (with animations, but no server call)
+    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!, { localMode: true });
 
     if (!result.success) {
       throw new Error(result.error || 'Move failed');
+    }
+
+    // Add the move to pending moves list
+    const pendingMove: PendingMove = {
+      type: 'ARMY_MOVE',
+      source: sourceRegionIndex,
+      destination: targetRegionIndex,
+      count: soldierCount
+    };
+    this.undoManager.addMove(pendingMove);
+
+    // Check if this was a battle - if so, disable undo
+    if (result.attackSequence && result.attackSequence.length > 0) {
+      console.log('⚔️ Battle occurred - undo disabled');
+      this.undoManager.disableUndo();
     }
 
     // Check for player eliminations after the move
@@ -253,11 +288,9 @@ export class GameController {
     // Update tutorial tooltips after move completes
     this.updateTooltips();
 
-    // Immediately update game state with the result from the API
-    // This ensures the new state is shown when animation overrides clear
-    // The WebSocket update will arrive later but will be ignored if it's the same state
+    // Immediately update game state with the result from local execution
     if (result.gameState) {
-      console.log('✅ GameController: Updating game state immediately from API result');
+      console.log('✅ GameController: Updating game state from local move execution');
       this.gameStore.handleGameStateUpdate(result.gameState);
     }
   }
@@ -409,10 +442,16 @@ export class GameController {
 
   /**
    * Purchase an upgrade for a temple
+   * Note: Temple upgrades are sent immediately to the server and cannot be undone
    */
   async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
     try {
       const data = await this.apiClient.purchaseUpgrade(this.playerId, regionIndex, upgradeIndex);
+
+      // Temple upgrades are immediate operations, so disable undo
+      // (similar to how battles disable undo in the old GAS implementation)
+      this.undoManager.disableUndo();
+      console.log('🏛️ Temple upgrade purchased - undo disabled');
 
       // Update game state
       if (data.gameState) {
@@ -430,14 +469,23 @@ export class GameController {
   }
 
   /**
-   * End turn
+   * End turn - send all accumulated moves to server
    */
   async endTurn(): Promise<void> {
     // Stop the timer when ending turn
     turnTimerStore.stopTimer();
 
     try {
-      await this.apiClient.endTurn(this.playerId);
+      // Get pending moves to send to server
+      const pendingMoves = this.undoManager.getPendingMoves();
+      
+      console.log(`🔚 Ending turn with ${pendingMoves.length} pending moves`);
+
+      // Send end turn with accumulated moves
+      await this.apiClient.endTurn(this.playerId, pendingMoves);
+
+      // Clear undo history and pending moves after successful turn end
+      this.undoManager.reset();
 
       // Reset move state
       this.moveState.set({
@@ -454,6 +502,67 @@ export class GameController {
       console.error('❌ End turn error:', error);
       alert('Failed to end turn: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
+  }
+
+  /**
+   * Undo the last move
+   */
+  async undo(): Promise<void> {
+    const gameState = get(this.gameStore.gameState);
+    const playerSlotIndex = parseInt(this.playerId);
+    
+    if (!this.undoManager.canUndo(gameState, playerSlotIndex)) {
+      console.warn('⚠️ Cannot undo - conditions not met');
+      return;
+    }
+
+    console.log('↩️ GameController: Performing undo');
+
+    // Get the previous state
+    const previousState = this.undoManager.undo();
+    
+    if (!previousState) {
+      console.warn('⚠️ No previous state available for undo');
+      return;
+    }
+
+    // Clear any active move UI state
+    this.moveState.set({
+      mode: 'IDLE',
+      sourceRegion: null,
+      targetRegion: null,
+      buildRegion: null,
+      selectedSoldierCount: 0,
+      maxSoldiers: 0,
+      availableMoves: previousState.movesRemaining || 3,
+      isMoving: false
+    });
+
+    // Close any open modals
+    this.modalManager.hideSoldierSelection();
+
+    // Update the game state with the previous state
+    this.gameStore.handleGameStateUpdate(previousState);
+
+    // Reset move system if available
+    const moveSystem = this.gameStore.getMoveSystem();
+    if (moveSystem) {
+      moveSystem.reset();
+    }
+
+    // Update tooltips
+    this.updateTooltips();
+
+    console.log('✅ Undo complete');
+  }
+
+  /**
+   * Check if undo is currently available
+   */
+  canUndo(): boolean {
+    const gameState = get(this.gameStore.gameState);
+    const playerSlotIndex = parseInt(this.playerId);
+    return this.undoManager.canUndo(gameState, playerSlotIndex);
   }
 
   showInstructions(): void {

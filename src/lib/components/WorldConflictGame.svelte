@@ -53,6 +53,8 @@
   $: moveMode = $moveState.mode;
   $: buildRegion = $moveState.buildRegion;
   $: inBuildMode = moveMode === 'BUILD' && buildRegion !== null;
+  // canUndo needs to react to gameState changes, so we reference $gameState to create the dependency
+  $: canUndo = $gameState ? controller.canUndo() : false;
 
   onMount(async () => {
     console.log('🎮 WorldConflictGame mounted');
@@ -101,6 +103,8 @@
         playerSlotIndex={playerSlotIndex}
         moveMode={moveMode}
         onEndTurn={() => controller.endTurn()}
+        onUndo={() => controller.undo()}
+        canUndo={canUndo}
         onShowInstructions={() => controller.showInstructions()}
         onResign={() => controller.resign()}
       />

@@ -19,6 +19,7 @@
   export let onResign: () => void = () => {};
   export let moveMode: string = 'IDLE';
   export let playerSlotIndex: number;
+  export let canUndo: boolean = false;
 
   // Reactive statements - these will update whenever gameState changes
   $: currentPlayerSlot = gameState?.currentPlayerSlot ?? 0;
@@ -146,8 +147,8 @@
         Cancel Move
       </Button>
     {:else}
-      <Button variant="secondary" uppercase disabled={movesRemaining >= 3} on:click={onUndo}>
-        Undo
+      <Button variant="secondary" uppercase disabled={!canUndo || !isMyTurn} on:click={onUndo}>
+        ↩️ Undo
       </Button>
     {/if}
 

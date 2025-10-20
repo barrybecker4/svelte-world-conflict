@@ -7,9 +7,11 @@
   // The local human player (the person using this browser)
   export let currentPlayer: Player | null = null;
   export let onEndTurn: () => void = () => {};
+  export let onUndo: () => void = () => {};
   export let onBuyArmies: () => void = () => {};
   export let onUpgradeTemple: () => void = () => {};
   export let canEndTurn: boolean = false;
+  export let canUndo: boolean = false;
   export let movesRemaining: number = 0;
 
   $: playerFaith = gameState?.faithByPlayer?.[currentPlayer?.slotIndex || 0] || 0;
@@ -40,6 +42,14 @@
       on:click={onUpgradeTemple}
     >
       Upgrade Temple (50 Faith)
+    </Button>
+
+    <Button
+      variant="warning"
+      disabled={!canUndo || !isPlayerTurn}
+      on:click={onUndo}
+    >
+      ↩️ Undo
     </Button>
 
     <Button

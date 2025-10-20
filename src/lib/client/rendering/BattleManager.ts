@@ -1,7 +1,9 @@
 import { BattleAnimationSystem } from './BattleAnimationSystem';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
-import type { GameStateData, Region } from '$lib/game/entities/gameTypes';
+import type { GameStateData, Region, Player } from '$lib/game/entities/gameTypes';
+import { GameState } from '$lib/game/state/GameState';
+import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
 
 export interface BattleMove {
   sourceRegionIndex: number;
@@ -15,6 +17,10 @@ export interface BattleResult {
   gameState?: GameStateData;
   attackSequence?: any[];
   error?: string;
+}
+
+export interface ExecuteMoveOptions {
+  localMode?: boolean; // If true, execute locally without sending to server
 }
 
 /**
@@ -51,35 +57,36 @@ export class BattleManager {
     return isNeutralWithSoldiers || isEnemyTerritory;
   }
 
-  async executeMove(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
+  async executeMove(move: BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<BattleResult> {
     if (this.isBattleRequired(move)) {
-      return this.executeBattle(move, playerId, regions);
+      return this.executeBattle(move, playerId, regions, options);
     } else {
-      return this.executePeacefulMove(move, playerId);
+      return this.executePeacefulMove(move, playerId, options);
     }
   }
 
-  async executeBattle(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
+  async executeBattle(move: BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
 
     console.log('🏛️ BattleManager: Starting battle execution', {
       source: sourceRegionIndex,
       target: targetRegionIndex,
-      soldiers: soldierCount
+      soldiers: soldierCount,
+      localMode: options?.localMode
     });
 
     try {
       // Trigger movement animation before battle
       this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
       
-      // Initialize battle animation BEFORE sending to server to prevent race condition
+      // Initialize battle animation BEFORE getting result to prevent race condition
       // This sets up overrides so WebSocket updates don't immediately change ownership
       const startingSourceCount = move.gameState.soldiersByRegion?.[sourceRegionIndex]?.length || 0;
       const startingTargetCount = move.gameState.soldiersByRegion?.[targetRegionIndex]?.length || 0;
       const targetOwner = move.gameState.ownersByRegion?.[targetRegionIndex]; // Original owner before conquest
       
       if (typeof window !== 'undefined') {
-        console.log(`🎬 Initializing battle animation BEFORE server call - Source: ${startingSourceCount}, Target: ${startingTargetCount}, Owner: ${targetOwner}`);
+        console.log(`🎬 Initializing battle animation - Source: ${startingSourceCount}, Target: ${startingTargetCount}, Owner: ${targetOwner}`);
         
         window.dispatchEvent(new CustomEvent('battleAnimationStart', {
           detail: {
@@ -94,7 +101,11 @@ export class BattleManager {
       
       this.startBattleTimeout(targetRegionIndex);
       const battleState = this.createBattleState(move.gameState, targetRegionIndex, move);
-      const result = await this.sendBattleToServer(move, playerId);
+      
+      // Get result either from server or local execution
+      const result = options?.localMode
+        ? await this.executeLocally(move, playerId)
+        : await this.sendBattleToServer(move, playerId);
 
       if (result.attackSequence && result.attackSequence.length > 0) {
         
@@ -154,27 +165,28 @@ export class BattleManager {
   /**
    * Execute a non-battle move (peaceful territory occupation)
    */
-  async executePeacefulMove(move: BattleMove, playerId: string): Promise<BattleResult> {
+  async executePeacefulMove(move: BattleMove, playerId: string, options?: ExecuteMoveOptions): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
 
     console.log('🕊️ BattleManager: Executing peaceful move', {
       source: sourceRegionIndex,
       target: targetRegionIndex,
-      soldiers: soldierCount
+      soldiers: soldierCount,
+      localMode: options?.localMode
     });
 
     try {
       // Trigger movement animation for immediate feedback
       this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
       
-      // Initialize animation overrides BEFORE sending to server to prevent race condition
+      // Initialize animation overrides BEFORE getting result to prevent race condition
       // This preserves the old ownership during the movement animation
       const startingSourceCount = move.gameState.soldiersByRegion?.[sourceRegionIndex]?.length || 0;
       const startingTargetCount = move.gameState.soldiersByRegion?.[targetRegionIndex]?.length || 0;
       const targetOwner = move.gameState.ownersByRegion?.[targetRegionIndex]; // Current owner (undefined for neutral)
       
       if (typeof window !== 'undefined') {
-        console.log(`🎬 Initializing peaceful move animation BEFORE server call - Target: ${targetRegionIndex}, Count: ${startingTargetCount}, Owner: ${targetOwner}`);
+        console.log(`🎬 Initializing peaceful move animation - Target: ${targetRegionIndex}, Count: ${startingTargetCount}, Owner: ${targetOwner}`);
         
         window.dispatchEvent(new CustomEvent('battleAnimationStart', {
           detail: {
@@ -188,7 +200,11 @@ export class BattleManager {
       }
       
       audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
-      const result = await this.sendMoveToServer(move, playerId);
+      
+      // Get result either from server or local execution
+      const result = options?.localMode
+        ? await this.executeLocally(move, playerId)
+        : await this.sendMoveToServer(move, playerId);
       
       // Wait for the movement animation to complete, then clear overrides
       await new Promise<void>((resolve) => {
@@ -215,6 +231,63 @@ export class BattleManager {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('battleComplete'));
       }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  /**
+   * Execute move locally using ArmyMoveCommand (for undo support)
+   * This is called when localMode is true - no server communication
+   */
+  private async executeLocally(move: BattleMove, playerId: string): Promise<BattleResult> {
+    const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
+    
+    console.log('💻 BattleManager: Executing locally (no server call)');
+
+    try {
+      // Create GameState instance from the current game state data
+      const gameState = GameState.fromJSON(move.gameState);
+      
+      // Find the player
+      const playerSlotIndex = parseInt(playerId);
+      const player = gameState.players.find(p => p.slotIndex === playerSlotIndex);
+      
+      if (!player) {
+        throw new Error(`Player with slot index ${playerSlotIndex} not found`);
+      }
+      
+      // Create and execute the ArmyMoveCommand
+      const command = new ArmyMoveCommand(
+        gameState,
+        player,
+        sourceRegionIndex,
+        targetRegionIndex,
+        soldierCount
+      );
+      
+      // Validate the command
+      const validation = command.validate();
+      if (!validation.valid) {
+        throw new Error(validation.errors.join('; '));
+      }
+      
+      // Execute the command to get the new state
+      const newGameState = command.execute();
+      const attackSequence = command.attackSequence;
+      
+      return {
+        success: true,
+        gameState: newGameState.toJSON(),
+        attackSequence: attackSequence
+      };
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown local execution error';
+      console.error('❌ BattleManager: Local execution failed:', error);
       
       return {
         success: false,
