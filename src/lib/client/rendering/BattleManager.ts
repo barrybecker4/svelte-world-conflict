@@ -1,7 +1,7 @@
 import { BattleAnimationSystem } from './BattleAnimationSystem';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
-import type { GameStateData, Region, Player } from '$lib/game/entities/gameTypes';
+import type { GameStateData, Region } from '$lib/game/entities/gameTypes';
 import { GameState } from '$lib/game/state/GameState';
 import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
 
@@ -78,16 +78,16 @@ export class BattleManager {
     try {
       // Trigger movement animation before battle
       this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
-      
+
       // Initialize battle animation BEFORE getting result to prevent race condition
       // This sets up overrides so WebSocket updates don't immediately change ownership
       const startingSourceCount = move.gameState.soldiersByRegion?.[sourceRegionIndex]?.length || 0;
       const startingTargetCount = move.gameState.soldiersByRegion?.[targetRegionIndex]?.length || 0;
       const targetOwner = move.gameState.ownersByRegion?.[targetRegionIndex]; // Original owner before conquest
-      
+
       if (typeof window !== 'undefined') {
         console.log(`🎬 Initializing battle animation - Source: ${startingSourceCount}, Target: ${startingTargetCount}, Owner: ${targetOwner}`);
-        
+
         window.dispatchEvent(new CustomEvent('battleAnimationStart', {
           detail: {
             sourceRegion: sourceRegionIndex,
@@ -98,21 +98,20 @@ export class BattleManager {
           }
         }));
       }
-      
+
       this.startBattleTimeout(targetRegionIndex);
-      const battleState = this.createBattleState(move.gameState, targetRegionIndex, move);
-      
+
       // Get result either from server or local execution
       const result = options?.localMode
         ? await this.executeLocally(move, playerId)
         : await this.sendBattleToServer(move, playerId);
 
       if (result.attackSequence && result.attackSequence.length > 0) {
-        
+
         // Create a state update callback for real-time soldier count updates
         const stateUpdateCallback = (attackerLosses: number, defenderLosses: number) => {
           console.log(`🎯 Battle round: Attacker loses ${attackerLosses}, Defender loses ${defenderLosses}`);
-          
+
           // Dispatch event to update UI with current casualties
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('battleRoundUpdate', {
@@ -128,7 +127,7 @@ export class BattleManager {
 
         await this.playBattleAnimation(result.attackSequence, regions, stateUpdateCallback);
       }
-      
+
       // Always dispatch battle complete event to clear animation overrides
       // (even if there was no attack sequence)
       if (typeof window !== 'undefined') {
@@ -178,16 +177,16 @@ export class BattleManager {
     try {
       // Trigger movement animation for immediate feedback
       this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
-      
+
       // Initialize animation overrides BEFORE getting result to prevent race condition
       // This preserves the old ownership during the movement animation
       const startingSourceCount = move.gameState.soldiersByRegion?.[sourceRegionIndex]?.length || 0;
       const startingTargetCount = move.gameState.soldiersByRegion?.[targetRegionIndex]?.length || 0;
       const targetOwner = move.gameState.ownersByRegion?.[targetRegionIndex]; // Current owner (undefined for neutral)
-      
+
       if (typeof window !== 'undefined') {
         console.log(`🎬 Initializing peaceful move animation - Target: ${targetRegionIndex}, Count: ${startingTargetCount}, Owner: ${targetOwner}`);
-        
+
         window.dispatchEvent(new CustomEvent('battleAnimationStart', {
           detail: {
             sourceRegion: sourceRegionIndex,
@@ -198,14 +197,14 @@ export class BattleManager {
           }
         }));
       }
-      
+
       audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
-      
+
       // Get result either from server or local execution
       const result = options?.localMode
         ? await this.executeLocally(move, playerId)
         : await this.sendMoveToServer(move, playerId);
-      
+
       // Wait for the movement animation to complete, then clear overrides
       await new Promise<void>((resolve) => {
         setTimeout(() => {
@@ -215,7 +214,7 @@ export class BattleManager {
           resolve();
         }, 600); // Match the movement animation duration
       });
-      
+
       console.log('✅ BattleManager: Peaceful move completed successfully');
       return result;
     } catch (error) {
@@ -226,12 +225,12 @@ export class BattleManager {
       } else {
         console.error('❌ BattleManager: Peaceful move failed:', error);
       }
-      
+
       // Clear animation overrides on error
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('battleComplete'));
       }
-      
+
       return {
         success: false,
         error: errorMessage
@@ -245,21 +244,21 @@ export class BattleManager {
    */
   private async executeLocally(move: BattleMove, playerId: string): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
-    
+
     console.log('💻 BattleManager: Executing locally (no server call)');
 
     try {
       // Create GameState instance from the current game state data
       const gameState = GameState.fromJSON(move.gameState);
-      
+
       // Find the player
       const playerSlotIndex = parseInt(playerId);
       const player = gameState.players.find(p => p.slotIndex === playerSlotIndex);
-      
+
       if (!player) {
         throw new Error(`Player with slot index ${playerSlotIndex} not found`);
       }
-      
+
       // Create and execute the ArmyMoveCommand
       const command = new ArmyMoveCommand(
         gameState,
@@ -268,27 +267,27 @@ export class BattleManager {
         targetRegionIndex,
         soldierCount
       );
-      
+
       // Validate the command
       const validation = command.validate();
       if (!validation.valid) {
         throw new Error(validation.errors.join('; '));
       }
-      
+
       // Execute the command to get the new state
       const newGameState = command.execute();
       const attackSequence = command.attackSequence;
-      
+
       return {
         success: true,
         gameState: newGameState.toJSON(),
         attackSequence: attackSequence
       };
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown local execution error';
       console.error('❌ BattleManager: Local execution failed:', error);
-      
+
       return {
         success: false,
         error: errorMessage
@@ -300,7 +299,7 @@ export class BattleManager {
    * Play battle animation sequence with optional state update callback
    */
   private async playBattleAnimation(
-    attackSequence: any[], 
+    attackSequence: any[],
     regions?: Region[],
     onStateUpdate?: (attackerLosses: number, defenderLosses: number) => void
   ): Promise<void> {
