@@ -21,6 +21,8 @@ export interface Player {
 
 export interface Soldier {
     i: number; // Unique soldier ID
+    attackedRegion?: number; // Target region index during attack (for halfway positioning)
+    movingToRegion?: number; // Target region index during peaceful move (for full distance animation)
 }
 
 export interface Temple {

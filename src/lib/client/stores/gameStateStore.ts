@@ -3,7 +3,6 @@ import { turnManager } from '$lib/game/mechanics/TurnManager';
 import { MoveSystem } from '$lib/game/mechanics/MoveSystem';
 import { MoveReplayer } from '$lib/client/feedback/MoveReplayer';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { BattleAnimationUpdater } from './BattleAnimationUpdater';
 import { GameStateUpdater } from './GameStateUpdater';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 
@@ -12,7 +11,6 @@ import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes
  * 
  * This store orchestrates the game's reactive state management, coordinating:
  * - Core game state (regions, players, current turn)
- * - Battle animations (via BattleAnimationUpdater)
  * - WebSocket updates (via GameStateUpdater)
  * - Move system and turn manager
  */
@@ -25,9 +23,6 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   const error = writable<string | null>(null);
   const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
   const eliminatedPlayersTracker = writable<Set<number>>(new Set()); // Persistent tracker to prevent duplicate elimination banners
-  
-  // Battle animation updater manages visual overrides during combat
-  const battleAnimationUpdater = new BattleAnimationUpdater(gameState);
   
   let moveSystem: MoveSystem | null = null;
   const moveReplayer = new MoveReplayer();
@@ -112,6 +107,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   function handleGameStateUpdate(updatedState: any) {
     gameStateUpdater.handleGameStateUpdate(updatedState);
   }
+
 
   /**
    * Complete banner transition (called when banner animation finishes)
@@ -204,8 +200,8 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   const gameStateFromTurnManager = turnManager.gameData;
 
   return {
-    // Core stores - use displayGameState from BattleAnimationUpdater which includes battle animation overrides
-    gameState: battleAnimationUpdater.displayGameState,
+    // Core stores
+    gameState,
     regions,
     players,
     loading,

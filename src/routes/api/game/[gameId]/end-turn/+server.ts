@@ -124,23 +124,41 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         let finalGameState = result.newState!;
 
-        // Process AI turns if the next player(s) are AI
-        finalGameState = await processAiTurns(finalGameState, gameStorage, gameId, platform);
+        // Check if next player is AI
+        const nextPlayer = finalGameState.getCurrentPlayer();
+        const isNextPlayerAi = nextPlayer?.isAI;
 
-        // Update the game record with the final state
-        const updatedGame = {
-            ...game,
-            worldConflictState: finalGameState.toJSON(),
-            currentPlayerSlot: finalGameState.currentPlayerSlot,
-            lastMoveAt: Date.now()
-        };
+        if (isNextPlayerAi) {
+            // If next player is AI, DON'T send WebSocket for human turn end
+            // Just save the state and let AI processing send WebSockets
+            console.log(`✅ Human turn ended, next player is AI (${nextPlayer.name}) - skipping turn end WebSocket`);
+            
+            // Save state but don't notify yet
+            const updatedGame = {
+                ...game,
+                worldConflictState: finalGameState.toJSON(),
+                currentPlayerSlot: finalGameState.currentPlayerSlot,
+                lastMoveAt: Date.now()
+            };
+            await gameStorage.saveGame(updatedGame);
 
-        await gameStorage.saveGame(updatedGame);
+            // Process AI turns - each AI move will send its own WebSocket notification
+            finalGameState = await processAiTurns(finalGameState, gameStorage, gameId, platform);
+        } else {
+            // Next player is human, send WebSocket for turn end
+            console.log(`✅ Human turn ended, next player is human - sending turn end WebSocket`);
+            const updatedGame = {
+                ...game,
+                worldConflictState: finalGameState.toJSON(),
+                currentPlayerSlot: finalGameState.currentPlayerSlot,
+                lastMoveAt: Date.now()
+            };
 
-        // Notify other players via WebSocket
-        await WebSocketNotifications.gameUpdate(updatedGame);
+            await gameStorage.saveGame(updatedGame);
+            await WebSocketNotifications.gameUpdate(updatedGame);
+        }
 
-        console.log(`Turn processing completed, current player slot: ${finalGameState.currentPlayerSlot}`);
+        console.log(`📊 Turn processing complete, final player slot: ${finalGameState.currentPlayerSlot}`);
 
         return json({
             success: true,

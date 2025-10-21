@@ -76,62 +76,44 @@ export class BattleManager {
     });
 
     try {
-      // Trigger movement animation before battle
-      this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
+      this.startBattleTimeout(targetRegionIndex);
 
-      // Initialize battle animation BEFORE getting result to prevent race condition
-      // This sets up overrides so WebSocket updates don't immediately change ownership
-      const startingSourceCount = move.gameState.soldiersByRegion?.[sourceRegionIndex]?.length || 0;
-      const startingTargetCount = move.gameState.soldiersByRegion?.[targetRegionIndex]?.length || 0;
-      const targetOwner = move.gameState.ownersByRegion?.[targetRegionIndex]; // Original owner before conquest
+      // Set attackedRegion on a COPY of soldiers at source for halfway animation
+      const sourceSoldiers = move.gameState.soldiersByRegion?.[sourceRegionIndex] || [];
+      
+      console.log(`⚔️ Setting attackedRegion on ${soldierCount} soldiers for halfway animation`);
+      
+      // Create a deep copy of the game state for animation
+      const animationState = JSON.parse(JSON.stringify(move.gameState));
+      const animationSoldiers = animationState.soldiersByRegion?.[sourceRegionIndex] || [];
+      
+      // Set attackedRegion on the animation state's soldiers
+      animationSoldiers.slice(0, soldierCount).forEach((soldier: any) => {
+        soldier.attackedRegion = targetRegionIndex;
+      });
 
+      // Dispatch animation state update
       if (typeof window !== 'undefined') {
-        console.log(`🎬 Initializing battle animation - Source: ${startingSourceCount}, Target: ${startingTargetCount}, Owner: ${targetOwner}`);
-
-        window.dispatchEvent(new CustomEvent('battleAnimationStart', {
-          detail: {
-            sourceRegion: sourceRegionIndex,
-            targetRegion: targetRegionIndex,
-            sourceCount: startingSourceCount,
-            targetCount: startingTargetCount,
-            targetOwner: targetOwner // Preserve original owner during animation
-          }
+        window.dispatchEvent(new CustomEvent('battleStateUpdate', {
+          detail: { gameState: animationState }
         }));
       }
 
-      this.startBattleTimeout(targetRegionIndex);
+      // Wait for soldiers to animate halfway
+      await new Promise(resolve => setTimeout(resolve, 700));
 
-      // Get result either from server or local execution
+      // NOW execute on server to validate and persist
       const result = options?.localMode
         ? await this.executeLocally(move, playerId)
         : await this.sendBattleToServer(move, playerId);
 
-      if (result.attackSequence && result.attackSequence.length > 0) {
-
-        // Create a state update callback for real-time soldier count updates
-        const stateUpdateCallback = (attackerLosses: number, defenderLosses: number) => {
-          console.log(`🎯 Battle round: Attacker loses ${attackerLosses}, Defender loses ${defenderLosses}`);
-
-          // Dispatch event to update UI with current casualties
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('battleRoundUpdate', {
-              detail: {
-                sourceRegion: sourceRegionIndex,
-                targetRegion: targetRegionIndex,
-                attackerLosses,
-                defenderLosses
-              }
-            }));
-          }
-        };
-
-        await this.playBattleAnimation(result.attackSequence, regions, stateUpdateCallback);
+      if (!result.success) {
+        throw new Error(result.error || 'Battle failed');
       }
 
-      // Always dispatch battle complete event to clear animation overrides
-      // (even if there was no attack sequence)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('battleComplete'));
+      // Play battle animation (shows casualties, sounds, etc)
+      if (result.attackSequence && result.attackSequence.length > 0) {
+        await this.playBattleAnimation(result.attackSequence, regions);
       }
 
       this.clearBattleTimeout(targetRegionIndex);
@@ -175,45 +157,38 @@ export class BattleManager {
     });
 
     try {
-      // Trigger movement animation for immediate feedback
-      this.dispatchMovementAnimation(sourceRegionIndex, targetRegionIndex, soldierCount);
+      // Create a deep copy of game state for animation
+      console.log(`🚶 Setting movingToRegion on ${soldierCount} soldiers for animation`);
+      
+      const animationState = JSON.parse(JSON.stringify(move.gameState));
+      const animationSoldiers = animationState.soldiersByRegion?.[sourceRegionIndex] || [];
+      
+      // Set movingToRegion on the animation state's soldiers
+      animationSoldiers.slice(0, soldierCount).forEach((soldier: any) => {
+        soldier.movingToRegion = targetRegionIndex;
+      });
 
-      // Initialize animation overrides BEFORE getting result to prevent race condition
-      // This preserves the old ownership during the movement animation
-      const startingSourceCount = move.gameState.soldiersByRegion?.[sourceRegionIndex]?.length || 0;
-      const startingTargetCount = move.gameState.soldiersByRegion?.[targetRegionIndex]?.length || 0;
-      const targetOwner = move.gameState.ownersByRegion?.[targetRegionIndex]; // Current owner (undefined for neutral)
-
+      // Dispatch animation state update
       if (typeof window !== 'undefined') {
-        console.log(`🎬 Initializing peaceful move animation - Target: ${targetRegionIndex}, Count: ${startingTargetCount}, Owner: ${targetOwner}`);
-
-        window.dispatchEvent(new CustomEvent('battleAnimationStart', {
-          detail: {
-            sourceRegion: sourceRegionIndex,
-            targetRegion: targetRegionIndex,
-            sourceCount: startingSourceCount,
-            targetCount: startingTargetCount,
-            targetOwner: targetOwner // Preserve original owner (or undefined) during animation
-          }
+        window.dispatchEvent(new CustomEvent('battleStateUpdate', {
+          detail: { gameState: animationState }
         }));
       }
 
+      // Play movement sound
       audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
 
-      // Get result either from server or local execution
+      // Wait for CSS transition to complete
+      await new Promise(resolve => setTimeout(resolve, 700));
+
+      // NOW execute on server to validate and persist
       const result = options?.localMode
         ? await this.executeLocally(move, playerId)
         : await this.sendMoveToServer(move, playerId);
 
-      // Wait for the movement animation to complete, then clear overrides
-      await new Promise<void>((resolve) => {
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('battleComplete'));
-          }
-          resolve();
-        }, 600); // Match the movement animation duration
-      });
+      if (!result.success) {
+        throw new Error(result.error || 'Move failed');
+      }
 
       console.log('✅ BattleManager: Peaceful move completed successfully');
       return result;
@@ -224,11 +199,6 @@ export class BattleManager {
         console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
       } else {
         console.error('❌ BattleManager: Peaceful move failed:', error);
-      }
-
-      // Clear animation overrides on error
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('battleComplete'));
       }
 
       return {
@@ -296,17 +266,16 @@ export class BattleManager {
   }
 
   /**
-   * Play battle animation sequence with optional state update callback
+   * Play battle animation sequence
    */
   private async playBattleAnimation(
     attackSequence: any[],
-    regions?: Region[],
-    onStateUpdate?: (attackerLosses: number, defenderLosses: number) => void
+    regions?: Region[]
   ): Promise<void> {
     console.log('🎬 BattleManager: Playing attack sequence');
 
     try {
-      await this.battleAnimationSystem.playAttackSequence(attackSequence, regions || [], onStateUpdate);
+      await this.battleAnimationSystem.playAttackSequence(attackSequence, regions || []);
     } catch (error) {
       console.warn('⚠️ BattleManager: Animation failed, continuing without animation:', error);
     }
@@ -412,22 +381,6 @@ export class BattleManager {
 
   getActiveBattleRegions(): number[] {
     return Array.from(this.battleTimeouts.keys());
-  }
-
-  /**
-   * Dispatch movement animation event
-   */
-  private dispatchMovementAnimation(sourceRegion: number, targetRegion: number, soldierCount: number): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('animateMovement', {
-        detail: {
-          sourceRegion,
-          targetRegion,
-          soldierCount,
-          duration: 500 // Half second animation
-        }
-      }));
-    }
   }
 
   destroy(): void {

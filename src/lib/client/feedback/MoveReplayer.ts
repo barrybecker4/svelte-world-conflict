@@ -32,6 +32,7 @@ export class MoveReplayer {
     this.battleCoordinator.setBattleAnimationSystem(system);
   }
 
+
   /**
    * Main entry point: Play sound effects and show visual feedback for other player moves
    * Uses TaskQueue to ensure moves play sequentially without overlap
@@ -60,7 +61,7 @@ export class MoveReplayer {
     // Detect what changed between states to determine move types
     const moves = this.moveDetector.detectMoves(newState, previousState);
 
-    // Attach attack sequence and regions to conquest moves if available
+    // Attach attack sequence, regions, and game state to conquest moves if available
     if (attackSequence && moves.length > 0) {
       const conquestMove = moves.find(m => m.type === 'conquest');
       if (conquestMove) {
@@ -70,6 +71,7 @@ export class MoveReplayer {
         });
         conquestMove.attackSequence = attackSequence;
         (conquestMove as any).regions = regions; // Attach regions for animation
+        (conquestMove as any).gameState = previousState; // Attach previous state for soldier positioning
       } else {
         console.log('⚠️ MoveReplayer: Attack sequence present but no conquest move found');
       }
@@ -86,7 +88,7 @@ export class MoveReplayer {
     // Each move's duration is determined by its actual animation time
     for (const move of moves) {
       await animationQueue.enqueue(0, async () => {
-        await this.playMoveWithFeedback(move, regions);
+        await this.playMoveWithFeedback(move, regions, previousState);
       });
     }
   }
@@ -95,9 +97,10 @@ export class MoveReplayer {
    * Play a single move with appropriate sound and visual feedback
    * @param move - The move to play back
    * @param regions - The regions array for battle animations
+   * @param previousState - The game state before the move (for animation)
    * @returns Promise that resolves when move animation completes
    */
-  private async playMoveWithFeedback(move: DetectedMove, regions: any[]): Promise<void> {
+  private async playMoveWithFeedback(move: DetectedMove, regions: any[], previousState: any): Promise<void> {
     console.log('Playing move:', move);
 
     switch (move.type) {
@@ -106,7 +109,7 @@ export class MoveReplayer {
         break;
 
       case 'movement':
-        await this.feedbackPlayer.playMovement(move);
+        await this.feedbackPlayer.playMovement(move, previousState);
         break;
 
       case 'recruitment':

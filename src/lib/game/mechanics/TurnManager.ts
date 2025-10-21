@@ -75,10 +75,17 @@ class TurnManager {
    * Handle a turn transition to a new player
    */
   public async transitionToPlayer(newPlayerSlotIndex: number, gameState: GameStateData): Promise<void> {
-      return new Promise((resolve) => {
+      return new Promise(async (resolve) => {
+        // Update game state AND players list first to ensure derived stores see correct data
         this.gameState.set(gameState);
+        if (gameState.players) {
+          this.players.set(gameState.players);
+        }
 
         const newArrayIndex = this.findArrayIndexForSlot(newPlayerSlotIndex);
+        const players = get(this.players);
+        const newPlayer = players.find(p => p.slotIndex === newPlayerSlotIndex);
+        const playerAtArrayIndex = players[newArrayIndex];
 
         // slot-based turn detection
         const isNewTurn = this.previousSlotIndex !== newPlayerSlotIndex;
@@ -86,6 +93,11 @@ class TurnManager {
         console.log('Turn transition:', {
           previousSlot: this.previousSlotIndex,
           newSlot: newPlayerSlotIndex,
+          newPlayerName: newPlayer?.name,
+          newArrayIndex,
+          playerAtArrayIndex: playerAtArrayIndex ? { name: playerAtArrayIndex.name, slot: playerAtArrayIndex.slotIndex } : null,
+          gameStateCurrentSlot: gameState.currentPlayerSlot,
+          totalPlayers: players.length,
           isNewTurn
         });
 
@@ -101,6 +113,9 @@ class TurnManager {
 
         this.previousSlotIndex = newPlayerSlotIndex;
 
+        // Wait a tick to ensure derived stores update
+        await new Promise(r => setTimeout(r, 0));
+        
         setTimeout(() => resolve(), 100);
       });
   }

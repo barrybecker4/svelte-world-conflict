@@ -121,8 +121,6 @@ export class Bounds {
             y: Math.round(point.y * (mapHeight / GRID_HEIGHT))
         }));
 
-        console.log(`Converted to ${pixelPoints.length} pixel points for region ${index}`);
-
         // Convert grid coordinates to pixel coordinates for center
         const pixelX = Math.round((left + width / 2) * (mapWidth / GRID_WIDTH));
         const pixelY = Math.round((top + height / 2) * (mapHeight / GRID_HEIGHT));

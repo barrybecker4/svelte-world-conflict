@@ -65,76 +65,6 @@ export class GameStateUpdater {
   }
 
   /**
-   * Detect conquests and dispatch battleAnimationStart events BEFORE applying state.
-   * This prevents ownership from changing visually before animations play.
-   * BattleAnimationUpdater handles the event and sets up the actual overrides.
-   */
-  private initializeBattleOverridesForConquests(newState: any, oldState: any): void {
-    if (typeof window === 'undefined') return;
-
-    const newOwners = newState.ownersByRegion || {};
-    const oldOwners = oldState.ownersByRegion || {};
-    const oldSoldiers = oldState.soldiersByRegion || {};
-    const newSoldiers = newState.soldiersByRegion || {};
-    const regions = newState.regions || [];
-
-    // Check all regions for ownership changes
-    for (const regionIndex of Object.keys(newOwners)) {
-      const idx = parseInt(regionIndex);
-      const newOwner = newOwners[idx];
-      const oldOwner = oldOwners[idx];
-      const oldCount = (oldSoldiers[idx] || []).length;
-      const newCount = (newSoldiers[idx] || []).length;
-
-      // Detect conquest (ownership changed OR neutral with defenders was taken)
-      const isEnemyConquest = oldOwner !== undefined && newOwner !== oldOwner;
-      const isNeutralConquest = oldOwner === undefined && oldCount > 0 && newOwner !== undefined;
-      const isPeacefulExpansion = oldOwner === undefined && oldCount === 0 && newOwner !== undefined;
-      const isConquest = isEnemyConquest || isNeutralConquest;
-      const isAnyOwnershipChange = isConquest || isPeacefulExpansion;
-
-      if (isAnyOwnershipChange) {
-        // Find source region (neighbor that lost soldiers and has new owner)
-        let sourceRegion = 0;
-        const targetRegion = regions.find((r: any) => r.index === idx);
-        if (targetRegion) {
-          for (const neighborIdx of targetRegion.neighbors || []) {
-            const oldNeighborCount = (oldSoldiers[neighborIdx] || []).length;
-            const newNeighborCount = (newState.soldiersByRegion[neighborIdx] || []).length;
-            if (newNeighborCount < oldNeighborCount && newOwners[neighborIdx] === newOwner) {
-              sourceRegion = neighborIdx;
-              break;
-            }
-          }
-        }
-
-        // Dispatch appropriate event based on whether it's a battle or peaceful movement
-        if (isPeacefulExpansion) {
-          // For peaceful movements, just freeze the ownership until movement completes
-          window.dispatchEvent(new CustomEvent('movementAnimationStart', {
-            detail: {
-              targetRegion: idx,
-              oldOwner: oldOwner, // undefined for neutral
-              newOwner: newOwner
-            }
-          }));
-        } else {
-          // For battles, set up full battle animation overrides
-          window.dispatchEvent(new CustomEvent('battleAnimationStart', {
-            detail: {
-              sourceRegion,
-              targetRegion: idx,
-              sourceCount: (oldSoldiers[sourceRegion] || []).length,
-              targetCount: oldCount,
-              targetOwner: oldOwner
-            }
-          }));
-        }
-      }
-    }
-  }
-
-  /**
    * Handle WebSocket game state updates
    * Updates are queued to ensure banners complete before next update
    */
@@ -149,6 +79,7 @@ export class GameStateUpdater {
       this.processNextUpdate();
     }
   }
+
 
   /**
    * Process queued updates one at a time
@@ -191,57 +122,61 @@ export class GameStateUpdater {
       pendingMoves: []       // Force clear
     };
 
-    // IMPORTANT: Dispatch battleAnimationStart events BEFORE applying state to prevent
-    // ownership from changing visually before animations play (for AI/multiplayer replays)
-    if (isOtherPlayersTurn && currentState) {
-      console.log('🎬 Setting up battle overrides for other player turn BEFORE state update');
-      this.initializeBattleOverridesForConquests(cleanState, currentState);
-      // Wait for Svelte's reactivity to process the override stores before applying new state
-      // This ensures the derived displayGameState has the overrides active
-      await new Promise<void>(resolve => requestAnimationFrame(() => {
-        console.log('✅ Animation frame complete, overrides should be active');
-        resolve();
-      }));
-    } else {
-      console.log('⏭️ Skipping battle override setup:', { isOtherPlayersTurn, hasCurrentState: !!currentState });
-    }
-
     // Check for eliminations in the updated state (e.g., from AI moves)
     this.checkForEliminations(cleanState);
 
-    this.gameStateStore.set(cleanState);
-    this.regionsStore.set(cleanState.regions || []);
-    this.playersStore.set(cleanState.players || []);
-
     if (isNewTurn) {
-      // Show turn banner
-      console.log('🔄 Turn transition detected - showing turn banner');
-      await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
-
-      // Play appropriate sounds based on whose turn it is
-      if (isOtherPlayersTurn) {
-        // It's another player's turn - wait for banner, then replay moves
-        await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME);
+      console.log('🔄 Turn transition detected - showing turn banner for slot:', updatedState.currentPlayerSlot);
+        
+        // Update players store BEFORE transition so TurnManager can use updated list
+        this.playersStore.set(cleanState.players || []);
+        
+        console.log('🎯 About to transition to player:', {
+          currentPlayerSlot: cleanState.currentPlayerSlot,
+          playerName: cleanState.players?.find((p: any) => p.slotIndex === cleanState.currentPlayerSlot)?.name,
+          allPlayers: cleanState.players?.map((p: any) => ({ name: p.name, slot: p.slotIndex }))
         });
+        
+        await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
 
-        // Replay moves - MoveReplayer now handles all timing automatically
-        await this.moveReplayer.replayMoves(updatedState, currentState);
-      } else {
-        // It's now our turn
-        audioSystem.playSound(SOUNDS.GAME_STARTED);
+        // Play appropriate sounds and handle animations based on whose turn it is
+        if (isOtherPlayersTurn) {
+          // DON'T update game state yet - keep old state for animations
+          // The animations will update to intermediate states, then we apply final state
+          
+          // It's another player's turn - wait for banner, then replay moves
+          await new Promise<void>((resolve) => {
+            setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME);
+          });
 
-        // Wait for banner to complete
-        await new Promise<void>((resolve) => {
-          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
-        });
+          // Detect and replay moves using state comparison
+          console.log('📼 Detecting and replaying moves from state diff');
+          await this.moveReplayer.replayMoves(updatedState, currentState);
+          
+          // NOW apply the final state after animations complete
+          this.gameStateStore.set(cleanState);
+          this.regionsStore.set(cleanState.regions || []);
+          this.playersStore.set(cleanState.players || []);
+        } else {
+          // It's now our turn
+          audioSystem.playSound(SOUNDS.GAME_STARTED);
 
-        // Notify that our turn is ready for interaction (after banner completes)
-        if (this.onTurnReadyCallback) {
-          console.log('⏰ Turn is ready - notifying callback');
-          this.onTurnReadyCallback(cleanState);
+          // Wait for banner to complete
+          await new Promise<void>((resolve) => {
+            setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
+          });
+          
+          // Apply state after banner
+          this.gameStateStore.set(cleanState);
+          this.regionsStore.set(cleanState.regions || []);
+          this.playersStore.set(cleanState.players || []);
+
+          // Notify that our turn is ready for interaction (after banner completes)
+          if (this.onTurnReadyCallback) {
+            console.log('⏰ Turn is ready - notifying callback');
+            this.onTurnReadyCallback(cleanState);
+          }
         }
-      }
     } else {
       // Same player slot - could be our move or another player's move (in multiplayer)
       console.log('🔄 Same player slot move detected');
@@ -251,12 +186,22 @@ export class GameStateUpdater {
       // When it's our own move, BattleManager already animated it
       if (isOtherPlayersTurn) {
         console.log('🔄 Replaying other player\'s move');
-        // Replay moves from this update - MoveReplayer handles all timing automatically
+        // DON'T update game state yet - keep old state for animations
+        
+        // Detect and replay moves using state comparison
+        console.log('📼 Detecting and replaying moves from state diff');
         await this.moveReplayer.replayMoves(updatedState, currentState);
+        
+        // NOW apply the final state after animations complete
+        this.gameStateStore.set(cleanState);
+        this.regionsStore.set(cleanState.regions || []);
+        this.playersStore.set(cleanState.players || []);
       } else {
         console.log('✅ Skipping replay for our own move (already animated by BattleManager)');
-        // For our own moves, don't clear overrides here - let BattleManager handle it
-        // The WebSocket update just updates the underlying state, which shows through when overrides clear
+        // For our own moves, apply the state immediately
+        this.gameStateStore.set(cleanState);
+        this.regionsStore.set(cleanState.regions || []);
+        this.playersStore.set(cleanState.players || []);
       }
     }
 

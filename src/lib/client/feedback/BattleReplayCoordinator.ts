@@ -35,28 +35,34 @@ export class BattleReplayCoordinator {
         const sourceRegion = move.sourceRegion !== undefined ? move.sourceRegion : 0;
         const targetRegion = move.regionIndex;
 
-        // Create state update callback for real-time soldier count updates
-        const stateUpdateCallback = (attackerLosses: number, defenderLosses: number) => {
-          // Dispatch event to update UI
+        // Get current game state from window (passed via move or from current state)
+        const originalGameState = (move as any).gameState || (window as any).__currentGameState;
+        
+        if (originalGameState && originalGameState.soldiersByRegion) {
+          // Create a deep copy of game state for animation (to avoid mutating the original)
+          const animationState = JSON.parse(JSON.stringify(originalGameState));
+          
+          // Set attackedRegion on attacking soldiers (for halfway positioning)
+          const attackingSoldiers = animationState.soldiersByRegion[sourceRegion] || [];
+          console.log(`⚔️ AI Battle: Setting attackedRegion on ${attackingSoldiers.length} soldiers from region ${sourceRegion}`);
+          
+          attackingSoldiers.forEach((soldier: any) => {
+            soldier.attackedRegion = targetRegion;
+          });
+
+          // Trigger state update to show halfway positioning
           if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('battleRoundUpdate', {
-              detail: {
-                sourceRegion,
-                targetRegion,
-                attackerLosses,
-                defenderLosses
-              }
+            window.dispatchEvent(new CustomEvent('battleStateUpdate', {
+              detail: { gameState: animationState }
             }));
           }
-        };
+
+          // Wait for soldiers to move halfway
+          await new Promise(resolve => setTimeout(resolve, 700));
+        }
 
         // Play the full battle animation sequence
-        await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions, stateUpdateCallback);
-
-        // Dispatch battle complete event to clear animation overrides
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('battleComplete'));
-        }
+        await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions);
 
         // Play conquest sound at the end
         audioSystem.playSound(SOUNDS.REGION_CONQUERED);
@@ -102,3 +108,4 @@ export class BattleReplayCoordinator {
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
   }
 }
+

@@ -16,26 +16,41 @@ export class FeedbackPlayer {
    * Play movement feedback with sound and visual effects
    * @returns Promise that resolves after animation completes
    */
-  async playMovement(move: DetectedMove): Promise<void> {
+  async playMovement(move: DetectedMove, gameState: any): Promise<void> {
     // Play movement sound
     audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
+
+    // If we know the source region, animate soldiers moving
+    if (move.sourceRegion !== undefined && gameState) {
+      const sourceRegion = move.sourceRegion;
+      const targetRegion = move.regionIndex;
+      const soldierCount = move.soldierCount || 0;
+      
+      console.log(`🚶 AI Move: Setting movingToRegion on ${soldierCount} soldiers from ${sourceRegion} to ${targetRegion}`);
+      
+      // Create a deep copy of game state for animation
+      const animationState = JSON.parse(JSON.stringify(gameState));
+      const animationSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
+      
+      // Set movingToRegion on the animation state's soldiers
+      animationSoldiers.slice(0, soldierCount).forEach((soldier: any) => {
+        soldier.movingToRegion = targetRegion;
+      });
+
+      // Dispatch animation state update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('battleStateUpdate', {
+          detail: { gameState: animationState }
+        }));
+      }
+    }
 
     // Visual feedback
     this.highlightRegion(move.regionIndex, 'movement');
 
-    // If we know the source region, trigger movement animation
-    if (move.sourceRegion !== undefined) {
-      this.dispatchMovementAnimation(move.sourceRegion, move.regionIndex, move.soldierCount || 0);
-    }
-
-    // Wait for animation to complete, then clear overrides
+    // Wait for animation to complete
     await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('battleComplete'));
-        }
-        resolve();
-      }, MOVEMENT_DURATION);
+      setTimeout(() => resolve(), 700); // Match the CSS transition time
     });
   }
 
@@ -91,22 +106,4 @@ export class FeedbackPlayer {
     }
   }
 
-  /**
-   * Dispatch movement animation event
-   * @param sourceRegion - Source region index
-   * @param targetRegion - Target region index
-   * @param soldierCount - Number of soldiers moving
-   */
-  private dispatchMovementAnimation(sourceRegion: number, targetRegion: number, soldierCount: number): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('animateMovement', {
-        detail: {
-          sourceRegion,
-          targetRegion,
-          soldierCount,
-          duration: 500 // Half second animation
-        }
-      }));
-    }
-  }
 }

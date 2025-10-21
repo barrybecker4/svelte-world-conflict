@@ -7,6 +7,7 @@
 
   export let region: Region;
   export let gameState: GameStateData | null = null;
+  export let regions: Region[] = [];
   export let isValidTarget: boolean = false;
   export let isSelected: boolean = false;
   export let isPreviewMode: boolean = false;
@@ -18,6 +19,7 @@
   export let innerBorderColor: string = '';
   export let innerBorderWidth: number = 8;
   export let isClickable: boolean = true;
+  export let renderArmies: boolean = true;
   export let onRegionClick: (region: Region) => void = () => {};
   export let onTempleClick: (regionIndex: number) => void = () => {};
 
@@ -104,12 +106,14 @@
       />
     {/if}
 
-    {#if soldierCount > 0}
+    {#if renderArmies && soldierCount > 0}
       <Army
         x={region.x}
         y={region.y}
-        armyCount={soldierCount}
         hasTemple={hasTemple}
+        {gameState}
+        {regions}
+        {region}
       />
     {/if}
   </g>

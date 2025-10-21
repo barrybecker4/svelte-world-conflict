@@ -23,6 +23,7 @@
     loading,
     error,
     currentPlayer,
+    currentPlayerFromTurnManager,
     isMyTurn,
     shouldShowBanner,
     shouldHighlightRegions,
@@ -133,8 +134,8 @@
     </div>
 
     <!-- Turn Banner -->
-    {#if $shouldShowBanner && $currentPlayer}
-      <Banner player={$currentPlayer} onComplete={completeBanner} />
+    {#if $shouldShowBanner && $currentPlayerFromTurnManager}
+      <Banner player={$currentPlayerFromTurnManager} onComplete={completeBanner} />
     {/if}
 
     <!-- Elimination Banners -->

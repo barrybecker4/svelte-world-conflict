@@ -20,6 +20,13 @@
 
   // Reset animation state when player or type changes
   $: if (player || type) {
+    console.log(`🎭 Banner component rendering for player:`, {
+      name: player.name,
+      slotIndex: player.slotIndex,
+      isAI: player.isAI,
+      type,
+      isVisible
+    });
     animationComplete = false;
     if (timer) {
       clearTimeout(timer);

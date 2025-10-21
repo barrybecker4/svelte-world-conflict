@@ -116,6 +116,15 @@ export class GameController {
     // Initialize tooltips after game state is loaded
     console.log('📖 GameController: Initializing tooltips after game load');
     this.updateTooltips();
+
+    // Listen for battle state updates (for soldier positioning animations)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('battleStateUpdate', ((event: CustomEvent) => {
+        console.log('⚔️ Received battleStateUpdate event, updating game state for animation');
+        // Update store directly to avoid queuing delays
+        this.gameStore.gameState.set(event.detail.gameState);
+      }) as EventListener);
+    }
   }
 
   /**
@@ -258,26 +267,11 @@ export class GameController {
       currentRegions = value;
     })();
 
-    // Execute move LOCALLY through BattleManager (with animations, but no server call)
-    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!, { localMode: true });
+    // Execute move through BattleManager (sends to server immediately for validation and persistence)
+    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
 
     if (!result.success) {
       throw new Error(result.error || 'Move failed');
-    }
-
-    // Add the move to pending moves list
-    const pendingMove: PendingMove = {
-      type: 'ARMY_MOVE',
-      source: sourceRegionIndex,
-      destination: targetRegionIndex,
-      count: soldierCount
-    };
-    this.undoManager.addMove(pendingMove);
-
-    // Check if this was a battle - if so, disable undo
-    if (result.attackSequence && result.attackSequence.length > 0) {
-      console.log('⚔️ Battle occurred - undo disabled');
-      this.undoManager.disableUndo();
     }
 
     // Check for player eliminations after the move
@@ -288,9 +282,9 @@ export class GameController {
     // Update tutorial tooltips after move completes
     this.updateTooltips();
 
-    // Immediately update game state with the result from local execution
+    // Immediately update game state with the result from server
     if (result.gameState) {
-      console.log('✅ GameController: Updating game state from local move execution');
+      console.log('✅ GameController: Updating game state from server response');
       this.gameStore.handleGameStateUpdate(result.gameState);
     }
   }
@@ -476,16 +470,13 @@ export class GameController {
     turnTimerStore.stopTimer();
 
     try {
-      // Get pending moves to send to server
-      const pendingMoves = this.undoManager.getPendingMoves();
-      
-      console.log(`🔚 Ending turn with ${pendingMoves.length} pending moves`);
+      // Moves are sent to server immediately when made (not batched)
+      console.log(`🔚 Ending turn (moves already sent to server)`);
 
-      // Send end turn with accumulated moves
-      await this.apiClient.endTurn(this.playerId, pendingMoves);
-
-      // Clear undo history and pending moves after successful turn end
-      this.undoManager.reset();
+      // Send end turn with empty pending moves array
+      console.log('🔚 Sending endTurn request to server...');
+      const result = await this.apiClient.endTurn(this.playerId, []);
+      console.log('🔚 EndTurn response received:', result);
 
       // Reset move state
       this.moveState.set({

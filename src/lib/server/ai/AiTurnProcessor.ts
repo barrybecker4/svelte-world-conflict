@@ -14,6 +14,7 @@ import type { Player } from '$lib/game/entities/gameTypes';
 /**
  * Process AI turns until we reach a human player or game ends
  * This function will continuously execute AI turns and update the game state
+ * Sends individual WebSocket notifications for each AI action for real-time updates
  *
  * @param gameState - Current game state
  * @param gameStorage - Game storage instance for persistence
@@ -47,33 +48,21 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     currentState = result.newState;
                     moveMade = true;
 
-                    // Save the updated game state with attack sequence
-                    const existingGame = await gameStorage.getGame(gameId);
-                    if (existingGame) {
-                        const updatedGame = {
-                            ...existingGame,
-                            worldConflictState: currentState.toJSON(),
-                            currentPlayerSlot: currentState.currentPlayerSlot,
-                            lastMoveAt: Date.now(),
-                            lastAttackSequence: aiMove.attackSequence // Store AI battle sequence for replay
-                        };
-
+                    // Save game state after move
+                    const updatedGame = await gameStorage.getGame(gameId);
+                    if (updatedGame) {
+                        updatedGame.worldConflictState = currentState.toJSON();
+                        updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
+                        updatedGame.lastMoveAt = Date.now();
                         await gameStorage.saveGame(updatedGame);
 
-                        // Notify players of AI move (if websocket environment exists)
-                        if (platform?.env) {
-                            await WebSocketNotifications.gameUpdate(updatedGame);
-                        }
-
-                        // Delay to allow clients to animate the move
-                        // If there's a battle, account for blow-by-blow animation (500ms per round)
-                        let delayMs = 1000; // Base delay for army moves
-                        if (aiMove.attackSequence && aiMove.attackSequence.length > 0) {
-                            // Each battle round takes 500ms, plus base movement time
-                            delayMs = 1000 + (aiMove.attackSequence.length * 500);
-                        }
-                        await new Promise(resolve => setTimeout(resolve, delayMs));
+                        // Send WebSocket notification immediately for this move
+                        await WebSocketNotifications.gameUpdate(updatedGame);
+                        console.log(`✅ AI move by ${currentPlayer.name}: ${aiMove.count} soldiers from ${aiMove.source} to ${aiMove.destination} - WebSocket sent`);
                     }
+
+                    // Small delay between AI actions for better UX
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 } else {
                     // Move failed - will end turn below
                     console.log(`AI move failed: ${result.error}. Will end turn.`);
@@ -90,16 +79,17 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                 if (result.success && result.newState) {
                     currentState = result.newState;
 
-                    // Save the state after ending turn
-                    const existingGame = await gameStorage.getGame(gameId);
-                    if (existingGame) {
-                        const updatedGame = {
-                            ...existingGame,
-                            worldConflictState: currentState.toJSON(),
-                            currentPlayerSlot: currentState.currentPlayerSlot,
-                            lastMoveAt: Date.now()
-                        };
+                    // Save game state after ending turn
+                    const updatedGame = await gameStorage.getGame(gameId);
+                    if (updatedGame) {
+                        updatedGame.worldConflictState = currentState.toJSON();
+                        updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
+                        updatedGame.lastMoveAt = Date.now();
                         await gameStorage.saveGame(updatedGame);
+
+                        // Send WebSocket notification for turn end
+                        await WebSocketNotifications.gameUpdate(updatedGame);
+                        console.log(`✅ AI ${currentPlayer.name} ended turn - WebSocket sent`);
                     }
                 } else {
                     console.error('Failed to end AI turn:', result.error);
