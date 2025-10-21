@@ -3,7 +3,6 @@ import { SOUNDS } from '$lib/client/audio/sounds';
 import type { DetectedMove } from './MoveDetector';
 
 // Animation duration constants
-const MOVEMENT_DURATION = 500;
 const RECRUITMENT_DURATION = 1500; // Time for highlight
 const UPGRADE_DURATION = 1500; // Time for highlight
 
