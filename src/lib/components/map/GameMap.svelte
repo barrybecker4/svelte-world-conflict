@@ -250,13 +250,13 @@
       {@const age = animationTick - particle.timestamp}
       {@const progress = Math.min(age / 3050, 1)}
       {@const opacity = Math.max(0, 0.4 * (1.0 - progress))}
-      {@const currentY = particle.y - (progress * 25)}
+      {@const currentY = particle.y - (progress * 25 + Math.random())}
       {@const currentR = 2 + (progress * 6)}
 
       <!-- Outer glow (blurred) -->
       <circle
         class="smoke-particle-glow"
-        cx={particle.x}
+        cx={particle.x + Math.random() * 20 * progress}
         cy={currentY}
         r={currentR * 1.5}
         fill="#222"

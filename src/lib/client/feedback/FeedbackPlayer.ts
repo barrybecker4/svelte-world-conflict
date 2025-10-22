@@ -16,27 +16,26 @@ export class FeedbackPlayer {
    * @returns Promise that resolves after animation completes
    */
   async playMovement(move: DetectedMove, gameState: any): Promise<void> {
-    // Play movement sound
-    audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
+    console.log(`🚶 AI Move: ${move.soldierCount} soldiers moving from ${move.sourceRegion} to ${move.regionIndex}`);
 
-    // If we know the source region, animate soldiers moving
+    // If we know the source region, animate the movement
     if (move.sourceRegion !== undefined && gameState) {
       const sourceRegion = move.sourceRegion;
       const targetRegion = move.regionIndex;
       const soldierCount = move.soldierCount || 0;
       
-      console.log(`🚶 AI Move: Setting movingToRegion on ${soldierCount} soldiers from ${sourceRegion} to ${targetRegion}`);
-      
-      // Create a deep copy of game state for animation
+      // Create animation state: Mark soldiers as moving (keep at source for same DOM elements)
       const animationState = JSON.parse(JSON.stringify(gameState));
-      const animationSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
+      const sourceSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
       
-      // Set movingToRegion on the animation state's soldiers
-      animationSoldiers.slice(0, soldierCount).forEach((soldier: any) => {
-        soldier.movingToRegion = targetRegion;
-      });
-
-      // Dispatch animation state update
+      // Mark soldiers as moving (they stay in source array for rendering)
+      // IMPORTANT: Server uses pop() which takes from END of array, so mark the LAST N soldiers
+      const startIndex = Math.max(0, sourceSoldiers.length - soldierCount);
+      for (let i = startIndex; i < sourceSoldiers.length; i++) {
+        sourceSoldiers[i].movingToRegion = targetRegion;
+      }
+      
+      // Apply animation state
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('battleStateUpdate', {
           detail: { gameState: animationState }
@@ -44,12 +43,15 @@ export class FeedbackPlayer {
       }
     }
 
+    // Play movement sound
+    audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
+
     // Visual feedback
     this.highlightRegion(move.regionIndex, 'movement');
 
-    // Wait for animation to complete
+    // Wait for CSS transition to complete
     await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), 700); // Match the CSS transition time
+      setTimeout(() => resolve(), 700);
     });
   }
 

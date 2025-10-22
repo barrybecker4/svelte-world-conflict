@@ -16,11 +16,9 @@
   let isBattleInProgress = false; // Track if we're currently processing battle casualties
   let battleEndTimer: number | null = null; // Timer to clear battle state after animation
 
-  // Get soldiers for this region:
-  // - All soldiers physically at this region
-  // - But EXCLUDE any that are currently animating away (they'll be rendered at their source)
+  // Get soldiers for this region
   $: allSoldiers = getSoldiersToRender(gameState, region.index);
-  
+
   // For display purposes, use visible count (excluding hidden soldiers during battle)
   $: visibleCount = allSoldiers.filter(s => !hiddenSoldierIds.has(s.i)).length;
   $: actualSoldierCount = visibleCount;
@@ -33,9 +31,9 @@
   // SOURCE region during animation, even if they're positioned elsewhere visually
   function getSoldiersToRender(state: GameStateData | null, regionIndex: number): Soldier[] {
     if (!state?.soldiersByRegion) return [];
-    
+
     const soldiersAtRegion = state.soldiersByRegion[regionIndex] || [];
-    
+
     // Deduplicate soldiers by ID to prevent Svelte keying errors
     // This can happen during state transitions when the same soldier might appear twice
     const seenIds = new Set<number>();
@@ -47,7 +45,7 @@
       seenIds.add(soldier.i);
       return true;
     });
-    
+
     // During animation, render all soldiers (including those moving away)
     // The positioning logic will handle where they appear visually
     return uniqueSoldiers;
@@ -62,7 +60,7 @@
 
   // Calculate positions for ALL soldiers (including hidden ones for smoke placement)
   $: soldierPositions = calculateSoldierPositions(allSoldiers, region, regions);
-  
+
   // Filter to visible soldiers for rendering
   $: visibleSoldierPositions = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
 
@@ -76,22 +74,43 @@
     }
 
     const positions: SoldierPosition[] = [];
+    const totalSoldiers = soldiersList.length;
+
+    // Group soldiers by destination for proper indexing
+    const soldiersMovingToTarget = new Map<number, Soldier[]>();
+    const soldiersStayingHere: Soldier[] = [];
+
+    soldiersList.forEach(s => {
+      const dest = (s as any).movingToRegion;
+      if (dest !== undefined && dest !== regionData.index) {
+        if (!soldiersMovingToTarget.has(dest)) {
+          soldiersMovingToTarget.set(dest, []);
+        }
+        soldiersMovingToTarget.get(dest)!.push(s);
+      } else {
+        soldiersStayingHere.push(s);
+      }
+    });
 
     soldiersList.forEach((soldier, index) => {
-      const basePos = calculateSoldierBasePosition(index, soldiersList.length, regionData);
-      
-      // Check for movingToRegion (peaceful move - full distance)
-      // Only apply if soldier is NOT already at the target region
-      if ((soldier as any).movingToRegion !== undefined && (soldier as any).movingToRegion !== regionData.index) {
-        const targetRegion = allRegions.find(r => r.index === (soldier as any).movingToRegion);
+      // Check if soldier is moving to a different region
+      const movingTo = (soldier as any).movingToRegion;
+      if (movingTo !== undefined && movingTo !== regionData.index) {
+        // Soldier is moving - position it at the target region
+        const targetRegion = allRegions.find(r => r.index === movingTo);
         if (targetRegion) {
-          // Check if target region has a temple (for proper vertical offset)
-          const targetHasTemple = gameState?.templesByRegion?.[targetRegion.index] !== undefined;
-          
-          // Calculate where this soldier will be positioned at the target
-          // Use the same index to maintain spacing/formation
-          const targetPos = calculateSoldierBasePosition(index, soldiersList.length, targetRegion, targetHasTemple);
-          
+          // Get soldiers already at target + soldiers moving there
+          const targetSoldierCount = gameState?.soldiersByRegion?.[movingTo]?.length || 0;
+          const movingToThisTarget = soldiersMovingToTarget.get(movingTo) || [];
+          const indexInMovingGroup = movingToThisTarget.indexOf(soldier);
+
+          // Position after existing soldiers at target
+          const finalIndex = targetSoldierCount + indexInMovingGroup;
+          const finalTotal = targetSoldierCount + movingToThisTarget.length;
+          const targetPos = calculateSoldierBasePosition(finalIndex, finalTotal, targetRegion);
+
+          console.log(`🎯 Region ${regionData.index} soldier ${soldier.i} moving to ${movingTo}: positioned at ${finalIndex}/${finalTotal} at (${targetPos.x}, ${targetPos.y})`);
+
           positions.push({
             soldier,
             x: targetPos.x,
@@ -101,9 +120,16 @@
           return;
         }
       }
-      
+
+      // Soldier is staying at this region
+      // Just use the simple approach - position based on current index and count
+      const basePos = calculateSoldierBasePosition(index, totalSoldiers, regionData);
+
+      if (soldiersMovingToTarget.size > 0) {
+        console.log(`🏠 Region ${regionData.index} soldier ${soldier.i} staying: positioned at ${index}/${totalSoldiers} at (${basePos.x}, ${basePos.y})`);
+      }
+
       // If soldier has attackedRegion property, position halfway to target (battle)
-      // Only apply if soldier is NOT already at the attacked region
       if (soldier.attackedRegion !== undefined && soldier.attackedRegion !== regionData.index) {
         const targetRegion = allRegions.find(r => r.index === soldier.attackedRegion);
         if (targetRegion) {
@@ -116,8 +142,8 @@
           return;
         }
       }
-      
-      // Normal position
+
+      // Normal position at this region
       positions.push({
         soldier,
         x: basePos.x,
@@ -133,12 +159,12 @@
     const row = Math.floor(index / ARMIES_PER_ROW);
     const col = index % ARMIES_PER_ROW;
     const offsetX = (col - (Math.min(totalSoldiers, ARMIES_PER_ROW) - 1) / 2) * 4;
-    
+
     // Use provided temple status, or default to current region's temple status
-    const regionTempleOffset = hasTempleAtRegion !== undefined 
-      ? (hasTempleAtRegion ? 15 : 0) 
+    const regionTempleOffset = hasTempleAtRegion !== undefined
+      ? (hasTempleAtRegion ? 15 : 0)
       : templeOffset;
-    
+
     const offsetY = row * 3 + regionTempleOffset;
 
     return {
@@ -156,19 +182,19 @@
   function handleBattleCasualties(event: CustomEvent) {
     const { sourceRegion, targetRegion, attackerCasualties, defenderCasualties } = event.detail;
     console.log(`💨 Region ${region.index}: Received battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
-    
+
     // Mark that we're in a battle (prevents premature clearing of hidden soldiers)
-    const isInvolvedInBattle = (sourceRegion === region.index && attackerCasualties > 0) || 
+    const isInvolvedInBattle = (sourceRegion === region.index && attackerCasualties > 0) ||
                                 (targetRegion === region.index && defenderCasualties > 0);
-    
+
     if (isInvolvedInBattle) {
       isBattleInProgress = true;
-      
+
       // Clear any existing battle end timer
       if (battleEndTimer !== null) {
         clearTimeout(battleEndTimer);
       }
-      
+
       // Schedule battle end after a delay (matching animation duration + buffer)
       // This timer resets with each new casualty event, ensuring we wait until ALL casualties are done
       battleEndTimer = setTimeout(() => {
@@ -176,11 +202,11 @@
         battleEndTimer = null;
       }, 2000) as unknown as number; // 500ms per round delay, plus buffer
     }
-    
+
     // Handle attacker casualties if this is the source region
     if (sourceRegion === region.index && attackerCasualties > 0) {
       const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
-      
+
       for (let i = 0; i < attackerCasualties && i < visibleSoldiers.length; i++) {
         const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
         // Hide soldier and spawn smoke simultaneously
@@ -188,11 +214,11 @@
         spawnSmokeAt(casualty.x, casualty.y, true);
       }
     }
-    
+
     // Handle defender casualties if this is the target region
     if (targetRegion === region.index && defenderCasualties > 0) {
       const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
-      
+
       for (let i = 0; i < defenderCasualties && i < visibleSoldiers.length; i++) {
         const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
         // Hide soldier and spawn smoke simultaneously
@@ -212,12 +238,12 @@
     if (typeof window !== 'undefined') {
       window.removeEventListener('battleCasualties', handleBattleCasualties as EventListener);
     }
-    
+
     // Clear battle end timer
     if (battleEndTimer !== null) {
       clearTimeout(battleEndTimer);
     }
-    
+
     // Clear hidden soldiers when component unmounts
     hiddenSoldierIds.clear();
   });
@@ -226,12 +252,12 @@
   // Only clear when we receive a fresh game state update (actual soldiers are gone from data)
   $: if (gameState && hiddenSoldierIds.size > 0 && !isBattleInProgress) {
     const soldiersWithAttackedRegion = allSoldiers.filter(s => (s as any).attackedRegion !== undefined);
-    
+
     // Check if any hidden soldiers still exist in the current game state
-    const hiddenStillExist = Array.from(hiddenSoldierIds).some(hiddenId => 
+    const hiddenStillExist = Array.from(hiddenSoldierIds).some(hiddenId =>
       allSoldiers.some(s => s.i === hiddenId)
     );
-    
+
     // Only clear if:
     // 1. No attacking soldiers (battle animation done)
     // 2. Hidden soldiers no longer exist in game state (server confirmed they're dead)

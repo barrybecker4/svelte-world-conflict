@@ -169,28 +169,41 @@ export class BattleManager {
     });
 
     try {
-      // Create a deep copy of game state for animation
-      console.log(`🚶 Setting movingToRegion on ${soldierCount} soldiers for animation`);
+      console.log(`🚶 Player Move: ${soldierCount} soldiers moving from ${sourceRegionIndex} to ${targetRegionIndex}`);
       
+      // Wait for next frame to ensure current state is rendered
+      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+      
+      // Create animation state: Mark soldiers with movingToRegion but keep them at source
+      // This ensures the same DOM elements transition (no pop-in)
       const animationState = JSON.parse(JSON.stringify(move.gameState));
-      const animationSoldiers = animationState.soldiersByRegion?.[sourceRegionIndex] || [];
+      const sourceSoldiers = animationState.soldiersByRegion?.[sourceRegionIndex] || [];
       
-      // Set movingToRegion on the animation state's soldiers
-      animationSoldiers.slice(0, soldierCount).forEach((soldier: any) => {
-        soldier.movingToRegion = targetRegionIndex;
-      });
-
-      // Dispatch animation state update
+      console.log(`📍 Source region ${sourceRegionIndex} has ${sourceSoldiers.length} soldiers:`, sourceSoldiers.map(s => s.i));
+      console.log(`🎯 Marking LAST ${soldierCount} soldiers as moving to ${targetRegionIndex} (server uses pop())`);
+      
+      // Mark soldiers as moving (they stay in source array for rendering)
+      // IMPORTANT: Server uses pop() which takes from END of array, so mark the LAST N soldiers
+      const startIndex = Math.max(0, sourceSoldiers.length - soldierCount);
+      for (let i = startIndex; i < sourceSoldiers.length; i++) {
+        console.log(`  ✅ Soldier ${sourceSoldiers[i].i} at index ${i} marked as moving to ${targetRegionIndex}`);
+        sourceSoldiers[i].movingToRegion = targetRegionIndex;
+      }
+      
+      console.log(`📍 Remaining ${startIndex} soldiers staying at source:`, 
+        sourceSoldiers.slice(0, startIndex).map(s => s.i));
+      
+      // Apply animation state
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('battleStateUpdate', {
           detail: { gameState: animationState }
         }));
       }
-
+      
       // Play movement sound
       audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
 
-      // Wait for CSS transition to complete
+      // Wait for CSS transition to complete (600ms transition + buffer)
       await new Promise(resolve => setTimeout(resolve, 700));
 
       // NOW execute on server to validate and persist
@@ -203,6 +216,15 @@ export class BattleManager {
       }
 
       console.log('✅ BattleManager: Peaceful move completed successfully');
+      
+      // Log final state
+      if (result.gameState) {
+        const finalSourceSoldiers = result.gameState.soldiersByRegion?.[sourceRegionIndex] || [];
+        const finalTargetSoldiers = result.gameState.soldiersByRegion?.[targetRegionIndex] || [];
+        console.log(`📊 FINAL STATE - Source ${sourceRegionIndex} has ${finalSourceSoldiers.length} soldiers:`, finalSourceSoldiers.map(s => s.i));
+        console.log(`📊 FINAL STATE - Target ${targetRegionIndex} has ${finalTargetSoldiers.length} soldiers:`, finalTargetSoldiers.map(s => s.i));
+      }
+      
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown move error';
