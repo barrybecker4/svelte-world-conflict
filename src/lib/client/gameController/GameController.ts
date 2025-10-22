@@ -6,12 +6,11 @@ import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
-import { turnTimerStore } from '$lib/client/stores/turnTimerStore';
-import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { ModalManager } from './ModalManager';
 import { GameApiClient } from './GameApiClient';
-import { TutorialTips, type TooltipData } from '$lib/client/feedback/TutorialTips';
 import { UndoManager } from './UndoManager';
+import { TutorialCoordinator } from './TutorialCoordinator';
+import { TurnTimerCoordinator } from './TurnTimerCoordinator';
 import type { PendingMove } from './types';
 
 /**
@@ -21,7 +20,6 @@ import type { PendingMove } from './types';
 export class GameController {
   // Stores
   private moveState: Writable<MoveState>;
-  private tutorialTips: Writable<TooltipData[]>;
 
   // Managers
   private modalManager: ModalManager;
@@ -29,8 +27,11 @@ export class GameController {
   private battleManager: BattleManager;
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
-  private tutorialManager: TutorialTips;
   private undoManager: UndoManager;
+
+  // Coordinators
+  private tutorialCoordinator: TutorialCoordinator;
+  private turnTimerCoordinator: TurnTimerCoordinator;
 
   // State
   private gameEndChecked = false;
@@ -47,8 +48,11 @@ export class GameController {
     // Initialize managers
     this.modalManager = new ModalManager();
     this.apiClient = new GameApiClient(gameId);
-    this.tutorialManager = new TutorialTips();
     this.undoManager = new UndoManager();
+
+    // Initialize coordinators
+    this.tutorialCoordinator = new TutorialCoordinator(playerId);
+    this.turnTimerCoordinator = new TurnTimerCoordinator(playerId, () => this.endTurn());
 
     // Initialize stores
     this.moveState = writable({
@@ -61,7 +65,6 @@ export class GameController {
       availableMoves: 3,
       isMoving: false
     });
-    this.tutorialTips = writable([]);
 
     this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
@@ -79,7 +82,7 @@ export class GameController {
 
     // Set callback to start timer when player's turn is ready
     this.gameStore.setOnTurnReadyCallback((gameState: GameStateData) => {
-      this.startTimerForPlayer(gameState);
+      this.turnTimerCoordinator.handleTurnChange(gameState);
     });
   }
 
@@ -111,7 +114,7 @@ export class GameController {
 
     // Start timer for initial turn if it's this player's turn
     if (initialGameState) {
-      this.startTimerForPlayer(initialGameState);
+      this.turnTimerCoordinator.handleTurnChange(initialGameState);
       // Initialize turn tracking
       this.lastTurnNumber = initialGameState.turnNumber || 0;
       console.log(`🎮 Initial turn number: ${this.lastTurnNumber}`);
@@ -147,63 +150,10 @@ export class GameController {
    * Cleanup - call this from onDestroy
    */
   destroy(): void {
-    turnTimerStore.stopTimer();
+    this.turnTimerCoordinator.stopTimer();
     this.battleManager?.destroy();
     this.websocket.cleanup();
     this.gameStore.resetTurnManager();
-  }
-
-  /**
-   * Start the turn timer for the player when their turn is ready
-   */
-  private startTimerForPlayer(gameState: GameStateData): void {
-    const playerSlotIndex = parseInt(this.playerId);
-    const currentPlayerSlot = gameState.currentPlayerSlot;
-
-    // Stop any existing timer first
-    turnTimerStore.stopTimer();
-
-    // Check if the game has ended - if so, don't start the timer
-    const endResult = checkGameEnd(gameState, gameState.players);
-    if (endResult.isGameEnded) {
-      console.log('⏰ Game has ended, not starting timer');
-      return;
-    }
-
-    // Start timer if it's this player's turn and they're human
-    const isMyTurn = currentPlayerSlot === playerSlotIndex;
-    const isHumanPlayer = gameState.players.some(p =>
-      p.slotIndex === playerSlotIndex && !p.isAI
-    );
-    const timeLimit = gameState.moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
-
-    console.log('⏰ ======== TURN TIMER CHECK ========');
-    console.log('⏰ Timer conditions:', {
-      isMyTurn,
-      isHumanPlayer,
-      timeLimit,
-      playerSlotIndex,
-      currentPlayerSlot,
-      gameEnded: endResult.isGameEnded,
-      players: gameState.players.map(p => ({
-        slotIndex: p.slotIndex,
-        name: p.name,
-        isAI: p.isAI
-      }))
-    });
-
-    // Always show timer when it's the player's turn (human only), but not for unlimited time
-    const isUnlimitedTime = timeLimit === GAME_CONSTANTS.UNLIMITED_TIME;
-    if (isMyTurn && isHumanPlayer && timeLimit && !isUnlimitedTime) {
-      console.log(`⏰ ✅ Starting timer for ${timeLimit} seconds`);
-      turnTimerStore.startTimer(timeLimit, () => {
-        console.log('⏰ Timer expired, auto-ending turn');
-        this.endTurn();
-      });
-    } else {
-      console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit}, isUnlimitedTime: ${isUnlimitedTime})`);
-    }
-    console.log(`⏰ ===================================`);
   }
 
   /**
@@ -345,7 +295,7 @@ export class GameController {
       this.gameEndChecked = true;
 
       // Stop the timer when the game ends
-      turnTimerStore.stopTimer();
+      this.turnTimerCoordinator.stopTimer();
 
       // Play sound
       const isWinner =
@@ -486,7 +436,7 @@ export class GameController {
    */
   async endTurn(): Promise<void> {
     // Stop the timer when ending turn
-    turnTimerStore.stopTimer();
+    this.turnTimerCoordinator.stopTimer();
 
     try {
       // Moves are sent to server immediately when made (not batched)
@@ -616,65 +566,15 @@ export class GameController {
     const gameState = get(this.gameStore.gameState);
     const regions = get(this.gameStore.regions);
     const currentMoveState = get(this.moveState);
-    const playerSlotIndex = parseInt(this.playerId);
 
-    console.log('📖 GameController.updateTooltips called', {
-      hasGameState: !!gameState,
-      hasRegions: !!regions,
-      regionsCount: regions?.length,
-      moveState: currentMoveState
-    });
-
-    if (!gameState || !regions) {
-      console.log('📖 No game state or regions, clearing tooltips');
-      // Mark any currently visible tooltips as shown before clearing
-      const currentTooltips = get(this.tutorialTips);
-      currentTooltips.forEach(tooltip => {
-        this.tutorialManager.markTooltipAsShown(tooltip.id);
-      });
-      this.tutorialTips.set([]);
-      return;
-    }
-
-    const isMyTurn = gameState.currentPlayerSlot === playerSlotIndex;
-    const selectedRegionIndex = currentMoveState?.sourceRegion ?? null;
-
-    console.log('📖 GameController tooltip params:', {
-      playerSlotIndex,
-      currentPlayerSlot: gameState.currentPlayerSlot,
-      isMyTurn,
-      selectedRegionIndex,
-      mode: currentMoveState?.mode
-    });
-
-    // Get previous tooltips to detect what's being removed
-    const previousTooltips = get(this.tutorialTips);
-
-    const tooltips = this.tutorialManager.getTooltips(
-      gameState,
-      regions,
-      selectedRegionIndex,
-      isMyTurn
-    );
-
-    // Mark any tooltips that were visible but are now gone as "shown"
-    previousTooltips.forEach(prevTooltip => {
-      const stillVisible = tooltips.some(t => t.id === prevTooltip.id);
-      if (!stillVisible) {
-        console.log('📖 Marking tooltip as shown (no longer visible):', prevTooltip.id);
-        this.tutorialManager.markTooltipAsShown(prevTooltip.id);
-      }
-    });
-
-    console.log('📖 GameController setting tooltips:', tooltips);
-    this.tutorialTips.set(tooltips);
+    this.tutorialCoordinator.updateTooltips(gameState, regions, currentMoveState);
   }
 
   /**
    * Dismiss a tutorial tooltip
    */
   dismissTooltip(tooltipId: string): void {
-    this.tutorialManager.dismissTooltip(tooltipId);
+    this.tutorialCoordinator.dismissTooltip(tooltipId);
     this.updateTooltips();
   }
 
@@ -686,7 +586,7 @@ export class GameController {
       modalState: this.modalManager.getModalState(),
       moveState: this.moveState,
       isConnected: this.websocket.getConnectedStore(),
-      tutorialTips: this.tutorialTips
+      tutorialTips: this.tutorialCoordinator.getTutorialTipsStore()
     };
   }
 }

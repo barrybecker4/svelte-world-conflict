@@ -24,15 +24,15 @@ export class GameApiClient {
    * End the current player's turn
    */
   async endTurn(playerId: string, pendingMoves?: any[]): Promise<EndTurnResponse> {
-    console.log('🔚 GameApiClient.endTurn called', { 
-      playerId, 
-      pendingMovesCount: pendingMoves?.length || 0 
+    console.log('🔚 GameApiClient.endTurn called', {
+      playerId,
+      pendingMovesCount: pendingMoves?.length || 0
     });
 
     const response = await fetch(`/api/game/${this.gameId}/end-turn`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         playerId,
         moves: pendingMoves || [] // Include pending moves to be processed
       })
@@ -123,5 +123,3 @@ export class GameApiClient {
     return data;
   }
 }
-
-
