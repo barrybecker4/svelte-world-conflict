@@ -11,7 +11,6 @@ export interface CommandResult {
 export class CommandProcessor {
     process(command: Command): CommandResult {
         try {
-            // Validate command
             const validation = command.validate();
             if (!validation.valid) {
                 return {

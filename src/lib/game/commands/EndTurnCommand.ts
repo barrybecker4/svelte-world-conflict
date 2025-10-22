@@ -1,6 +1,7 @@
 import { Command, type CommandValidationResult } from './Command';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
+import { IncomeCalculator } from '$lib/game/mechanics/IncomeCalculator';
 import type { GameState, Player } from '$lib/game/state/GameState';
 import { Temple } from '$lib/game/entities/Temple';
 
@@ -33,7 +34,7 @@ export class EndTurnCommand extends Command {
         const beforeFaith = newState.getPlayerFaith(this.player.slotIndex);
      
 
-        this.income = this.calculateIncome(newState);
+        this.income = IncomeCalculator.calculateIncome(newState, this.player);
 
         newState.setPlayerFaith(this.player.slotIndex, beforeFaith + this.income);
 
@@ -122,59 +123,6 @@ export class EndTurnCommand extends Command {
         return players.find(p => p.slotIndex === slotIndex);
     }
 
-    /**
-     * Faith income rules:
-     * 1. One faith for each region owned
-     * 2. One faith for each soldier stationed at owned temples
-     * 3. Water temples provide percentage bonus to total income
-     */
-    private calculateIncome(state: GameState): number {
-        const regionCount = state.regionCount(this.player);
-        console.log(`Player ${this.player.slotIndex} owns ${regionCount} regions`);
-
-        // Calculate soldiers praying at temples (soldiers stationed at temple regions owned by player)
-        let soldiersAtTemples = 0;
-
-        // Iterate through all regions to find owned temple regions
-        for (const regionIndex in state.templesByRegion) {
-            const regionIdx = parseInt(regionIndex);
-            const temple = state.templesByRegion[regionIdx];
-
-            // Check if player owns this temple region
-            if (temple && state.isOwnedBy(regionIdx, this.player)) {
-                // Count soldiers at this temple region
-                const soldiers = state.soldiersByRegion[regionIdx];
-                if (soldiers && soldiers.length > 0) {
-                    // All soldiers at owned temple regions generate faith
-                    soldiersAtTemples += soldiers.length;
-                    console.log(`Player ${this.player.slotIndex} has ${soldiers.length} soldiers praying at temple region ${regionIdx}`);
-                }
-            }
-        }
-
-        let baseIncome = regionCount + soldiersAtTemples;
-        
-        // Apply Water temple percentage bonuses
-        let waterBonusPercent = 0;
-        for (const regionIndex in state.templesByRegion) {
-            const regionIdx = parseInt(regionIndex);
-            const templeData = state.templesByRegion[regionIdx];
-            
-            if (templeData && state.isOwnedBy(regionIdx, this.player)) {
-                const temple = Temple.deserialize(templeData);
-                const incomeBonus = temple.getIncomeBonus();
-                if (incomeBonus > 0) {
-                    waterBonusPercent += incomeBonus;
-                    console.log(`Player ${this.player.slotIndex} has Water temple at region ${regionIdx} with ${incomeBonus}% bonus`);
-                }
-            }
-        }
-        
-        const totalIncome = Math.floor(baseIncome * (1 + waterBonusPercent / 100));
-        console.log(`Player ${this.player.slotIndex} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${baseIncome} base faith, +${waterBonusPercent}% from Water temples = ${totalIncome} total faith`);
-
-        return totalIncome;
-    }
 
     private generateSoldiersAtTemples(state: GameState): void {
         console.log(`Checking temples for player ${this.player.slotIndex}:`);
