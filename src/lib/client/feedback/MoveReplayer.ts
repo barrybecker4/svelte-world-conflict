@@ -71,7 +71,8 @@ export class MoveReplayer {
         });
         conquestMove.attackSequence = attackSequence;
         (conquestMove as any).regions = regions; // Attach regions for animation
-        (conquestMove as any).gameState = previousState; // Attach previous state for soldier positioning
+        (conquestMove as any).previousGameState = previousState; // Attach previous state for soldier positioning
+        (conquestMove as any).finalGameState = newState; // Attach final state for survivor detection
       } else {
         console.log('⚠️ MoveReplayer: Attack sequence present but no conquest move found');
       }
