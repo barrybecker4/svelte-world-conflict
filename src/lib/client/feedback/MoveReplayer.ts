@@ -11,7 +11,7 @@ import { animationQueue } from './TaskQueue';
  * - MoveDetector: Detects what changed between game states
  * - FeedbackPlayer: Plays simple audio/visual feedback
  * - BattleReplayCoordinator: Handles complex battle animations
- * 
+ *
  * Uses TaskQueue for guaranteed sequential execution of animations
  */
 export class MoveReplayer {
@@ -31,7 +31,6 @@ export class MoveReplayer {
   setBattleAnimationSystem(system: BattleAnimationSystem): void {
     this.battleCoordinator.setBattleAnimationSystem(system);
   }
-
 
   /**
    * Main entry point: Play sound effects and show visual feedback for other player moves

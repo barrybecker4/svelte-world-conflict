@@ -38,17 +38,17 @@ export class BattleReplayCoordinator {
         // Get game states from move (attached by MoveReplayer)
         const previousGameState = (move as any).previousGameState;
         const finalGameState = (move as any).finalGameState;
-        
+
         let animationState: any = null;
-        
+
         if (previousGameState && previousGameState.soldiersByRegion) {
           // Create a deep copy of game state for animation (to avoid mutating the original)
           animationState = JSON.parse(JSON.stringify(previousGameState));
-          
+
           // Set attackedRegion on attacking soldiers (for halfway positioning)
           const attackingSoldiers = animationState.soldiersByRegion[sourceRegion] || [];
           console.log(`⚔️ AI Battle: Setting attackedRegion on ${attackingSoldiers.length} soldiers from region ${sourceRegion}`);
-          
+
           attackingSoldiers.forEach((soldier: any) => {
             soldier.attackedRegion = targetRegion;
           });
@@ -80,7 +80,7 @@ export class BattleReplayCoordinator {
             console.log(`💨 AI Battle: battleCasualties event dispatched successfully`);
           }
         };
-        
+
         await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions, onStateUpdate);
 
         // Wait for smoke animations to complete (matching BattleManager timing)
@@ -100,7 +100,7 @@ export class BattleReplayCoordinator {
 
         // Visual feedback highlight
         this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
-        
+
         // Wait for highlight to show (1500ms as per FeedbackPlayer's highlight duration)
         await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
       } catch (error) {
@@ -128,43 +128,43 @@ export class BattleReplayCoordinator {
     const targetSoldiersInFinal = finalGameState.soldiersByRegion?.[targetRegion] || [];
     const sourceOwner = finalGameState.ownersByRegion?.[sourceRegion];
     const targetOwner = finalGameState.ownersByRegion?.[targetRegion];
-    
+
     // Only animate if conquest successful
     const conquestSuccessful = targetSoldiersInFinal.length > 0 && sourceOwner === targetOwner;
-    
+
     if (!conquestSuccessful) {
       console.log('⚔️ Attack failed or no survivors, skipping conquest animation');
       return false;
     }
-    
+
     console.log(`🏆 Conquest successful! Animating ${targetSoldiersInFinal.length} soldiers into region ${targetRegion}`);
 
     // Create new animation state with survivors still at source
     const newAnimationState = JSON.parse(JSON.stringify(finalGameState));
-    
+
     // Get the soldier IDs that survived (now at target in final state)
     const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
-    
+
     // Get soldiers currently at source with attackedRegion
     const currentSourceSoldiers = previousGameState.soldiersByRegion?.[sourceRegion] || [];
-    
+
     // Find the attacking soldiers that survived (match IDs)
-    const survivingAttackers = currentSourceSoldiers.filter((s: any) => 
+    const survivingAttackers = currentSourceSoldiers.filter((s: any) =>
       s.attackedRegion === targetRegion && survivorIds.has(s.i)
     );
-    
+
     console.log(`Found ${survivingAttackers.length} surviving attackers to animate (out of ${targetSoldiersInFinal.length} total)`);
-    
+
     // Place survivors at source with movingToRegion set
     newAnimationState.soldiersByRegion[sourceRegion] = survivingAttackers.map((s: any) => ({
       ...s,
       attackedRegion: undefined,
       movingToRegion: targetRegion
     }));
-    
+
     // Clear target region (soldiers will animate there)
     newAnimationState.soldiersByRegion[targetRegion] = [];
-    
+
     // Update ownership in animation state so color changes with soldiers
     newAnimationState.ownersByRegion = {
       ...newAnimationState.ownersByRegion,
@@ -181,7 +181,7 @@ export class BattleReplayCoordinator {
     // Wait for CSS transition to complete (soldiers moving from halfway to target)
     await new Promise(resolve => setTimeout(resolve, 700));
     console.log('✅ Conquering soldiers reached target region');
-    
+
     return true;
   }
 
@@ -206,9 +206,8 @@ export class BattleReplayCoordinator {
 
     // Visual feedback highlight
     this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
-    
+
     // Wait for highlight to show
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
   }
 }
-

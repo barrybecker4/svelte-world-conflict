@@ -52,19 +52,19 @@ export class MoveDetector {
     const newOwners = newState.ownersByRegion || {};
     const oldOwners = previousState.ownersByRegion || {};
     const regions = newState.regions || [];
-    
+
     // Find regions that lost soldiers
     const regionsWithLosses: Array<{regionIndex: number, loss: number}> = [];
     // Find regions that gained soldiers
     const regionsWithGains: Array<{regionIndex: number, gain: number, wasConquest: boolean}> = [];
-    
+
     Object.keys(newSoldiers).forEach(regionIndex => {
       const newCount = (newSoldiers[regionIndex] || []).length;
       const oldCount = (oldSoldiers[regionIndex] || []).length;
       const owner = newOwners[regionIndex];
       const oldOwner = oldOwners[regionIndex];
       const idx = parseInt(regionIndex);
-      
+
       if (newCount < oldCount && owner !== undefined) {
         // Region lost soldiers (likely source of move)
         regionsWithLosses.push({ regionIndex: idx, loss: oldCount - newCount });
@@ -74,40 +74,40 @@ export class MoveDetector {
         regionsWithGains.push({ regionIndex: idx, gain: newCount - oldCount, wasConquest });
       }
     });
-    
+
     // Try to pair losses with gains based on adjacency
     const pairs = new Map<number, number>();
     const usedSources = new Set<number>();
-    
+
     for (const gain of regionsWithGains) {
       const targetRegion = regions.find((r: any) => r.index === gain.regionIndex);
       if (!targetRegion) continue;
-      
+
       // Find the best matching source: a region that lost soldiers and is adjacent
       let bestSource: {regionIndex: number, loss: number} | null = null;
       for (const loss of regionsWithLosses) {
         // Skip if already used
         if (usedSources.has(loss.regionIndex)) continue;
-        
+
         const sourceRegion = regions.find((r: any) => r.index === loss.regionIndex);
         if (!sourceRegion) continue;
-        
+
         // Check if regions are adjacent
         const areNeighbors = sourceRegion.neighbors && sourceRegion.neighbors.includes(gain.regionIndex);
-        
+
         if (areNeighbors) {
           bestSource = loss;
           break; // Found an adjacent source
         }
       }
-      
+
       // If we found a valid adjacent source, record the pairing
       if (bestSource) {
         usedSources.add(bestSource.regionIndex);
         pairs.set(gain.regionIndex, bestSource.regionIndex);
       }
     }
-    
+
     return pairs;
   }
 
@@ -132,10 +132,10 @@ export class MoveDetector {
       // 2. Neutral territory with defenders conquered (oldOwner undefined but had soldiers)
       const isEnemyConquest = oldOwner !== undefined && newOwner !== oldOwner;
       const isNeutralConquest = oldOwner === undefined && oldCount > 0 && newOwner !== undefined;
-      
+
       if (isEnemyConquest || isNeutralConquest) {
         const sourceRegion = movementPairs.get(idx); // Get source from movement pairs
-        
+
         console.log('⚔️ MoveDetector: Conquest detected', {
           regionIndex: idx,
           oldOwner,
@@ -145,7 +145,7 @@ export class MoveDetector {
           sourceRegion,
           isNeutral: isNeutralConquest
         });
-        
+
         moves.push({
           type: 'conquest',
           regionIndex: idx,
@@ -215,4 +215,3 @@ export class MoveDetector {
     });
   }
 }
-

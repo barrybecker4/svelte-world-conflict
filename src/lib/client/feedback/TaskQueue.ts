@@ -9,10 +9,10 @@ export interface Task {
 /**
  * Provides sequential execution of animations and tasks to ensure
  * that they run one after another rather than overlapping.
- * 
+ *
  * This is particularly important for maintaining visual clarity
  * during game animations and state transitions.
- * 
+ *
  * Based on the oneAtATime pattern from the old GAS version.
  */
 export class TaskQueue {
@@ -22,7 +22,7 @@ export class TaskQueue {
   /**
    * Add a task to the queue and execute it when ready.
    * Returns a promise that resolves when the task completes.
-   * 
+   *
    * @param duration - How long the task takes in milliseconds
    * @param fn - The function to execute (can be sync or async)
    * @returns Promise that resolves when task completes
@@ -100,5 +100,3 @@ export class TaskQueue {
  * This ensures all animations across the app are properly sequenced
  */
 export const animationQueue = new TaskQueue();
-
-
