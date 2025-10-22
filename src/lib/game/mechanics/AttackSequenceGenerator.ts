@@ -95,6 +95,11 @@ export class AttackSequenceGenerator {
             }
         }
 
+        // Add final delay to allow smoke animations to complete
+        attackSequence.push({
+            delay: 600 // Extra time for final smoke effects to fade out
+        });
+
         return attackSequence;
     }
 
@@ -116,7 +121,7 @@ export class AttackSequenceGenerator {
             runningAttackerTotal: damage,
             runningDefenderTotal: 0,
             soundCue: 'ATTACK',
-            delay: 500, // 500ms for consistency
+            delay: 800, // 800ms to allow smoke animation to be visible
             floatingText: [{
                 regionIdx: this.toRegion,
                 text: `Earth kills ${damage}!`,
@@ -163,21 +168,7 @@ export class AttackSequenceGenerator {
                 runningAttackerTotal: totalAttackerCasualties,
                 runningDefenderTotal: totalDefenderCasualties,
                 soundCue: 'COMBAT',
-                delay: 500, // 500ms between rounds
-                floatingText: [
-                    {
-                        regionIdx: this.fromRegion,
-                        text: `-${totalAttackerCasualties}`,
-                        color: '#ff0000',
-                        width: 3
-                    },
-                    {
-                        regionIdx: this.toRegion,
-                        text: `-${totalDefenderCasualties}`,
-                        color: '#ff0000',
-                        width: 3
-                    }
-                ]
+                delay: 800 // 800ms between rounds to allow smoke animation to be visible
             });
 
             // Remove casualties from actual soldier arrays after each round

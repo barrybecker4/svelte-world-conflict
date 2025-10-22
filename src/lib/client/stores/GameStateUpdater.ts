@@ -22,6 +22,7 @@ export class GameStateUpdater {
   private isProcessingUpdate = false;
   private lastRawState: GameStateData | null = null; // Track raw state without overrides
   private onTurnReadyCallback: ((gameState: GameStateData) => void) | null = null;
+  private isBattleInProgressCallback: (() => boolean) | null = null;
 
   constructor(
     private gameStateStore: Writable<GameStateData | null>,
@@ -39,6 +40,13 @@ export class GameStateUpdater {
    */
   setOnTurnReadyCallback(callback: (gameState: GameStateData) => void): void {
     this.onTurnReadyCallback = callback;
+  }
+
+  /**
+   * Set callback to check if a battle is currently in progress
+   */
+  setIsBattleInProgressCallback(callback: () => boolean): void {
+    this.isBattleInProgressCallback = callback;
   }
 
   /**
@@ -87,6 +95,14 @@ export class GameStateUpdater {
   private async processNextUpdate() {
     if (this.updateQueue.length === 0) {
       this.isProcessingUpdate = false;
+      return;
+    }
+
+    // Wait if a battle is in progress
+    if (this.isBattleInProgressCallback && this.isBattleInProgressCallback()) {
+      console.log('⏸️ Battle in progress, delaying WebSocket update...');
+      // Retry after a short delay
+      setTimeout(() => this.processNextUpdate(), 100);
       return;
     }
 
@@ -197,8 +213,9 @@ export class GameStateUpdater {
         this.regionsStore.set(cleanState.regions || []);
         this.playersStore.set(cleanState.players || []);
       } else {
-        console.log('✅ Skipping replay for our own move (already animated by BattleManager)');
-        // For our own moves, apply the state immediately
+        console.log('✅ Applying update for our own move (already animated by BattleManager)');
+        // For our own moves, BattleManager already animated and GameController will update
+        // But we still need to apply this state update (it might be the GameController update)
         this.gameStateStore.set(cleanState);
         this.regionsStore.set(cleanState.regions || []);
         this.playersStore.set(cleanState.players || []);

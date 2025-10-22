@@ -248,6 +248,11 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     // Set callback for when turn is ready for player interaction
     setOnTurnReadyCallback: (callback: (gameState: GameStateData) => void) => {
       gameStateUpdater.setOnTurnReadyCallback(callback);
+    },
+
+    // Set callback to check if a battle is in progress
+    setIsBattleInProgressCallback: (callback: () => boolean) => {
+      gameStateUpdater.setIsBattleInProgressCallback(callback);
     }
   };
 }

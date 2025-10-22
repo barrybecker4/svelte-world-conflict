@@ -53,8 +53,6 @@ export class BattleAnimationSystem {
     regions: any[],
     onStateUpdate?: StateUpdateCallback
   ): Promise<void> {
-    console.log('Playing attack sequence:', attackSequence);
-
     // Check if we have a map container
     if (!this.mapContainer) {
       throw new Error('No map container available, cannot show animations');

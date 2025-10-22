@@ -494,9 +494,14 @@ export class AudioSystem {
      */
     private async initializeAudio(): Promise<void> {
         if (typeof window === 'undefined') {
-            console.log('AudioSystem: Skipping initialization - not in browser environment');
             return;
         }
+
+        // Don't re-initialize if already initialized
+        if (this.isInitialized && this.audioContext) {
+            return;
+        }
+
         try {
             // Create audio context on first user interaction
             if (!this.audioContext) {

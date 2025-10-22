@@ -35,6 +35,7 @@ export class GameController {
   // State
   private gameEndChecked = false;
   private lastTurnNumber: number = -1;
+  private battleInProgress = false;
 
   constructor(
     private gameId: string,
@@ -101,6 +102,9 @@ export class GameController {
       (source: number, target: number, count: number) => this.handleMoveComplete(source, target, count),
       (newState: MoveState) => this.handleMoveStateChange(newState)
     );
+
+    // Register callback to check if battle is in progress
+    this.gameStore.setIsBattleInProgressCallback(() => this.isBattleInProgress());
 
     await this.websocket.initialize();
     await audioSystem.enable();
@@ -267,6 +271,10 @@ export class GameController {
       currentRegions = value;
     })();
 
+    // Mark battle as in progress to delay WebSocket updates
+    this.battleInProgress = true;
+    console.log('🔒 Battle in progress, WebSocket updates will be delayed');
+    
     // Execute move through BattleManager (sends to server immediately for validation and persistence)
     const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
 
@@ -287,6 +295,17 @@ export class GameController {
       console.log('✅ GameController: Updating game state from server response');
       this.gameStore.handleGameStateUpdate(result.gameState);
     }
+    
+    // Clear battle in progress flag
+    this.battleInProgress = false;
+    console.log('🔓 Battle complete, WebSocket updates resumed');
+  }
+  
+  /**
+   * Check if a battle is currently in progress
+   */
+  isBattleInProgress(): boolean {
+    return this.battleInProgress;
   }
 
   /**

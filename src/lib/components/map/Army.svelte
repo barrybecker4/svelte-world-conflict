@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import type { Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
+  import { smokeStore } from '$lib/client/stores/smokeStore';
 
   export let x: number;
   export let y: number;
@@ -10,12 +12,18 @@
 
   const MAX_INDIVIDUAL_ARMIES = 16;
   const ARMIES_PER_ROW = 8;
+  let hiddenSoldierIds = new Set<number>(); // Track soldiers hidden during battle animation
+  let isBattleInProgress = false; // Track if we're currently processing battle casualties
+  let battleEndTimer: number | null = null; // Timer to clear battle state after animation
 
   // Get soldiers for this region:
   // - All soldiers physically at this region
   // - But EXCLUDE any that are currently animating away (they'll be rendered at their source)
-  $: soldiers = getSoldiersToRender(gameState, region.index);
-  $: actualSoldierCount = soldiers.length;
+  $: allSoldiers = getSoldiersToRender(gameState, region.index);
+  
+  // For display purposes, use visible count (excluding hidden soldiers during battle)
+  $: visibleCount = allSoldiers.filter(s => !hiddenSoldierIds.has(s.i)).length;
+  $: actualSoldierCount = visibleCount;
   $: showIndividualArmies = actualSoldierCount > 0 && actualSoldierCount <= MAX_INDIVIDUAL_ARMIES;
   $: showCountBadge = actualSoldierCount > MAX_INDIVIDUAL_ARMIES;
   $: templeOffset = hasTemple ? 15 : 0;
@@ -52,8 +60,11 @@
     isAttacking: boolean;
   }
 
-  // Calculate positions for each soldier
-  $: soldierPositions = calculateSoldierPositions(soldiers, region, regions);
+  // Calculate positions for ALL soldiers (including hidden ones for smoke placement)
+  $: soldierPositions = calculateSoldierPositions(allSoldiers, region, regions);
+  
+  // Filter to visible soldiers for rendering
+  $: visibleSoldierPositions = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
 
   function calculateSoldierPositions(
     soldiersList: Soldier[],
@@ -135,6 +146,99 @@
       y: regionData.y + offsetY
     };
   }
+
+  function spawnSmokeAt(x: number, y: number, isAttacker: boolean = false) {
+    console.log(`💨 Region ${region.index}: Spawning smoke at (${x}, ${y}), isAttacker: ${isAttacker}`);
+    smokeStore.spawnAt(x, y);
+  }
+
+  // Handle battle casualty events (incrementally hide soldiers during battle)
+  function handleBattleCasualties(event: CustomEvent) {
+    const { sourceRegion, targetRegion, attackerCasualties, defenderCasualties } = event.detail;
+    console.log(`💨 Region ${region.index}: Received battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
+    
+    // Mark that we're in a battle (prevents premature clearing of hidden soldiers)
+    const isInvolvedInBattle = (sourceRegion === region.index && attackerCasualties > 0) || 
+                                (targetRegion === region.index && defenderCasualties > 0);
+    
+    if (isInvolvedInBattle) {
+      isBattleInProgress = true;
+      
+      // Clear any existing battle end timer
+      if (battleEndTimer !== null) {
+        clearTimeout(battleEndTimer);
+      }
+      
+      // Schedule battle end after a delay (matching animation duration + buffer)
+      // This timer resets with each new casualty event, ensuring we wait until ALL casualties are done
+      battleEndTimer = setTimeout(() => {
+        isBattleInProgress = false;
+        battleEndTimer = null;
+      }, 2000) as unknown as number; // 500ms per round delay, plus buffer
+    }
+    
+    // Handle attacker casualties if this is the source region
+    if (sourceRegion === region.index && attackerCasualties > 0) {
+      const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
+      
+      for (let i = 0; i < attackerCasualties && i < visibleSoldiers.length; i++) {
+        const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
+        // Hide soldier and spawn smoke simultaneously
+        hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
+        spawnSmokeAt(casualty.x, casualty.y, true);
+      }
+    }
+    
+    // Handle defender casualties if this is the target region
+    if (targetRegion === region.index && defenderCasualties > 0) {
+      const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
+      
+      for (let i = 0; i < defenderCasualties && i < visibleSoldiers.length; i++) {
+        const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
+        // Hide soldier and spawn smoke simultaneously
+        hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
+        spawnSmokeAt(casualty.x, casualty.y);
+      }
+    }
+  }
+
+  onMount(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('battleCasualties', handleBattleCasualties as EventListener);
+    }
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('battleCasualties', handleBattleCasualties as EventListener);
+    }
+    
+    // Clear battle end timer
+    if (battleEndTimer !== null) {
+      clearTimeout(battleEndTimer);
+    }
+    
+    // Clear hidden soldiers when component unmounts
+    hiddenSoldierIds.clear();
+  });
+
+  // Clear hidden soldiers when battle ends and state updates
+  // Only clear when we receive a fresh game state update (actual soldiers are gone from data)
+  $: if (gameState && hiddenSoldierIds.size > 0 && !isBattleInProgress) {
+    const soldiersWithAttackedRegion = allSoldiers.filter(s => (s as any).attackedRegion !== undefined);
+    
+    // Check if any hidden soldiers still exist in the current game state
+    const hiddenStillExist = Array.from(hiddenSoldierIds).some(hiddenId => 
+      allSoldiers.some(s => s.i === hiddenId)
+    );
+    
+    // Only clear if:
+    // 1. No attacking soldiers (battle animation done)
+    // 2. Hidden soldiers no longer exist in game state (server confirmed they're dead)
+    if (soldiersWithAttackedRegion.length === 0 && !hiddenStillExist) {
+      hiddenSoldierIds = new Set();
+    }
+  }
 </script>
 
 <!-- Army rendering -->
@@ -160,7 +264,7 @@
   </text>
 {:else if showIndividualArmies}
   <!-- Show individual army markers with smooth positioning -->
-  {#each soldierPositions as { soldier, x: soldierX, y: soldierY, isAttacking } (soldier.i)}
+  {#each visibleSoldierPositions as { soldier, x: soldierX, y: soldierY, isAttacking } (soldier.i)}
     <circle
       cx={soldierX}
       cy={soldierY}

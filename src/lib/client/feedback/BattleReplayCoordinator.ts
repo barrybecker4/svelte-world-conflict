@@ -61,8 +61,24 @@ export class BattleReplayCoordinator {
           await new Promise(resolve => setTimeout(resolve, 700));
         }
 
-        // Play the full battle animation sequence
-        await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions);
+        // Play the full battle animation sequence with casualty callbacks for smoke
+        const onStateUpdate = (attackerCasualties: number, defenderCasualties: number) => {
+          console.log(`💨 AI Battle: Dispatching battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
+          // Dispatch event to spawn smoke particles
+          if (typeof window !== 'undefined' && (attackerCasualties > 0 || defenderCasualties > 0)) {
+            window.dispatchEvent(new CustomEvent('battleCasualties', {
+              detail: {
+                sourceRegion,
+                targetRegion,
+                attackerCasualties,
+                defenderCasualties
+              }
+            }));
+            console.log(`💨 AI Battle: battleCasualties event dispatched successfully`);
+          }
+        };
+        
+        await this.battleAnimationSystem.playAttackSequence(move.attackSequence, regions, onStateUpdate);
 
         // Play conquest sound at the end
         audioSystem.playSound(SOUNDS.REGION_CONQUERED);

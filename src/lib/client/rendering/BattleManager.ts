@@ -113,7 +113,19 @@ export class BattleManager {
 
       // Play battle animation (shows casualties, sounds, etc)
       if (result.attackSequence && result.attackSequence.length > 0) {
-        await this.playBattleAnimation(result.attackSequence, regions);
+        await this.playBattleAnimation(result.attackSequence, regions, sourceRegionIndex, targetRegionIndex);
+        
+        // Wait for smoke animations to complete
+        // Smoke takes 3.05s (matching old GAS version), and the last smoke starts ~600ms before animation completes
+        // So we need to wait (3050ms - 600ms) = 2450ms more
+        console.log('⏳ Waiting for smoke effects to complete...');
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        console.log('✅ Smoke effects complete');
+        
+        // Animate surviving attackers moving into the conquered region
+        // Pass the current animation state (soldiers still at source with attackedRegion)
+        console.log('🏃 Animating conquering soldiers into target region...');
+        await this.animateConqueringMove(animationState, result.gameState!, sourceRegionIndex, targetRegionIndex);
       }
 
       this.clearBattleTimeout(targetRegionIndex);
@@ -266,19 +278,110 @@ export class BattleManager {
   }
 
   /**
-   * Play battle animation sequence
+   * Play battle animation sequence with incremental state updates
    */
   private async playBattleAnimation(
     attackSequence: any[],
-    regions?: Region[]
+    regions?: Region[],
+    sourceRegion?: number,
+    targetRegion?: number
   ): Promise<void> {
-    console.log('🎬 BattleManager: Playing attack sequence');
+    console.log('🎬 BattleManager: Playing attack sequence with incremental casualties');
 
     try {
-      await this.battleAnimationSystem.playAttackSequence(attackSequence, regions || []);
+      // Track total casualties dispatched so far
+      let totalAttackerCasualties = 0;
+      let totalDefenderCasualties = 0;
+
+      // Create callback to incrementally remove soldiers during animation
+      const onStateUpdate = (attackerCasualties: number, defenderCasualties: number) => {
+        totalAttackerCasualties += attackerCasualties;
+        totalDefenderCasualties += defenderCasualties;
+        
+        // Dispatch event to remove soldiers from display
+        if (typeof window !== 'undefined' && (attackerCasualties > 0 || defenderCasualties > 0)) {
+          window.dispatchEvent(new CustomEvent('battleCasualties', {
+            detail: {
+              sourceRegion,
+              targetRegion,
+              attackerCasualties,
+              defenderCasualties
+            }
+          }));
+        }
+      };
+
+      await this.battleAnimationSystem.playAttackSequence(attackSequence, regions || [], onStateUpdate);
+      
+      console.log(`✅ Battle animation complete. Total casualties: A${totalAttackerCasualties} D${totalDefenderCasualties}`);
     } catch (error) {
       console.warn('⚠️ BattleManager: Animation failed, continuing without animation:', error);
     }
+  }
+
+  /**
+   * Animate conquering soldiers moving into the conquered region
+   */
+  private async animateConqueringMove(
+    currentAnimationState: GameStateData,
+    finalGameState: GameStateData,
+    sourceRegion: number,
+    targetRegion: number
+  ): Promise<void> {
+    // Check if conquest was successful by seeing if there are attackers at target
+    // AND that the target ownership changed to the attacker's team
+    const targetSoldiersInFinal = finalGameState.soldiersByRegion?.[targetRegion] || [];
+    const sourceOwner = finalGameState.ownersByRegion?.[sourceRegion];
+    const targetOwner = finalGameState.ownersByRegion?.[targetRegion];
+    
+    // Only animate if:
+    // 1. There are soldiers at the target (attackers survived)
+    // 2. Target is now owned by the same player as source (conquest successful)
+    const conquestSuccessful = targetSoldiersInFinal.length > 0 && sourceOwner === targetOwner;
+    
+    if (!conquestSuccessful) {
+      console.log('⚔️ Attack failed or no survivors, skipping conquest animation');
+      return; // Attack failed or no survivors
+    }
+    
+    console.log(`🏆 Conquest successful! Animating ${targetSoldiersInFinal.length} soldiers into region ${targetRegion}`);
+
+    // Create new animation state with survivors still at source
+    const newAnimationState = JSON.parse(JSON.stringify(finalGameState));
+    
+    // Get the soldier IDs that survived (now at target in final state)
+    const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
+    
+    // Get soldiers currently at source with attackedRegion
+    const currentSourceSoldiers = currentAnimationState.soldiersByRegion?.[sourceRegion] || [];
+    
+    // Find the attacking soldiers that survived (match IDs)
+    const survivingAttackers = currentSourceSoldiers.filter((s: any) => 
+      s.attackedRegion === targetRegion && survivorIds.has(s.i)
+    );
+    
+    console.log(`Found ${survivingAttackers.length} surviving attackers to animate (out of ${targetSoldiersInFinal.length} total)`);
+    
+    // Place survivors at source with movingToRegion set
+    newAnimationState.soldiersByRegion[sourceRegion] = survivingAttackers.map((s: any) => ({
+      ...s,
+      attackedRegion: undefined,
+      movingToRegion: targetRegion
+    }));
+    
+    // Clear target region (soldiers will animate there)
+    newAnimationState.soldiersByRegion[targetRegion] = [];
+
+    // Dispatch animation state update
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('battleStateUpdate', {
+        detail: { gameState: newAnimationState }
+      }));
+    }
+
+    // Wait for CSS transition to complete (soldiers moving from halfway to target)
+    await new Promise(resolve => setTimeout(resolve, 700));
+    console.log('✅ Conquering soldiers reached target region');
   }
 
   /**
