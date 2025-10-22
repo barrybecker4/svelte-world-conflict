@@ -1,9 +1,5 @@
-import { writable, get, type Writable } from 'svelte/store';
-import { BattleManager } from '$lib/client/rendering/BattleManager';
+import { get } from 'svelte/store';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
-import { SOUNDS } from '$lib/client/audio/sounds';
-import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
-import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
 import { ModalManager } from './ModalManager';
@@ -11,6 +7,10 @@ import { GameApiClient } from './GameApiClient';
 import { UndoManager } from './UndoManager';
 import { TutorialCoordinator } from './TutorialCoordinator';
 import { TurnTimerCoordinator } from './TurnTimerCoordinator';
+import { BattleCoordinator } from './BattleCoordinator';
+import { MoveUICoordinator } from './MoveUICoordinator';
+import { GameEndCoordinator } from './GameEndCoordinator';
+import { TempleActionCoordinator } from './TempleActionCoordinator';
 import type { PendingMove } from './types';
 
 /**
@@ -18,13 +18,9 @@ import type { PendingMove } from './types';
  * The component just renders based on this controller's state
  */
 export class GameController {
-  // Stores
-  private moveState: Writable<MoveState>;
-
   // Managers
   private modalManager: ModalManager;
   private apiClient: GameApiClient;
-  private battleManager: BattleManager;
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
   private undoManager: UndoManager;
@@ -32,11 +28,13 @@ export class GameController {
   // Coordinators
   private tutorialCoordinator: TutorialCoordinator;
   private turnTimerCoordinator: TurnTimerCoordinator;
+  private battleCoordinator: BattleCoordinator;
+  private moveUICoordinator: MoveUICoordinator;
+  private gameEndCoordinator: GameEndCoordinator;
+  private templeActionCoordinator: TempleActionCoordinator;
 
   // State
-  private gameEndChecked = false;
   private lastTurnNumber: number = -1;
-  private battleInProgress = false;
 
   constructor(
     private gameId: string,
@@ -53,20 +51,11 @@ export class GameController {
     // Initialize coordinators
     this.tutorialCoordinator = new TutorialCoordinator(playerId);
     this.turnTimerCoordinator = new TurnTimerCoordinator(playerId, () => this.endTurn());
+    this.battleCoordinator = new BattleCoordinator(gameId, playerId, gameStore, this.undoManager);
+    this.moveUICoordinator = new MoveUICoordinator(gameStore, this.modalManager);
+    this.gameEndCoordinator = new GameEndCoordinator(playerId, this.modalManager, this.turnTimerCoordinator);
+    this.templeActionCoordinator = new TempleActionCoordinator(playerId, this.apiClient, this.undoManager, gameStore);
 
-    // Initialize stores
-    this.moveState = writable({
-      mode: 'IDLE',
-      sourceRegion: null,
-      targetRegion: null,
-      buildRegion: null,
-      selectedSoldierCount: 0,
-      maxSoldiers: 0,
-      availableMoves: 3,
-      isMoving: false
-    });
-
-    this.battleManager = new BattleManager(gameId, null as any);
     this.websocket = useGameWebSocket(gameId, (gameData) => {
       // Check if turn has changed - if so, reset undo manager
       if (gameData.turnNumber !== undefined && gameData.turnNumber !== this.lastTurnNumber) {
@@ -91,10 +80,10 @@ export class GameController {
    */
   async initialize(mapContainer: HTMLElement | undefined): Promise<void> {
     if (mapContainer) {
-      this.battleManager.setMapContainer(mapContainer);
+      this.battleCoordinator.setMapContainer(mapContainer);
 
       // Connect battle animation system to move replayer for AI/multiplayer battle animations
-      const battleAnimationSystem = this.battleManager.getBattleAnimationSystem();
+      const battleAnimationSystem = this.battleCoordinator.getBattleAnimationSystem();
       this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
     } else {
       console.warn('⚠️ GameController: Map container not provided, animations will be disabled');
@@ -102,12 +91,13 @@ export class GameController {
 
     // Initialize game store with our callbacks
     const { gameState: initialGameState } = await this.gameStore.initializeGame(
-      (source: number, target: number, count: number) => this.handleMoveComplete(source, target, count),
-      (newState: MoveState) => this.handleMoveStateChange(newState)
+      (source: number, target: number, count: number) => 
+        this.battleCoordinator.handleMoveComplete(source, target, count, () => this.updateTooltips()),
+      (newState) => this.moveUICoordinator.handleMoveStateChange(newState, () => this.updateTooltips())
     );
 
     // Register callback to check if battle is in progress
-    this.gameStore.setIsBattleInProgressCallback(() => this.isBattleInProgress());
+    this.gameStore.setIsBattleInProgressCallback(() => this.battleCoordinator.isBattleInProgress());
 
     await this.websocket.initialize();
     await audioSystem.enable();
@@ -139,10 +129,10 @@ export class GameController {
    */
   setMapContainer(container: HTMLElement): void {
     console.log('🗺️ GameController: Setting map container');
-    this.battleManager.setMapContainer(container);
+    this.battleCoordinator.setMapContainer(container);
 
     // Also connect battle animation system to move replayer
-    const battleAnimationSystem = this.battleManager.getBattleAnimationSystem();
+    const battleAnimationSystem = this.battleCoordinator.getBattleAnimationSystem();
     this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
   }
 
@@ -151,284 +141,65 @@ export class GameController {
    */
   destroy(): void {
     this.turnTimerCoordinator.stopTimer();
-    this.battleManager?.destroy();
+    this.battleCoordinator.destroy();
     this.websocket.cleanup();
     this.gameStore.resetTurnManager();
   }
 
   /**
-   * Handle move state changes
-   */
-  private handleMoveStateChange(newState: MoveState): void {
-    console.log('🔄 GameController.handleMoveStateChange:', newState);
-    this.moveState.set(newState);
-
-    // Show soldier selection modal when needed (after both source and target are selected)
-    // But don't show it if we're already executing a move
-    const shouldShowModal = newState.mode === 'ADJUST_SOLDIERS'
-      && newState.sourceRegion !== null
-      && newState.targetRegion !== null
-      && !newState.isMoving;
-
-    console.log('🔄 Modal decision:', {
-      mode: newState.mode,
-      hasSource: newState.sourceRegion !== null,
-      hasTarget: newState.targetRegion !== null,
-      isMoving: newState.isMoving,
-      shouldShowModal
-    });
-
-    if (shouldShowModal) {
-      this.modalManager.showSoldierSelection(newState.maxSoldiers, newState.selectedSoldierCount);
-    } else {
-      this.modalManager.hideSoldierSelection();
-    }
-
-    // Update tutorial tooltips
-    this.updateTooltips();
-  }
-
-  /**
-   * Handle move completion - execute through BattleManager with animations
-   */
-  private async handleMoveComplete(
-    sourceRegionIndex: number,
-    targetRegionIndex: number,
-    soldierCount: number
-  ): Promise<void> {
-    const gameState = this.gameStore.gameState;
-    let currentState: GameStateData;
-
-    gameState.subscribe((value: GameStateData) => {
-      currentState = value;
-    })();
-
-    // Save state before making the move (for undo)
-    const playerSlotIndex = parseInt(this.playerId);
-    this.undoManager.saveState(currentState!, playerSlotIndex);
-
-    const battleMove = {
-      sourceRegionIndex,
-      targetRegionIndex,
-      soldierCount,
-      gameState: currentState!
-    };
-
-    // Get regions for animations
-    const regions = this.gameStore.regions;
-    let currentRegions: any[];
-    regions.subscribe((value: any[]) => {
-      currentRegions = value;
-    })();
-
-    // Mark battle as in progress to delay WebSocket updates
-    this.battleInProgress = true;
-    console.log('🔒 Battle in progress, WebSocket updates will be delayed');
-    
-    // Execute move through BattleManager (sends to server immediately for validation and persistence)
-    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
-
-    if (!result.success) {
-      throw new Error(result.error || 'Move failed');
-    }
-
-    // Check for player eliminations after the move
-    if (result.gameState) {
-      this.checkForEliminations(result.gameState);
-    }
-
-    // Update tutorial tooltips after move completes
-    this.updateTooltips();
-
-    // Immediately update game state with the result from server
-    if (result.gameState) {
-      console.log('✅ GameController: Updating game state from server response');
-      this.gameStore.handleGameStateUpdate(result.gameState);
-    }
-    
-    // Clear battle in progress flag
-    this.battleInProgress = false;
-    console.log('🔓 Battle complete, WebSocket updates resumed');
-  }
-  
-  /**
-   * Check if a battle is currently in progress
-   */
-  isBattleInProgress(): boolean {
-    return this.battleInProgress;
-  }
-
-  /**
-   * Check for player eliminations and show banners immediately
-   */
-  private checkForEliminations(gameState: GameStateData): void {
-    const players = gameState.players || [];
-    const ownersByRegion = gameState.ownersByRegion || {};
-
-    // Count regions owned by each player
-    const regionCounts = new Map<number, number>();
-    for (const playerSlotIndex of Object.values(ownersByRegion)) {
-      regionCounts.set(playerSlotIndex, (regionCounts.get(playerSlotIndex) || 0) + 1);
-    }
-
-    // Check each player - if they have 0 regions, they're eliminated
-    for (const player of players) {
-      const regionCount = regionCounts.get(player.slotIndex) || 0;
-      if (regionCount === 0) {
-        console.log(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
-        this.gameStore.showEliminationBanner(player.slotIndex);
-      }
-    }
-  }
-
-  /**
-   * Check for game end
+   * Check for game end (delegates to GameEndCoordinator)
    */
   checkGameEnd(gameState: GameStateData | null, players: Player[]): void {
-    if (!gameState || players.length === 0 || this.gameEndChecked) {
-      return;
-    }
-
-    const endResult = checkGameEnd(gameState, players);
-
-    if (endResult.isGameEnded) {
-      this.gameEndChecked = true;
-
-      // Stop the timer when the game ends
-      this.turnTimerCoordinator.stopTimer();
-
-      // Play sound
-      const isWinner =
-        endResult.winner !== 'DRAWN_GAME' &&
-        endResult.winner?.slotIndex?.toString() === this.playerId;
-
-      audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
-
-      // Show modal (winner is guaranteed to exist when game has ended)
-      this.modalManager.showGameSummary(endResult.winner!);
-    }
+    this.gameEndCoordinator.checkGameEnd(gameState, players);
   }
 
   /**
-   * Handle region click from map
+   * Handle region click from map (delegates to MoveUICoordinator)
    */
   handleRegionClick(region: any, isMyTurn: boolean): void {
-    console.log('🖱️ GameController.handleRegionClick:', {
-      regionIndex: region.index,
-      isMyTurn,
-      moveSystemExists: !!this.gameStore.getMoveSystem()
-    });
-
-    if (!isMyTurn) {
-      console.log('❌ Not my turn, ignoring click');
-      return;
-    }
-
-    const moveSystem = this.gameStore.getMoveSystem();
-    if (!moveSystem) {
-      console.error('❌ Move system not initialized!');
-      return;
-    }
-
-    console.log('✅ Delegating to move system...');
-    moveSystem.handleRegionClick(region.index);
+    this.moveUICoordinator.handleRegionClick(region, isMyTurn);
   }
 
   /**
-   * Handle temple click from map
+   * Handle temple click from map (delegates to MoveUICoordinator)
    */
   handleTempleClick(regionIndex: number, isMyTurn: boolean): void {
-    console.log('🏛️ GameController.handleTempleClick:', {
-      regionIndex,
-      isMyTurn,
-      moveSystemExists: !!this.gameStore.getMoveSystem()
-    });
-
-    if (!isMyTurn) {
-      console.log('❌ Not my turn, ignoring temple click');
-      return;
-    }
-
-    const moveSystem = this.gameStore.getMoveSystem();
-    if (!moveSystem) {
-      console.error('❌ Move system not initialized!');
-      return;
-    }
-
-    console.log('✅ Delegating temple click to move system...');
-    moveSystem.handleTempleClick(regionIndex);
+    this.moveUICoordinator.handleTempleClick(regionIndex, isMyTurn);
   }
 
   /**
-   * Handle soldier count change (for real-time updates in modal)
+   * Handle soldier count change (delegates to MoveUICoordinator)
    */
   handleSoldierCountChange(count: number): void {
-    this.moveState.update(s => ({ ...s, selectedSoldierCount: count }));
+    this.moveUICoordinator.handleSoldierCountChange(count);
   }
 
   /**
-   * Confirm soldier selection
+   * Confirm soldier selection (delegates to MoveUICoordinator)
    */
   confirmSoldierSelection(count: number): void {
-    // Update the move state with the selected count
-    this.moveState.update(s => ({ ...s, selectedSoldierCount: count }));
-
-    // Close the modal
-    this.modalManager.hideSoldierSelection();
-
-    // Execute the move with the selected count
-    const moveSystem = this.gameStore.getMoveSystem();
-    moveSystem?.processAction({
-      type: 'ADJUST_SOLDIERS',
-      payload: { soldierCount: count }
-    });
+    this.moveUICoordinator.confirmSoldierSelection(count);
   }
 
   /**
-   * Cancel soldier selection
+   * Cancel soldier selection (delegates to MoveUICoordinator)
    */
   cancelSoldierSelection(): void {
-    this.modalManager.hideSoldierSelection();
-
-    const moveSystem = this.gameStore.getMoveSystem();
-    moveSystem?.processAction({ type: 'CANCEL' });
+    this.moveUICoordinator.cancelSoldierSelection();
   }
 
   /**
-   * Close temple upgrade panel and return to normal mode
+   * Close temple upgrade panel (delegates to MoveUICoordinator)
    */
   closeTempleUpgradePanel(): void {
-    console.log('🏛️ GameController.closeTempleUpgradePanel');
-    const moveSystem = this.gameStore.getMoveSystem();
-    moveSystem?.processAction({ type: 'CANCEL' });
+    this.moveUICoordinator.closeTempleUpgradePanel();
   }
 
   /**
-   * Purchase an upgrade for a temple
-   * Note: Temple upgrades are sent immediately to the server and cannot be undone
+   * Purchase temple upgrade (delegates to TempleActionCoordinator)
    */
   async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
-    try {
-      const data = await this.apiClient.purchaseUpgrade(this.playerId, regionIndex, upgradeIndex);
-
-      // Temple upgrades are immediate operations, so disable undo
-      // (similar to how battles disable undo in the old GAS implementation)
-      this.undoManager.disableUndo();
-      console.log('🏛️ Temple upgrade purchased - undo disabled');
-
-      // Update game state
-      if (data.gameState) {
-        this.gameStore.handleGameStateUpdate(data.gameState);
-      }
-
-      // Don't close the panel - keep it open so player can see updated options
-      // and potentially purchase additional upgrades (like the second level)
-      console.log('💰 Purchase complete, panel remains open for additional purchases');
-
-    } catch (error) {
-      console.error('❌ Purchase upgrade error:', error);
-      alert('Error purchasing upgrade: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    }
+    await this.templeActionCoordinator.purchaseUpgrade(regionIndex, upgradeIndex);
   }
 
   /**
@@ -448,16 +219,7 @@ export class GameController {
       console.log('🔚 EndTurn response received:', result);
 
       // Reset move state
-      this.moveState.set({
-        mode: 'IDLE',
-        sourceRegion: null,
-        targetRegion: null,
-        buildRegion: null,
-        selectedSoldierCount: 0,
-        maxSoldiers: 0,
-        availableMoves: 3,
-        isMoving: false
-      });
+      this.moveUICoordinator.resetMoveState();
     } catch (error) {
       console.error('❌ End turn error:', error);
       alert('Failed to end turn: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -487,16 +249,7 @@ export class GameController {
     }
 
     // Clear any active move UI state
-    this.moveState.set({
-      mode: 'IDLE',
-      sourceRegion: null,
-      targetRegion: null,
-      buildRegion: null,
-      selectedSoldierCount: 0,
-      maxSoldiers: 0,
-      availableMoves: previousState.movesRemaining || 3,
-      isMoving: false
-    });
+    this.moveUICoordinator.resetMoveState(previousState.movesRemaining || 3);
 
     // Close any open modals
     this.modalManager.hideSoldierSelection();
@@ -565,7 +318,7 @@ export class GameController {
   private updateTooltips(): void {
     const gameState = get(this.gameStore.gameState);
     const regions = get(this.gameStore.regions);
-    const currentMoveState = get(this.moveState);
+    const currentMoveState = get(this.moveUICoordinator.getMoveStateStore());
 
     this.tutorialCoordinator.updateTooltips(gameState, regions, currentMoveState);
   }
@@ -584,7 +337,7 @@ export class GameController {
   getStores() {
     return {
       modalState: this.modalManager.getModalState(),
-      moveState: this.moveState,
+      moveState: this.moveUICoordinator.getMoveStateStore(),
       isConnected: this.websocket.getConnectedStore(),
       tutorialTips: this.tutorialCoordinator.getTutorialTipsStore()
     };
