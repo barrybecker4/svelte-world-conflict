@@ -107,7 +107,9 @@
           // Position after existing soldiers at target
           const finalIndex = targetSoldierCount + indexInMovingGroup;
           const finalTotal = targetSoldierCount + movingToThisTarget.length;
-          const targetPos = calculateSoldierBasePosition(finalIndex, finalTotal, targetRegion);
+          // Pass target region's temple status to get correct positioning
+          const targetHasTemple = targetRegion.hasTemple;
+          const targetPos = calculateSoldierBasePosition(finalIndex, finalTotal, targetRegion, targetHasTemple);
 
           console.log(`🎯 Region ${regionData.index} soldier ${soldier.i} moving to ${movingTo}: positioned at ${finalIndex}/${finalTotal} at (${targetPos.x}, ${targetPos.y})`);
 
