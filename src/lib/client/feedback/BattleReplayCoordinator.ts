@@ -66,7 +66,6 @@ export class BattleReplayCoordinator {
 
         // Play the full battle animation sequence with casualty callbacks for smoke
         const onStateUpdate = (attackerCasualties: number, defenderCasualties: number) => {
-          console.log(`💨 AI Battle: Dispatching battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
           // Dispatch event to spawn smoke particles
           if (typeof window !== 'undefined' && (attackerCasualties > 0 || defenderCasualties > 0)) {
             window.dispatchEvent(new CustomEvent('battleCasualties', {
@@ -77,7 +76,6 @@ export class BattleReplayCoordinator {
                 defenderCasualties
               }
             }));
-            console.log(`💨 AI Battle: battleCasualties event dispatched successfully`);
           }
         };
 
