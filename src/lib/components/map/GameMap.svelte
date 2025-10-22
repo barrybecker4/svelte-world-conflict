@@ -33,14 +33,14 @@
   let mapContainerElement: HTMLDivElement;
   let battlesInProgress = new Set<number>();
   let animationTick = 0;
-  
+
   // Animation ticker for smoke particles
   let animationFrame: number | null = null;
   let isAnimating = false;
-  
+
   function startAnimationLoop() {
     if (isAnimating) return; // Already running
-    
+
     isAnimating = true;
     function tick() {
       animationTick = Date.now();
@@ -54,12 +54,12 @@
     }
     tick();
   }
-  
+
   // Start/stop animation loop based on smoke particles
   $: if ($smokeStore.length > 0 && !isAnimating) {
     startAnimationLoop();
   }
-  
+
   onDestroy(() => {
     if (animationFrame !== null) {
       cancelAnimationFrame(animationFrame);
@@ -249,10 +249,10 @@
     {#each $smokeStore as particle (particle.id)}
       {@const age = animationTick - particle.timestamp}
       {@const progress = Math.min(age / 3050, 1)}
-      {@const opacity = Math.max(0, 1 - progress)}
-      {@const currentY = particle.y - (progress * 15)}
-      {@const currentR = 2 + (progress * 4)}
-      
+      {@const opacity = Math.max(0, 0.4 * (1.0 - progress))}
+      {@const currentY = particle.y - (progress * 25)}
+      {@const currentR = 2 + (progress * 6)}
+
       <!-- Outer glow (blurred) -->
       <circle
         class="smoke-particle-glow"
@@ -262,7 +262,7 @@
         fill="#222"
         fill-opacity={opacity * 0.25}
       />
-      
+
       <!-- Main particle -->
       <circle
         class="smoke-particle"
@@ -315,7 +315,7 @@
   :global(.smoke-particle-glow) {
     pointer-events: none;
   }
-  
+
   :global(.smoke-particle-glow) {
     filter: blur(2px);
   }

@@ -5,6 +5,7 @@ export interface CommandResult {
     success: boolean;
     error?: string;
     newState?: GameState;
+    attackSequence?: any[]; // Attack sequence for battle replay
 }
 
 export class CommandProcessor {
@@ -20,9 +21,14 @@ export class CommandProcessor {
             }
 
             const newState = command.execute();
+            
+            // Include attack sequence for battle replay (if available)
+            const attackSequence = (command as any).attackSequence;
+            
             return {
                 success: true,
-                newState
+                newState,
+                attackSequence: attackSequence || undefined
             };
         } catch (error) {
             return {

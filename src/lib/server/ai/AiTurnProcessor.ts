@@ -54,6 +54,15 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         updatedGame.worldConflictState = currentState.toJSON();
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
+                        
+                        // Save attack sequence for battle replay
+                        if (result.attackSequence) {
+                            updatedGame.lastAttackSequence = result.attackSequence;
+                            console.log(`💨 Saved attack sequence with ${result.attackSequence.length} events for battle replay`);
+                        } else {
+                            updatedGame.lastAttackSequence = undefined;
+                        }
+                        
                         await gameStorage.saveGame(updatedGame);
 
                         // Send WebSocket notification immediately for this move
@@ -85,6 +94,10 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         updatedGame.worldConflictState = currentState.toJSON();
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
+                        
+                        // Clear attack sequence for turn end (no battle)
+                        updatedGame.lastAttackSequence = undefined;
+                        
                         await gameStorage.saveGame(updatedGame);
 
                         // Send WebSocket notification for turn end

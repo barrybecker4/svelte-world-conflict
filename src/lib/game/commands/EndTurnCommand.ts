@@ -57,7 +57,7 @@ export class EndTurnCommand extends Command {
           }))
         });
 
-        const nextSlotIndex = this.getNextActiveSlot(newState.currentPlayerSlot, players);
+        const nextSlotIndex = this.getNextActiveSlot(newState.currentPlayerSlot, players, newState);
         newState.currentPlayerSlot = nextSlotIndex;
 
         // Calculate moves for next player including Air temple bonuses
@@ -77,7 +77,7 @@ export class EndTurnCommand extends Command {
         });
 
         // Check if we completed a full round (back to first active slot)
-        const activeSlots = this.getActiveSlots(players);
+        const activeSlots = this.getActiveSlots(players, newState);
         if (nextSlotIndex === activeSlots[0]) {
           newState.turnNumber++;
           console.log(`New turn: ${newState.turnNumber}`);
@@ -86,8 +86,8 @@ export class EndTurnCommand extends Command {
         return newState;
     }
 
-    private getNextActiveSlot(currentSlotIndex: number, players: Player[]): number {
-        const activeSlots = this.getActiveSlots(players);
+    private getNextActiveSlot(currentSlotIndex: number, players: Player[], state: GameState): number {
+        const activeSlots = this.getActiveSlots(players, state);
         const currentIndex = activeSlots.indexOf(currentSlotIndex);
 
         if (currentIndex === -1) {
@@ -98,8 +98,24 @@ export class EndTurnCommand extends Command {
         return activeSlots[nextIndex];
     }
 
-    private getActiveSlots(players: Player[]): number[] {
-        return players.map(p => p.slotIndex).sort((a, b) => a - b);
+    private getActiveSlots(players: Player[], state: GameState): number[] {
+        // Filter out eliminated players (players who own 0 regions)
+        const activePlayers = players.filter(p => {
+            const regionCount = Object.values(state.ownersByRegion).filter(
+                owner => owner === p.slotIndex
+            ).length;
+            
+            if (regionCount === 0) {
+                console.log(`💀 Player ${p.name} (slot ${p.slotIndex}) is eliminated, skipping in turn order`);
+            }
+            
+            return regionCount > 0;
+        });
+        
+        const activeSlots = activePlayers.map(p => p.slotIndex).sort((a, b) => a - b);
+        console.log(`🔄 Active player slots: ${JSON.stringify(activeSlots)} (${activePlayers.map(p => p.name).join(', ')})`);
+        
+        return activeSlots;
     }
 
     private getPlayerBySlot(slotIndex: number, players: Player[]): Player | undefined {

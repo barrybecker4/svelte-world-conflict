@@ -101,7 +101,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             worldConflictState: result.newState!.toJSON(),
             lastMoveAt: Date.now(),
             status: gameStatus,
-            lastAttackSequence: command.attackSequence // Store attack sequence for replay
+            lastAttackSequence: result.attackSequence // Store attack sequence for replay
         };
 
         await gameStorage.saveGame(updatedGame);
@@ -114,7 +114,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             gameState: result.newState!.toJSON(),
             game: updatedGame,
             message: 'Move processed successfully',
-            attackSequence: command.attackSequence
+            attackSequence: result.attackSequence
         });
 
     } catch (error) {

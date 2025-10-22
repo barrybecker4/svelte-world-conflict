@@ -138,7 +138,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 ...game,
                 worldConflictState: finalGameState.toJSON(),
                 currentPlayerSlot: finalGameState.currentPlayerSlot,
-                lastMoveAt: Date.now()
+                lastMoveAt: Date.now(),
+                lastAttackSequence: undefined // Clear attack sequence for turn end
             };
             await gameStorage.saveGame(updatedGame);
 
@@ -151,7 +152,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 ...game,
                 worldConflictState: finalGameState.toJSON(),
                 currentPlayerSlot: finalGameState.currentPlayerSlot,
-                lastMoveAt: Date.now()
+                lastMoveAt: Date.now(),
+                lastAttackSequence: undefined // Clear attack sequence for turn end
             };
 
             await gameStorage.saveGame(updatedGame);

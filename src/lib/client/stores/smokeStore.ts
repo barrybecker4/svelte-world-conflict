@@ -17,39 +17,39 @@ function createSmokeStore() {
 
   return {
     subscribe,
-    
+
     /**
      * Spawn smoke particles at a location
      */
     spawnAt(x: number, y: number, numParticles: number = 20, duration: number = 3050): void {
       const newParticles: SmokeParticle[] = [];
       const timestamp = Date.now();
-      
+
       for (let i = 0; i < numParticles; i++) {
         const angle = Math.random() * Math.PI * 2; // Full circle in radians (0 to 2π)
-        const dist = (Math.random() * 200) / 80; // Distance from 0 to 2.5 units
+        const dist = (Math.random() * Math.random() * 1100) / 80;
         const particleX = x + Math.sin(angle) * dist;
         const particleY = y + Math.cos(angle) * dist;
-        
+
         const particle: SmokeParticle = {
           id: nextId++,
           x: particleX,
           y: particleY,
           timestamp
         };
-        
+
         newParticles.push(particle);
-        
+
         // Schedule removal
         setTimeout(() => {
           update(particles => particles.filter(p => p.id !== particle.id));
         }, duration);
       }
-      
+
       update(particles => [...particles, ...newParticles]);
       console.log(`💨 Smoke store: Added ${numParticles} particles at (${x}, ${y}), total now: ${newParticles.length}`);
     },
-    
+
     /**
      * Clear all smoke particles
      */
