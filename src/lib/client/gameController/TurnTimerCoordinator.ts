@@ -40,21 +40,6 @@ export class TurnTimerCoordinator {
     );
     const timeLimit = gameState.moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
 
-    console.log('⏰ ======== TURN TIMER CHECK ========');
-    console.log('⏰ Timer conditions:', {
-      isMyTurn,
-      isHumanPlayer,
-      timeLimit,
-      playerSlotIndex: this.playerSlotIndex,
-      currentPlayerSlot,
-      gameEnded: endResult.isGameEnded,
-      players: gameState.players.map(p => ({
-        slotIndex: p.slotIndex,
-        name: p.name,
-        isAI: p.isAI
-      }))
-    });
-
     // Always show timer when it's the player's turn (human only), but not for unlimited time
     const isUnlimitedTime = timeLimit === GAME_CONSTANTS.UNLIMITED_TIME;
     if (isMyTurn && isHumanPlayer && timeLimit && !isUnlimitedTime) {
@@ -66,7 +51,6 @@ export class TurnTimerCoordinator {
     } else {
       console.log(`⏰ ❌ Timer NOT starting - conditions not met (isMyTurn: ${isMyTurn}, isHumanPlayer: ${isHumanPlayer}, timeLimit: ${timeLimit}, isUnlimitedTime: ${isUnlimitedTime})`);
     }
-    console.log(`⏰ ===================================`);
   }
 
   /**

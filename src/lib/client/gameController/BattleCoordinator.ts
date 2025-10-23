@@ -27,16 +27,10 @@ export class BattleCoordinator {
     this.battleManager = new BattleManager(gameId, null as any);
   }
 
-  /**
-   * Get the battle manager instance
-   */
   getBattleManager(): BattleManager {
     return this.battleManager;
   }
 
-  /**
-   * Check if a battle is currently in progress
-   */
   isBattleInProgress(): boolean {
     return this.battleInProgress;
   }
@@ -51,42 +45,70 @@ export class BattleCoordinator {
     soldierCount: number,
     onTooltipUpdate: () => void
   ): Promise<void> {
-    const gameState = this.gameStore.gameState;
-    let currentState: GameStateData;
-
-    gameState.subscribe((value: GameStateData) => {
-      currentState = value;
-    })();
-
-    // Save state before making the move (for undo)
-    const playerSlotIndex = parseInt(this.playerId);
-    this.undoManager.saveState(currentState!, playerSlotIndex);
-
-    const battleMove = {
+    const currentState = this.getCurrentGameState();
+    const { battleMove, currentRegions } = this.prepareForBattle(
       sourceRegionIndex,
       targetRegionIndex,
       soldierCount,
-      gameState: currentState!
-    };
+      currentState
+    );
 
-    // Get regions for animations
-    const regions = this.gameStore.regions;
-    let currentRegions: any[];
-    regions.subscribe((value: any[]) => {
-      currentRegions = value;
-    })();
-
-    // Mark battle as in progress to delay WebSocket updates
     this.battleInProgress = true;
     console.log('🔒 Battle in progress, WebSocket updates will be delayed');
 
-    // Execute move through BattleManager (sends to server immediately for validation and persistence)
-    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
+    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions);
 
     if (!result.success) {
       throw new Error(result.error || 'Move failed');
     }
 
+    this.completeBattle(result, onTooltipUpdate);
+  }
+
+  /**
+   * Get the current game state from the store
+   */
+  private getCurrentGameState(): GameStateData {
+    let currentState: GameStateData;
+    this.gameStore.gameState.subscribe((value: GameStateData) => {
+      currentState = value;
+    })();
+    return currentState!;
+  }
+
+  /**
+   * Prepare for battle by saving undo state and gathering required data
+   */
+  private prepareForBattle(
+    sourceRegionIndex: number,
+    targetRegionIndex: number,
+    soldierCount: number,
+    currentState: GameStateData
+  ): { battleMove: any; currentRegions: any[] } {
+    // Save state before making the move (for undo)
+    const playerSlotIndex = parseInt(this.playerId);
+    this.undoManager.saveState(currentState, playerSlotIndex);
+
+    const battleMove = {
+      sourceRegionIndex,
+      targetRegionIndex,
+      soldierCount,
+      gameState: currentState
+    };
+
+    // Get regions for animations
+    let currentRegions: any[];
+    this.gameStore.regions.subscribe((value: any[]) => {
+      currentRegions = value;
+    })();
+
+    return { battleMove, currentRegions: currentRegions! };
+  }
+
+  /**
+   * Complete battle by checking eliminations and updating game state
+   */
+  private completeBattle(result: any, onTooltipUpdate: () => void): void {
     // Check for player eliminations after the move
     if (result.gameState) {
       this.checkForEliminations(result.gameState);

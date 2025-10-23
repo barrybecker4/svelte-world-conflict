@@ -40,14 +40,7 @@ export class TutorialCoordinator {
       moveState
     });
 
-    if (!gameState || !regions) {
-      console.log('📖 No game state or regions, clearing tooltips');
-      // Mark any currently visible tooltips as shown before clearing
-      const currentTooltips = get(this.tutorialTips);
-      currentTooltips.forEach(tooltip => {
-        this.tutorialManager.markTooltipAsShown(tooltip.id);
-      });
-      this.tutorialTips.set([]);
+    if (this.clearTooltipsIfInvalid(gameState, regions)) {
       return;
     }
 
@@ -62,9 +55,7 @@ export class TutorialCoordinator {
       mode: moveState?.mode
     });
 
-    // Get previous tooltips to detect what's being removed
     const previousTooltips = get(this.tutorialTips);
-
     const tooltips = this.tutorialManager.getTooltips(
       gameState,
       regions,
@@ -72,17 +63,47 @@ export class TutorialCoordinator {
       isMyTurn
     );
 
-    // Mark any tooltips that were visible but are now gone as "shown"
+    this.markRemovedTooltipsAsShown(previousTooltips, tooltips);
+
+    console.log('📖 TutorialCoordinator setting tooltips:', tooltips);
+    this.tutorialTips.set(tooltips);
+  }
+
+  /**
+   * Clear tooltips if game state or regions are invalid
+   * Returns true if tooltips were cleared, false otherwise
+   */
+  private clearTooltipsIfInvalid(
+    gameState: GameStateData | null,
+    regions: any[]
+  ): boolean {
+    if (!gameState || !regions) {
+      console.log('📖 No game state or regions, clearing tooltips');
+      // Mark any currently visible tooltips as shown before clearing
+      const currentTooltips = get(this.tutorialTips);
+      currentTooltips.forEach(tooltip => {
+        this.tutorialManager.markTooltipAsShown(tooltip.id);
+      });
+      this.tutorialTips.set([]);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Mark tooltips that are no longer visible as shown
+   */
+  private markRemovedTooltipsAsShown(
+    previousTooltips: TooltipData[],
+    currentTooltips: TooltipData[]
+  ): void {
     previousTooltips.forEach(prevTooltip => {
-      const stillVisible = tooltips.some(t => t.id === prevTooltip.id);
+      const stillVisible = currentTooltips.some(t => t.id === prevTooltip.id);
       if (!stillVisible) {
         console.log('📖 Marking tooltip as shown (no longer visible):', prevTooltip.id);
         this.tutorialManager.markTooltipAsShown(prevTooltip.id);
       }
     });
-
-    console.log('📖 TutorialCoordinator setting tooltips:', tooltips);
-    this.tutorialTips.set(tooltips);
   }
 
   /**
