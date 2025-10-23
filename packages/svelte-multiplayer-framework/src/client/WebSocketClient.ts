@@ -1,6 +1,6 @@
 import { MessageHandler } from './MessageHandler';
-import type { WebSocketConfig } from '../shared/config';
-import { buildWebSocketUrl } from '../shared/config';
+import type { WebSocketConfig } from '../shared';
+import { buildWebSocketUrl } from '../shared';
 import { writable, type Writable } from 'svelte/store';
 
 /**
