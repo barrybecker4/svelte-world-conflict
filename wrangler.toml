@@ -1,0 +1,23 @@
+name = "svelte-world-conflict"
+compatibility_date = "2024-05-15"
+pages_build_output_dir = "packages/world-conflict/dist"
+
+# Add nodejs compatibility for SvelteKit
+compatibility_flags = ["nodejs_compat"]
+
+[env.preview]
+kv_namespaces = [
+    { binding = "WORLD_CONFLICT_KV", id = "a776ced349e4415ab2b2f7c519fb9642" }
+]
+
+# Note: WebSocket worker runs separately - no Durable Object binding needed
+# The game connects to the worker via WebSocket URLs configured in packages/world-conflict/src/lib/websocket-config.ts
+
+[env.production]
+kv_namespaces = [
+    { binding = "WORLD_CONFLICT_KV", id = "374d788f7a834bc3ad81f660362bd647" }
+]
+
+# Note: WebSocket worker runs separately - no Durable Object binding needed
+# The game connects to the worker via WebSocket URLs configured in packages/world-conflict/src/lib/websocket-config.ts
+
