@@ -1,72 +1,182 @@
-# svelte-world-conflict
+# Svelte World Conflict Monorepo
 
-A real-time multiplayer strategy game built with SvelteKit and Cloudflare infrastructure. This is a modernized port of the original World Conflict game from Google Apps Script.
+A real-time multiplayer strategy game built with SvelteKit and Cloudflare infrastructure. This monorepo contains both the **World Conflict** game and a reusable **Svelte Multiplayer Framework** extracted from it.
 
-## 🎮 Features
+## 📦 Packages
 
-- ✅ Real-time multiplayer gameplay (up to 4 players)
-- ✅ Strategic combat system inspired by Risk
-- ✅ AI opponents with different personalities
-- ✅ Persistent game state with Cloudflare KV
-- ✅ Instant WebSocket updates
-- ✅ Global CDN distribution
-- ✅ Mobile-friendly interface
+### [`@svelte-mp/framework`](./packages/svelte-multiplayer-framework)
 
-## 🏗️ Architecture
+A minimal WebSocket framework for building real-time multiplayer Svelte games.
 
-- **Frontend**: SvelteKit app deployed on Cloudflare Pages
-- **Real-time**: WebSocket Durable Objects for instant game updates
-- **Storage**: Cloudflare KV for persistent game data
-- **Backend**: Cloudflare Workers
-- **Deployment**: Fully serverless on Cloudflare
+**Features:**
+- Client WebSocket management with reconnection
+- Server storage abstraction (Cloudflare KV included)
+- Cloudflare Durable Objects worker for WebSocket sessions
+- Type-safe and extensible
+- Generic - works with any turn-based or real-time game
+
+### [`world-conflict`](./packages/world-conflict)
+
+The World Conflict strategy game - a modernized port from Google Apps Script.
+
+**Features:**
+- Real-time multiplayer (up to 4 players)
+- Strategic combat system inspired by Risk
+- AI opponents with different personalities
+- Persistent game state
+- Mobile-friendly interface
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Installation
 
-- Node.js 18+
-- Cloudflare account (free tier works)
-
-### Development Setup
-
-1. **Clone and install dependencies:**
-   ```bash
-   git clone https://github.com/your-username/svelte-world-conflict
-   cd svelte-world-conflict
-   npm install
-   ```
-
-2. **Start development server:**
-   CD into `web-socket-worker` and start the worker with
-   ```bash
-   npm run dev
-   ```
-
-3. **Start local websocket server:**
-    In another terminal, CD in the root project directory, start the SvelteKit dev server with
-   ```bash
-   npm run dev
-   ```
-   
-4. **View in browser:**
-   Open [http://localhost:5173](http://localhost:5173)
-
-## 🛠️ Development
-
-### Available Scripts
+Install all dependencies from the root:
 
 ```bash
-npm run dev                # Start development server
-npm run build             # Build for production
-npm run preview           # Preview production build
-npm run test              # Run unit tests
-npm run test:e2e          # Run end-to-end tests
-npm run lint              # Lint code
-npm run format            # Format code
-npm run deploy            # Deploy to Cloudflare Pages
+npm install
 ```
 
-## 🎮 How to Play
+This will automatically install dependencies for all packages in the workspace.
+
+### Development
+
+**Option 1: Start World Conflict only** (WebSocket worker runs separately)
+
+```bash
+# Terminal 1: Start the WebSocket worker
+npm run dev:websocket
+
+# Terminal 2: Start World Conflict
+npm run dev
+```
+
+**Option 2: Start everything with concurrently**
+
+```bash
+npm run dev:full
+```
+
+Then open [http://localhost:5173](http://localhost:5173)
+
+### Building
+
+Build all packages:
+
+```bash
+npm run build
+```
+
+Or build individual packages:
+
+```bash
+npm run build -w @svelte-mp/framework
+npm run build -w world-conflict
+```
+
+## 🏗️ Monorepo Structure
+
+```
+svelte-world-conflict/
+├── packages/
+│   ├── svelte-multiplayer-framework/   # Reusable WebSocket framework
+│   │   ├── src/
+│   │   │   ├── client/                 # WebSocket client
+│   │   │   ├── server/                 # Storage adapters
+│   │   │   ├── worker/                 # Cloudflare Durable Objects worker
+│   │   │   └── shared/                 # Shared types and utilities
+│   │   ├── package.json
+│   │   └── README.md
+│   │
+│   └── world-conflict/                 # World Conflict game
+│       ├── src/                        # Game source code
+│       ├── static/                     # Static assets
+│       ├── package.json
+│       └── README.md
+│
+├── package.json                        # Root workspace config
+├── ARCHITECTURE.md                     # Architecture documentation
+└── README.md                           # This file
+```
+
+## 🛠️ Available Scripts
+
+From the root directory:
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start World Conflict dev server |
+| `npm run dev:full` | Start WebSocket worker + World Conflict |
+| `npm run dev:websocket` | Start WebSocket worker only |
+| `npm run build` | Build all packages |
+| `npm run deploy:worker` | Deploy WebSocket worker to Cloudflare |
+| `npm test` | Run tests in all packages |
+| `npm run format` | Format code in all packages |
+| `npm run lint` | Lint code in all packages |
+
+### Package-Specific Scripts
+
+Run commands in a specific package:
+
+```bash
+# Run dev server in world-conflict package
+npm run dev -w world-conflict
+
+# Build only the framework
+npm run build -w @svelte-mp/framework
+
+# Run tests in a specific package
+npm run test -w world-conflict
+```
+
+## 🎯 Using the Framework in Your Own Game
+
+The framework is designed to be reusable. Here's how to use it:
+
+1. **Deploy the WebSocket worker:**
+   ```bash
+   cd packages/svelte-multiplayer-framework/src/worker
+   npx wrangler deploy
+   ```
+
+2. **Add the framework to your project:**
+   ```bash
+   npm install @svelte-mp/framework
+   ```
+
+3. **Use in your code:**
+   ```typescript
+   import { WebSocketClient } from '@svelte-mp/framework/client';
+   import { KVStorageAdapter } from '@svelte-mp/framework/server';
+   ```
+
+See the [framework README](./packages/svelte-multiplayer-framework/README.md) for detailed usage examples.
+
+## 🚀 Deployment to Cloudflare
+
+### Quick Deploy
+
+```bash
+# 1. Deploy WebSocket worker (required first)
+cd packages/svelte-multiplayer-framework/src/worker
+npx wrangler deploy
+
+# 2. Deploy the game
+cd ../../..
+npm run deploy -w world-conflict
+```
+
+### Full Deployment Guide
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment instructions including:
+- KV namespace setup
+- Worker configuration
+- Testing and troubleshooting
+- Production best practices
+- Monitoring and logs
+
+The deployment guide covers both initial setup and updates.
+
+## 🎮 How to Play World Conflict
 
 World Conflict is a strategic multiplayer game where players:
 
@@ -75,12 +185,18 @@ World Conflict is a strategic multiplayer game where players:
 3. **Attack opponents** to expand your territory
 4. **Win by elimination** or controlling the most territory
 
+## 📚 Documentation
+
+- [Framework Documentation](./packages/svelte-multiplayer-framework/README.md) - How to use the multiplayer framework
+- [World Conflict Documentation](./packages/world-conflict/README.md) - Game-specific documentation
+- [Architecture Guide](./ARCHITECTURE.md) - System architecture and design
+
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test locally with `npm run dev`
+4. Test locally with `npm run dev:full`
 5. Submit a pull request
 
 ## 📝 License
@@ -91,8 +207,9 @@ MIT License - feel free to use this project as a starting point for your own mul
 
 - Original World Conflict game by Jakub Wasilewski
 - Google Apps Script version by Barry Becker
-- SvelteKit port and modernization by Barry Becker (with halp from Claude AI)
+- SvelteKit port, modernization, and framework extraction by Barry Becker (with help from Claude AI)
 
 ---
 
-**🚧 Note**: This project is actively under development. The game is not yet playable but the foundation is being built incrementally.
+**Framework Status**: ✅ Ready for use  
+**Game Status**: 🚧 Active development
