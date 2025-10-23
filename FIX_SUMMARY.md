@@ -1,8 +1,61 @@
-# AI Turn WebSocket Update Fix + workerUrl Error Fix
+# AI Turn WebSocket Update Fix + Production Debugging
 
 ## Summary
 
 You were correct! The AI players were making moves on the server, but the WebSocket notifications weren't reaching the client in production. After a page refresh, you could see the moves because they were stored in the database.
+
+## Latest Update: Enhanced Logging + Fixed Durable Object Migration
+
+**Deployed:** October 23, 2025
+
+### What Was Fixed:
+1. **Durable Object Migration Issue**: Changed from `new_classes` to `new_sqlite_classes` in wrangler.toml (required for free tier)
+2. **Enhanced Error Handling**: Added try-catch blocks and detailed logging throughout the WebSocket worker
+3. **Comprehensive Logging**: Added detailed logging at every stage of the notification pipeline
+
+### Previous Error Found:
+The WebSocket worker was throwing a 500 error when receiving notifications:
+```
+"❌ WebSocket worker returned error:",
+{
+  "status": 500,
+  "statusText": "Internal Server Error",
+  "body": "Worker threw exception"
+}
+```
+
+This has been fixed by redeploying with the correct Durable Object configuration.
+
+## 🎯 Testing Instructions
+
+**Deployed URLs:**
+- Game: https://fb01af34.svelte-world-conflict.pages.dev (latest deployment)
+- WebSocket Worker: https://svelte-world-conflict-websocket.barrybecker4.workers.dev
+
+**To Test:**
+1. Open the game URL above
+2. Start a new game with AI players
+3. **Open Browser DevTools Console** before making your move
+4. Make your move and click "End Turn"
+5. Watch the console for log messages
+
+**What to Look For:**
+
+If it's working, you should see in the browser console:
+```
+[WS CONNECTED] Successfully connected to game WebSocket
+✅ Subscribed to game {gameId}
+🔚 Ending turn...
+📨 [WS UPDATE] Received game update  // <-- This should appear for each AI move!
+```
+
+If AI moves still aren't showing, check **Cloudflare Logs**:
+- Go to Cloudflare Dashboard → Workers & Pages
+- Open "svelte-world-conflict" (Pages) → View logs
+- Open "svelte-world-conflict-websocket" (Worker) → View logs
+- Look for the log patterns described in the "Next Steps for Debugging" section below
+
+**Key Metric**: Watch for `sentCount` in the logs - it should be > 0 if notifications are reaching clients.
 
 ## Update: New Error Found
 
@@ -183,17 +236,139 @@ Now with CORS headers and better logging, you'll see either:
 - `✅ notification sent successfully` - All good!
 - `❌ Error notifying WebSocket worker` - Something to investigate
 
+## New Changes - Enhanced Logging
+
+### 1. **Comprehensive WebSocket Notification Logging**
+**File:** `packages/world-conflict/src/lib/server/websocket/WebSocketNotifier.ts`
+
+Added detailed logging at every stage of the notification process:
+- URL determination with environment detection
+- Request preparation with body size
+- Response timing and status
+- Success with `sentCount` (critical metric!)
+- Warning when `sentCount === 0` (no clients received the update)
+
+Key logs to watch for:
+```
+📡 [WebSocketNotifier] Notifying WebSocket worker: { url, type, gameId, ... }
+📤 [WebSocketNotifier] Sending fetch request: { url, bodySize, gameId }
+📨 [WebSocketNotifier] Fetch response received: { status, ok, elapsed, gameId }
+✅ [WebSocketNotifier] notification sent successfully: { sentCount, elapsed }
+⚠️ [WebSocketNotifier] notification sent but NO CLIENTS received it  // <-- Key warning!
+```
+
+### 2. **Durable Object Session Tracking**
+**File:** `packages/svelte-multiplayer-framework/src/worker/WebSocketServer.ts`
+
+Enhanced logging in the Durable Object to track:
+- WebSocket connection establishment
+- Game subscription registration  
+- Session counts per game
+- Notification delivery attempts
+
+**File:** `packages/svelte-multiplayer-framework/src/worker/SessionManager.ts`
+
+Added helper methods:
+- `getAllSessionCount()` - Total active WebSocket connections
+- `getAllSessionsDebug()` - Detailed session information
+
+Key logs to watch for:
+```
+📝 [DO] Session {id} subscribing to game {gameId}: { totalSessionsBefore, existingGameSessions }
+✅ [DO] Session {id} successfully subscribed: { totalSessions, gameSessionsNow, allGameSessions }
+📬 [DO] Notification received for game {gameId}: { messageType, totalSessions, gameSessionsCount }
+⚠️ [DO] No sessions received notification for game {gameId}  // <-- Key warning!
+```
+
+## Potential Root Causes
+
+Based on the enhanced logging, the issue could be one of these:
+
+### Theory 1: Durable Object Routing Issue
+- WebSocket connections might go to a different DO instance than notifications
+- This would show: `sentCount: 0` with `gameSessionsCount: 0` in DO logs
+- But client logs show successful subscription
+
+### Theory 2: Session State Loss
+- Durable Object might be hibernating or resetting between subscription and notification
+- This would show: Session exists during subscribe, but gone during notification
+- Common in Cloudflare DO if not using persistence properly
+
+### Theory 3: Environment Variable Issue  
+- `process.env.NODE_ENV` might not be set correctly in Cloudflare Pages Functions
+- Could cause wrong worker URL to be used (though logs should show this)
+
+### Theory 4: Timing Issue with AI Processing
+- WebSocket connections might close/timeout during AI turn processing
+- The 100ms delay between AI moves might cause connection drops
+- Would show: Sessions start > 0 but decrease to 0 during processing
+
 ## Files Modified
 
-1. `packages/svelte-multiplayer-framework/src/worker/WebSocketServer.ts`
-2. `packages/world-conflict/src/lib/server/websocket/WebSocketNotifier.ts`
-3. `packages/world-conflict/src/routes/api/game/[gameId]/start/+server.ts`
-4. `packages/world-conflict/dist/` (rebuilt)
+1. `packages/svelte-multiplayer-framework/src/worker/WebSocketServer.ts` - Enhanced notification and subscription logging
+2. `packages/svelte-multiplayer-framework/src/worker/SessionManager.ts` - Added session tracking methods  
+3. `packages/world-conflict/src/lib/server/websocket/WebSocketNotifier.ts` - Comprehensive logging throughout
+4. Both packages rebuilt (`dist/` updated)
+
+## Next Steps for Debugging
+
+After deployment, follow this process:
+
+1. **Deploy both services** (see Deployment Instructions above)
+
+2. **Open browser console AND Cloudflare dashboard logs side-by-side**
+   - Browser: Check for WebSocket connection and subscription messages
+   - Cloudflare: Workers & Pages → Select your services → View logs (real-time tail)
+
+3. **Start a game with AI and make your move**
+
+4. **When you click "End Turn", watch for these log patterns:**
+
+   **In Browser Console:**
+   ```
+   [WS CONNECTED] Successfully connected to game WebSocket
+   ✅ Subscribed to game {gameId}
+   🔚 Ending turn...
+   ```
+
+   **In Cloudflare Pages Logs (game server):**
+   ```
+   🔧 [WebSocketNotifier] Worker URL determined: { isDev, url, nodeEnv }
+   📡 [WebSocketNotifier] Notifying WebSocket worker: { url, type, gameId }
+   📤 [WebSocketNotifier] Sending fetch request: { url, bodySize }
+   📨 [WebSocketNotifier] Fetch response received: { status, ok, elapsed }
+   ✅ [WebSocketNotifier] notification sent: { sentCount, elapsed }
+   ```
+
+   **In Cloudflare Worker Logs (WebSocket worker):**
+   ```
+   📝 [DO] Session {id} subscribing to game {gameId}: { totalSessionsBefore, existingGameSessions }
+   ✅ [DO] Session {id} successfully subscribed: { gameSessionsNow, allGameSessions }
+   📬 [DO] Notification received for game {gameId}: { totalSessions, gameSessionsCount }
+   Broadcasting to {N} sessions for game {gameId}
+   ```
+
+5. **Key metrics to check:**
+   - `sentCount` in WebSocketNotifier logs - should be > 0
+   - `gameSessionsCount` in DO logs - should match number of connected players
+   - `totalSessions` - should show all active WebSocket connections
+
+6. **If `sentCount: 0`:**
+   - Check DO logs for session subscription
+   - Verify gameId matches between subscription and notification
+   - Check if sessions are being lost between subscribe and notify
+
+7. **Report findings:**
+   Share the relevant log excerpts showing:
+   - Browser subscription confirmation
+   - WebSocketNotifier sending notification
+   - Durable Object receiving notification
+   - What the `sentCount` and `gameSessionsCount` values are
 
 ## Notes
 
 - The build is complete and ready to deploy
 - You'll need to be logged into Wrangler (`wrangler login`)
 - Both services need to be deployed for the fix to work
-- The WebSocket worker deployment is critical - without it, the CORS issue persists
+- The enhanced logging will help us pinpoint exactly where the notification pipeline breaks in production
 

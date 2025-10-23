@@ -94,6 +94,11 @@ export class WebSocketServer {
       const { gameId, message } = body as { gameId: string; message: any };
 
       if (!gameId || !message) {
+        console.error('❌ [DO] Invalid notification request:', { 
+          hasGameId: !!gameId, 
+          hasMessage: !!message,
+          body 
+        });
         return new Response(
           JSON.stringify({
             error: 'Missing gameId or message'
@@ -105,14 +110,29 @@ export class WebSocketServer {
         );
       }
 
-      console.log(`📬 Notification received for game ${gameId}:`, message.type);
+      const allSessions = this.sessionManager.getAllSessionCount();
+      const gameSessions = this.sessionManager.getGameSessions(gameId);
+      
+      console.log(`📬 [DO] Notification received for game ${gameId}:`, {
+        messageType: message.type,
+        totalSessions: allSessions,
+        gameSessionsCount: gameSessions.length,
+        gameSessions: gameSessions
+      });
+      
       const sentCount = this.sessionManager.broadcastToGame(gameId, message);
+
+      if (sentCount === 0) {
+        console.warn(`⚠️ [DO] No sessions received notification for game ${gameId}. Sessions found: ${gameSessions.length}`);
+      }
 
       return new Response(
         JSON.stringify({
           success: true,
           sentCount,
-          gameId
+          gameId,
+          totalSessions: allSessions,
+          gameSessions: gameSessions.length
         }),
         {
           status: 200,
@@ -120,7 +140,7 @@ export class WebSocketServer {
         }
       );
     } catch (error) {
-      console.error('❌ Error handling notification:', error);
+      console.error('❌ [DO] Error handling notification:', error);
       return new Response(
         JSON.stringify({
           error: 'Error processing notification',
@@ -165,6 +185,7 @@ export class WebSocketServer {
 
   handleSubscribe(sessionId: string, gameId: string): void {
     if (!gameId) {
+      console.error(`❌ [DO] Session ${sessionId} tried to subscribe without gameId`);
       this.sessionManager.sendToSession(sessionId, {
         type: 'error',
         gameState: { error: 'Missing gameId' },
@@ -173,15 +194,31 @@ export class WebSocketServer {
       return;
     }
 
+    const allSessions = this.sessionManager.getAllSessionCount();
+    const existingGameSessions = this.sessionManager.getGameSessions(gameId);
+    
+    console.log(`📝 [DO] Session ${sessionId} subscribing to game ${gameId}:`, {
+      totalSessionsBefore: allSessions,
+      existingGameSessions: existingGameSessions.length
+    });
+
     try {
       this.sessionManager.subscribeToGame(sessionId, gameId);
+      const updatedGameSessions = this.sessionManager.getGameSessions(gameId);
+      
+      console.log(`✅ [DO] Session ${sessionId} successfully subscribed to game ${gameId}:`, {
+        totalSessions: allSessions,
+        gameSessionsNow: updatedGameSessions.length,
+        allGameSessions: updatedGameSessions
+      });
+      
       this.sessionManager.sendToSession(sessionId, {
         type: 'subscribed',
         gameId,
         timestamp: Date.now()
       });
     } catch (error) {
-      console.error(`Error subscribing session ${sessionId}:`, error);
+      console.error(`❌ [DO] Error subscribing session ${sessionId} to game ${gameId}:`, error);
       this.sessionManager.sendToSession(sessionId, {
         type: 'error',
         gameState: { error: (error as Error).message },

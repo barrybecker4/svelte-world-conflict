@@ -8,8 +8,8 @@ name = "WEBSOCKET_SERVER"
 class_name = "WebSocketServer"
 script_name = "svelte-world-conflict-websocket"
 
-# Migration to enable Durable Objects
+# Migration to enable Durable Objects (using SQLite backend for free tier)
 [[migrations]]
 tag = "v1"
-new_classes = ["WebSocketServer"]
+new_sqlite_classes = ["WebSocketServer"]
 

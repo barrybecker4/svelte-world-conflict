@@ -52,12 +52,35 @@ export default {
  * Routes requests to the appropriate Durable Object instance
  */
 async function handleDurableObjectRequest(request: Request, env: any): Promise<Response> {
-  const gameId = await getGameIdFromRequest(request);
+  try {
+    const gameId = await getGameIdFromRequest(request);
+    
+    console.log('[Worker] Routing request to Durable Object:', {
+      pathname: new URL(request.url).pathname,
+      method: request.method,
+      gameId
+    });
 
-  const id = env.WEBSOCKET_SERVER.idFromName(gameId);
-  const durableObject = env.WEBSOCKET_SERVER.get(id);
+    const id = env.WEBSOCKET_SERVER.idFromName(gameId);
+    const durableObject = env.WEBSOCKET_SERVER.get(id);
 
-  return durableObject.fetch(request);
+    return durableObject.fetch(request);
+  } catch (error) {
+    console.error('[Worker] Error routing to Durable Object:', error);
+    return new Response(
+      JSON.stringify({
+        error: 'Failed to route request to Durable Object',
+        details: (error as Error).message
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...CORS_HEADERS
+        }
+      }
+    );
+  }
 }
 
 /**
@@ -70,20 +93,25 @@ async function getGameIdFromRequest(request: Request): Promise<string> {
   // For POST requests (notifications), get gameId from body
   if (!gameId && request.method === 'POST' && url.pathname === '/notify') {
     try {
-      // Clone the request to read the body
+      // Clone the request to read the body without consuming the original
       const clonedRequest = request.clone();
       const body = await clonedRequest.json();
       gameId = (body as any).gameId;
+      console.log('[Worker] Extracted gameId from POST body:', gameId);
     } catch (error) {
-      console.error('Error reading gameId from notification body:', error);
+      console.error('[Worker] Error reading gameId from notification body:', error);
+      // Don't throw - just use default
     }
   }
 
   if (!gameId) {
+    console.warn('[Worker] No gameId found, using default');
     gameId = 'default';
   }
+  
   return gameId;
 }
 
-export { WebSocketServer };
+// Export the WebSocketServer class for Durable Objects
+export { WebSocketServer } from './WebSocketServer';
 
