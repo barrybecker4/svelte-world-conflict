@@ -52,11 +52,4 @@ export class GameEndCoordinator {
       this.modalManager.showGameSummary(endResult.winner!);
     }
   }
-
-  /**
-   * Reset the game end check flag (useful for testing or resetting state)
-   */
-  reset(): void {
-    this.gameEndChecked = false;
-  }
 }

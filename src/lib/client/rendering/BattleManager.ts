@@ -1,17 +1,12 @@
 import { BattleAnimationSystem } from './BattleAnimationSystem';
 import { AnimationStateCoordinator } from './AnimationStateCoordinator';
 import { BattleTimeoutManager } from './BattleTimeoutManager';
-import { LocalMoveExecutor } from './LocalMoveExecutor';
 import { GameApiClient, type BattleMove, type BattleResult } from '$lib/client/gameController/GameApiClient';
 import type { Region } from '$lib/game/entities/gameTypes';
 import { clearBattleState, isExpectedValidationError } from '$lib/game/utils/GameStateUtils';
 
 // Re-export types for backward compatibility
 export type { BattleMove, BattleResult };
-
-export interface ExecuteMoveOptions {
-  localMode?: boolean; // If true, execute locally without sending to server
-}
 
 /**
  * Manages all battle-related operations including animations, timeouts, and state coordination
@@ -20,7 +15,6 @@ export class BattleManager {
   private battleAnimationSystem: BattleAnimationSystem;
   private animationCoordinator: AnimationStateCoordinator;
   private timeoutManager: BattleTimeoutManager;
-  private localExecutor: LocalMoveExecutor;
   private apiClient: GameApiClient;
   private gameId: string;
 
@@ -29,7 +23,6 @@ export class BattleManager {
     this.battleAnimationSystem = new BattleAnimationSystem();
     this.animationCoordinator = new AnimationStateCoordinator();
     this.timeoutManager = new BattleTimeoutManager();
-    this.localExecutor = new LocalMoveExecutor();
     this.apiClient = new GameApiClient(gameId);
 
     if (mapContainer) {
@@ -54,26 +47,25 @@ export class BattleManager {
     return isNeutralWithSoldiers || isEnemyTerritory;
   }
 
-  async executeMove(move: BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<BattleResult> {
+  async executeMove(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
     if (this.isBattleRequired(move)) {
-      return this.executeBattle(move, playerId, regions, options);
+      return this.executeBattle(move, playerId, regions);
     } else {
-      return this.executePeacefulMove(move, playerId, options);
+      return this.executePeacefulMove(move, playerId);
     }
   }
 
-  async executeBattle(move: BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<BattleResult> {
+  async executeBattle(move: BattleMove, playerId: string, regions: Region[]): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
 
     console.log('🏛️ BattleManager: Starting battle execution', {
       source: sourceRegionIndex,
       target: targetRegionIndex,
-      soldiers: soldierCount,
-      localMode: options?.localMode
+      soldiers: soldierCount
     });
 
     try {
-      const result = await this.executeBattleSequence(move, playerId, regions, options, sourceRegionIndex, targetRegionIndex, soldierCount);
+      const result = await this.executeBattleSequence(move, playerId, regions, sourceRegionIndex, targetRegionIndex, soldierCount);
       console.log('✅ BattleManager: Battle completed successfully');
       return result;
 
@@ -86,7 +78,6 @@ export class BattleManager {
     move: BattleMove,
     playerId: string,
     regions: Region[],
-    options: ExecuteMoveOptions | undefined,
     sourceRegionIndex: number,
     targetRegionIndex: number,
     soldierCount: number
@@ -94,7 +85,7 @@ export class BattleManager {
     this.timeoutManager.startBattleTimeout(targetRegionIndex);
 
     const animationState = await this.startBattleAnimation(move, sourceRegionIndex, targetRegionIndex, soldierCount);
-    const result = await this.executeMoveOnServer(move, playerId, options);
+    const result = await this.apiClient.executeMove(move, playerId);
 
     if (!result.success) {
       throw new Error(result.error || 'Battle failed');
@@ -129,16 +120,6 @@ export class BattleManager {
     await new Promise(resolve => setTimeout(resolve, 700));
 
     return animationState;
-  }
-
-  private async executeMoveOnServer(
-    move: BattleMove,
-    playerId: string,
-    options: ExecuteMoveOptions | undefined
-  ): Promise<BattleResult> {
-    return options?.localMode
-      ? await this.localExecutor.execute(move, playerId)
-      : await this.apiClient.executeMove(move, playerId);
   }
 
   private async playBattleEffects(
@@ -198,18 +179,17 @@ export class BattleManager {
   /**
    * Execute a non-battle move (peaceful territory occupation)
    */
-  async executePeacefulMove(move: BattleMove, playerId: string, options?: ExecuteMoveOptions): Promise<BattleResult> {
+  async executePeacefulMove(move: BattleMove, playerId: string): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
 
     console.log('🕊️ BattleManager: Executing peaceful move', {
       source: sourceRegionIndex,
       target: targetRegionIndex,
-      soldiers: soldierCount,
-      localMode: options?.localMode
+      soldiers: soldierCount
     });
 
     try {
-      const result = await this.executePeacefulMoveSequence(move, playerId, options, sourceRegionIndex, targetRegionIndex, soldierCount);
+      const result = await this.executePeacefulMoveSequence(move, playerId, sourceRegionIndex, targetRegionIndex, soldierCount);
       console.log('✅ BattleManager: Peaceful move completed successfully');
       this.logFinalMoveState(result, sourceRegionIndex, targetRegionIndex);
       return result;
@@ -222,7 +202,6 @@ export class BattleManager {
   private async executePeacefulMoveSequence(
     move: BattleMove,
     playerId: string,
-    options: ExecuteMoveOptions | undefined,
     sourceRegionIndex: number,
     targetRegionIndex: number,
     soldierCount: number
@@ -234,7 +213,7 @@ export class BattleManager {
 
     await this.playPeacefulMoveAnimation(move, sourceRegionIndex, targetRegionIndex, soldierCount);
 
-    const result = await this.executeMoveOnServer(move, playerId, options);
+    const result = await this.apiClient.executeMove(move, playerId);
 
     if (!result.success) {
       throw new Error(result.error || 'Move failed');

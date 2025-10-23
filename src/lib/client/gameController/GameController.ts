@@ -11,7 +11,6 @@ import { BattleCoordinator } from './BattleCoordinator';
 import { MoveUICoordinator } from './MoveUICoordinator';
 import { GameEndCoordinator } from './GameEndCoordinator';
 import { TempleActionCoordinator } from './TempleActionCoordinator';
-import type { PendingMove } from './types';
 
 /**
  * Single controller that manages all game logic
@@ -63,7 +62,7 @@ export class GameController {
         this.lastTurnNumber = gameData.turnNumber;
         this.undoManager.reset();
       }
-      
+
       this.gameStore.handleGameStateUpdate(gameData);
       // Update tooltips after game state changes from websocket
       this.updateTooltips();
@@ -91,7 +90,7 @@ export class GameController {
 
     // Initialize game store with our callbacks
     const { gameState: initialGameState } = await this.gameStore.initializeGame(
-      (source: number, target: number, count: number) => 
+      (source: number, target: number, count: number) =>
         this.battleCoordinator.handleMoveComplete(source, target, count, () => this.updateTooltips()),
       (newState) => this.moveUICoordinator.handleMoveStateChange(newState, () => this.updateTooltips())
     );
@@ -230,9 +229,9 @@ export class GameController {
    * Undo the last move
    */
   async undo(): Promise<void> {
-    const gameState = get(this.gameStore.gameState);
+    const gameState = get(this.gameStore.gameState) as GameStateData | null;
     const playerSlotIndex = parseInt(this.playerId);
-    
+
     if (!this.undoManager.canUndo(gameState, playerSlotIndex)) {
       console.warn('⚠️ Cannot undo - conditions not met');
       return;
@@ -242,7 +241,7 @@ export class GameController {
 
     // Get the previous state
     const previousState = this.undoManager.undo();
-    
+
     if (!previousState) {
       console.warn('⚠️ No previous state available for undo');
       return;
@@ -273,7 +272,7 @@ export class GameController {
    * Check if undo is currently available
    */
   canUndo(): boolean {
-    const gameState = get(this.gameStore.gameState);
+    const gameState = get(this.gameStore.gameState) as GameStateData | null;
     const playerSlotIndex = parseInt(this.playerId);
     return this.undoManager.canUndo(gameState, playerSlotIndex);
   }
@@ -316,11 +315,11 @@ export class GameController {
    * Update tutorial tooltips based on current game state
    */
   private updateTooltips(): void {
-    const gameState = get(this.gameStore.gameState);
-    const regions = get(this.gameStore.regions);
+    const gameState = get(this.gameStore.gameState) as GameStateData | null;
+    const regions = get(this.gameStore.regions) as any[];
     const currentMoveState = get(this.moveUICoordinator.getMoveStateStore());
 
-    this.tutorialCoordinator.updateTooltips(gameState, regions, currentMoveState);
+    this.tutorialCoordinator.updateTooltips(gameState, regions, currentMoveState as any);
   }
 
   /**

@@ -1,13 +1,12 @@
 import type { GameStateData } from '$lib/game/entities/gameTypes';
-import type { PendingMove, StateSnapshot } from './types';
+import type { StateSnapshot } from './types';
 
 /**
- * Manages undo functionality by tracking state history and pending moves
+ * Manages undo functionality by tracking state history
  * Similar to the old GAS implementation's undoManager.js.html
  */
 export class UndoManager {
   private stateHistory: StateSnapshot[] = [];
-  private pendingMoves: PendingMove[] = [];
   private undoDisabled: boolean = false;
   private currentPlayerSlot: number | null = null;
   
@@ -45,7 +44,7 @@ export class UndoManager {
       return false;
     }
     
-    console.log(`✅ canUndo: true - ${this.stateHistory.length} states in history, ${this.pendingMoves.length} pending moves`);
+    console.log(`✅ canUndo: true - ${this.stateHistory.length} states in history`);
     return true;
   }
   
@@ -80,47 +79,10 @@ export class UndoManager {
     // Remove this state from history (since we're undoing to it)
     this.stateHistory.pop();
     
-    // Remove the most recent move
-    if (this.pendingMoves.length > 0) {
-      this.pendingMoves.pop();
-    }
-    
     console.log(`↩️ UndoManager: Undo to state from ${new Date(previousSnapshot.timestamp).toISOString()}`);
-    console.log(`↩️ UndoManager: ${this.stateHistory.length} states remaining in history, ${this.pendingMoves.length} pending moves remaining`);
+    console.log(`↩️ UndoManager: ${this.stateHistory.length} states remaining in history`);
     
     return previousSnapshot.gameState;
-  }
-  
-  /**
-   * Add a move to the pending moves list
-   */
-  addMove(move: PendingMove): void {
-    this.pendingMoves.push(move);
-    console.log(`📝 UndoManager: Move added (${this.pendingMoves.length} pending moves)`, move);
-  }
-  
-  /**
-   * Get all pending moves that need to be sent to the server
-   */
-  getPendingMoves(): PendingMove[] {
-    return [...this.pendingMoves];
-  }
-  
-  /**
-   * Clear all pending moves (called after successful turn end)
-   */
-  clearMoves(): void {
-    this.pendingMoves = [];
-    console.log('🗑️ UndoManager: Pending moves cleared');
-  }
-  
-  /**
-   * Clear all state history (called at turn end or turn start)
-   */
-  clearHistory(): void {
-    this.stateHistory = [];
-    this.currentPlayerSlot = null;
-    console.log('🗑️ UndoManager: State history cleared');
   }
   
   /**
@@ -128,7 +90,6 @@ export class UndoManager {
    */
   reset(): void {
     this.stateHistory = [];
-    this.pendingMoves = [];
     this.undoDisabled = false;
     this.currentPlayerSlot = null;
     console.log('🔄 UndoManager: Reset complete');
@@ -141,27 +102,4 @@ export class UndoManager {
     this.undoDisabled = true;
     console.log('🚫 UndoManager: Undo disabled');
   }
-  
-  /**
-   * Enable undo
-   */
-  enableUndo(): void {
-    this.undoDisabled = false;
-    console.log('✅ UndoManager: Undo enabled');
-  }
-  
-  /**
-   * Get the number of pending moves
-   */
-  getPendingMoveCount(): number {
-    return this.pendingMoves.length;
-  }
-  
-  /**
-   * Check if there are any pending moves
-   */
-  hasPendingMoves(): boolean {
-    return this.pendingMoves.length > 0;
-  }
 }
-

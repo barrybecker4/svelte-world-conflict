@@ -39,18 +39,4 @@ export class BattleTimeoutManager {
     this.battleTimeouts.forEach(timeout => clearTimeout(timeout));
     this.battleTimeouts.clear();
   }
-
-  /**
-   * Check if there are any active battles
-   */
-  hasActiveBattles(): boolean {
-    return this.battleTimeouts.size > 0;
-  }
-
-  /**
-   * Get list of regions with active battles
-   */
-  getActiveBattleRegions(): number[] {
-    return Array.from(this.battleTimeouts.keys());
-  }
 }
