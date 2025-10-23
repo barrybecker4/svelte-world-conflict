@@ -39,6 +39,13 @@ export function buildWebSocketUrl(gameId: string, config: WebSocketConfig): stri
   const isLocal =
     window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
+  // Validate workerUrl for production
+  if (!isLocal && !config.workerUrl) {
+    const error = 'workerUrl is not defined in WebSocketConfig. Please set WEBSOCKET_WORKER_URL in websocket-config.ts';
+    console.error('[buildWebSocketUrl]', error, {config});
+    throw new Error(error);
+  }
+
   const host = isLocal
     ? config.localHost || 'localhost:8787'
     : config.workerUrl.replace('https://', '').replace('http://', '');
