@@ -116,3 +116,6 @@ playwright/.cache/
 
 # Local development
 .clasp.json
+
+# Reference files (old versions)
+**/OLD_GAS_VERSION/
