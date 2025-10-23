@@ -1,9 +1,11 @@
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+
 /**
  * Manages battle timeouts to prevent stuck battles
  */
 export class BattleTimeoutManager {
   private battleTimeouts = new Map<number, number>();
-  private defaultTimeoutMs = 3000;
+  private defaultTimeoutMs = GAME_CONSTANTS.BATTLE_TIMEOUT_MS;
 
   /**
    * Start battle timeout for a specific region

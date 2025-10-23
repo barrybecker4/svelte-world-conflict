@@ -2,6 +2,7 @@
  * Global store for managing smoke particles across all regions
  */
 import { writable } from 'svelte/store';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export interface SmokeParticle {
   id: number;
@@ -21,7 +22,7 @@ function createSmokeStore() {
     /**
      * Spawn smoke particles at a location
      */
-    spawnAt(x: number, y: number, numParticles: number = 20, duration: number = 3050): void {
+    spawnAt(x: number, y: number, numParticles: number = GAME_CONSTANTS.SMOKE_PARTICLE_COUNT, duration: number = GAME_CONSTANTS.SMOKE_DURATION_MS): void {
       const newParticles: SmokeParticle[] = [];
       const timestamp = Date.now();
 

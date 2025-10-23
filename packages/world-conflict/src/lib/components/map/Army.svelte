@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
   import { smokeStore } from '$lib/client/stores/smokeStore';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   export let x: number;
   export let y: number;
@@ -9,9 +10,6 @@
   export let gameState: GameStateData | null = null;
   export let regions: Region[] = [];
   export let region: Region;
-
-  const MAX_INDIVIDUAL_ARMIES = 16;
-  const ARMIES_PER_ROW = 8;
   let hiddenSoldierIds = new Set<number>(); // Track soldiers hidden during battle animation
   let isBattleInProgress = false; // Track if we're currently processing battle casualties
   let battleEndTimer: number | null = null; // Timer to clear battle state after animation
@@ -22,9 +20,9 @@
   // For display purposes, use visible count (excluding hidden soldiers during battle)
   $: visibleCount = allSoldiers.filter(s => !hiddenSoldierIds.has(s.i)).length;
   $: actualSoldierCount = visibleCount;
-  $: showIndividualArmies = actualSoldierCount > 0 && actualSoldierCount <= MAX_INDIVIDUAL_ARMIES;
-  $: showCountBadge = actualSoldierCount > MAX_INDIVIDUAL_ARMIES;
-  $: templeOffset = hasTemple ? 15 : 0;
+  $: showIndividualArmies = actualSoldierCount > 0 && actualSoldierCount <= GAME_CONSTANTS.MAX_INDIVIDUAL_ARMIES;
+  $: showCountBadge = actualSoldierCount > GAME_CONSTANTS.MAX_INDIVIDUAL_ARMIES;
+  $: templeOffset = hasTemple ? GAME_CONSTANTS.TEMPLE_ARMY_OFFSET_Y : 0;
 
   // Get soldiers that should be rendered at this region
   // IMPORTANT: Soldiers with attackedRegion or movingToRegion stay rendered at their
@@ -158,16 +156,16 @@
   }
 
   function calculateSoldierBasePosition(index: number, totalSoldiers: number, regionData: Region, hasTempleAtRegion?: boolean): { x: number; y: number } {
-    const row = Math.floor(index / ARMIES_PER_ROW);
-    const col = index % ARMIES_PER_ROW;
-    const offsetX = (col - (Math.min(totalSoldiers, ARMIES_PER_ROW) - 1) / 2) * 4;
+    const row = Math.floor(index / GAME_CONSTANTS.ARMIES_PER_ROW);
+    const col = index % GAME_CONSTANTS.ARMIES_PER_ROW;
+    const offsetX = (col - (Math.min(totalSoldiers, GAME_CONSTANTS.ARMIES_PER_ROW) - 1) / 2) * GAME_CONSTANTS.ARMY_OFFSET_X;
 
     // Use provided temple status, or default to current region's temple status
     const regionTempleOffset = hasTempleAtRegion !== undefined
-      ? (hasTempleAtRegion ? 15 : 0)
+      ? (hasTempleAtRegion ? GAME_CONSTANTS.TEMPLE_ARMY_OFFSET_Y : 0)
       : templeOffset;
 
-    const offsetY = row * 3 + regionTempleOffset;
+    const offsetY = row * GAME_CONSTANTS.ARMY_OFFSET_Y + regionTempleOffset;
 
     return {
       x: regionData.x + offsetX,
@@ -202,7 +200,7 @@
       battleEndTimer = setTimeout(() => {
         isBattleInProgress = false;
         battleEndTimer = null;
-      }, 2000) as unknown as number; // 500ms per round delay, plus buffer
+      }, GAME_CONSTANTS.BATTLE_END_WAIT_MS) as unknown as number; // 500ms per round delay, plus buffer
     }
 
     // Handle attacker casualties if this is the source region

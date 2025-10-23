@@ -1,10 +1,7 @@
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import type { DetectedMove } from './MoveDetector';
-
-// Animation duration constants
-const RECRUITMENT_DURATION = 1500; // Time for highlight
-const UPGRADE_DURATION = 1500; // Time for highlight
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 /**
  * Plays simple audio and visual feedback for game moves
@@ -51,7 +48,7 @@ export class FeedbackPlayer {
 
     // Wait for CSS transition to complete
     await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), 700);
+      setTimeout(() => resolve(), GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
     });
   }
 
@@ -68,7 +65,7 @@ export class FeedbackPlayer {
 
     // Wait for highlight duration
     await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), RECRUITMENT_DURATION);
+      setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
     });
   }
 
@@ -85,7 +82,7 @@ export class FeedbackPlayer {
 
     // Wait for highlight duration
     await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), UPGRADE_DURATION);
+      setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
     });
   }
 
@@ -101,7 +98,7 @@ export class FeedbackPlayer {
         detail: {
           regionIndex,
           actionType,
-          duration: 1500
+          duration: GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS
         }
       }));
     }

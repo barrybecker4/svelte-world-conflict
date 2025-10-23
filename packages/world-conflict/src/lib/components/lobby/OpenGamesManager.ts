@@ -4,6 +4,7 @@ import {
   getDefaultPlayerName,
   type BaseSlotInfo
 } from '$lib/client/slots/slotUtils';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export interface GameSlotInfo extends BaseSlotInfo {
   canJoin: boolean;
@@ -99,7 +100,7 @@ export class OpenGamesManager {
       if (!this.isDestroyed) {
         this.loadOpenGames();
       }
-    }, 10000);
+    }, GAME_CONSTANTS.LOBBY_POLL_INTERVAL_MS);
     console.log(`📅 Started polling interval: ${this.refreshInterval}`);
   }
 
@@ -146,13 +147,13 @@ export class OpenGamesManager {
         const errorMsg = errorData.error || 'Failed to join game';
         console.error('Join game failed:', errorData);
         this.error.set(errorMsg);
-        setTimeout(() => this.error.set(null), 3000);
+        setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
       }
     } catch (err: any) {
       const errorMsg = 'Network error: ' + err.message;
       console.error('Network error joining game:', err);
       this.error.set(errorMsg);
-      setTimeout(() => this.error.set(null), 3000);
+      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
     }
   }
 

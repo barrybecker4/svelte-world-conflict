@@ -25,6 +25,44 @@ export const GAME_CONSTANTS = {
     AI_THINK_TIME: 2000,
     BANNER_TIME: 2000,
 
+    // Animation timing (milliseconds)
+    SOLDIER_MOVE_ANIMATION_MS: 700, // Soldier movement transition duration
+    QUICK_ANIMATION_MS: 300, // Short animations and delays
+    FEEDBACK_HIGHLIGHT_MS: 1500, // Visual feedback highlight duration
+    BATTLE_END_WAIT_MS: 2000, // Wait time after battle ends
+    SMOKE_WAIT_MS: 2500, // Wait for smoke effects to complete
+
+    // Smoke effects
+    SMOKE_DURATION_MS: 2050, // Smoke particle lifetime
+    SMOKE_PARTICLE_COUNT: 20, // Default particles per smoke spawn
+
+    // Timer/Warning
+    TIMER_WARNING_SECONDS: 10, // Time remaining threshold for warnings
+    TIMER_TICK_INTERVAL_MS: 1000, // Timer countdown interval
+    TIMER_GLOW_DURATION_MS: 300, // Timer visual glow duration
+
+    // Network/Polling (milliseconds)
+    ERROR_MESSAGE_TIMEOUT_MS: 3000, // Auto-dismiss error messages
+    LOBBY_POLL_INTERVAL_MS: 10000, // Lobby refresh interval
+
+    // Battle/Combat timing
+    BATTLE_TIMEOUT_MS: 3000, // Default battle timeout to prevent stuck battles
+
+    // AI Processing
+    AI_ACTION_DELAY_MS: 100, // Delay between AI actions for UX
+    MAX_AI_TURNS: 50, // Safety limit to prevent infinite loops
+
+    // Army Display
+    MAX_INDIVIDUAL_ARMIES: 16, // Threshold for showing individual army markers
+    ARMIES_PER_ROW: 8, // Grid layout for army positioning
+    ARMY_OFFSET_X: 4, // Horizontal spacing between armies
+    ARMY_OFFSET_Y: 3, // Vertical spacing between army rows
+    TEMPLE_ARMY_OFFSET_Y: 15, // Additional Y offset when temple present
+
+    // Audio System (milliseconds)
+    AUDIO_WARNING_REPEAT_MS: 500, // Interval for repeating time warnings
+    AUDIO_WARNING_DURATION_MS: 3000, // Default warning sound duration
+
     // Combat
     COMBAT_DICE_SIDES: 6,
 

@@ -1,10 +1,11 @@
 <script lang="ts">
   import { turnTimerStore } from '$lib/client/stores/turnTimerStore';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   $: timeRemaining = $turnTimerStore.timeRemaining;
   $: isRunning = $turnTimerStore.isRunning;
   $: shouldGlow = $turnTimerStore.shouldGlow;
-  $: isWarning = timeRemaining <= 10 && timeRemaining > 0;
+  $: isWarning = timeRemaining <= GAME_CONSTANTS.TIMER_WARNING_SECONDS && timeRemaining > 0;
 </script>
 
 {#if isRunning}

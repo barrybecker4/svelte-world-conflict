@@ -1,8 +1,7 @@
 import { writable } from 'svelte/store';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
-
-const WARNING_TIME = 10; // Start warning at 10 seconds
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 interface TimerState {
     timeRemaining: number;
@@ -29,7 +28,7 @@ function createTurnTimerStore() {
             const newTimeRemaining = state.timeRemaining - 1;
 
             // Play warning sound on every second when time is less than WARNING_TIME
-            if (newTimeRemaining > 0 && newTimeRemaining < WARNING_TIME) {
+            if (newTimeRemaining > 0 && newTimeRemaining < GAME_CONSTANTS.TIMER_WARNING_SECONDS) {
                 console.log(`⏰ Timer warning: ${newTimeRemaining} seconds remaining`);
                 audioSystem.playSound(SOUNDS.ALMOST_OUT_OF_TIME);
             }
@@ -73,7 +72,7 @@ function createTurnTimerStore() {
         // Reset glow after animation duration
         setTimeout(() => {
             update(state => ({ ...state, shouldGlow: false }));
-        }, 300);
+        }, GAME_CONSTANTS.TIMER_GLOW_DURATION_MS);
     }
 
     function startTimer(duration: number, onExpire: () => void) {
@@ -93,7 +92,7 @@ function createTurnTimerStore() {
         });
 
         // Start the countdown
-        intervalId = window.setInterval(tick, 1000);
+        intervalId = window.setInterval(tick, GAME_CONSTANTS.TIMER_TICK_INTERVAL_MS);
     }
 
     function stopTimer() {

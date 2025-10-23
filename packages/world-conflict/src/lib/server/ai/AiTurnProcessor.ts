@@ -10,6 +10,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { ArmyMoveCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import type { Player } from '$lib/game/entities/gameTypes';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 /**
  * Process AI turns until we reach a human player or game ends
@@ -26,7 +27,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
     let currentState = gameState;
     let currentPlayer = currentState.getCurrentPlayer();
     let turnCount = 0;
-    const maxTurns = 50; // Safety limit to prevent infinite loops
+    const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS; // Safety limit to prevent infinite loops
 
     console.log(`Starting AI turn processing - current player: ${currentPlayer?.name} (isAI: ${currentPlayer?.isAI})`);
 
@@ -71,7 +72,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     }
 
                     // Small delay between AI actions for better UX
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.AI_ACTION_DELAY_MS));
                 } else {
                     // Move failed - will end turn below
                     console.log(`AI move failed: ${result.error}. Will end turn.`);

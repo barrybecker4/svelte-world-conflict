@@ -2,6 +2,7 @@ import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import { cloneGameState } from '$lib/game/utils/GameStateUtils';
+import { GAME_CONSTANTS } from '$lib/game/constants';
 
 /**
  * Coordinates animation states for battles and peaceful moves
@@ -102,7 +103,7 @@ export class AnimationStateCoordinator {
     this.dispatchBattleStateUpdate(newAnimationState);
 
     // Wait for CSS transition to complete (soldiers moving from halfway to target)
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS));
     console.log('✅ Conquering soldiers reached target region');
   }
 

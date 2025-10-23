@@ -1,4 +1,5 @@
 import { SOUNDS, type SoundType } from './sounds';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 /**
  * Audio system for World Conflict game
@@ -461,20 +462,20 @@ export class AudioSystem {
         await this.playOursDead();
         setTimeout(async () => {
             await this.playEnemyDead();
-        }, 300);
+        }, GAME_CONSTANTS.QUICK_ANIMATION_MS);
     }
 
     /**
      * Play time warning sound (repeating) (helper method for compatibility)
      */
-    async playTimeWarning(duration: number = 3000): Promise<void> {
+    async playTimeWarning(duration: number = GAME_CONSTANTS.AUDIO_WARNING_DURATION_MS): Promise<void> {
         if (!this.isEnabled) return;
 
         const startTime = Date.now();
         const playWarning = async () => {
             if (Date.now() - startTime < duration) {
                 await this.playAlmostOutOfTime();
-                setTimeout(playWarning, 500);
+                setTimeout(playWarning, GAME_CONSTANTS.AUDIO_WARNING_REPEAT_MS);
             }
         };
         playWarning();

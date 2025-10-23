@@ -1,4 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export interface WaitingRoomSlotInfo {
   type: 'open' | 'creator' | 'taken' | 'ai' | 'disabled';
@@ -58,7 +59,7 @@ export class WaitingRoomManager {
     } catch (err) {
       console.error('❌ Error loading game state:', err);
       this.error.set('Network error loading game');
-      setTimeout(() => this.error.set(null), 3000);
+      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
     } finally {
       this.loading.set(false);
     }
@@ -167,11 +168,11 @@ export class WaitingRoomManager {
       } else {
         const errorData = await response.json() as { error?: string };
         this.error.set(errorData.error || 'Failed to start game');
-        setTimeout(() => this.error.set(null), 3000);
+        setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
       }
     } catch (err) {
       this.error.set('Network error starting game');
-      setTimeout(() => this.error.set(null), 3000);
+      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
     }
   }
 
@@ -194,12 +195,12 @@ export class WaitingRoomManager {
       } else {
         const errorData = await response.json() as { error?: string };
         this.error.set(errorData.error || 'Failed to leave game');
-        setTimeout(() => this.error.set(null), 3000);
+        setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
       }
     } catch (err) {
       console.error('❌ Error leaving game:', err);
       this.error.set('Network error leaving game');
-      setTimeout(() => this.error.set(null), 3000);
+      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
     }
   }
 

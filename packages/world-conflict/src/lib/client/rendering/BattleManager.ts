@@ -4,6 +4,7 @@ import { BattleTimeoutManager } from './BattleTimeoutManager';
 import { GameApiClient, type BattleMove, type BattleResult } from '$lib/client/gameController/GameApiClient';
 import type { Region } from '$lib/game/entities/gameTypes';
 import { clearBattleState, isExpectedValidationError } from '$lib/game/utils/GameStateUtils';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 // Re-export types for backward compatibility
 export type { BattleMove, BattleResult };
@@ -117,7 +118,7 @@ export class BattleManager {
     this.animationCoordinator.dispatchBattleStateUpdate(animationState);
 
     // Wait for soldiers to animate halfway
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS));
 
     return animationState;
   }
@@ -140,7 +141,7 @@ export class BattleManager {
     // Smoke takes 3.05s (matching old GAS version), and the last smoke starts ~600ms before animation completes
     // So we need to wait (3050ms - 600ms) = 2450ms more
     console.log('⏳ Waiting for smoke effects to complete...');
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SMOKE_WAIT_MS));
     console.log('✅ Smoke effects complete');
   }
 
@@ -238,7 +239,7 @@ export class BattleManager {
     this.animationCoordinator.playMoveSound();
 
     // Wait for CSS transition to complete (600ms transition + buffer)
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS));
   }
 
   private logFinalMoveState(result: BattleResult, sourceRegionIndex: number, targetRegionIndex: number): void {

@@ -3,6 +3,7 @@ import { SOUNDS } from '$lib/client/audio/sounds';
 import { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSystem';
 import type { DetectedMove } from './MoveDetector';
 import { FeedbackPlayer } from './FeedbackPlayer';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 /**
  * Coordinates battle replay animations and sound effects
@@ -61,7 +62,7 @@ export class BattleReplayCoordinator {
           }
 
           // Wait for soldiers to move halfway
-          await new Promise(resolve => setTimeout(resolve, 700));
+          await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS));
         }
 
         // Play the full battle animation sequence with casualty callbacks for smoke
@@ -83,7 +84,7 @@ export class BattleReplayCoordinator {
 
         // Wait for smoke animations to complete (matching BattleManager timing)
         console.log('⏳ Waiting for smoke effects to complete...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.BATTLE_END_WAIT_MS));
         console.log('✅ Smoke effects complete');
 
         // Animate surviving attackers moving into the conquered region
@@ -99,8 +100,8 @@ export class BattleReplayCoordinator {
         // Visual feedback highlight
         this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
 
-        // Wait for highlight to show (1500ms as per FeedbackPlayer's highlight duration)
-        await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
+        // Wait for highlight to show (as per FeedbackPlayer's highlight duration)
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS));
       } catch (error) {
         console.error('Failed to play battle animation, falling back to simple feedback:', error);
         await this.playSimpleConquestFeedback(move);
@@ -177,7 +178,7 @@ export class BattleReplayCoordinator {
     }
 
     // Wait for CSS transition to complete (soldiers moving from halfway to target)
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS));
     console.log('✅ Conquering soldiers reached target region');
 
     return true;
@@ -198,7 +199,7 @@ export class BattleReplayCoordinator {
         setTimeout(() => {
           audioSystem.playSound(SOUNDS.REGION_CONQUERED);
           resolve();
-        }, 300);
+        }, GAME_CONSTANTS.QUICK_ANIMATION_MS);
       }, 200);
     });
 
@@ -206,6 +207,6 @@ export class BattleReplayCoordinator {
     this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
 
     // Wait for highlight to show
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), 1500));
+    await new Promise<void>((resolve) => setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS));
   }
 }
