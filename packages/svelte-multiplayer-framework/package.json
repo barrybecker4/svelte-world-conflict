@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "description": "Minimal multiplayer WebSocket framework for Svelte games",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./client": "./src/client/index.ts",
-    "./server": "./src/server/index.ts",
-    "./worker": "./src/worker/index.ts",
-    "./shared": "./src/shared/index.ts"
+    ".": "./dist/index.js",
+    "./client": "./dist/client/index.js",
+    "./server": "./dist/server/index.js",
+    "./worker": "./dist/worker/index.js",
+    "./shared": "./dist/shared/index.js"
+  },
+  "scripts": {
+    "build": "tsc"
   },
   "keywords": [
     "svelte",
