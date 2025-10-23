@@ -138,8 +138,6 @@ export class BattleManager {
   }
 
   private async waitForSmokeEffects(): Promise<void> {
-    // Smoke takes 3.05s (matching old GAS version), and the last smoke starts ~600ms before animation completes
-    // So we need to wait (3050ms - 600ms) = 2450ms more
     console.log('⏳ Waiting for smoke effects to complete...');
     await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.SMOKE_WAIT_MS));
     console.log('✅ Smoke effects complete');

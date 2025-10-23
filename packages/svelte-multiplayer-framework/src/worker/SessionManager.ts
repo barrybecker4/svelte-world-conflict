@@ -134,17 +134,4 @@ export class SessionManager {
   getAllSessionCount(): number {
     return this.sessions.size;
   }
-
-  getAllSessionsDebug(): { sessionId: string; gameId: string | undefined; readyState: number }[] {
-    const sessions = [];
-    for (const [sessionId, ws] of this.sessions.entries()) {
-      sessions.push({
-        sessionId,
-        gameId: this.gameSubscriptions.get(sessionId),
-        readyState: ws.readyState
-      });
-    }
-    return sessions;
-  }
 }
-

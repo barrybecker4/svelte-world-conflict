@@ -21,20 +21,20 @@ export const GAME_CONSTANTS = {
 
     // Game timing
     MOVE_DELAY: 500,
-    PLAYBACK_DELAY: 1000,
-    AI_THINK_TIME: 2000,
+    PLAYBACK_DELAY: 500,
+    AI_THINK_TIME: 1000,
     BANNER_TIME: 2000,
 
     // Animation timing (milliseconds)
-    SOLDIER_MOVE_ANIMATION_MS: 700, // Soldier movement transition duration
+    SOLDIER_MOVE_ANIMATION_MS: 500, // Soldier movement transition duration
     QUICK_ANIMATION_MS: 300, // Short animations and delays
-    FEEDBACK_HIGHLIGHT_MS: 1500, // Visual feedback highlight duration
-    BATTLE_END_WAIT_MS: 2000, // Wait time after battle ends
-    SMOKE_WAIT_MS: 2500, // Wait for smoke effects to complete
+    FEEDBACK_HIGHLIGHT_MS: 1000, // Visual feedback highlight duration
+    BATTLE_END_WAIT_MS: 500, // Wait time after battle ends
+    SMOKE_WAIT_MS: 0, // Wait for smoke effects to complete
 
     // Smoke effects
-    SMOKE_DURATION_MS: 2050, // Smoke particle lifetime
-    SMOKE_PARTICLE_COUNT: 20, // Default particles per smoke spawn
+    SMOKE_DURATION_MS: 500, // Smoke particle lifetime
+    SMOKE_PARTICLE_COUNT: 10, // Default particles per smoke spawn
 
     // Timer/Warning
     TIMER_WARNING_SECONDS: 10, // Time remaining threshold for warnings
