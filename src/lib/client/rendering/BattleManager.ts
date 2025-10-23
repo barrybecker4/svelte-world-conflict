@@ -73,75 +73,126 @@ export class BattleManager {
     });
 
     try {
-      this.timeoutManager.startBattleTimeout(targetRegionIndex);
-
-      // Create and dispatch attacking animation state (soldiers at source with attackedRegion)
-      const animationState = this.animationCoordinator.createAttackingAnimationState(
-        move.gameState,
-        sourceRegionIndex,
-        targetRegionIndex,
-        soldierCount
-      );
-      this.animationCoordinator.dispatchBattleStateUpdate(animationState);
-
-      // Wait for soldiers to animate halfway
-      await new Promise(resolve => setTimeout(resolve, 700));
-
-      // NOW execute on server to validate and persist
-      const result = options?.localMode
-        ? await this.localExecutor.execute(move, playerId)
-        : await this.apiClient.executeMove(move, playerId);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Battle failed');
-      }
-
-      // Play battle animation (shows casualties, sounds, etc)
-      if (result.attackSequence && result.attackSequence.length > 0) {
-        await this.playBattleAnimation(result.attackSequence, regions, sourceRegionIndex, targetRegionIndex);
-
-        // Wait for smoke animations to complete
-        // Smoke takes 3.05s (matching old GAS version), and the last smoke starts ~600ms before animation completes
-        // So we need to wait (3050ms - 600ms) = 2450ms more
-        console.log('⏳ Waiting for smoke effects to complete...');
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        console.log('✅ Smoke effects complete');
-
-        // Animate surviving attackers moving into the conquered region
-        console.log('🏃 Animating conquering soldiers into target region...');
-        await this.animationCoordinator.animateConqueringMove(
-          animationState,
-          result.gameState!,
-          sourceRegionIndex,
-          targetRegionIndex
-        );
-      }
-
-      this.timeoutManager.clearBattleTimeout(targetRegionIndex);
-
-      if (result.gameState) {
-        result.gameState = clearBattleState(result.gameState);
-      }
-
+      const result = await this.executeBattleSequence(move, playerId, regions, options, sourceRegionIndex, targetRegionIndex, soldierCount);
       console.log('✅ BattleManager: Battle completed successfully');
       return result;
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown battle error';
-      // Don't log validation errors as console errors - they're expected game rules
-      if (isExpectedValidationError(errorMessage)) {
-        console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
-      } else {
-        console.error('❌ BattleManager: Battle failed:', error);
-      }
-      this.timeoutManager.clearBattleTimeout(targetRegionIndex);
-
-      return {
-        success: false,
-        error: errorMessage,
-        gameState: clearBattleState(move.gameState)
-      };
+      return this.handleBattleError(error, targetRegionIndex, move);
     }
+  }
+
+  private async executeBattleSequence(
+    move: BattleMove,
+    playerId: string,
+    regions: Region[],
+    options: ExecuteMoveOptions | undefined,
+    sourceRegionIndex: number,
+    targetRegionIndex: number,
+    soldierCount: number
+  ): Promise<BattleResult> {
+    this.timeoutManager.startBattleTimeout(targetRegionIndex);
+
+    const animationState = await this.startBattleAnimation(move, sourceRegionIndex, targetRegionIndex, soldierCount);
+    const result = await this.executeMoveOnServer(move, playerId, options);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Battle failed');
+    }
+
+    await this.playBattleEffects(result, animationState, regions, sourceRegionIndex, targetRegionIndex);
+    
+    this.timeoutManager.clearBattleTimeout(targetRegionIndex);
+
+    if (result.gameState) {
+      result.gameState = clearBattleState(result.gameState);
+    }
+
+    return result;
+  }
+
+  private async startBattleAnimation(
+    move: BattleMove,
+    sourceRegionIndex: number,
+    targetRegionIndex: number,
+    soldierCount: number
+  ): Promise<any> {
+    const animationState = this.animationCoordinator.createAttackingAnimationState(
+      move.gameState,
+      sourceRegionIndex,
+      targetRegionIndex,
+      soldierCount
+    );
+    this.animationCoordinator.dispatchBattleStateUpdate(animationState);
+
+    // Wait for soldiers to animate halfway
+    await new Promise(resolve => setTimeout(resolve, 700));
+
+    return animationState;
+  }
+
+  private async executeMoveOnServer(
+    move: BattleMove,
+    playerId: string,
+    options: ExecuteMoveOptions | undefined
+  ): Promise<BattleResult> {
+    return options?.localMode
+      ? await this.localExecutor.execute(move, playerId)
+      : await this.apiClient.executeMove(move, playerId);
+  }
+
+  private async playBattleEffects(
+    result: BattleResult,
+    animationState: any,
+    regions: Region[],
+    sourceRegionIndex: number,
+    targetRegionIndex: number
+  ): Promise<void> {
+    if (result.attackSequence && result.attackSequence.length > 0) {
+      await this.playBattleAnimation(result.attackSequence, regions, sourceRegionIndex, targetRegionIndex);
+      await this.waitForSmokeEffects();
+      await this.animateConqueringMove(animationState, result, sourceRegionIndex, targetRegionIndex);
+    }
+  }
+
+  private async waitForSmokeEffects(): Promise<void> {
+    // Smoke takes 3.05s (matching old GAS version), and the last smoke starts ~600ms before animation completes
+    // So we need to wait (3050ms - 600ms) = 2450ms more
+    console.log('⏳ Waiting for smoke effects to complete...');
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    console.log('✅ Smoke effects complete');
+  }
+
+  private async animateConqueringMove(
+    animationState: any,
+    result: BattleResult,
+    sourceRegionIndex: number,
+    targetRegionIndex: number
+  ): Promise<void> {
+    console.log('🏃 Animating conquering soldiers into target region...');
+    await this.animationCoordinator.animateConqueringMove(
+      animationState,
+      result.gameState!,
+      sourceRegionIndex,
+      targetRegionIndex
+    );
+  }
+
+  private handleBattleError(error: unknown, targetRegionIndex: number, move: BattleMove): BattleResult {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown battle error';
+    // Don't log validation errors as console errors - they're expected game rules
+    if (isExpectedValidationError(errorMessage)) {
+      console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
+    } else {
+      console.error('❌ BattleManager: Battle failed:', error);
+    }
+    this.timeoutManager.clearBattleTimeout(targetRegionIndex);
+
+    return {
+      success: false,
+      error: errorMessage,
+      gameState: clearBattleState(move.gameState)
+    };
   }
 
   /**
@@ -158,60 +209,81 @@ export class BattleManager {
     });
 
     try {
-      console.log(`🚶 Player Move: ${soldierCount} soldiers moving from ${sourceRegionIndex} to ${targetRegionIndex}`);
-
-      // Wait for next frame to ensure current state is rendered
-      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
-
-      // Create and dispatch peaceful move animation state
-      const animationState = this.animationCoordinator.createPeacefulMoveAnimationState(
-        move.gameState,
-        sourceRegionIndex,
-        targetRegionIndex,
-        soldierCount
-      );
-      this.animationCoordinator.dispatchBattleStateUpdate(animationState);
-
-      // Play movement sound
-      this.animationCoordinator.playMoveSound();
-
-      // Wait for CSS transition to complete (600ms transition + buffer)
-      await new Promise(resolve => setTimeout(resolve, 700));
-
-      // NOW execute on server to validate and persist
-      const result = options?.localMode
-        ? await this.localExecutor.execute(move, playerId)
-        : await this.apiClient.executeMove(move, playerId);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Move failed');
-      }
-
+      const result = await this.executePeacefulMoveSequence(move, playerId, options, sourceRegionIndex, targetRegionIndex, soldierCount);
       console.log('✅ BattleManager: Peaceful move completed successfully');
-
-      // Log final state
-      if (result.gameState) {
-        const finalSourceSoldiers = result.gameState.soldiersByRegion?.[sourceRegionIndex] || [];
-        const finalTargetSoldiers = result.gameState.soldiersByRegion?.[targetRegionIndex] || [];
-        console.log(`📊 FINAL STATE - Source ${sourceRegionIndex} has ${finalSourceSoldiers.length} soldiers:`, finalSourceSoldiers.map(s => s.i));
-        console.log(`📊 FINAL STATE - Target ${targetRegionIndex} has ${finalTargetSoldiers.length} soldiers:`, finalTargetSoldiers.map(s => s.i));
-      }
-
+      this.logFinalMoveState(result, sourceRegionIndex, targetRegionIndex);
       return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown move error';
-      // Don't log validation errors as console errors - they're expected game rules
-      if (isExpectedValidationError(errorMessage)) {
-        console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
-      } else {
-        console.error('❌ BattleManager: Peaceful move failed:', error);
-      }
 
-      return {
-        success: false,
-        error: errorMessage
-      };
+    } catch (error) {
+      return this.handlePeacefulMoveError(error);
     }
+  }
+
+  private async executePeacefulMoveSequence(
+    move: BattleMove,
+    playerId: string,
+    options: ExecuteMoveOptions | undefined,
+    sourceRegionIndex: number,
+    targetRegionIndex: number,
+    soldierCount: number
+  ): Promise<BattleResult> {
+    console.log(`🚶 Player Move: ${soldierCount} soldiers moving from ${sourceRegionIndex} to ${targetRegionIndex}`);
+
+    // Wait for next frame to ensure current state is rendered
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+
+    await this.playPeacefulMoveAnimation(move, sourceRegionIndex, targetRegionIndex, soldierCount);
+
+    const result = await this.executeMoveOnServer(move, playerId, options);
+
+    if (!result.success) {
+      throw new Error(result.error || 'Move failed');
+    }
+
+    return result;
+  }
+
+  private async playPeacefulMoveAnimation(
+    move: BattleMove,
+    sourceRegionIndex: number,
+    targetRegionIndex: number,
+    soldierCount: number
+  ): Promise<void> {
+    const animationState = this.animationCoordinator.createPeacefulMoveAnimationState(
+      move.gameState,
+      sourceRegionIndex,
+      targetRegionIndex,
+      soldierCount
+    );
+    this.animationCoordinator.dispatchBattleStateUpdate(animationState);
+    this.animationCoordinator.playMoveSound();
+
+    // Wait for CSS transition to complete (600ms transition + buffer)
+    await new Promise(resolve => setTimeout(resolve, 700));
+  }
+
+  private logFinalMoveState(result: BattleResult, sourceRegionIndex: number, targetRegionIndex: number): void {
+    if (result.gameState) {
+      const finalSourceSoldiers = result.gameState.soldiersByRegion?.[sourceRegionIndex] || [];
+      const finalTargetSoldiers = result.gameState.soldiersByRegion?.[targetRegionIndex] || [];
+      console.log(`📊 FINAL STATE - Source ${sourceRegionIndex} has ${finalSourceSoldiers.length} soldiers:`, finalSourceSoldiers.map(s => s.i));
+      console.log(`📊 FINAL STATE - Target ${targetRegionIndex} has ${finalTargetSoldiers.length} soldiers:`, finalTargetSoldiers.map(s => s.i));
+    }
+  }
+
+  private handlePeacefulMoveError(error: unknown): BattleResult {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown move error';
+    // Don't log validation errors as console errors - they're expected game rules
+    if (isExpectedValidationError(errorMessage)) {
+      console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
+    } else {
+      console.error('❌ BattleManager: Peaceful move failed:', error);
+    }
+
+    return {
+      success: false,
+      error: errorMessage
+    };
   }
 
   /**

@@ -89,10 +89,14 @@ export class BattleAnimationSystem {
       return;
     }
 
-    // Find the SVG element within the map container
     const screenCoords = this.getScreenCoords(region, regions);
+    const textElement = this.createFloatingTextElement(textEvent, screenCoords);
+    
+    this.ensureFloatingTextStyles();
+    this.displayFloatingText(textElement);
+  }
 
-    // Create floating text element
+  private createFloatingTextElement(textEvent: FloatingTextEvent, screenCoords: {x: number, y: number}): HTMLElement {
     const textElement = document.createElement('div');
     textElement.className = 'floating-text';
     textElement.style.cssText = `
@@ -109,19 +113,26 @@ export class BattleAnimationSystem {
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     `;
     textElement.textContent = textEvent.text;
+    return textElement;
+  }
 
-    // Add styles if not already present
+  private ensureFloatingTextStyles(): void {
     if (!document.getElementById('floating-text-styles')) {
       const style = document.createElement('style');
       style.id = 'floating-text-styles';
       style.textContent = TEXT_CONTENT_STYLE;
       document.head.appendChild(style);
     }
+  }
 
+  private displayFloatingText(textElement: HTMLElement): void {
     // Append to document body instead of map container for fixed positioning
     document.body.appendChild(textElement);
     this.activeAnimations.add(textElement);
-    console.log('Floating text element added to DOM at screen coords:', { x: screenCoords.x, y: screenCoords.y });
+    console.log('Floating text element added to DOM at screen coords:', { 
+      x: textElement.style.left, 
+      y: textElement.style.top 
+    });
 
     // Remove after animation
     setTimeout(() => {

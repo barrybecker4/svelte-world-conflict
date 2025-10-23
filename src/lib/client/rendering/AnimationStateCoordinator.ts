@@ -83,8 +83,34 @@ export class AnimationStateCoordinator {
     sourceRegion: number,
     targetRegion: number
   ): Promise<void> {
-    // Check if conquest was successful by seeing if there are attackers at target
-    // AND that the target ownership changed to the attacker's team
+    if (!this.isConquestSuccessful(finalGameState, sourceRegion, targetRegion)) {
+      console.log('⚔️ Attack failed or no survivors, skipping conquest animation');
+      return;
+    }
+
+    const targetSoldiersInFinal = finalGameState.soldiersByRegion?.[targetRegion] || [];
+    console.log(`🏆 Conquest successful! Animating ${targetSoldiersInFinal.length} soldiers into region ${targetRegion}`);
+
+    const newAnimationState = this.createConquestAnimationState(
+      currentAnimationState,
+      finalGameState,
+      sourceRegion,
+      targetRegion,
+      targetSoldiersInFinal
+    );
+
+    this.dispatchBattleStateUpdate(newAnimationState);
+
+    // Wait for CSS transition to complete (soldiers moving from halfway to target)
+    await new Promise(resolve => setTimeout(resolve, 700));
+    console.log('✅ Conquering soldiers reached target region');
+  }
+
+  private isConquestSuccessful(
+    finalGameState: GameStateData,
+    sourceRegion: number,
+    targetRegion: number
+  ): boolean {
     const targetSoldiersInFinal = finalGameState.soldiersByRegion?.[targetRegion] || [];
     const sourceOwner = finalGameState.ownersByRegion?.[sourceRegion];
     const targetOwner = finalGameState.ownersByRegion?.[targetRegion];
@@ -92,27 +118,22 @@ export class AnimationStateCoordinator {
     // Only animate if:
     // 1. There are soldiers at the target (attackers survived)
     // 2. Target is now owned by the same player as source (conquest successful)
-    const conquestSuccessful = targetSoldiersInFinal.length > 0 && sourceOwner === targetOwner;
+    return targetSoldiersInFinal.length > 0 && sourceOwner === targetOwner;
+  }
 
-    if (!conquestSuccessful) {
-      console.log('⚔️ Attack failed or no survivors, skipping conquest animation');
-      return; // Attack failed or no survivors
-    }
-
-    console.log(`🏆 Conquest successful! Animating ${targetSoldiersInFinal.length} soldiers into region ${targetRegion}`);
-
-    // Create new animation state with survivors still at source
+  private createConquestAnimationState(
+    currentAnimationState: GameStateData,
+    finalGameState: GameStateData,
+    sourceRegion: number,
+    targetRegion: number,
+    targetSoldiersInFinal: any[]
+  ): GameStateData {
     const newAnimationState = cloneGameState(finalGameState);
-
-    // Get the soldier IDs that survived (now at target in final state)
-    const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
-
-    // Get soldiers currently at source with attackedRegion
-    const currentSourceSoldiers = currentAnimationState.soldiersByRegion?.[sourceRegion] || [];
-
-    // Find the attacking soldiers that survived (match IDs)
-    const survivingAttackers = currentSourceSoldiers.filter((s: any) =>
-      s.attackedRegion === targetRegion && survivorIds.has(s.i)
+    const survivingAttackers = this.findSurvivingAttackers(
+      currentAnimationState,
+      targetSoldiersInFinal,
+      sourceRegion,
+      targetRegion
     );
 
     console.log(`Found ${survivingAttackers.length} surviving attackers to animate (out of ${targetSoldiersInFinal.length} total)`);
@@ -127,12 +148,25 @@ export class AnimationStateCoordinator {
     // Clear target region (soldiers will animate there)
     newAnimationState.soldiersByRegion[targetRegion] = [];
 
-    // Dispatch animation state update
-    this.dispatchBattleStateUpdate(newAnimationState);
+    return newAnimationState;
+  }
 
-    // Wait for CSS transition to complete (soldiers moving from halfway to target)
-    await new Promise(resolve => setTimeout(resolve, 700));
-    console.log('✅ Conquering soldiers reached target region');
+  private findSurvivingAttackers(
+    currentAnimationState: GameStateData,
+    targetSoldiersInFinal: any[],
+    sourceRegion: number,
+    targetRegion: number
+  ): any[] {
+    // Get the soldier IDs that survived (now at target in final state)
+    const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
+
+    // Get soldiers currently at source with attackedRegion
+    const currentSourceSoldiers = currentAnimationState.soldiersByRegion?.[sourceRegion] || [];
+
+    // Find the attacking soldiers that survived (match IDs)
+    return currentSourceSoldiers.filter((s: any) =>
+      s.attackedRegion === targetRegion && survivorIds.has(s.i)
+    );
   }
 
   /**
