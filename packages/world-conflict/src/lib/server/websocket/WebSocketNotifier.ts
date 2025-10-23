@@ -62,18 +62,29 @@ class WebSocketNotifier {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('WebSocket worker returned error:', {
+                console.error('❌ WebSocket worker returned error:', {
                     status: response.status,
                     statusText: response.statusText,
-                    body: errorText
+                    body: errorText,
+                    workerUrl,
+                    gameId,
+                    type
                 });
-                throw new Error(`Failed to notify WebSocket worker: ${response.statusText}`);
+                throw new Error(`Failed to notify WebSocket worker: ${response.statusText} (${response.status})`);
             }
 
-            console.log(`${type} sent for game ${gameId}`);
+            const result = await response.json();
+            console.log(`✅ ${type} notification sent successfully for game ${gameId}:`, result);
         } catch (error) {
-            console.error('Error notifying WebSocket worker:', error);
+            console.error('❌ Error notifying WebSocket worker:', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                workerUrl,
+                gameId,
+                type
+            });
             // Don't throw - we don't want to fail the request if notifications fail
+            // But this needs investigation if it happens repeatedly
         }
     }
 

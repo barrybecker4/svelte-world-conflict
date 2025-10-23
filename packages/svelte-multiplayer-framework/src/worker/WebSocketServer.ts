@@ -82,6 +82,13 @@ export class WebSocketServer {
    * Handle HTTP notification requests (from the main app)
    */
   async handleNotification(request: Request): Promise<Response> {
+    const corsHeaders = {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    };
+
     try {
       const body = await request.json();
       const { gameId, message } = body as { gameId: string; message: any };
@@ -93,7 +100,7 @@ export class WebSocketServer {
           }),
           {
             status: 400,
-            headers: { 'Content-Type': 'application/json' }
+            headers: corsHeaders
           }
         );
       }
@@ -109,7 +116,7 @@ export class WebSocketServer {
         }),
         {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: corsHeaders
         }
       );
     } catch (error) {
@@ -121,7 +128,7 @@ export class WebSocketServer {
         }),
         {
           status: 500,
-          headers: { 'Content-Type': 'application/json' }
+          headers: corsHeaders
         }
       );
     }

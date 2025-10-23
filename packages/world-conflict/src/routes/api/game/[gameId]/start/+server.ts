@@ -118,7 +118,7 @@ function fillRemainingSlotsWithAI(game: any): any[] {
 
                 players.push({
                     id: `ai_${slot.index}`,
-                    index: slot.index,
+                    slotIndex: slot.index,
                     name: slot.defaultName || `AI Player ${slot.index + 1}`,
                     color: getPlayerColor(slot.index),
                     isAI: true,
@@ -137,7 +137,7 @@ function fillRemainingSlotsWithAI(game: any): any[] {
             const aiIndex = players.length;
             players.push({
                 id: `ai_${aiIndex}`,
-                index: aiIndex,
+                slotIndex: aiIndex,
                 name: `AI Player ${aiIndex + 1}`,
                 color: getPlayerColor(aiIndex),
                 isAI: true,
