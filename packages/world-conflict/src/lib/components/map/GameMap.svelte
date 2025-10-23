@@ -3,10 +3,10 @@
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
   import { getPlayerMapColor, getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import type { TooltipData } from '$lib/client/feedback/TutorialTips';
-  import { smokeStore } from '$lib/client/stores/smokeStore';
   import SvgDefinitions from './SvgDefinitions.svelte';
   import RegionRenderer from './RegionRenderer.svelte';
   import Army from './Army.svelte';
+  import SmokeLayer from './SmokeLayer.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
 
   export let regions: Region[] = [];
@@ -32,40 +32,9 @@
 
   let mapContainerElement: HTMLDivElement;
   let battlesInProgress = new Set<number>();
-  let animationTick = 0;
-
-  // Animation ticker for smoke particles
-  let animationFrame: number | null = null;
-  let isAnimating = false;
-
-  function startAnimationLoop() {
-    if (isAnimating) return; // Already running
-
-    isAnimating = true;
-    function tick() {
-      animationTick = Date.now();
-      if ($smokeStore.length > 0) {
-        animationFrame = requestAnimationFrame(tick);
-      } else {
-        // No more particles, stop the loop
-        isAnimating = false;
-        animationFrame = null;
-      }
-    }
-    tick();
-  }
-
-  // Start/stop animation loop based on smoke particles
-  $: if ($smokeStore.length > 0 && !isAnimating) {
-    startAnimationLoop();
-  }
 
   onDestroy(() => {
-    if (animationFrame !== null) {
-      cancelAnimationFrame(animationFrame);
-      animationFrame = null;
-      isAnimating = false;
-    }
+    // Cleanup if needed
   });
 
   // Bind the internal element to the exported prop
@@ -245,35 +214,7 @@
     </g>
 
     <!-- Smoke layer (top-most) - rendered above everything -->
-    <g class="smoke-layer">
-    {#each $smokeStore as particle (particle.id)}
-      {@const age = animationTick - particle.timestamp}
-      {@const progress = Math.min(age / 3050, 1)}
-      {@const opacity = Math.max(0, 0.4 * (1.0 - progress))}
-      {@const currentY = particle.y - (progress * 25 + Math.random())}
-      {@const currentR = 2 + (progress * 6)}
-
-      <!-- Outer glow (blurred) -->
-      <circle
-        class="smoke-particle-glow"
-        cx={particle.x + Math.random() * 20 * progress}
-        cy={currentY}
-        r={currentR * 1.5}
-        fill="#222"
-        fill-opacity={opacity * 0.25}
-      />
-
-      <!-- Main particle -->
-      <circle
-        class="smoke-particle"
-        cx={particle.x}
-        cy={currentY}
-        r={currentR}
-        fill="#111"
-        fill-opacity={opacity * 0.35}
-      />
-    {/each}
-    </g>
+    <SmokeLayer />
   </svg>
 
   <!-- Tutorial Tooltips -->
@@ -308,16 +249,6 @@
   .map-svg {
     width: 100%;
     height: 100%;
-  }
-
-  /* Smoke particle styling - matches old GAS version with box-shadow glow effect */
-  :global(.smoke-particle),
-  :global(.smoke-particle-glow) {
-    pointer-events: none;
-  }
-
-  :global(.smoke-particle-glow) {
-    filter: blur(2px);
   }
 
   /* Responsive adjustments */

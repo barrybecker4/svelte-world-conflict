@@ -83,7 +83,7 @@ export class BattleReplayCoordinator {
 
         // Wait for smoke animations to complete (matching BattleManager timing)
         console.log('⏳ Waiting for smoke effects to complete...');
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         console.log('✅ Smoke effects complete');
 
         // Animate surviving attackers moving into the conquered region
