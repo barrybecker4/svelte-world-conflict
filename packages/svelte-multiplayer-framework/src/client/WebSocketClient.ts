@@ -26,90 +26,131 @@ export class WebSocketClient {
   async connect(gameId: string): Promise<void> {
     this.gameId = gameId;
 
-    return new Promise((resolve, reject) => {
-      // Track if we've already resolved/rejected
-      let settled = false;
+    try {
+      const wsUrl = buildWebSocketUrl(gameId, this.config);
+      console.log('Connecting to WebSocket:', wsUrl);
 
+      this.ws = new WebSocket(wsUrl);
+
+      // Set up handlers that persist for the lifetime of the connection
+      this.setupOperationalHandlers();
+
+      // Wait for connection to establish (one-time)
+      await this.waitForConnection();
+    } catch (error) {
+      this.clearConnectionTimeout();
+      throw error;
+    }
+  }
+
+  /**
+   * Set up message handler that persists after connection
+   */
+  private setupOperationalHandlers(): void {
+    if (!this.ws) return;
+
+    // Handle incoming messages (persists for lifetime of connection)
+    this.ws.onmessage = (event) => {
       try {
-        const wsUrl = buildWebSocketUrl(gameId, this.config);
-        console.log('Connecting to WebSocket:', wsUrl);
-
-        this.ws = new WebSocket(wsUrl);
-
-        // Set up connection timeout - MUST clear when connection succeeds/fails
-        this.connectionTimeout = setTimeout(() => {
-          if (!settled && this.ws?.readyState !== WebSocket.OPEN) {
-            settled = true;
-            console.error('❌ WebSocket connection timeout');
-            this.cleanup();
-            reject(new Error('WebSocket connection timeout'));
-          }
-        }, 10000);
-
-        this.ws.onopen = () => {
-          if (settled) return;
-          settled = true;
-
-          console.log('WebSocket connected');
-          this.clearConnectionTimeout();
-          this.connected.set(true);
-
-          this.send({ type: 'subscribe', gameId });
-          this.messageHandler.triggerConnected();
-
-          resolve();
-        };
-
-        this.ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            console.log('📨 WebSocket message received:', {
-              type: message.type,
-              gameId: message.gameId,
-              hasGameState: !!message.gameState
-            });
-            this.messageHandler.handleMessage(message);
-          } catch (error) {
-            console.error('❌ Error parsing WebSocket message:', error);
-            this.messageHandler.triggerError('Failed to parse message');
-          }
-        };
-
-        this.ws.onclose = (event) => {
-          console.log(
-            `🔌 WebSocket closed: code=${event.code}, reason=${event.reason || 'none'}`
-          );
-          this.clearConnectionTimeout();
-          this.connected.set(false);
-          this.messageHandler.triggerDisconnected();
-
-          // If we haven't settled yet, this is an error
-          if (!settled) {
-            settled = true;
-            reject(
-              new Error(`WebSocket closed before connection established: ${event.code}`)
-            );
-          }
-        };
-
-        this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-          this.clearConnectionTimeout();
-          this.messageHandler.triggerError('WebSocket connection failed');
-
-          // Only reject if we haven't already settled
-          if (!settled) {
-            settled = true;
-            reject(new Error('WebSocket connection failed'));
-          }
-        };
+        const message = JSON.parse(event.data);
+        console.log('📨 WebSocket message received:', {
+          type: message.type,
+          gameId: message.gameId,
+          hasGameState: !!message.gameState
+        });
+        this.messageHandler.handleMessage(message);
       } catch (error) {
-        if (!settled) {
-          settled = true;
-          this.clearConnectionTimeout();
-          reject(error);
-        }
+        console.error('❌ Error parsing WebSocket message:', error);
+        this.messageHandler.triggerError('Failed to parse message');
       }
+    };
+
+    // Handle disconnection (after successful connection)
+    this.ws.onclose = (event) => {
+      console.log(
+        `🔌 WebSocket closed: code=${event.code}, reason=${event.reason || 'none'}`
+      );
+      this.connected.set(false);
+      this.messageHandler.triggerDisconnected();
+    };
+  }
+
+  /**
+   * Wait for connection to establish, fail, or timeout
+   * Uses Promise.race to handle all outcomes
+   */
+  private waitForConnection(): Promise<void> {
+    return Promise.race([
+      this.waitForOpen(),
+      this.waitForFailure(),
+      this.waitForTimeout(10000)
+    ]);
+  }
+
+  /**
+   * Resolves when WebSocket opens successfully
+   */
+  private waitForOpen(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.ws) {
+        resolve();
+        return;
+      }
+
+      this.ws.onopen = () => {
+        console.log('WebSocket connected');
+        this.clearConnectionTimeout();
+        this.connected.set(true);
+
+        this.send({ type: 'subscribe', gameId: this.gameId! });
+        this.messageHandler.triggerConnected();
+
+        resolve();
+      };
+    });
+  }
+
+  /**
+   * Rejects when WebSocket fails or closes before connecting
+   */
+  private waitForFailure(): Promise<void> {
+    return new Promise((_, reject) => {
+      if (!this.ws) {
+        reject(new Error('WebSocket not initialized'));
+        return;
+      }
+
+      // Temporarily override error handler for initial connection
+      this.ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        this.clearConnectionTimeout();
+        this.messageHandler.triggerError('WebSocket connection failed');
+        reject(new Error('WebSocket connection failed'));
+      };
+
+      // Temporarily override close handler for initial connection
+      this.ws.onclose = (event) => {
+        console.log(`🔌 WebSocket closed: code=${event.code}`);
+        this.clearConnectionTimeout();
+        this.connected.set(false);
+        this.messageHandler.triggerDisconnected();
+        reject(new Error(`WebSocket closed before connection established: ${event.code}`));
+      };
+    });
+  }
+
+  /**
+   * Rejects after timeout period
+   */
+  private waitForTimeout(ms: number): Promise<void> {
+    return new Promise((_, reject) => {
+      this.connectionTimeout = setTimeout(() => {
+        if (this.ws?.readyState !== WebSocket.OPEN) {
+          console.error('❌ WebSocket connection timeout');
+          this.cleanup();
+          reject(new Error('WebSocket connection timeout'));
+        }
+      }, ms);
     });
   }
 
