@@ -8,7 +8,13 @@ You were correct! The AI players were making moves on the server, but the WebSoc
 
 After your first deployment, you encountered: `❌ BattleManager: Battle failed: Error: workerUrl is not defined`
 
-This was a red herring - the workerUrl IS defined, but the error was happening because of missing CORS headers on the WebSocket worker's `/notify` endpoint, which caused the WebSocket connection to fail silently during battles.
+### Root Cause Discovered!
+
+This error was actually a **JavaScript reference error in the error-handling code itself**! 
+
+In `WebSocketNotifier.ts`, the `catch` block was trying to log `workerUrl`, but that variable was only defined inside the `try` block. When any error occurred in the WebSocket notification code, JavaScript would throw `ReferenceError: workerUrl is not defined` while trying to log the error, completely masking the **actual** error.
+
+This is a classic bug where poor error handling makes debugging nearly impossible.
 
 ## Issues Found and Fixed
 
@@ -42,16 +48,51 @@ if (!isLocal && !config.workerUrl) {
 
 This helps diagnose configuration issues faster.
 
-### 3. **Improved Error Logging**
+### 3. **Fixed Variable Scoping Bug in Error Handler** (Critical!)
 **File:** `packages/world-conflict/src/lib/server/websocket/WebSocketNotifier.ts`
 
-Enhanced error logging to better diagnose WebSocket notification failures. Now logs:
-- Full request details on errors
-- Worker URL being used
-- Success/failure status with emojis for easy scanning
-- Full error stack traces
+**Problem:** The error `"workerUrl is not defined"` was actually a JavaScript `ReferenceError`! The `catch` block was trying to log `workerUrl`, but it was only defined inside the `try` block.
 
-### 4. **AI Player Field Name Bug** (Secondary Issue)
+**Fix:** Moved `workerUrl` declaration outside the try-catch:
+```typescript
+private async send(gameId: string, type: string, gameState: any): Promise<void> {
+    let workerUrl: string | undefined;  // Now accessible in catch block
+    try {
+        workerUrl = this.getWorkerUrl();
+        // ... rest of code
+    } catch (error) {
+        console.error('❌ Error notifying WebSocket worker:', {
+            workerUrl: workerUrl || 'undefined',  // Safe to reference now
+            // ... other error details
+        });
+    }
+}
+```
+
+This was masking the **real** error that was occurring!
+
+### 4. **Added Better Logging and Validation**
+**Files:** 
+- `packages/world-conflict/src/lib/server/websocket/WebSocketNotifier.ts`
+- `packages/world-conflict/src/lib/websocket-config.ts`
+
+Added detailed logging to `getWorkerHttpUrl()` to see exactly what URL is being used:
+```typescript
+export function getWorkerHttpUrl(isLocal: boolean = false): string {
+    const url = isLocal ? 'http://localhost:8787' : WEBSOCKET_WORKER_URL;
+    console.log('[getWorkerHttpUrl]', { isLocal, url, constantValue: WEBSOCKET_WORKER_URL });
+    
+    if (!url || url === 'undefined') {
+        throw new Error(`WebSocket worker URL is not defined!`);
+    }
+    
+    return url;
+}
+```
+
+Enhanced error logging throughout to better diagnose WebSocket notification failures.
+
+### 5. **AI Player Field Name Bug** (Secondary Issue)
 **File:** `packages/world-conflict/src/routes/api/game/[gameId]/start/+server.ts`
 
 AI players created in the `fillRemainingSlotsWithAI` function were using `index` instead of `slotIndex`:
