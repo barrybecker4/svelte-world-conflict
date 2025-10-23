@@ -1,0 +1,73 @@
+<script>
+// singleton instance of the uiCallbacks
+class UiCallbacks {
+
+    constructor() {
+    }
+    setRegionSelectedCB(regionSelected) {
+        this.regionSelected = regionSelected;
+    }
+    setTempleSelectedCB(templeSelected) {
+        this.templeSelected = templeSelected;
+    }
+    setSoldierSelectedCB(soldierSelected) {
+        this.soldierSelected = soldierSelected;
+    }
+    setBuildCB(build) {
+        this.build = build;
+    }
+    setUndoCB(undo) {
+        this.undo = undo;
+    }
+    setResignCB(resign) {
+        this.resign = resign;
+    }
+    setSetupPlayerButtonsCB(setupPlayerButtons) {
+        this.setupPlayerButtons = setupPlayerButtons;
+    }
+    setSetupAiLevelCB(setupAiLevel) {
+        this.setupAiLevel = setupAiLevel;
+    }
+    setSetupTurnCountCB(setupTurnCount) {
+        this.setupTurnCount = setupTurnCount;
+    }
+    setSetupTimeLimitCB(setupTimeLimit) {
+        this.setupTimeLimit = setupTimeLimit;
+    }
+    setSetupMapSizeCB(setupMapSize) {
+        this.setupMapSize = setupMapSize;
+    }
+
+    moveEndTasks() {
+        domUtils.hide('resign');
+        erisk.stopExpirationTimer();
+        this.clearAll();
+    }
+
+    /**
+     * This is the handler that gets attached to most DOM elements.
+     * Delegation through UI callbacks allows us to react differently depending on game-state.
+     */
+    invokeCallback(object, type, event) {
+        const callback = this[type];
+        if (callback) {
+            audio.playSound(CONSTS.SOUNDS.CLICK);
+            callback(object);
+        }
+        if (event.target.href && event.target.href !== "#") {
+            return 1;
+        }
+
+        event.stopPropagation();
+        return 0;
+    }
+
+    clearAll() {
+         for (const prop in Object.keys(this)) {
+             delete this[prop];
+         }
+    }
+}
+
+const uiCallbacks = new UiCallbacks();
+</script>

@@ -35,8 +35,9 @@ class WebSocketNotifier {
     }
 
     private async send(gameId: string, type: string, gameState: any): Promise<void> {
+        let workerUrl: string | undefined;
         try {
-            const workerUrl = this.getWorkerUrl();
+            workerUrl = this.getWorkerUrl();
             console.log('Notifying WebSocket worker:', {
                 url: workerUrl,
                 type,
@@ -79,7 +80,7 @@ class WebSocketNotifier {
             console.error('❌ Error notifying WebSocket worker:', {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
-                workerUrl,
+                workerUrl: workerUrl || 'undefined',
                 gameId,
                 type
             });

@@ -46,5 +46,12 @@ export function buildWebSocketUrl(gameId: string): string {
  * @returns HTTP URL for the worker
  */
 export function getWorkerHttpUrl(isLocal: boolean = false): string {
-    return isLocal ? 'http://localhost:8787' : WEBSOCKET_WORKER_URL;
+    const url = isLocal ? 'http://localhost:8787' : WEBSOCKET_WORKER_URL;
+    console.log('[getWorkerHttpUrl]', { isLocal, url, constantValue: WEBSOCKET_WORKER_URL });
+    
+    if (!url || url === 'undefined') {
+        throw new Error(`WebSocket worker URL is not defined! isLocal=${isLocal}, WEBSOCKET_WORKER_URL=${WEBSOCKET_WORKER_URL}`);
+    }
+    
+    return url;
 }

@@ -1,0 +1,440 @@
+<script>
+/**
+ * Map Renderer Component - renders the game map, including regions, soldiers, temples,
+ * highlighting, and other visual effects on the map.
+ */
+erisk.mapRenderer = (function() {
+    const REGION_HIGHLIGHT_OPACITY = 0.16;
+    const my = {};
+    const { elem, div, $, append, onClickOrTap, toggleClass, setTransform } = domUtils;
+    const { projectPoint, makePolygon, centerOfWeight, transformPoints } = geomUtils;
+
+    // Track soldier DOM elements by their ID
+    let soldierDivsById = {};
+
+    /** Initializes the map rendering with SVG elements */
+    my.showMap = function(container, gameState) {
+        container.innerHTML = createMapSvg(gameState);
+
+        // Reset soldier tracking
+        soldierDivsById = {};
+        initializeRegions();
+
+        // Set up click handler for map background to clear selection
+        onClickOrTap(document.body, event => uiCallbacks.invokeCallback(null, 'regionSelected', event));
+        createTemples(gameState);
+    };
+
+    /** Updates the map display with the current game state   */
+    my.updateMapDisplay = function(gameState) {
+        const tooltips = new Tooltips(gameState);
+
+        updateRegions(gameState);
+        updateTemples(gameState);
+        updateSoldiers(gameState);
+
+        showFloatingText(gameState);
+        tooltips.updateTooltips();
+        tooltips.updateSoldierTooltips();
+    };
+
+    /**
+     * Creates the main SVG element for the map
+     */
+    function createMapSvg(gameState) {
+        // Create SVG definitions (gradients, clip paths)
+        const defs = createSvgDefinitions();
+        const ocean = createOceanBackground();
+
+        const shadows = createRegionLayer('shadow', 'shadow', 1.05, 1.05, 0.2, 0.2, ' ');
+        const bottoms = createRegionLayer('bottom', 'bottom', 1, 1, 0.05, 0.05);
+        const tops = createRegionLayer('region', 'land', 1, 1, 0, 0);
+        const highlighters = createRegionLayer(
+            'highlight', '', 1, 1, 0, 0,
+            'stroke:#fff;stroke-width:2.0;opacity:0.0;', 'clip'
+        );
+
+        return elem('svg', {
+            id: 'root-svg',
+            viewBox: '0 0 100 100',
+            preserveAspectRatio: 'none', //'xMidYMid meet', // Better for mobile scaling
+            width: '100%',
+            height: '100%'
+        }, defs + ocean + shadows + bottoms + tops + highlighters);
+    }
+
+    /** Creates SVG definitions (gradients, clip paths) */
+    function createSvgDefinitions() {
+        return elem('defs', {},
+            createClipPaths() +
+            erisk.makeGradient('ocean', '#69e', '#48b') +
+            erisk.makeGradient('land', '#dcb', '#a98') +
+            erisk.makeGradient('land-highlight', '#fb7', '#741') +
+            erisk.makeGradient('bottom', '#210', '#000') +
+            erisk.makeGradient('shadow', '#55d', '#134') +
+            createPlayerGradients()
+        );
+    }
+
+    /** Creates clip paths for highlighting regions */
+    function createClipPaths() {
+        return gameData.regions.map((region, index) => {
+            return elem('clipPath',
+                { id: 'clip' + index },
+                makePolygon(region.points, 'cp' + index, 'land', '')
+            );
+        }).join('');
+    }
+
+    /** Creates gradients for player colors */
+    function createPlayerGradients() {
+        return gameData.players.map((player, index) => {
+            return erisk.makeGradient('p' + index, player.colorStart, player.colorEnd) +
+                erisk.makeGradient('p' + index + '-highlight', player.highlightStart, player.highlightEnd);
+        }).join('');
+    }
+
+    /** Creates the ocean background polygon */
+    function createOceanBackground() {
+        return makePolygon(
+            [
+                { x: 0, y: 0 },
+                { x: CONSTS.GRID_WIDTH, y: 0 },
+                { x: CONSTS.GRID_WIDTH, y: CONSTS.GRID_HEIGHT },
+                { x: 0, y: CONSTS.GRID_HEIGHT }
+            ],
+            'ocean', 'ocean'
+        );
+    }
+
+    /**
+     * Creates a layer of region polygons with consistent styling
+     * @param {string} idPrefix - Prefix for element IDs
+     * @param {string} gradient - Gradient name to use
+     * @param {number} xm - X multiplier
+     * @param {number} ym - Y multiplier
+     * @param {number} xd - X displacement
+     * @param {number} yd - Y displacement
+     * @param {string} stroke - Stroke styling
+     * @param {string} clip - Clip path prefix
+     * @returns {string} SVG group with polygons
+     */
+    function createRegionLayer(idPrefix, gradient, xm, ym, xd, yd, stroke, clip) {
+        return elem('g', {}, gameData.regions.map((region, index) => {
+            const clipPath = clip ? `url(#${clip}${index})` : '';
+            const transformedPoints = transformPoints(region.points, xm, ym, xd, yd);
+
+            return makePolygon(
+                transformedPoints,
+                idPrefix + index,
+                gradient,
+                stroke,
+                clipPath
+            );
+        }).join(''));
+    }
+
+    /** Initializes regions with centers and click handlers */
+    function initializeRegions() {
+        gameData.regions.forEach((region, index) => {
+            // Store element IDs for later reference
+            region.elementId = 'region' + index;
+            region.highlightId = 'highlight' + index;
+
+            region.center = projectPoint(centerOfWeight(region.points));
+
+            // Add debug labels if in debug mode
+            if (CONSTS.DEBUG) {
+                append('root-svg', elem('text',
+                    { class: 'region-text', ...region.center },
+                    ' ' + index
+                ));
+            }
+
+            onClickOrTap($(region.highlightId), event =>
+                uiCallbacks.invokeCallback(region, 'regionSelected', event)
+            );
+        });
+    }
+
+    /** Creates temples on the map */
+    function createTemples(gameState) {
+        Object.entries(gameState.temples).forEach(([regionIndex, temple]) => {
+            const region = gameData.regions[temple.regionIndex];
+            const center = region.center;
+
+            // Position temple
+            const style = `left:${center.x - 1.5}%; top:${center.y - 4}%`;
+
+            // Create nested temple structure
+            temple.elementId = 'temple' + regionIndex;
+            const templeHTML = div({
+                id: temple.elementId,
+                class: 'temple',
+                style: style
+            }, createNestedTempleLevels(4));
+
+            // Add to DOM and attach click handler
+            const templeElement = append('map', templeHTML);
+            onClickOrTap(templeElement, event =>
+                uiCallbacks.invokeCallback(region, 'templeSelected', event)
+            );
+        });
+
+        // Creates nested divs for temple levels
+        function createNestedTempleLevels(depth) {
+            if (depth <= 0) return '';
+            return div({ class: 'temple-level' }, createNestedTempleLevels(depth - 1));
+        }
+    }
+
+    /** Updates all region displays */
+    function updateRegions(gameState) {
+        gameData.regions.forEach(region => {
+            const regionIndex = region.index;
+            const regionOwner = gameState.owner(region);
+            let gradientName = regionOwner ? 'p' + regionOwner.index : 'land';
+
+            // Check if region should be highlighted
+            const highlighted =
+                isInHighlightedRegions(regionIndex, gameState) ||
+                isWinnerRegion(regionOwner, gameState);
+
+            if (highlighted) {
+                gradientName += '-highlight';
+            }
+
+            // Set highlight opacity based on position and state
+            let highlightOpacity = calculateHighlightOpacity(region, gameState);
+            const highlightEl = $(region.highlightId);
+            highlightEl.style.opacity = highlighted ? highlightOpacity : '0.0';
+            highlightEl.style.cursor = highlighted ? 'pointer' : 'default';
+
+            // Trigger particle effects if needed
+            if (shouldShowParticles(regionIndex, gameState)) {
+                gameState.particleTempleRegion = undefined;
+                renderUtils.spawnCelebratoryParticles(region);
+            }
+
+            const regionEl = $(region.elementId);
+            regionEl.style.fill = `url(#${gradientName})`;
+        });
+    }
+
+    /**
+     * Determines if a region is in the highlighted set
+     */
+    function isInHighlightedRegions(regionIndex, gameState) {
+        const highlitRegions =
+            gameState.moveDecision &&
+            gameState.moveDecision.highlitRegions || [];
+
+        return highlitRegions.includes(regionIndex);
+    }
+
+    /** Determines if a region belongs to the winner */
+    function isWinnerRegion(regionOwner, gameState) {
+        return gameState.endResult &&
+               regionOwner &&
+               regionOwner.index === gameState.endResult.index;
+    }
+
+    function calculateHighlightOpacity(region, gameState) {
+        let opacity = REGION_HIGHLIGHT_OPACITY + region.center.x * 0.003;
+
+        // Increase opacity for selected regions or game end
+        if (gameState.endResult ||
+            (gameState.moveDecision &&
+             gameState.moveDecision.source === region.index)) {
+            opacity *= 2;
+        }
+
+        return opacity;
+    }
+
+    /** Checks if particles should be shown for a region */
+    function shouldShowParticles(regionIndex, gameState) {
+        return gameState.particleTempleRegion &&
+               gameState.particleTempleRegion.index === regionIndex;
+    }
+
+    function updateTemples(gameState) {
+        Object.entries(gameState.temples).forEach(([regionIndex, temple]) => {
+            const element = $(temple.elementId);
+            if (!element) return;
+
+            updateTempleLevels(element, temple);
+            updateTempleCursor(temple, gameState);
+        });
+    }
+
+    /** Updates temple level display */
+    function updateTempleLevels(element, temple) {
+        // Calculate visible levels based on upgrades
+        const templeLevels = temple.upgradeIndex ? (temple.level + 3) : 2;
+        let currentElement = element;
+        let level = 0;
+
+        // Update each level element
+        while (currentElement) {
+            const style = currentElement.style;
+            style.display = (level < templeLevels) ? 'block' : 'none';
+
+            // Set color based on upgrade type
+            if (level === 0 || temple.upgradeIndex) {
+                style.background = temple.upgradeIndex ?
+                    CONSTS.UPGRADES[temple.upgradeIndex].bgColor : '#999';
+            }
+
+            level++;
+            currentElement = currentElement.firstChild;
+        }
+    }
+
+    /** Updates temple cursor and selection state */
+    function updateTempleCursor(temple, gameState) {
+        const templeEl = $(temple.elementId);
+        if (!templeEl) return;
+
+        // Set cursor based on ownership and game state
+        const activePlayerIsTempleOwner =
+            gameState.isOwnedBy(temple.regionIndex, gameState.activePlayer());
+
+        templeEl.style.cursor = appState.isInGame() ?
+            (activePlayerIsTempleOwner ? 'zoom-in' : 'help') : 'default';
+
+        // Update selection state
+        const selected = gameState.moveDecision &&
+                       gameState.moveDecision.regionIndex === temple.regionIndex;
+        toggleClass(templeEl, 'selected', selected);
+    }
+
+    function updateSoldiers(gameState) {
+        // Track which soldiers are still active
+        const soldiersStillAlive = [];
+
+        // Update all soldiers in the game state
+        Object.entries(gameState.soldiersByRegion).forEach(([regionIndex, soldiers]) => {
+            soldiers.forEach((soldier, index) => {
+                updateSoldier(gameData.regions[regionIndex], soldier, index, gameState);
+                soldiersStillAlive.push(soldier.i);
+            });
+        });
+
+        removeDiedSoldiers(soldiersStillAlive);
+    }
+
+    /** Updates a single soldier's display */
+    function updateSoldier(region, soldier, index, gameState) {
+        // Get or create the soldier DOM element
+        const domElement = findOrCreateSoldierElement(soldier);
+
+        // Calculate soldier position
+        const position = calculateSoldierPosition(region, soldier, index, gameState);
+
+        // Update display
+        domElement.style.left = position.x + '%';
+        domElement.style.top = position.y + '%';
+        domElement.style.zIndex = 20 + position.layer;
+        domElement.style.display = 'block';
+
+        // Update selection state
+        const decisionState = gameState.moveDecision || {};
+        const isSelected = (decisionState.source === region.index &&
+                         index < decisionState.count);
+        toggleClass(domElement, 'selected', isSelected);
+    }
+
+    /**
+     * Finds or creates a DOM element for a soldier
+     * @returns {HTMLElement} The soldier DOM element
+     */
+    function findOrCreateSoldierElement(soldier) {
+        if (!soldierDivsById[soldier.i]) {
+            const html = div({ class: 'soldier', style: 'display: none' });
+            const domElement = append('map', html);
+            soldierDivsById[soldier.i] = domElement;
+
+            onClickOrTap(domElement, (event) =>
+                uiCallbacks.invokeCallback(soldier, 'soldierSelected', event)
+            );
+        }
+
+        return soldierDivsById[soldier.i];
+    }
+
+    /**
+     * Calculates the position for a soldier
+     * @returns {Object} Position data {x, y, layer}
+     */
+    function calculateSoldierPosition(region, soldier, index, gameState) {
+        const center = region.center;
+        const totalSoldiers = gameState.soldierCount(region);
+
+        // Arrange soldiers in a grid pattern
+        const columnWidth = Math.min(totalSoldiers, 4);
+        const rowHeight = Math.min(2 / Math.ceil(totalSoldiers / 4), 1);
+
+        const x = index % 4;
+        const y = Math.floor(index / 4);
+        const xOffset = (-0.6 * columnWidth + x * 1.2);
+        const yOffset = y * rowHeight + (gameState.temples[region.index] ? 1.5 : 0);
+
+        let xPosition = center.x + xOffset - yOffset * 0.2;
+        let yPosition = center.y + xOffset * 0.2 + yOffset;
+
+        // Adjust position if soldier is attacking
+        if (soldier.attackedRegion !== undefined) {
+            const targetCenter = gameData.regions[soldier.attackedRegion].center;
+            xPosition = (xPosition + targetCenter.x) / 2;
+            yPosition = (yPosition + targetCenter.y) / 2;
+        }
+
+        return {
+            x: xPosition,
+            y: yPosition,
+            layer: y * 5 + x
+        };
+    }
+
+    /**
+     * Removes soldiers that have died
+     * @param {Array} soldiersStillAlive - IDs of soldiers still alive
+     */
+    function removeDiedSoldiers(soldiersStillAlive) {
+        Object.entries(soldierDivsById).forEach(([id, div]) => {
+            if (!soldiersStillAlive.includes(parseInt(id))) {
+                // Remove the soldier from DOM
+                $('map').removeChild(div);
+                delete soldierDivsById[id];
+
+                // Show smoke particles for the dead soldier
+                renderUtils.spawnSmokeParticles(div);
+            }
+        });
+    }
+
+    function showFloatingText(gameState) {
+        const floaters = gameState.floatingText || [];
+
+        floaters.forEach(floater => {
+            if (floater.soldier) {
+                const soldierDiv = soldierDivsById[floater.soldier.i];
+                if (soldierDiv) {
+                    // Attach soldier div to the floater
+                    floater.soldierDiv = soldierDiv;
+                    renderUtils.showFloatingText(floater);
+                    // Remove to avoid DOM nodes going to server
+                    delete floater.soldierDiv;
+                }
+            } else {
+                renderUtils.showFloatingText(floater);
+            }
+        });
+
+        gameState.floatingText = undefined;
+    }
+
+    return my;
+}());
+</script>
