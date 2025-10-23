@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
-import type { Player } from '$lib/game/state/GameState';
-import { createPlayer, getErrorMessage } from '$lib/server/api-utils';
+import { createPlayer, handleApiError } from '$lib/server/api-utils';
 import { GameState } from '$lib/game/state/GameState';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
@@ -23,7 +22,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         const gameStorage = GameStorage.create(platform!);
         const game = await gameStorage.getGame(gameId);
-        
+
         if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
@@ -49,12 +48,12 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             if (!game.pendingConfiguration?.playerSlots?.[preferredSlot]) {
                 return json({ error: 'Invalid slot' }, { status: 400 });
             }
-            
+
             const slot = game.pendingConfiguration.playerSlots[preferredSlot];
             if (slot.type !== 'Open') {
                 return json({ error: 'Slot is not available' }, { status: 400 });
             }
-            
+
             if (game.players.some(p => p.slotIndex === preferredSlot)) {
                 return json({ error: 'Slot already taken' }, { status: 400 });
             }
@@ -116,7 +115,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         // Send WebSocket notifications
         await WebSocketNotifications.playerJoined(gameId, newPlayer, updatedGame);
-        
+
         if (shouldStart) {
             await WebSocketNotifications.gameStarted(gameId, updatedGame);
         }
@@ -134,10 +133,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         });
 
     } catch (error) {
-        console.error('Error joining game:', error);
-        return json({
-            error: 'Failed to join game',
-            details: getErrorMessage(error)
-        }, { status: 500 });
+        return handleApiError(error, 'joining game');
     }
 };

@@ -3,7 +3,7 @@ import { Temple } from '$lib/game/entities/Temple';
 
 /**
  * Calculates faith income for a player based on their controlled regions and temples.
- * 
+ *
  * Faith income rules:
  * 1. One faith for each region owned
  * 2. One faith for each soldier stationed at owned temples (soldiers praying)
@@ -24,10 +24,10 @@ export class IncomeCalculator {
         const soldiersAtTemples = this.countSoldiersPrayingAtTemples(state, player);
 
         const baseIncome = regionCount + soldiersAtTemples;
-        
+
         // Apply Water temple percentage bonuses
         const waterBonusPercent = this.calculateWaterTempleBonus(state, player);
-        
+
         const totalIncome = Math.floor(baseIncome * (1 + waterBonusPercent / 100));
         console.log(
             `Player ${player.slotIndex} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${baseIncome} base faith, +${waterBonusPercent}% from Water temples = ${totalIncome} total faith`
@@ -79,7 +79,7 @@ export class IncomeCalculator {
         for (const regionIndex in state.templesByRegion) {
             const regionIdx = parseInt(regionIndex);
             const templeData = state.templesByRegion[regionIdx];
-            
+
             if (templeData && state.isOwnedBy(regionIdx, player)) {
                 const temple = Temple.deserialize(templeData);
                 const incomeBonus = temple.getIncomeBonus();
@@ -95,4 +95,3 @@ export class IncomeCalculator {
         return waterBonusPercent;
     }
 }
-

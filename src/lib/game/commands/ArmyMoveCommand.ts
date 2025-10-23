@@ -1,6 +1,7 @@
 import { Command, type CommandValidationResult } from './Command';
 import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import type { GameState, Player, Region, Soldier } from '$lib/game/state/GameState';
+import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 
 export class ArmyMoveCommand extends Command {
     public source: number;
@@ -149,12 +150,9 @@ export class ArmyMoveCommand extends Command {
      * Check if a player has been eliminated (owns 0 regions)
      */
     private checkPlayerElimination(state: GameState, playerSlotIndex: number): void {
-        // Count regions owned by this player
-        const regionCount = Object.values(state.ownersByRegion).filter(
-            owner => owner === playerSlotIndex
-        ).length;
-
-        if (regionCount === 0) {
+        const gameStateData = state.toJSON();
+        
+        if (PlayerEliminationService.isPlayerEliminated(gameStateData, playerSlotIndex)) {
             // Player has been eliminated!
             console.log(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
             

@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { Region } from '$lib/game/entities/Region';
-import { getErrorMessage } from '$lib/server/api-utils';
+import { handleApiError } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
@@ -33,8 +33,8 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         const regions = reconstructRegions(game.worldConflictState?.regions);
 
         // Get time limit from pending configuration or use default
-        const moveTimeLimit = game.pendingConfiguration?.settings?.timeLimit || 
-                              game.worldConflictState?.moveTimeLimit || 
+        const moveTimeLimit = game.pendingConfiguration?.settings?.timeLimit ||
+                              game.worldConflictState?.moveTimeLimit ||
                               GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
 
         // Initialize World Conflict game state with properly constructed regions
@@ -90,8 +90,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         });
 
     } catch (error) {
-        console.error(`Error starting game ${params.gameId}:`, error);
-        return json({ error: 'Failed to start game: ' + getErrorMessage(error) }, { status: 500 });
+        return handleApiError(error, `starting game ${params.gameId}`);
     }
 };
 

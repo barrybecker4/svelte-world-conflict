@@ -2,11 +2,12 @@ import { BattleAnimationSystem } from './BattleAnimationSystem';
 import { AnimationStateCoordinator } from './AnimationStateCoordinator';
 import { BattleTimeoutManager } from './BattleTimeoutManager';
 import { LocalMoveExecutor } from './LocalMoveExecutor';
-import { BattleApiClient } from '$lib/client/api/BattleApiClient';
-import type { GameStateData, Region } from '$lib/game/entities/gameTypes';
+import { GameApiClient, type BattleMove, type BattleResult } from '$lib/client/gameController/GameApiClient';
+import type { Region } from '$lib/game/entities/gameTypes';
+import { clearBattleState, isExpectedValidationError } from '$lib/game/utils/GameStateUtils';
 
 // Re-export types for backward compatibility
-export type { BattleMove, BattleResult } from '$lib/client/api/BattleApiClient';
+export type { BattleMove, BattleResult };
 
 export interface ExecuteMoveOptions {
   localMode?: boolean; // If true, execute locally without sending to server
@@ -20,7 +21,7 @@ export class BattleManager {
   private animationCoordinator: AnimationStateCoordinator;
   private timeoutManager: BattleTimeoutManager;
   private localExecutor: LocalMoveExecutor;
-  private apiClient: BattleApiClient;
+  private apiClient: GameApiClient;
   private gameId: string;
 
   constructor(gameId: string, mapContainer?: HTMLElement) {
@@ -29,7 +30,7 @@ export class BattleManager {
     this.animationCoordinator = new AnimationStateCoordinator();
     this.timeoutManager = new BattleTimeoutManager();
     this.localExecutor = new LocalMoveExecutor();
-    this.apiClient = new BattleApiClient(gameId);
+    this.apiClient = new GameApiClient(gameId);
 
     if (mapContainer) {
       this.battleAnimationSystem.setMapContainer(mapContainer);
@@ -40,7 +41,7 @@ export class BattleManager {
     this.battleAnimationSystem.setMapContainer(container);
   }
 
-  isBattleRequired(move: import('$lib/client/api/BattleApiClient').BattleMove): boolean {
+  isBattleRequired(move: BattleMove): boolean {
     const { targetRegionIndex, gameState } = move;
 
     const targetSoldiers = gameState.soldiersByRegion?.[targetRegionIndex] || [];
@@ -53,7 +54,7 @@ export class BattleManager {
     return isNeutralWithSoldiers || isEnemyTerritory;
   }
 
-  async executeMove(move: import('$lib/client/api/BattleApiClient').BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<import('$lib/client/api/BattleApiClient').BattleResult> {
+  async executeMove(move: BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<BattleResult> {
     if (this.isBattleRequired(move)) {
       return this.executeBattle(move, playerId, regions, options);
     } else {
@@ -61,7 +62,7 @@ export class BattleManager {
     }
   }
 
-  async executeBattle(move: import('$lib/client/api/BattleApiClient').BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<import('$lib/client/api/BattleApiClient').BattleResult> {
+  async executeBattle(move: BattleMove, playerId: string, regions: Region[], options?: ExecuteMoveOptions): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
 
     console.log('🏛️ BattleManager: Starting battle execution', {
@@ -98,14 +99,14 @@ export class BattleManager {
       // Play battle animation (shows casualties, sounds, etc)
       if (result.attackSequence && result.attackSequence.length > 0) {
         await this.playBattleAnimation(result.attackSequence, regions, sourceRegionIndex, targetRegionIndex);
-        
+
         // Wait for smoke animations to complete
         // Smoke takes 3.05s (matching old GAS version), and the last smoke starts ~600ms before animation completes
         // So we need to wait (3050ms - 600ms) = 2450ms more
         console.log('⏳ Waiting for smoke effects to complete...');
         await new Promise(resolve => setTimeout(resolve, 2500));
         console.log('✅ Smoke effects complete');
-        
+
         // Animate surviving attackers moving into the conquered region
         console.log('🏃 Animating conquering soldiers into target region...');
         await this.animationCoordinator.animateConqueringMove(
@@ -119,7 +120,7 @@ export class BattleManager {
       this.timeoutManager.clearBattleTimeout(targetRegionIndex);
 
       if (result.gameState) {
-        result.gameState = this.clearBattleState(result.gameState);
+        result.gameState = clearBattleState(result.gameState);
       }
 
       console.log('✅ BattleManager: Battle completed successfully');
@@ -128,7 +129,7 @@ export class BattleManager {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown battle error';
       // Don't log validation errors as console errors - they're expected game rules
-      if (errorMessage.includes('conquered') || errorMessage.includes('No moves remaining')) {
+      if (isExpectedValidationError(errorMessage)) {
         console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
       } else {
         console.error('❌ BattleManager: Battle failed:', error);
@@ -138,7 +139,7 @@ export class BattleManager {
       return {
         success: false,
         error: errorMessage,
-        gameState: this.clearBattleState(move.gameState)
+        gameState: clearBattleState(move.gameState)
       };
     }
   }
@@ -146,7 +147,7 @@ export class BattleManager {
   /**
    * Execute a non-battle move (peaceful territory occupation)
    */
-  async executePeacefulMove(move: import('$lib/client/api/BattleApiClient').BattleMove, playerId: string, options?: ExecuteMoveOptions): Promise<import('$lib/client/api/BattleApiClient').BattleResult> {
+  async executePeacefulMove(move: BattleMove, playerId: string, options?: ExecuteMoveOptions): Promise<BattleResult> {
     const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
 
     console.log('🕊️ BattleManager: Executing peaceful move', {
@@ -158,10 +159,10 @@ export class BattleManager {
 
     try {
       console.log(`🚶 Player Move: ${soldierCount} soldiers moving from ${sourceRegionIndex} to ${targetRegionIndex}`);
-      
+
       // Wait for next frame to ensure current state is rendered
       await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
-      
+
       // Create and dispatch peaceful move animation state
       const animationState = this.animationCoordinator.createPeacefulMoveAnimationState(
         move.gameState,
@@ -170,7 +171,7 @@ export class BattleManager {
         soldierCount
       );
       this.animationCoordinator.dispatchBattleStateUpdate(animationState);
-      
+
       // Play movement sound
       this.animationCoordinator.playMoveSound();
 
@@ -187,7 +188,7 @@ export class BattleManager {
       }
 
       console.log('✅ BattleManager: Peaceful move completed successfully');
-      
+
       // Log final state
       if (result.gameState) {
         const finalSourceSoldiers = result.gameState.soldiersByRegion?.[sourceRegionIndex] || [];
@@ -195,12 +196,12 @@ export class BattleManager {
         console.log(`📊 FINAL STATE - Source ${sourceRegionIndex} has ${finalSourceSoldiers.length} soldiers:`, finalSourceSoldiers.map(s => s.i));
         console.log(`📊 FINAL STATE - Target ${targetRegionIndex} has ${finalTargetSoldiers.length} soldiers:`, finalTargetSoldiers.map(s => s.i));
       }
-      
+
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown move error';
       // Don't log validation errors as console errors - they're expected game rules
-      if (errorMessage.includes('conquered') || errorMessage.includes('No moves remaining')) {
+      if (isExpectedValidationError(errorMessage)) {
         console.log('⚠️ BattleManager: Move not allowed -', errorMessage);
       } else {
         console.error('❌ BattleManager: Peaceful move failed:', error);
@@ -233,7 +234,7 @@ export class BattleManager {
       const onStateUpdate = (attackerCasualties: number, defenderCasualties: number) => {
         totalAttackerCasualties += attackerCasualties;
         totalDefenderCasualties += defenderCasualties;
-        
+
         // Dispatch event to remove soldiers from display
         if (typeof window !== 'undefined' && (attackerCasualties > 0 || defenderCasualties > 0)) {
           window.dispatchEvent(new CustomEvent('battleCasualties', {
@@ -248,53 +249,16 @@ export class BattleManager {
       };
 
       await this.battleAnimationSystem.playAttackSequence(attackSequence, regions || [], onStateUpdate);
-      
+
       console.log(`✅ Battle animation complete. Total casualties: A${totalAttackerCasualties} D${totalDefenderCasualties}`);
     } catch (error) {
       console.warn('⚠️ BattleManager: Animation failed, continuing without animation:', error);
     }
   }
 
-  /**
-   * Create battle state for immediate UI feedback
-   */
-  private createBattleState(gameState: GameStateData, battleRegionIndex: number, move: import('$lib/client/api/BattleApiClient').BattleMove): GameStateData {
-    return {
-      ...gameState,
-      battlesInProgress: [...new Set([...(gameState.battlesInProgress || []), battleRegionIndex])],
-      pendingMoves: [
-        ...(gameState.pendingMoves || []),
-        {
-          fromRegion: move.sourceRegionIndex,
-          toRegion: move.targetRegionIndex,
-          soldierCount: move.soldierCount
-        }
-      ]
-    };
-  }
-
-  private clearBattleState(gameState: GameStateData): GameStateData {
-    return {
-      ...gameState,
-      battlesInProgress: [],
-      pendingMoves: []
-    };
-  }
 
   getBattleAnimationSystem(): BattleAnimationSystem {
     return this.battleAnimationSystem;
-  }
-
-  hasActiveBattles(): boolean {
-    return this.timeoutManager.hasActiveBattles();
-  }
-
-  getActiveBattleRegions(): number[] {
-    return this.timeoutManager.getActiveBattleRegions();
-  }
-
-  clearAllBattleTimeouts(): void {
-    this.timeoutManager.clearAll();
   }
 
   destroy(): void {

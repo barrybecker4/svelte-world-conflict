@@ -1,6 +1,7 @@
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
+import { cloneGameState } from '$lib/game/utils/GameStateUtils';
 
 /**
  * Coordinates animation states for battles and peaceful moves
@@ -19,7 +20,7 @@ export class AnimationStateCoordinator {
     console.log(`⚔️ Creating attacking animation state: ${soldierCount} soldiers from ${sourceRegion} to ${targetRegion}`);
 
     // Create a deep copy of the game state for animation
-    const animationState = JSON.parse(JSON.stringify(gameState));
+    const animationState = cloneGameState(gameState);
     const animationSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
 
     // Set attackedRegion on the animation state's soldiers (for halfway animation)
@@ -42,7 +43,7 @@ export class AnimationStateCoordinator {
     console.log(`🕊️ Creating peaceful move animation state: ${soldierCount} soldiers from ${sourceRegion} to ${targetRegion}`);
 
     // Create animation state: Mark soldiers with movingToRegion but keep them at source
-    const animationState = JSON.parse(JSON.stringify(gameState));
+    const animationState = cloneGameState(gameState);
     const sourceSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
 
     console.log(`📍 Source region ${sourceRegion} has ${sourceSoldiers.length} soldiers:`, sourceSoldiers.map((s: any) => s.i));
@@ -101,7 +102,7 @@ export class AnimationStateCoordinator {
     console.log(`🏆 Conquest successful! Animating ${targetSoldiersInFinal.length} soldiers into region ${targetRegion}`);
 
     // Create new animation state with survivors still at source
-    const newAnimationState = JSON.parse(JSON.stringify(finalGameState));
+    const newAnimationState = cloneGameState(finalGameState);
 
     // Get the soldier IDs that survived (now at target in final state)
     const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
@@ -141,4 +142,3 @@ export class AnimationStateCoordinator {
     audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
   }
 }
-

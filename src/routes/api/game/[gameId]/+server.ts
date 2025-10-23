@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types.ts';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import type { Player } from '$lib/game/state/GameState';
-import { getErrorMessage } from '$lib/server/api-utils';
+import { handleApiError } from '$lib/server/api-utils';
 
 interface QuitGameRequest {
     playerId: string;
@@ -43,8 +43,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         });
 
     } catch (error) {
-        console.error(`Error getting World Conflict game ${params.gameId}:`, error);
-        return json({ error: 'Failed to load game: ' + getErrorMessage(error) }, { status: 500 });
+        return handleApiError(error, `getting World Conflict game ${params.gameId}`);
     }
 };
 
@@ -138,9 +137,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
     } catch (error) {
-        console.error('Error in quit game:', error);
-        return json({
-            error: 'Failed to quit game: ' + getErrorMessage(error)
-        }, { status: 500 });
+        return handleApiError(error, 'quitting game');
     }
 };

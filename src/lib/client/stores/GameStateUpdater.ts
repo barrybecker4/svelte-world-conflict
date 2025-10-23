@@ -6,6 +6,8 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
+import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
+import { clearBattleState } from '$lib/game/utils/GameStateUtils';
 
 /**
  * Manages WebSocket game state updates with proper queuing and orchestration.
@@ -53,22 +55,11 @@ export class GameStateUpdater {
    * Check for player eliminations and show banners immediately
    */
   private checkForEliminations(gameState: GameStateData): void {
-    const players = gameState.players || [];
-    const ownersByRegion = gameState.ownersByRegion || {};
-
-    // Count regions owned by each player
-    const regionCounts = new Map<number, number>();
-    for (const playerSlotIndex of Object.values(ownersByRegion)) {
-      regionCounts.set(playerSlotIndex, (regionCounts.get(playerSlotIndex) || 0) + 1);
-    }
-
-    // Check each player - if they have 0 regions, they're eliminated
-    for (const player of players) {
-      const regionCount = regionCounts.get(player.slotIndex) || 0;
-      if (regionCount === 0) {
-        console.log(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
-        this.showEliminationBanner(player.slotIndex);
-      }
+    const eliminatedPlayers = PlayerEliminationService.checkForEliminations(gameState);
+    
+    // Show elimination banners for each eliminated player
+    for (const playerSlotIndex of eliminatedPlayers) {
+      this.showEliminationBanner(playerSlotIndex);
     }
   }
 
@@ -132,11 +123,7 @@ export class GameStateUpdater {
     });
 
     // Ensure battle states are cleared from server updates
-    const cleanState = {
-      ...updatedState,
-      battlesInProgress: [], // Force clear
-      pendingMoves: []       // Force clear
-    };
+    const cleanState = clearBattleState(updatedState);
 
     // Check for eliminations in the updated state (e.g., from AI moves)
     this.checkForEliminations(cleanState);

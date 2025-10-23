@@ -14,6 +14,20 @@ export interface PurchaseUpgradeResponse {
   gameState?: GameStateData;
 }
 
+export interface BattleMove {
+  sourceRegionIndex: number;
+  targetRegionIndex: number;
+  soldierCount: number;
+  gameState: GameStateData;
+}
+
+export interface BattleResult {
+  success: boolean;
+  gameState?: GameStateData;
+  attackSequence?: any[];
+  error?: string;
+}
+
 /**
  * Client for making API calls to the game server
  */
@@ -121,5 +135,45 @@ export class GameApiClient {
     }
 
     return data;
+  }
+
+  /**
+   * Execute a battle move (merged from BattleApiClient)
+   * Send move to server for validation and execution
+   */
+  async executeMove(move: BattleMove, playerId: string): Promise<BattleResult> {
+    const { sourceRegionIndex, targetRegionIndex, soldierCount } = move;
+
+    try {
+      const response = await fetch(`/api/game/${this.gameId}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          moveType: 'ARMY_MOVE',
+          playerId,
+          source: sourceRegionIndex,
+          destination: targetRegionIndex,
+          count: soldierCount
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json() as { gameState: GameStateData; attackSequence: any[] };
+      return {
+        success: true,
+        gameState: result.gameState,
+        attackSequence: result.attackSequence
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
   }
 }

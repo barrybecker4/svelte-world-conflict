@@ -4,7 +4,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { EndTurnCommand, CommandProcessor, ArmyMoveCommand, BuildCommand } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
-import { getErrorMessage } from '$lib/server/api-utils';
+import { handleApiError } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
@@ -132,7 +132,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             // If next player is AI, DON'T send WebSocket for human turn end
             // Just save the state and let AI processing send WebSockets
             console.log(`✅ Human turn ended, next player is AI (${nextPlayer.name}) - skipping turn end WebSocket`);
-            
+
             // Save state but don't notify yet
             const updatedGame = {
                 ...game,
@@ -170,7 +170,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         });
 
     } catch (error) {
-        console.error(`Error ending turn in game ${params.gameId}:`, error);
-        return json({ error: 'Failed to end turn: ' + getErrorMessage(error) }, { status: 500 });
+        return handleApiError(error, `ending turn in game ${params.gameId}`);
     }
 };

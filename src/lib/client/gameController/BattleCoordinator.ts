@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { BattleManager } from '$lib/client/rendering/BattleManager';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { UndoManager } from './UndoManager';
+import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 
 /**
  * Coordinates battle execution, animations, and player elimination detection
@@ -78,7 +79,7 @@ export class BattleCoordinator {
     // Mark battle as in progress to delay WebSocket updates
     this.battleInProgress = true;
     console.log('🔒 Battle in progress, WebSocket updates will be delayed');
-    
+
     // Execute move through BattleManager (sends to server immediately for validation and persistence)
     const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions!);
 
@@ -99,7 +100,7 @@ export class BattleCoordinator {
       console.log('✅ BattleCoordinator: Updating game state from server response');
       this.gameStore.handleGameStateUpdate(result.gameState);
     }
-    
+
     // Clear battle in progress flag
     this.battleInProgress = false;
     console.log('🔓 Battle complete, WebSocket updates resumed');
@@ -109,22 +110,11 @@ export class BattleCoordinator {
    * Check for player eliminations and show banners immediately
    */
   private checkForEliminations(gameState: GameStateData): void {
-    const players = gameState.players || [];
-    const ownersByRegion = gameState.ownersByRegion || {};
+    const eliminatedPlayers = PlayerEliminationService.checkForEliminations(gameState);
 
-    // Count regions owned by each player
-    const regionCounts = new Map<number, number>();
-    for (const playerSlotIndex of Object.values(ownersByRegion)) {
-      regionCounts.set(playerSlotIndex, (regionCounts.get(playerSlotIndex) || 0) + 1);
-    }
-
-    // Check each player - if they have 0 regions, they're eliminated
-    for (const player of players) {
-      const regionCount = regionCounts.get(player.slotIndex) || 0;
-      if (regionCount === 0) {
-        console.log(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
-        this.gameStore.showEliminationBanner(player.slotIndex);
-      }
+    // Show elimination banners for each eliminated player
+    for (const playerSlotIndex of eliminatedPlayers) {
+      this.gameStore.showEliminationBanner(playerSlotIndex);
     }
   }
 
@@ -149,4 +139,3 @@ export class BattleCoordinator {
     this.battleManager?.destroy();
   }
 }
-

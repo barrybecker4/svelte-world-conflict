@@ -1,6 +1,6 @@
 import { GameState } from '$lib/game/state/GameState';
 import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
-import type { BattleMove, BattleResult } from '$lib/client/api/BattleApiClient';
+import type { BattleMove, BattleResult } from '$lib/client/gameController/GameApiClient';
 
 /**
  * Executes moves locally using ArmyMoveCommand without server communication
@@ -63,3 +63,4 @@ export class LocalMoveExecutor {
     }
   }
 }
+

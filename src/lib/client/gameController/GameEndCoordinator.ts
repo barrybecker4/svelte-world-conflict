@@ -60,4 +60,3 @@ export class GameEndCoordinator {
     this.gameEndChecked = false;
   }
 }
-

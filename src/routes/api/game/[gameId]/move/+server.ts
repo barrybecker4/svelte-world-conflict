@@ -4,7 +4,7 @@ import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
-import { getErrorMessage } from '$lib/server/api-utils';
+import { handleApiError } from '$lib/server/api-utils';
 
 interface MoveRequest {
     playerId: string;
@@ -118,7 +118,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         });
 
     } catch (error) {
-        console.error('Error processing move:', error);
-        return json({ error: 'Internal server error: ' + getErrorMessage(error) }, { status: 500 });
+        return handleApiError(error, 'processing move');
     }
 };
