@@ -70,4 +70,5 @@ export interface GameStateData {
 
     moveTimeLimit?: number;
     maxTurns?: number;
+    aiDifficulty?: string;
 }

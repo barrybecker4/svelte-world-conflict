@@ -7,10 +7,10 @@
  */
 import { GameState } from '$lib/game/state/GameState';
 import { GameStorage } from '$lib/server/storage/GameStorage';
-import { ArmyMoveCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
+import { CommandProcessor, EndTurnCommand } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
-import type { Player } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { pickAiMove } from './AiDecisionMaker';
 
 /**
  * Process AI turns until we reach a human player or game ends
@@ -38,8 +38,8 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
         console.log(`Processing AI turn ${turnCount} for player ${currentPlayer.slotIndex} (${currentPlayer.name})`);
 
         try {
-            // Generate AI move decision
-            const aiMove = await generateAiMove(currentState, currentPlayer);
+            // Generate AI move decision using sophisticated minimax AI
+            const aiMove = await pickAiMove(currentPlayer, currentState);
             let moveMade = false;
 
             if (aiMove) {
@@ -65,10 +65,10 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
                         updatedGame.lastAttackSequence = lastAttackSequence;
-                        
+
                         // Send WebSocket but DON'T save to KV
                         await WebSocketNotifications.gameUpdate(updatedGame);
-                        console.log(`✅ AI move by ${currentPlayer.name}: ${aiMove.count} soldiers from ${aiMove.source} to ${aiMove.destination} - WebSocket sent (KV save deferred)`);
+                        console.log(`✅ AI move by ${currentPlayer.name} (${aiMove.constructor.name}) - WebSocket sent (KV save deferred)`);
                     }
 
                     // Small delay between AI actions for better UX
@@ -78,7 +78,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     console.log(`AI move failed: ${result.error}. Will end turn.`);
                 }
             }
-            
+
             // If no move was made (either no move generated or move failed), end turn
             if (!moveMade) {
                 console.log(`AI player ${currentPlayer.name} ending turn`);
@@ -97,7 +97,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
                         updatedGame.lastAttackSequence = undefined;
-                        
+
                         // Send WebSocket but DON'T save to KV
                         await WebSocketNotifications.gameUpdate(updatedGame);
                         console.log(`✅ AI ${currentPlayer.name} ended turn - WebSocket sent (KV save deferred)`);
@@ -130,7 +130,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
         finalGame.currentPlayerSlot = currentState.currentPlayerSlot;
         finalGame.lastMoveAt = Date.now();
         finalGame.lastAttackSequence = lastAttackSequence;
-        
+
         await gameStorage.saveGame(finalGame);
         console.log(`💾 All AI turns complete - saved to KV (1 write for ${turnCount} AI actions)`);
     }
@@ -138,96 +138,3 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
     return currentState;
 }
 
-/**
- * Generate an AI move based on the current game state and player personality
- * This is a simplified AI that makes basic strategic decisions
- *
- * @param gameState - Current game state
- * @param player - AI player making the move
- * @returns Promise<Command | null> - AI command or null if no move possible
- */
-export async function generateAiMove(gameState: GameState, player: Player): Promise<any> {
-    // Check if AI has moves remaining
-    const availableMoves = gameState.movesRemaining || 0;
-    if (availableMoves <= 0) {
-        return null; // No moves left, will end turn
-    }
-
-    try {
-        // Get regions owned by this AI player
-        const playerRegions = gameState.getRegionsOwnedByPlayer(player.slotIndex);
-
-        if (playerRegions.length === 0) {
-            console.log(`AI player ${player.name} has no regions`);
-            return null;
-        }
-
-        // Find regions with soldiers that can move
-        const regionsWithSoldiers = playerRegions.filter(region => {
-            const soldierCount = gameState.soldierCount(region.index);
-            return soldierCount > 0; // Need at least 1 soldier to move
-        });
-
-        if (regionsWithSoldiers.length === 0) {
-            console.log(`AI player ${player.name} has no regions with movable soldiers`);
-            return null;
-        }
-
-        // Pick a random region with soldiers
-        const sourceRegion = regionsWithSoldiers[Math.floor(Math.random() * regionsWithSoldiers.length)];
-        const neighbors = sourceRegion.neighbors || [];
-
-        if (neighbors.length === 0) {
-            console.log(`Source region ${sourceRegion.index} has no neighbors`);
-            return null;
-        }
-
-        // Prioritize attacking enemy regions over moving to empty/friendly ones
-        const enemyNeighbors = neighbors.filter(neighborIndex => {
-            const owner = gameState.ownersByRegion[neighborIndex];
-            return owner !== undefined && owner !== player.slotIndex;
-        });
-
-        const neutralNeighbors = neighbors.filter(neighborIndex => {
-            const owner = gameState.ownersByRegion[neighborIndex];
-            return owner === undefined;
-        });
-
-        // Choose target: prefer enemies > neutral > don't move to friendly
-        let targetRegionIndex: number;
-        if (enemyNeighbors.length > 0) {
-            targetRegionIndex = enemyNeighbors[Math.floor(Math.random() * enemyNeighbors.length)];
-        } else if (neutralNeighbors.length > 0) {
-            targetRegionIndex = neutralNeighbors[Math.floor(Math.random() * neutralNeighbors.length)];
-        } else {
-            // All neighbors are friendly, skip this region
-            return null;
-        }
-
-        // Determine how many soldiers to move (can move all soldiers now)
-        const availableSoldiers = gameState.soldierCount(sourceRegion.index);
-        const soldierCount = Math.min(
-            availableSoldiers,
-            Math.max(1, Math.floor(availableSoldiers * 0.7)) // Move up to 70% of available
-        );
-
-        if (soldierCount <= 0) {
-            return null;
-        }
-
-        console.log(`AI ${player.name} moving ${soldierCount} soldiers from region ${sourceRegion.index} to region ${targetRegionIndex}`);
-
-        // Create an army move command
-        return new ArmyMoveCommand(
-            gameState,
-            player,
-            sourceRegion.index,
-            targetRegionIndex,
-            soldierCount
-        );
-
-    } catch (error) {
-        console.error('Error generating AI move:', error);
-        return null;
-    }
-}

@@ -1,13 +1,14 @@
-import type { Player, Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
+import type { Player, Region, GameStateData, Soldier, Temple } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { TEMPLE_UPGRADES, TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
 import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/validation';
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
 import { Regions } from '$lib/game/entities/Regions';
+import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 
 // Re-export types for convenience
-export type { Player, Region, GameStateData, Soldier };
+export type { Player, Region, GameStateData, Soldier, Temple };
 
 export class GameState {
     public state: GameStateData;
@@ -24,13 +25,52 @@ export class GameState {
         if (!this.state.faithByPlayer) this.state.faithByPlayer = {};
         if (!this.state.conqueredRegions) this.state.conqueredRegions = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
+
+        // Cleanup: Fix any duplicate soldier IDs from old games
+        this.deduplicateSoldierIds();
+    }
+
+    /**
+     * Deduplicate soldier IDs across all regions
+     * This fixes issues from old games that used Date.now() + i for IDs
+     * Also ensures each soldier object is unique (no shared references)
+     */
+    private deduplicateSoldierIds(): void {
+        const allSeenIds = new Set<number>();
+        let duplicatesFixed = 0;
+
+        for (const [regionIndex, soldiers] of Object.entries(this.state.soldiersByRegion)) {
+            if (!soldiers || soldiers.length === 0) continue;
+
+            const regionIdx = parseInt(regionIndex);
+            const fixedSoldiers = soldiers.map(soldier => {
+                // Always create a new soldier object to avoid shared references
+                if (allSeenIds.has(soldier.i)) {
+                    // Duplicate found - generate new unique ID
+                    duplicatesFixed++;
+                    const newId = generateSoldierId();
+                    console.log(`🔧 Fixed duplicate soldier ID ${soldier.i} in region ${regionIdx} -> ${newId}`);
+                    return { ...soldier, i: newId };
+                }
+                allSeenIds.add(soldier.i);
+                // Return a copy to ensure no shared references
+                return { ...soldier };
+            });
+
+            // Always assign the new array (map() already created a new array)
+            this.state.soldiersByRegion[regionIdx] = fixedSoldiers;
+        }
+
+        if (duplicatesFixed > 0) {
+            console.log(`✅ Deduplicated ${duplicatesFixed} soldier IDs on game state load`);
+        }
     }
 
     /**
      * Create initial game state - uses GameStateInitializer to prepare data
      */
-    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number): GameState {
-        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}`);
+    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameState {
+        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}`);
 
         let regions: Region[];
 
@@ -43,7 +83,7 @@ export class GameState {
         console.log(`Using ${regions.length} regions for game initialization`);
 
         const initializer = new GameStateInitializer();
-        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit);
+        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty);
 
         return new GameState(initialStateData);
     }
@@ -142,7 +182,7 @@ export class GameState {
      * Get all regions owned by a specific player
      */
     getRegionsOwnedByPlayer(playerSlotIndex: number): Region[] {
-        return this.state.regions.filter(region => 
+        return this.state.regions.filter(region =>
             this.state.ownersByRegion[region.index] === playerSlotIndex
         );
     }
@@ -177,7 +217,7 @@ export class GameState {
         }
 
         for (let i = 0; i < count; i++) {
-            this.state.soldiersByRegion[regionIndex].push({ i: Date.now() + i });
+            this.state.soldiersByRegion[regionIndex].push({ i: generateSoldierId() });
         }
     }
 
@@ -330,7 +370,7 @@ export class GameState {
                 if (temple.upgradeIndex !== undefined) {
                     const upgradeKeys = Object.keys(TEMPLE_UPGRADES);
                     const upgrade = upgradeKeys[temple.upgradeIndex];
-                    
+
                     if (upgrade === targetUpgradeName && temple.level) {
                         maxLevel = Math.max(maxLevel, temple.level);
                     }
@@ -362,9 +402,104 @@ export class GameState {
         return this.clone();
     }
 
+    // ==================== AI HELPER METHODS ====================
+
+    /**
+     * Get the active player (whose turn it is)
+     */
+    activePlayer(): Player | undefined {
+        return this.getCurrentPlayer();
+    }
+
+    /**
+     * Count total soldiers owned by a player across all regions
+     */
+    totalSoldiers(player: Player): number {
+        let total = 0;
+        for (const [regionIndex, owner] of Object.entries(this.state.ownersByRegion)) {
+            if (owner === player.slotIndex) {
+                total += this.soldierCount(parseInt(regionIndex));
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Get all temples owned by a player
+     */
+    templesForPlayer(player: Player): Temple[] {
+        const temples: Temple[] = [];
+        for (const [regionIndex, temple] of Object.entries(this.state.templesByRegion)) {
+            const regionIdx = parseInt(regionIndex);
+            if (this.state.ownersByRegion[regionIdx] === player.slotIndex && temple) {
+                temples.push(temple);
+            }
+        }
+        return temples;
+    }
+
+    /**
+     * Calculate faith income per turn for a player
+     * Based on temples owned and their upgrade bonuses
+     */
+    income(player: Player): number {
+        let baseIncome = 0;
+        let waterBonus = 0;
+
+        const temples = this.templesForPlayer(player);
+
+        // Each temple provides base income
+        for (const temple of temples) {
+            baseIncome += GAME_CONSTANTS.TEMPLE_INCOME_BASE;
+
+            // Water upgrade increases income by percentage
+            if (temple.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.WATER.index && temple.level !== undefined) {
+                const waterUpgrade = TEMPLE_UPGRADES_BY_NAME.WATER;
+                const bonusPercent = waterUpgrade.level[temple.level] || 0;
+                waterBonus += (GAME_CONSTANTS.TEMPLE_INCOME_BASE * bonusPercent) / 100;
+            }
+        }
+
+        return Math.floor(baseIncome + waterBonus);
+    }
+
+    /**
+     * Calculate the current cost to buy a soldier
+     */
+    soldierCost(): number {
+        const numBought = this.state.numBoughtSoldiers || 0;
+        const costArray = TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost;
+        // If we've exhausted the array, use formula: initialCost + numBought
+        return costArray[numBought] ?? (8 + numBought);
+    }
+
+    /**
+     * Check if a region has soldiers that can be moved by the player
+     */
+    regionHasActiveArmy(player: Player, region: Region): boolean {
+        if (!this.isOwnedBy(region.index, player)) {
+            return false;
+        }
+        return this.soldierCount(region.index) > 0;
+    }
+
+    /**
+     * Get the raw upgrade level for a player's temple upgrade type
+     * Used by AI to check what upgrades they have
+     */
+    rawUpgradeLevel(player: Player, upgrade: any): number {
+        const temples = this.templesForPlayer(player);
+        for (const temple of temples) {
+            if (temple.upgradeIndex === upgrade.index) {
+                return temple.level || 0;
+            }
+        }
+        return 0;
+    }
+
     /**
      * Create a clean copy of the game state data suitable for JSON serialization
-     * 
+     *
      * IMPORTANT: We deep copy templesByRegion and soldiersByRegion because commands
      * (like BuildCommand) mutate these nested objects. Without deep copying, the old
      * and new state would share the same temple/soldier object references, causing:
@@ -378,13 +513,14 @@ export class GameState {
         for (const [key, temple] of Object.entries(this.state.templesByRegion)) {
             templesByRegionCopy[Number(key)] = { ...temple };
         }
-        
+
         // Deep copy soldiersByRegion to avoid shared references
+        // Must deep copy individual soldier objects too, not just the array
         const soldiersByRegionCopy: Record<number, any[]> = {};
         for (const [key, soldiers] of Object.entries(this.state.soldiersByRegion)) {
-            soldiersByRegionCopy[Number(key)] = soldiers ? [...soldiers] : [];
+            soldiersByRegionCopy[Number(key)] = soldiers ? soldiers.map(s => ({ ...s })) : [];
         }
-        
+
         return {
             ...this.state,
             players: [...this.state.players],

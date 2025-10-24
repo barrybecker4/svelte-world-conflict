@@ -1,19 +1,19 @@
 import { assignHomeBaseRegions, type HomeBaseAssignment } from '$lib/game/map/homeBasePlacement';
 import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { Regions } from '$lib/game/entities/Regions';
+import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 
 
 export class GameStateInitializer {
     /**
      * Create initial game state data with starting positions
      * Returns the data object, not the GameState instance
-     * 
+     *
      * Note: Accepts Region[] (not Regions) because GameStateData must be JSON-serializable.
      * Use Regions.getAll() to convert from Regions to Region[] before calling this.
      */
-    createInitialStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number): GameStateData {
-        return this.createInitializedGameStateData(gameId, players, regions, maxTurns, moveTimeLimit);
+    createInitialStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameStateData {
+        return this.createInitializedGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty);
     }
 
     /**
@@ -30,10 +30,10 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number): GameStateData {
+    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameStateData {
         console.log(`Creating preview state with ${regions.length} regions`);
 
-        const stateData = this.createGameStateData(gameId, players, regions, maxTurns, moveTimeLimit);
+        const stateData = this.createGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty);
         this.initializeStartingPositions(stateData);
 
         players.forEach(player => {
@@ -42,7 +42,7 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number): GameStateData {
+    private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameStateData {
         const sortedPlayers = [...players].sort((a, b) => a.slotIndex - b.slotIndex);
         const sortedPlayerIndices = sortedPlayers.map(p => p.slotIndex);
         const currentPlayerSlot = sortedPlayerIndices[0];
@@ -50,6 +50,7 @@ export class GameStateInitializer {
         console.log(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.slotIndex})`));
         console.log(`Setting initial currentPlayerSlot to ${currentPlayerSlot}`);
         console.log(`Setting moveTimeLimit to ${moveTimeLimit}`);
+        console.log(`Setting aiDifficulty to ${aiDifficulty}`);
 
         return {
             id: Date.now(),
@@ -59,6 +60,7 @@ export class GameStateInitializer {
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             maxTurns: maxTurns || GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX],
             moveTimeLimit: moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT,
+            aiDifficulty: aiDifficulty || 'Normal',
             players: [...players],
             regions,
             ownersByRegion: {},
@@ -129,7 +131,7 @@ export class GameStateInitializer {
     private createSoldiers(index: number, numSoldiers: number): { i: number }[] {
         const soldiers: { i: number }[] = [];
         for (let s = 0; s < numSoldiers; s++) {
-            soldiers.push({ i: index * 10 + s + 1 });
+            soldiers.push({ i: generateSoldierId() });
         }
         return soldiers;
     }

@@ -95,7 +95,8 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
   const gameId = generateGameId();
 
   const players: Player[] = [];
-  const { hasOpenSlots, gameStatus, finalGameType } = determineGameAttributes(gameType, playerSlots, playerName, players);
+  const difficulty = settings?.aiDifficulty || aiDifficulty || 'Normal';
+  const { hasOpenSlots, gameStatus, finalGameType } = determineGameAttributes(gameType, playerSlots, playerName, players, difficulty);
 
   // Use the selected map regions instead of generating new ones
   const regions = calculateRegions(selectedMapRegions, settings);
@@ -103,7 +104,8 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
   // Only initialize full game state for ACTIVE games
   let initialGameState;
   if (gameStatus === 'ACTIVE') {
-    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns, timeLimit);
+    const difficulty = settings?.aiDifficulty || aiDifficulty || 'Normal';
+    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns, timeLimit, difficulty);
   } else {
     initialGameState = {
       gameId,
@@ -113,6 +115,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       turnCount: 0,
       maxTurns,
       moveTimeLimit: timeLimit,
+      aiDifficulty: settings?.aiDifficulty || aiDifficulty || 'Normal',
       gamePhase: 'SETUP'
     };
   }
@@ -168,7 +171,7 @@ function calculateRegions(selectedMapRegions: any, settings: any): Region[] {
 /**
  * Determines player attributes and initialize players in the process
  */
-function determineGameAttributes(gameType: string, playerSlots: any[], playerName: string, players: Player[]): { hasOpenSlots: boolean, gameStatus: 'PENDING' | 'ACTIVE', finalGameType: 'MULTIPLAYER' | 'AI' } {
+function determineGameAttributes(gameType: string, playerSlots: any[], playerName: string, players: Player[], aiDifficulty: string): { hasOpenSlots: boolean, gameStatus: 'PENDING' | 'ACTIVE', finalGameType: 'MULTIPLAYER' | 'AI' } {
     let hasOpenSlots = false;
     let gameStatus: 'PENDING' | 'ACTIVE' = 'ACTIVE';
     let finalGameType: 'MULTIPLAYER' | 'AI' = 'AI';
@@ -210,15 +213,15 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
                     // Open slot - don't add a player yet, they'll join later
                     continue;
                 } else if (slot.type === 'AI') {
-                    // AI player - create regardless of game status (PENDING or ACTIVE)
-                    players.push(createPlayer(slot.defaultName, slot.slotIndex, true));
+                    // AI player - create with difficulty-based personality
+                    players.push(createPlayer(slot.defaultName, slot.slotIndex, true, aiDifficulty));
                 }
             }
         }
     } else {
         // Fallback to 2-player AI game
         const humanPlayer = createPlayer(playerName.trim(), 0, false);
-        const aiPlayer = createPlayer('AI Player', 1, true);
+        const aiPlayer = createPlayer('AI Player', 1, true, aiDifficulty);
         players.push(humanPlayer, aiPlayer);
         gameStatus = 'ACTIVE';
         finalGameType = 'AI';

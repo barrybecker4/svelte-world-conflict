@@ -7,6 +7,7 @@ import { handleApiError } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
+import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
 
 /**
  * Start a pending multiplayer game
@@ -27,7 +28,12 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             return json({ error: 'Game is not in pending state' }, { status: 400 });
         }
 
-        const updatedPlayers = fillRemainingSlotsWithAI(game);
+        // Get AI difficulty before filling slots
+        const aiDifficulty = game.pendingConfiguration?.settings?.aiDifficulty ||
+                            game.worldConflictState?.aiDifficulty ||
+                            'Normal';
+
+        const updatedPlayers = fillRemainingSlotsWithAI(game, aiDifficulty);
 
         console.log(`Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`);
         const regions = reconstructRegions(game.worldConflictState?.regions);
@@ -37,13 +43,16 @@ export const POST: RequestHandler = async ({ params, platform }) => {
                               game.worldConflictState?.moveTimeLimit ||
                               GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
 
+        console.log(`🤖 Starting game with AI difficulty: ${aiDifficulty}`);
+
         // Initialize World Conflict game state with properly constructed regions
         const gameState = GameState.createInitialState(
             gameId,
             updatedPlayers,
             regions,
             game.worldConflictState?.maxTurns,
-            moveTimeLimit
+            moveTimeLimit,
+            aiDifficulty
         );
 
         const updatedGame = {
@@ -94,9 +103,35 @@ export const POST: RequestHandler = async ({ params, platform }) => {
     }
 };
 
-// Rest of the file remains the same...
-function fillRemainingSlotsWithAI(game: any): any[] {
+// Helper function to map difficulty string to AI level
+function getAiLevelFromDifficulty(difficulty: string): number {
+    switch (difficulty) {
+        case 'Nice':
+            return AI_LEVELS.NICE;
+        case 'Normal':
+            return AI_LEVELS.RUDE;
+        case 'Hard':
+            return AI_LEVELS.MEAN;
+        default:
+            return AI_LEVELS.RUDE;
+    }
+}
+
+// Helper function to get personalities matching the difficulty level
+function getPersonalitiesForDifficulty(difficulty: string): any[] {
+    const targetLevel = getAiLevelFromDifficulty(difficulty);
+    const matchingPersonalities = AI_PERSONALITIES.filter(p => p.level === targetLevel);
+    
+    // If no exact match, return all personalities (shouldn't happen)
+    return matchingPersonalities.length > 0 ? matchingPersonalities : [...AI_PERSONALITIES];
+}
+
+function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
     const players = [...game.players];
+    const availablePersonalities = getPersonalitiesForDifficulty(aiDifficulty);
+    
+    console.log(`🤖 Filling AI slots with ${aiDifficulty} difficulty personalities:`, 
+        availablePersonalities.map(p => p.name).join(', '));
 
     if (game.pendingConfiguration?.playerSlots) {
         const playerSlots = game.pendingConfiguration.playerSlots;
@@ -104,16 +139,15 @@ function fillRemainingSlotsWithAI(game: any): any[] {
 
         for (const slot of activeSlots) {
             if (slot.type === 'Open' && !players.find(p => p.slotIndex === slot.index)) {
+                // Pick personality from those matching the difficulty level
+                const personality = availablePersonalities[slot.index % availablePersonalities.length];
+                
                 console.log(`Adding AI player to open slot ${slot.index}:`, {
                     index: slot.index,
                     name: slot.defaultName || `AI Player ${slot.index + 1}`,
                     type: 'AI',
-                    personality: {
-                        name: slot.defaultName || `AI Player ${slot.index + 1}`,
-                        level: 1,
-                        soldierEagerness: 0.5,
-                        upgradePreference: []
-                    }
+                    personality: personality.name,
+                    difficulty: aiDifficulty
                 });
 
                 players.push({
@@ -122,12 +156,7 @@ function fillRemainingSlotsWithAI(game: any): any[] {
                     name: slot.defaultName || `AI Player ${slot.index + 1}`,
                     color: getPlayerColor(slot.index),
                     isAI: true,
-                    personality: {
-                        name: slot.defaultName || `AI Player ${slot.index + 1}`,
-                        level: 1,
-                        soldierEagerness: 0.5,
-                        upgradePreference: []
-                    }
+                    personality: personality.name
                 });
             }
         }
@@ -135,18 +164,15 @@ function fillRemainingSlotsWithAI(game: any): any[] {
         // Fill up to max players
         while (players.length < GAME_CONSTANTS.MAX_PLAYERS) {
             const aiIndex = players.length;
+            const personality = availablePersonalities[aiIndex % availablePersonalities.length];
+            
             players.push({
                 id: `ai_${aiIndex}`,
                 slotIndex: aiIndex,
                 name: `AI Player ${aiIndex + 1}`,
                 color: getPlayerColor(aiIndex),
                 isAI: true,
-                personality: {
-                    name: `AI Player ${aiIndex + 1}`,
-                    level: 1,
-                    soldierEagerness: 0.5,
-                    upgradePreference: []
-                }
+                personality: personality.name
             });
         }
     }

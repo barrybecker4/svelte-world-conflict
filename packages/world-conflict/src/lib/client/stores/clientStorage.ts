@@ -136,7 +136,6 @@ function saveFirstTimeInstructions(instructions: FirstTimeInstructions): void {
 export function hasInstructionBeenShown(instructionKey: string): boolean {
   const instructions = loadFirstTimeInstructions();
   const result = instructions[instructionKey] === true;
-  console.log(`📖 hasInstructionBeenShown("${instructionKey}"):`, result, 'All instructions:', instructions);
   return result;
 }
 
