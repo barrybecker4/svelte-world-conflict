@@ -2,6 +2,7 @@ import { assignHomeBaseRegions, type HomeBaseAssignment } from '$lib/game/map/ho
 import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
+import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
 
 
 export class GameStateInitializer {
@@ -60,7 +61,7 @@ export class GameStateInitializer {
             movesRemaining: GAME_CONSTANTS.MAX_MOVES_PER_TURN,
             maxTurns: maxTurns || GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX],
             moveTimeLimit: moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT,
-            aiDifficulty: aiDifficulty || 'Normal',
+            aiDifficulty: aiDifficulty || AiDifficulty.RUDE,
             players: [...players],
             regions,
             ownersByRegion: {},

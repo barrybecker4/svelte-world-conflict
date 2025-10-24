@@ -6,7 +6,7 @@
 import { GameState, type Player, type Region, type GameStateData, type Temple } from '$lib/game/state/GameState';
 import type { GameStorage } from '$lib/server/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { AI_PERSONALITIES } from '$lib/game/entities/aiPersonalities';
+import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
 
 /**
  * Create a mock player with configurable properties
@@ -102,7 +102,7 @@ export function createMockGameStateData(options: {
         movesRemaining: options.movesRemaining ?? 3,
         maxTurns: options.maxTurns ?? 100,
         moveTimeLimit: GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT,
-        aiDifficulty: options.aiDifficulty || 'Normal',
+        aiDifficulty: options.aiDifficulty || AiDifficulty.RUDE,
         ownersByRegion: options.ownersByRegion || {},
         soldiersByRegion: options.soldiersByRegion || {},
         templesByRegion: options.templesByRegion || {},

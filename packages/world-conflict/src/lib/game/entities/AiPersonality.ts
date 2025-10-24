@@ -105,10 +105,10 @@ export class AiPersonality {
      */
     getDifficultyDescription(): string {
         switch (this.level) {
-            case 0: return 'Easy';
-            case 1: return 'Normal';
-            case 2: return 'Hard';
-            case 3: return 'Expert';
+            case 0: return 'Nice';
+            case 1: return 'Rude';
+            case 2: return 'Mean';
+            case 3: return 'Evil';
             default: return 'Unknown';
         }
     }

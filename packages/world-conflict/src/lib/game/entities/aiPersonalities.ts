@@ -10,6 +10,29 @@ export const AI_LEVELS = {
     EVIL: 3
 } as const;
 
+/**
+ * AI Difficulty levels as string enum
+ */
+export enum AiDifficulty {
+    NICE = 'Nice',
+    RUDE = 'Rude',
+    MEAN = 'Mean',
+    EVIL = 'Evil'
+}
+
+/**
+ * Array of all available AI difficulty options
+ * Use this for dropdowns and validation
+ */
+export const AI_DIFFICULTY_OPTIONS = [
+    AiDifficulty.NICE,
+    AiDifficulty.RUDE,
+    AiDifficulty.MEAN,
+    AiDifficulty.EVIL
+] as const;
+
+export type AiDifficultyType = typeof AI_DIFFICULTY_OPTIONS[number];
+
 export const AI_PERSONALITIES: AiPersonalityData[] = [
     {
         name: 'Defender',

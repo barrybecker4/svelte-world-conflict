@@ -1,5 +1,6 @@
 <script lang="ts">
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
 
   export let game: any;
 
@@ -27,7 +28,7 @@
     </div>
     <div class="setting-item">
       <span class="setting-label">AI Difficulty:</span>
-      <span class="setting-value">{game.pendingConfiguration?.settings?.aiDifficulty || 'Normal'}</span>
+      <span class="setting-value">{game.pendingConfiguration?.settings?.aiDifficulty || AiDifficulty.RUDE}</span>
     </div>
     <div class="setting-item">
       <span class="setting-label">Turn Limit:</span>

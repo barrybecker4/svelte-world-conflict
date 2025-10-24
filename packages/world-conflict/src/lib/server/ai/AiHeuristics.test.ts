@@ -13,7 +13,7 @@ import {
     templeDangerousness,
     heuristicForPlayer
 } from './AiHeuristics';
-import { AI_LEVELS } from '$lib/game/entities/aiPersonalities';
+import { AI_LEVELS, AiDifficulty } from '$lib/game/entities/aiPersonalities';
 import { TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 import {
     createMockGameState,
@@ -28,18 +28,23 @@ import type { GameState, Player } from '$lib/game/state/GameState';
 describe('AiHeuristics', () => {
     describe('getAiLevelFromDifficulty', () => {
         it('should map "Nice" to AI_LEVELS.NICE (0)', () => {
-            expect(getAiLevelFromDifficulty('Nice')).toBe(AI_LEVELS.NICE);
-            expect(getAiLevelFromDifficulty('Nice')).toBe(0);
+            expect(getAiLevelFromDifficulty(AiDifficulty.NICE)).toBe(AI_LEVELS.NICE);
+            expect(getAiLevelFromDifficulty(AiDifficulty.NICE)).toBe(0);
         });
 
-        it('should map "Normal" to AI_LEVELS.RUDE (1)', () => {
-            expect(getAiLevelFromDifficulty('Normal')).toBe(AI_LEVELS.RUDE);
-            expect(getAiLevelFromDifficulty('Normal')).toBe(1);
+        it('should map "Rude" to AI_LEVELS.RUDE (1)', () => {
+            expect(getAiLevelFromDifficulty(AiDifficulty.RUDE)).toBe(AI_LEVELS.RUDE);
+            expect(getAiLevelFromDifficulty(AiDifficulty.RUDE)).toBe(1);
         });
 
-        it('should map "Hard" to AI_LEVELS.MEAN (2)', () => {
-            expect(getAiLevelFromDifficulty('Hard')).toBe(AI_LEVELS.MEAN);
-            expect(getAiLevelFromDifficulty('Hard')).toBe(2);
+        it('should map "Mean" to AI_LEVELS.MEAN (2)', () => {
+            expect(getAiLevelFromDifficulty(AiDifficulty.MEAN)).toBe(AI_LEVELS.MEAN);
+            expect(getAiLevelFromDifficulty(AiDifficulty.MEAN)).toBe(2);
+        });
+
+        it('should map "Evil" to AI_LEVELS.EVIL (3)', () => {
+            expect(getAiLevelFromDifficulty(AiDifficulty.EVIL)).toBe(AI_LEVELS.EVIL);
+            expect(getAiLevelFromDifficulty(AiDifficulty.EVIL)).toBe(3);
         });
 
         it('should default to AI_LEVELS.RUDE (1) for undefined', () => {

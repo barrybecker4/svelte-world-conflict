@@ -10,12 +10,13 @@
   import { loadPlayerName, savePlayerName, loadGameConfiguration, saveGameConfiguration } from '$lib/client/stores/clientStorage';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { AI_DIFFICULTY_OPTIONS, AiDifficulty } from '$lib/game/entities/aiPersonalities';
 
   const dispatch = createEventDispatcher();
 
   // Default game settings
   const defaultGameSettings = {
-    aiDifficulty: 'Nice' as string,
+    aiDifficulty: AiDifficulty.NICE as string,
     maxTurns: GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX] as number,
     timeLimit: GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT as number,
     mapSize: 'Large' as string
@@ -86,8 +87,7 @@
   }
 
   function validateAiDifficulty(value: string): string {
-    const validOptions = ['Nice', 'Normal', 'Hard'];
-    return validOptions.includes(value) ? value : defaultGameSettings.aiDifficulty;
+    return AI_DIFFICULTY_OPTIONS.includes(value as any) ? value : defaultGameSettings.aiDifficulty;
   }
 
   function validateMaxTurns(value: number): number {

@@ -1,9 +1,10 @@
 <script lang="ts">
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { AI_DIFFICULTY_OPTIONS } from '$lib/game/entities/aiPersonalities';
 
   export let gameSettings;
 
-  const difficultyOptions = ['Nice', 'Normal', 'Hard'];
+  const difficultyOptions = AI_DIFFICULTY_OPTIONS;
   const mapSizeOptions = ['Small', 'Medium', 'Large'];
   const turnOptions = createTurnOptions();
   const timeLimitOptions = createTimeLimitOptions();

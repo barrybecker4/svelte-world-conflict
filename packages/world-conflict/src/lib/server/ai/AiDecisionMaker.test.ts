@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { pickAiMove } from './AiDecisionMaker';
-import { AI_LEVELS, AI_PERSONALITIES } from '$lib/game/entities/aiPersonalities';
+import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
 import { TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 import { BuildCommand } from '$lib/game/commands/BuildCommand';
 import { EndTurnCommand } from '$lib/game/commands/EndTurnCommand';
@@ -27,11 +27,11 @@ describe('AiDecisionMaker', () => {
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: {}, // Player owns nothing
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             expect(command).toBeInstanceOf(EndTurnCommand);
         });
 
@@ -42,7 +42,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Aggressor' // High soldier eagerness (0.8)
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0, neighbors: [1] })],
@@ -52,11 +52,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined })
                 },
                 faithByPlayer: { 0: 100 }, // Enough faith
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should likely build a soldier (though minimax might override)
             expect(command).toBeDefined();
         });
@@ -68,7 +68,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist' // Prefers Water upgrade
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0, neighbors: [1] }), createMockRegion({ index: 1, neighbors: [0] })],
@@ -78,11 +78,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined }) // Can be upgraded
                 },
                 faithByPlayer: { 0: 50 }, // Enough for upgrade
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should likely build an upgrade
             expect(command).toBeDefined();
         });
@@ -94,7 +94,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Defender'
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0, neighbors: [1] }), createMockRegion({ index: 1, neighbors: [0] })],
@@ -103,11 +103,11 @@ describe('AiDecisionMaker', () => {
                 templesByRegion: {},
                 faithByPlayer: { 0: 5 }, // Not enough faith for anything
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should use minimax to decide on army movement or end turn
             expect(command).toBeDefined();
             expect(
@@ -117,7 +117,7 @@ describe('AiDecisionMaker', () => {
 
         it('should work with different AI personalities', async () => {
             const personalities = ['Defender', 'Economist', 'Aggressor'];
-            
+
             for (const personality of personalities) {
                 const player = createMockPlayer({
                     slotIndex: 0,
@@ -125,19 +125,19 @@ describe('AiDecisionMaker', () => {
                     isAI: true,
                     personality
                 });
-                
+
                 const gameState = createSimpleTwoPlayerGame();
                 gameState.state.players[0] = player;
-                
+
                 const command = await pickAiMove(player, gameState);
-                
+
                 expect(command).toBeDefined();
             }
         });
 
         it('should work with different difficulty levels', async () => {
-            const difficulties = ['Nice', 'Normal', 'Hard'];
-            
+            const difficulties = [AiDifficulty.NICE, AiDifficulty.RUDE, AiDifficulty.MEAN, AiDifficulty.EVIL];
+
             for (const difficulty of difficulties) {
                 const player = createMockPlayer({
                     slotIndex: 0,
@@ -145,12 +145,12 @@ describe('AiDecisionMaker', () => {
                     isAI: true,
                     personality: 'Defender'
                 });
-                
+
                 const gameState = createSimpleTwoPlayerGame();
                 gameState.state.aiDifficulty = difficulty;
-                
+
                 const command = await pickAiMove(player, gameState);
-                
+
                 expect(command).toBeDefined();
             }
         });
@@ -164,18 +164,18 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Aggressor'
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: { 0: 0 },
                 templesByRegion: {}, // No temples
                 faithByPlayer: { 0: 100 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Cannot build soldiers without temples
             expect(command).not.toBeInstanceOf(BuildCommand);
         });
@@ -187,7 +187,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Aggressor'
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -196,11 +196,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0 })
                 },
                 faithByPlayer: { 0: 2 }, // Not enough
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should not build soldier (can't afford)
             if (command instanceof BuildCommand) {
                 expect(command.upgradeIndex).not.toBe(TEMPLE_UPGRADES_BY_NAME.SOLDIER.index);
@@ -214,14 +214,14 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist' // soldierEagerness: 0.3
             });
-            
+
             const highEagerness = createMockPlayer({
                 slotIndex: 0,
                 name: 'High',
                 isAI: true,
                 personality: 'Berserker' // soldierEagerness: 1.0
             });
-            
+
             // Both have same scenario
             const createScenario = (player: Player) => createMockGameState({
                 players: [player],
@@ -232,12 +232,12 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0 })
                 },
                 faithByPlayer: { 0: 20 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const lowCommand = await pickAiMove(lowEagerness, createScenario(lowEagerness));
             const highCommand = await pickAiMove(highEagerness, createScenario(highEagerness));
-            
+
             // Both should return valid commands
             expect(lowCommand).toBeDefined();
             expect(highCommand).toBeDefined();
@@ -250,13 +250,13 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Defender'
             });
-            
+
             const strongPlayer = createMockPlayer({
                 slotIndex: 1,
                 name: 'Strong AI',
                 isAI: true
             });
-            
+
             const gameState = createMockGameState({
                 players: [player, strongPlayer],
                 regions: [
@@ -276,11 +276,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0 })
                 },
                 faithByPlayer: { 0: 50, 1: 50 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should prioritize building soldiers when behind
             expect(command).toBeDefined();
         });
@@ -294,18 +294,18 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Aggressor'
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: { 0: 0 },
                 templesByRegion: {}, // No temples
                 faithByPlayer: { 0: 100 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should not be a soldier build command
             expect(command).not.toBeInstanceOf(BuildCommand);
         });
@@ -317,13 +317,13 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Berserker' // Very high soldier eagerness
             });
-            
+
             const enemy = createMockPlayer({
                 slotIndex: 1,
                 name: 'Enemy',
                 isAI: true
             });
-            
+
             const gameState = createMockGameState({
                 players: [player, enemy],
                 regions: [
@@ -342,11 +342,11 @@ describe('AiDecisionMaker', () => {
                     2: createMockTemple({ regionIndex: 2 })  // Safe temple
                 },
                 faithByPlayer: { 0: 100, 1: 100 },
-                aiDifficulty: 'Hard' // Use Hard AI to see threats
+                aiDifficulty: AiDifficulty.MEAN // Use Mean AI to see threats
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // If it builds a soldier, check it's a build command
             if (command instanceof BuildCommand && command.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
                 // Should build at either temple (most threatened would be region 0)
@@ -361,7 +361,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Berserker'
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -371,11 +371,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0 })
                 },
                 faithByPlayer: { 0: 100 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // With Berserker personality and no soldiers, should build soldier
             expect(command).toBeDefined();
         });
@@ -389,7 +389,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: undefined // No personality
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -398,11 +398,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0 })
                 },
                 faithByPlayer: { 0: 100 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should not build upgrades without personality
             expect(command).toBeDefined();
         });
@@ -414,7 +414,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Defender' // Prefers EARTH, WATER, FIRE
             });
-            
+
             // Give player all upgrades at max level
             const gameState = createMockGameState({
                 players: [player],
@@ -430,11 +430,11 @@ describe('AiDecisionMaker', () => {
                     2: createMockTemple({ regionIndex: 2, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index, level: 2 })   // Max
                 },
                 faithByPlayer: { 0: 200 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should not try to build more upgrades (all maxed)
             expect(command).toBeDefined();
         });
@@ -446,7 +446,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist' // Prefers WATER (costs 15)
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -455,11 +455,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined })
                 },
                 faithByPlayer: { 0: 5 }, // Not enough for WATER (15)
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should not build upgrade (can't afford)
             expect(command).toBeDefined();
             if (command instanceof BuildCommand) {
@@ -474,7 +474,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist'
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -484,11 +484,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index, level: 0 })
                 },
                 faithByPlayer: { 0: 100 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should make some decision
             expect(command).toBeDefined();
         });
@@ -500,7 +500,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist' // Low soldier eagerness, prefers upgrades
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [
@@ -515,11 +515,11 @@ describe('AiDecisionMaker', () => {
                     1: createMockTemple({ regionIndex: 1 })  // Threatened temple
                 },
                 faithByPlayer: { 0: 50, 1: 50 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should prefer to upgrade (low soldier eagerness)
             expect(command).toBeDefined();
         });
@@ -531,7 +531,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist' // Prefers WATER, then AIR, then EARTH
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -540,11 +540,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined })
                 },
                 faithByPlayer: { 0: 50 },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should build first preferred upgrade if possible
             expect(command).toBeDefined();
         });
@@ -556,7 +556,7 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Economist' // Prefers WATER
             });
-            
+
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -565,11 +565,11 @@ describe('AiDecisionMaker', () => {
                     0: createMockTemple({ regionIndex: 0, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.WATER.index, level: 0 })
                 },
                 faithByPlayer: { 0: 50 }, // Enough for level 1
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             // Should upgrade WATER to level 1
             expect(command).toBeDefined();
         });
@@ -583,12 +583,12 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: undefined
             });
-            
+
             const gameState = createSimpleTwoPlayerGame();
             gameState.state.players[0] = player;
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             expect(command).toBeDefined();
         });
 
@@ -599,12 +599,12 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Defender'
             });
-            
+
             const gameState = createSimpleTwoPlayerGame();
             gameState.state.faithByPlayer[0] = 0;
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             expect(command).toBeDefined();
         });
 
@@ -615,12 +615,12 @@ describe('AiDecisionMaker', () => {
                 isAI: true,
                 personality: 'Defender'
             });
-            
+
             const gameState = createSimpleTwoPlayerGame();
             gameState.state.aiDifficulty = undefined;
-            
+
             const command = await pickAiMove(player, gameState);
-            
+
             expect(command).toBeDefined();
         });
     });

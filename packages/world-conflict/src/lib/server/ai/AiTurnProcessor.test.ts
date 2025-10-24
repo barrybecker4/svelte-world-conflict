@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { processAiTurns } from './AiTurnProcessor';
 import { GameState } from '$lib/game/state/GameState';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
 import {
     createMockGameState,
     createMockPlayer,
@@ -47,7 +48,7 @@ describe('AiTurnProcessor', () => {
                 templesByRegion: {}, // No temples
                 faithByPlayer: { 0: 0, 1: 0 }, // No faith
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -77,7 +78,7 @@ describe('AiTurnProcessor', () => {
                 ownersByRegion: { 0: 0, 1: 1, 2: 2 },
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }], 2: [{ i: 3 }] },
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -102,7 +103,7 @@ describe('AiTurnProcessor', () => {
                 maxTurns: 1,
                 turnNumber: 1, // At max turns
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -124,7 +125,7 @@ describe('AiTurnProcessor', () => {
                 movesRemaining: 3,
                 maxTurns: 1000, // High max turns
                 turnNumber: 1,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -150,7 +151,7 @@ describe('AiTurnProcessor', () => {
                 templesByRegion: {},
                 faithByPlayer: { 0: 0, 1: 100 }, // No faith
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -181,7 +182,7 @@ describe('AiTurnProcessor', () => {
                 },
                 faithByPlayer: { 0: 50, 1: 50 },
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -208,7 +209,7 @@ describe('AiTurnProcessor', () => {
                 ownersByRegion: { 0: 0, 1: 1 },
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] },
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage, saveGameMock } = createMockGameStorage();
@@ -230,7 +231,7 @@ describe('AiTurnProcessor', () => {
                 ownersByRegion: { 0: 1 },
                 soldiersByRegion: { 0: [{ i: 1 }] },
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -251,7 +252,7 @@ describe('AiTurnProcessor', () => {
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }] },
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -276,7 +277,7 @@ describe('AiTurnProcessor', () => {
                 templesByRegion: {},
                 faithByPlayer: { 0: 100, 1: 0 }, // No faith
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -305,7 +306,7 @@ describe('AiTurnProcessor', () => {
                 movesRemaining: 3,
                 maxTurns: 10,
                 turnNumber: 1,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -336,7 +337,7 @@ describe('AiTurnProcessor', () => {
                 },
                 faithByPlayer: { 0: 50, 1: 50 },
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -369,7 +370,7 @@ describe('AiTurnProcessor', () => {
                     Array.from({ length: 8 }, (_, i) => [i, [{ i }]])
                 ),
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -396,7 +397,7 @@ describe('AiTurnProcessor', () => {
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] },
                 eliminatedPlayers: [1],
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();
@@ -425,7 +426,7 @@ describe('AiTurnProcessor', () => {
                     Array.from({ length: 6 }, (_, i) => [i, [{ i }, { i: i + 100 }]])
                 ),
                 movesRemaining: 3,
-                aiDifficulty: 'Normal'
+                aiDifficulty: AiDifficulty.RUDE
             });
             
             const { storage } = createMockGameStorage();

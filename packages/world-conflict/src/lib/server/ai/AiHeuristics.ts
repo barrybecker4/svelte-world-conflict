@@ -5,21 +5,23 @@
 
 import type { GameState, Player, Region, Temple } from '$lib/game/state/GameState';
 import { sumBy, maxBy, contains, clamp } from '$lib/game/utils/arrayUtils';
-import { AI_LEVELS, type AiLevel } from '$lib/game/entities/aiPersonalities';
+import { AI_LEVELS, AiDifficulty, type AiLevel } from '$lib/game/entities/aiPersonalities';
 
 /**
  * Map difficulty string to AI level number
  */
 export function getAiLevelFromDifficulty(difficulty?: string): AiLevel {
     switch (difficulty) {
-        case 'Nice':
+        case AiDifficulty.NICE:
             return AI_LEVELS.NICE; // 0
-        case 'Normal':
+        case AiDifficulty.RUDE:
             return AI_LEVELS.RUDE; // 1
-        case 'Hard':
+        case AiDifficulty.MEAN:
             return AI_LEVELS.MEAN; // 2
+        case AiDifficulty.EVIL:
+            return AI_LEVELS.EVIL; // 3
         default:
-            return AI_LEVELS.RUDE; // 1 - default to Normal
+            return AI_LEVELS.RUDE; // 1 - default to Rude
     }
 }
 

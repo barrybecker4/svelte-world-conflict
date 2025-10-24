@@ -1,7 +1,8 @@
 import type { Player } from '$lib/game/state/GameState';
 import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 import { json } from '@sveltejs/kit';
-import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
+import { AI_PERSONALITIES } from '$lib/game/entities/aiPersonalities';
+import { getAiLevelFromDifficulty } from '$lib/server/ai/AiHeuristics';
 
 /**
  * Helper function to safely get error message from unknown error type
@@ -50,21 +51,7 @@ function getPersonalitiesForDifficulty(difficulty?: string): any[] {
         return [...AI_PERSONALITIES];
     }
 
-    let targetLevel: number;
-    switch (difficulty) {
-        case 'Nice':
-            targetLevel = AI_LEVELS.NICE;
-            break;
-        case 'Normal':
-            targetLevel = AI_LEVELS.RUDE;
-            break;
-        case 'Hard':
-            targetLevel = AI_LEVELS.MEAN;
-            break;
-        default:
-            targetLevel = AI_LEVELS.RUDE;
-    }
-
+    const targetLevel = getAiLevelFromDifficulty(difficulty);
     const matchingPersonalities = AI_PERSONALITIES.filter(p => p.level === targetLevel);
     return matchingPersonalities.length > 0 ? matchingPersonalities : [...AI_PERSONALITIES];
 }
