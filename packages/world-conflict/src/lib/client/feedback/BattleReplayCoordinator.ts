@@ -229,6 +229,7 @@ export class BattleReplayCoordinator {
 
   /**
    * Build animation state for conquest movement
+   * This must ensure no duplicate soldier IDs across regions
    */
   private buildConquestAnimationState(
     previousGameState: any,
@@ -239,26 +240,27 @@ export class BattleReplayCoordinator {
   ): any {
     const newAnimationState = JSON.parse(JSON.stringify(finalGameState));
 
-    // Get surviving soldier IDs
+    // Get surviving soldier IDs (these are now at target in finalGameState)
     const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
 
-    // Find survivors from the attack
+    // Find survivors from the attack in the PREVIOUS animation state
     const currentSourceSoldiers = previousGameState.soldiersByRegion?.[sourceRegion] || [];
     const survivingAttackers = currentSourceSoldiers.filter(
       (s: any) => s.attackedRegion === targetRegion && survivorIds.has(s.i)
     );
 
-    console.log(`Found ${survivingAttackers.length} surviving attackers to animate`);
+    console.log(`Found ${survivingAttackers.length} surviving attackers to animate (out of ${targetSoldiersInFinal.length} at target)`);
 
-    // Place survivors at source with movingToRegion set
+    // CRITICAL: Clear target region FIRST to avoid duplicates
+    newAnimationState.soldiersByRegion[targetRegion] = [];
+
+    // Then place survivors at source with movingToRegion set
+    // This ensures each soldier is in exactly ONE region at a time
     newAnimationState.soldiersByRegion[sourceRegion] = survivingAttackers.map((s: any) => ({
       ...s,
       attackedRegion: undefined,
       movingToRegion: targetRegion
     }));
-
-    // Clear target region (soldiers will animate there)
-    newAnimationState.soldiersByRegion[targetRegion] = [];
 
     // Update ownership so color changes with soldiers
     newAnimationState.ownersByRegion = {

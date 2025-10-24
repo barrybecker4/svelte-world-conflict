@@ -25,6 +25,7 @@ export class GameStateUpdater {
   private lastRawState: GameStateData | null = null; // Track raw state without overrides
   private onTurnReadyCallback: ((gameState: GameStateData) => void) | null = null;
   private isBattleInProgressCallback: (() => boolean) | null = null;
+  private static isReplayingMoves = false; // Global flag to prevent state contamination during AI replay
 
   constructor(
     private gameStateStore: Writable<GameStateData | null>,
@@ -191,9 +192,15 @@ export class GameStateUpdater {
         console.log('🔄 Replaying other player\'s move');
         // DON'T update game state yet - keep old state for animations
         
+        // Set flag to prevent animation states from contaminating game state
+        GameStateUpdater.isReplayingMoves = true;
+        
         // Detect and replay moves using state comparison
         console.log('📼 Detecting and replaying moves from state diff');
         await this.moveReplayer.replayMoves(updatedState, currentState);
+        
+        // Clear flag before applying final state
+        GameStateUpdater.isReplayingMoves = false;
         
         // NOW apply the final state after animations complete
         this.gameStateStore.set(cleanState);
@@ -219,5 +226,13 @@ export class GameStateUpdater {
 
     // Process next update in queue
     this.processNextUpdate();
+  }
+
+  /**
+   * Check if we're currently replaying AI moves
+   * Used to prevent animation states from contaminating game state
+   */
+  static isCurrentlyReplayingMoves(): boolean {
+    return GameStateUpdater.isReplayingMoves;
   }
 }

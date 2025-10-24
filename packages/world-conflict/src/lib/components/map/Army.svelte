@@ -33,11 +33,23 @@
     const soldiersAtRegion = state.soldiersByRegion[regionIndex] || [];
 
     // Deduplicate soldiers by ID to prevent Svelte keying errors
-    // This can happen during state transitions when the same soldier might appear twice
+    // FAIL FAST: Duplicate soldier IDs indicate a bug in state management
     const seenIds = new Set<number>();
     const uniqueSoldiers = soldiersAtRegion.filter(soldier => {
       if (seenIds.has(soldier.i)) {
-        console.warn(`⚠️ Duplicate soldier ID ${soldier.i} detected in region ${regionIndex}, skipping`);
+        console.error(`❌ BUG: Duplicate soldier ID ${soldier.i} detected in region ${regionIndex}!`, {
+          regionIndex,
+          totalSoldiers: soldiersAtRegion.length,
+          uniqueIds: Array.from(seenIds).length,
+          allSoldierIds: soldiersAtRegion.map(s => s.i),
+          duplicateSoldier: soldier,
+          gameState: state
+        });
+        // This should never happen - it indicates animation state is being mixed with game state
+        // Throw an error in development to catch this bug early
+        if (import.meta.env.DEV) {
+          throw new Error(`Duplicate soldier ID ${soldier.i} in region ${regionIndex} - this is a bug in animation state management`);
+        }
         return false;
       }
       seenIds.add(soldier.i);
@@ -181,46 +193,65 @@
   // Handle battle casualty events (incrementally hide soldiers during battle)
   function handleBattleCasualties(event: CustomEvent) {
     const { sourceRegion, targetRegion, attackerCasualties, defenderCasualties } = event.detail;
-    console.log(`💨 Region ${region.index}: Received battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
-
-    // Mark that we're in a battle (prevents premature clearing of hidden soldiers)
-    const isInvolvedInBattle = (sourceRegion === region.index && attackerCasualties > 0) ||
-                                (targetRegion === region.index && defenderCasualties > 0);
-
+    
+    // ONLY log if this region is actually involved in the battle
+    const isInvolvedInBattle = sourceRegion === region.index || targetRegion === region.index;
     if (isInvolvedInBattle) {
-      isBattleInProgress = true;
-
-      // Clear any existing battle end timer
-      if (battleEndTimer !== null) {
-        clearTimeout(battleEndTimer);
-      }
-
-      // Schedule battle end after a delay (matching animation duration + buffer)
-      // This timer resets with each new casualty event, ensuring we wait until ALL casualties are done
-      battleEndTimer = setTimeout(() => {
-        isBattleInProgress = false;
-        battleEndTimer = null;
-      }, GAME_CONSTANTS.BATTLE_END_WAIT_MS) as unknown as number; // 500ms per round delay, plus buffer
+      console.log(`💨 Region ${region.index}: Received battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
     }
 
-    // Handle attacker casualties if this is the source region
+    // Early return if this region is not involved in the battle at all
+    if (!isInvolvedInBattle) {
+      return;
+    }
+
+    // Mark that we're in a battle (prevents premature clearing of hidden soldiers)
+    isBattleInProgress = true;
+
+    // Clear any existing battle end timer
+    if (battleEndTimer !== null) {
+      clearTimeout(battleEndTimer);
+    }
+
+    // Schedule battle end after a delay (matching animation duration + buffer)
+    // This timer resets with each new casualty event, ensuring we wait until ALL casualties are done
+    battleEndTimer = setTimeout(() => {
+      isBattleInProgress = false;
+      battleEndTimer = null;
+    }, GAME_CONSTANTS.BATTLE_END_WAIT_MS) as unknown as number; // 500ms per round delay, plus buffer
+
+    // Handle attacker casualties ONLY if this is the EXACT source region
     if (sourceRegion === region.index && attackerCasualties > 0) {
       const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
+      console.log(`⚔️ Region ${region.index} (ATTACKER): Hiding ${attackerCasualties} soldiers from ${visibleSoldiers.length} visible`, {
+        sourceRegion,
+        regionIndex: region.index,
+        soldiersInRegion: allSoldiers.length,
+        visibleSoldiers: visibleSoldiers.length
+      });
 
       for (let i = 0; i < attackerCasualties && i < visibleSoldiers.length; i++) {
         const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
+        console.log(`⚔️ Region ${region.index}: Hiding attacker soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
         // Hide soldier and spawn smoke simultaneously
         hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
         spawnSmokeAt(casualty.x, casualty.y, true);
       }
     }
 
-    // Handle defender casualties if this is the target region
+    // Handle defender casualties ONLY if this is the EXACT target region
     if (targetRegion === region.index && defenderCasualties > 0) {
       const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
+      console.log(`🛡️ Region ${region.index} (DEFENDER): Hiding ${defenderCasualties} soldiers from ${visibleSoldiers.length} visible`, {
+        targetRegion,
+        regionIndex: region.index,
+        soldiersInRegion: allSoldiers.length,
+        visibleSoldiers: visibleSoldiers.length
+      });
 
       for (let i = 0; i < defenderCasualties && i < visibleSoldiers.length; i++) {
         const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
+        console.log(`🛡️ Region ${region.index}: Hiding defender soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
         // Hide soldier and spawn smoke simultaneously
         hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
         spawnSmokeAt(casualty.x, casualty.y);

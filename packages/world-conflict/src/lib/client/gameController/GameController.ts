@@ -11,6 +11,7 @@ import { BattleCoordinator } from './BattleCoordinator';
 import { MoveUICoordinator } from './MoveUICoordinator';
 import { GameEndCoordinator } from './GameEndCoordinator';
 import { TempleActionCoordinator } from './TempleActionCoordinator';
+import { GameStateUpdater } from '$lib/client/stores/GameStateUpdater';
 
 /**
  * Single controller that manages all game logic
@@ -116,6 +117,12 @@ export class GameController {
     // Listen for battle state updates (for soldier positioning animations)
     if (typeof window !== 'undefined') {
       window.addEventListener('battleStateUpdate', ((event: CustomEvent) => {
+        // Don't update game state during AI move replay to prevent contamination
+        if (GameStateUpdater.isCurrentlyReplayingMoves()) {
+          console.log('⚔️ Received battleStateUpdate during AI replay, skipping to prevent contamination');
+          return;
+        }
+        
         console.log('⚔️ Received battleStateUpdate event, updating game state for animation');
         // Update store directly to avoid queuing delays
         this.gameStore.gameState.set(event.detail.gameState);

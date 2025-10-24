@@ -139,15 +139,16 @@ export class AnimationStateCoordinator {
 
     console.log(`Found ${survivingAttackers.length} surviving attackers to animate (out of ${targetSoldiersInFinal.length} total)`);
 
-    // Place survivors at source with movingToRegion set
+    // Clear target region FIRST to avoid duplicate soldiers
+    newAnimationState.soldiersByRegion[targetRegion] = [];
+
+    // Then place survivors at source with movingToRegion set
+    // This ensures each soldier is in exactly ONE region at a time
     newAnimationState.soldiersByRegion[sourceRegion] = survivingAttackers.map((s: any) => ({
       ...s,
       attackedRegion: undefined,
       movingToRegion: targetRegion
     }));
-
-    // Clear target region (soldiers will animate there)
-    newAnimationState.soldiersByRegion[targetRegion] = [];
 
     return newAnimationState;
   }
