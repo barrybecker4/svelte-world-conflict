@@ -25,9 +25,11 @@ export class AnimationStateCoordinator {
     const animationSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
 
     // Set attackedRegion on the animation state's soldiers (for halfway animation)
-    animationSoldiers.slice(0, soldierCount).forEach((soldier: any) => {
-      soldier.attackedRegion = targetRegion;
-    });
+    // Server uses pop() which takes from END of array, so mark the LAST N soldiers
+    const startIndex = Math.max(0, animationSoldiers.length - soldierCount);
+    for (let i = startIndex; i < animationSoldiers.length; i++) {
+      animationSoldiers[i].attackedRegion = targetRegion;
+    }
 
     return animationState;
   }

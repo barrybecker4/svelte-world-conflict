@@ -193,7 +193,7 @@
   // Handle battle casualty events (incrementally hide soldiers during battle)
   function handleBattleCasualties(event: CustomEvent) {
     const { sourceRegion, targetRegion, attackerCasualties, defenderCasualties } = event.detail;
-    
+
     // ONLY log if this region is actually involved in the battle
     const isInvolvedInBattle = sourceRegion === region.index || targetRegion === region.index;
     if (isInvolvedInBattle) {
@@ -222,16 +222,16 @@
 
     // Handle attacker casualties ONLY if this is the EXACT source region
     if (sourceRegion === region.index && attackerCasualties > 0) {
-      const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
-      console.log(`⚔️ Region ${region.index} (ATTACKER): Hiding ${attackerCasualties} soldiers from ${visibleSoldiers.length} visible`, {
-        sourceRegion,
-        regionIndex: region.index,
-        soldiersInRegion: allSoldiers.length,
-        visibleSoldiers: visibleSoldiers.length
-      });
+      // Only hide soldiers that are actually attacking (marked with attackedRegion)
+      // This prevents hiding soldiers that stayed behind at the source region
+      const attackingSoldiers = soldierPositions.filter(p =>
+        !hiddenSoldierIds.has(p.soldier.i) &&
+        (p.soldier as any).attackedRegion === targetRegion
+      );
 
-      for (let i = 0; i < attackerCasualties && i < visibleSoldiers.length; i++) {
-        const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
+      for (let i = 0; i < attackerCasualties && i < attackingSoldiers.length; i++) {
+        // Server uses pop() which removes from END, so we remove from END of attacking soldiers
+        const casualty = attackingSoldiers[attackingSoldiers.length - 1 - i];
         console.log(`⚔️ Region ${region.index}: Hiding attacker soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
         // Hide soldier and spawn smoke simultaneously
         hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
