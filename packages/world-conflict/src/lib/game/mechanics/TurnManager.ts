@@ -244,7 +244,6 @@ class TurnManager {
     movableRegions: number;
   } {
     const state = get(this.turnState);
-    const gameState = get(this.gameState);
 
     const ownedRegions = this.getCurrentPlayerRegions();
     const movableRegions = this.getMovableRegions();
