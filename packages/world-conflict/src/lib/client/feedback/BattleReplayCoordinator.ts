@@ -88,8 +88,12 @@ export class BattleReplayCoordinator {
 
     // Set attackedRegion on attacking soldiers (for halfway positioning)
     const attackingSoldiers = animationState.soldiersByRegion[sourceRegion] || [];
+
+    // Mark soldiers as attacking (they stay in source array for rendering)
+    // Server uses pop() which takes from END of array, so mark the LAST N soldiers
+    // We mark ALL soldiers at source for now since we don't know exact count until after battle
     console.log(
-      `⚔️ AI Battle: Setting attackedRegion on ${attackingSoldiers.length} soldiers from region ${sourceRegion}`
+      `⚔️ AI Battle: Setting attackedRegion on ${attackingSoldiers.length} soldiers from region ${sourceRegion} to ${targetRegion}`
     );
 
     attackingSoldiers.forEach((soldier: any) => {
