@@ -33,12 +33,6 @@ export class TutorialCoordinator {
     regions: any[],
     moveState: MoveState
   ): void {
-    console.log('📖 TutorialCoordinator.updateTooltips called', {
-      hasGameState: !!gameState,
-      hasRegions: !!regions,
-      regionsCount: regions?.length,
-      moveState
-    });
 
     if (this.clearTooltipsIfInvalid(gameState, regions)) {
       return;
@@ -47,13 +41,6 @@ export class TutorialCoordinator {
     const isMyTurn = gameState.currentPlayerSlot === this.playerSlotIndex;
     const selectedRegionIndex = moveState?.sourceRegion ?? null;
 
-    console.log('📖 TutorialCoordinator tooltip params:', {
-      playerSlotIndex: this.playerSlotIndex,
-      currentPlayerSlot: gameState.currentPlayerSlot,
-      isMyTurn,
-      selectedRegionIndex,
-      mode: moveState?.mode
-    });
 
     const previousTooltips = get(this.tutorialTips);
     const tooltips = this.tutorialManager.getTooltips(
@@ -64,8 +51,6 @@ export class TutorialCoordinator {
     );
 
     this.markRemovedTooltipsAsShown(previousTooltips, tooltips);
-
-    console.log('📖 TutorialCoordinator setting tooltips:', tooltips);
     this.tutorialTips.set(tooltips);
   }
 

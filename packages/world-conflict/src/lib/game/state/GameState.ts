@@ -25,60 +25,6 @@ export class GameState {
         if (!this.state.faithByPlayer) this.state.faithByPlayer = {};
         if (!this.state.conqueredRegions) this.state.conqueredRegions = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
-
-        // Cleanup: Fix any duplicate soldier IDs from old games
-        this.deduplicateSoldierIds();
-    }
-
-    /**
-     * Deduplicate soldier IDs across all regions
-     * This fixes issues from old games that used Date.now() + i for IDs
-     * Also ensures each soldier object is unique (no shared references)
-     * Also removes duplicate object references within the same array
-     */
-    private deduplicateSoldierIds(): void {
-        const allSeenIds = new Set<number>();
-        let duplicatesFixed = 0;
-
-        for (const [regionIndex, soldiers] of Object.entries(this.state.soldiersByRegion)) {
-            if (!soldiers || soldiers.length === 0) continue;
-
-            const regionIdx = parseInt(regionIndex);
-            const seenInRegion = new Set<number>();
-            const fixedSoldiers: any[] = [];
-
-            for (const soldier of soldiers) {
-                // Skip if we've already seen this exact ID in this region (duplicate reference)
-                if (seenInRegion.has(soldier.i)) {
-                    duplicatesFixed++;
-                    console.log(`🔧 Removed duplicate soldier reference (ID ${soldier.i}) in region ${regionIdx}`);
-                    continue;
-                }
-
-                // Check if ID exists globally across all regions
-                if (allSeenIds.has(soldier.i)) {
-                    // Duplicate ID across regions - generate new unique ID
-                    duplicatesFixed++;
-                    const newId = generateSoldierId();
-                    console.log(`🔧 Fixed duplicate soldier ID ${soldier.i} in region ${regionIdx} -> ${newId}`);
-                    fixedSoldiers.push({ ...soldier, i: newId });
-                    seenInRegion.add(newId);
-                    allSeenIds.add(newId);
-                } else {
-                    // Unique ID - create a copy to ensure no shared references
-                    fixedSoldiers.push({ ...soldier });
-                    seenInRegion.add(soldier.i);
-                    allSeenIds.add(soldier.i);
-                }
-            }
-
-            // Always assign the new array
-            this.state.soldiersByRegion[regionIdx] = fixedSoldiers;
-        }
-
-        if (duplicatesFixed > 0) {
-            console.log(`✅ Deduplicated ${duplicatesFixed} soldier IDs/references on game state load`);
-        }
     }
 
     /**

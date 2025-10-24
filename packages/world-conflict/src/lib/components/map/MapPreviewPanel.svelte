@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { MapGenerator } from '$lib/game/map/MapGenerator';
   import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
-  import { GameState } from '$lib/game/state/GameState';
   import GameMap from '$lib/components/map/GameMap.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
@@ -91,13 +90,9 @@
 
     try {
       // Use GameStateInitializer to create properly initialized preview state
-      const rawPreviewData = gameStateInitializer.createPreviewStateData(activePlayers, previewRegions);
-      
-      // IMPORTANT: Pass through GameState constructor to run deduplication and validation
-      const gameStateInstance = new GameState(rawPreviewData);
-      previewGameState = gameStateInstance.toJSON();
+      previewGameState = gameStateInitializer.createPreviewStateData(activePlayers, previewRegions);
 
-      console.log('Preview state created and cleaned using GameState');
+      console.log('Preview state created using GameStateInitializer');
     } catch (err) {
       console.error('Failed to create preview state:', err);
       previewGameState = null;
