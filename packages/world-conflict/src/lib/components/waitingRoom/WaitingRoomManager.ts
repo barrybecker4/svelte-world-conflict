@@ -16,7 +16,6 @@ export class WaitingRoomManager {
 
   private gameId: string;
   private currentPlayerId: number | null = null;
-  private pollInterval: NodeJS.Timeout | null = null;
   private wsUnsubscribe: (() => void) | null = null;
   private wsStateUnsubscribe: (() => void) | null = null;
   private onGameStarted: (() => void) | null = null;
@@ -98,7 +97,7 @@ export class WaitingRoomManager {
       //     }
       //   }
       // });
-      
+
       console.log('Real-time updates not yet implemented');
       this.wsConnected.set(false);
     } catch (error) {

@@ -92,6 +92,12 @@ export class GameStateInitializer {
 
     private setupPlayerHomes(stateData: GameStateData, assignments: HomeBaseAssignment[]): void {
         assignments.forEach(assignment => {
+            // Skip if already initialized (prevent duplicate setup)
+            if (stateData.soldiersByRegion[assignment.regionIndex]) {
+                console.warn(`⚠️ Region ${assignment.regionIndex} already has soldiers, skipping duplicate setup`);
+                return;
+            }
+
             stateData.ownersByRegion[assignment.regionIndex] = assignment.playerSlotIndex;
 
             // Add initial soldiers
@@ -118,6 +124,12 @@ export class GameStateInitializer {
         );
 
         neutralTempleRegions.forEach(region => {
+            // Skip if already initialized (prevent duplicate setup)
+            if (stateData.soldiersByRegion[region.index]) {
+                console.warn(`⚠️ Neutral region ${region.index} already has soldiers, skipping duplicate setup`);
+                return;
+            }
+
             stateData.templesByRegion[region.index] = {
                 regionIndex: region.index,
                 level: 0
@@ -130,9 +142,24 @@ export class GameStateInitializer {
 
     private createSoldiers(index: number, numSoldiers: number): { i: number }[] {
         const soldiers: { i: number }[] = [];
+        const createdIds = new Set<number>();
+        
         for (let s = 0; s < numSoldiers; s++) {
-            soldiers.push({ i: generateSoldierId() });
+            const id = generateSoldierId();
+            
+            // Paranoid check: ensure we're not creating duplicate IDs
+            if (createdIds.has(id)) {
+                console.error(`❌ CRITICAL: generateSoldierId() returned duplicate ID ${id}!`);
+                // Try again with a slight delay
+                const newId = generateSoldierId();
+                soldiers.push({ i: newId });
+                createdIds.add(newId);
+            } else {
+                soldiers.push({ i: id });
+                createdIds.add(id);
+            }
         }
+        
         return soldiers;
     }
 }
