@@ -28,6 +28,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
     let currentPlayer = currentState.getCurrentPlayer();
     let turnCount = 0;
     const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS; // Safety limit to prevent infinite loops
+    let lastAttackSequence: any[] | undefined = undefined;
 
     console.log(`Starting AI turn processing - current player: ${currentPlayer?.name} (isAI: ${currentPlayer?.isAI})`);
 
@@ -49,26 +50,25 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     currentState = result.newState;
                     moveMade = true;
 
-                    // Save game state after move
+                    // Store attack sequence for WebSocket notification
+                    if (result.attackSequence) {
+                        lastAttackSequence = result.attackSequence;
+                        console.log(`💨 Stored attack sequence with ${result.attackSequence.length} events for battle replay`);
+                    } else {
+                        lastAttackSequence = undefined;
+                    }
+
+                    // Send WebSocket notification immediately for this move (but don't save to KV yet)
                     const updatedGame = await gameStorage.getGame(gameId);
                     if (updatedGame) {
                         updatedGame.worldConflictState = currentState.toJSON();
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
+                        updatedGame.lastAttackSequence = lastAttackSequence;
                         
-                        // Save attack sequence for battle replay
-                        if (result.attackSequence) {
-                            updatedGame.lastAttackSequence = result.attackSequence;
-                            console.log(`💨 Saved attack sequence with ${result.attackSequence.length} events for battle replay`);
-                        } else {
-                            updatedGame.lastAttackSequence = undefined;
-                        }
-                        
-                        await gameStorage.saveGame(updatedGame);
-
-                        // Send WebSocket notification immediately for this move
+                        // Send WebSocket but DON'T save to KV
                         await WebSocketNotifications.gameUpdate(updatedGame);
-                        console.log(`✅ AI move by ${currentPlayer.name}: ${aiMove.count} soldiers from ${aiMove.source} to ${aiMove.destination} - WebSocket sent`);
+                        console.log(`✅ AI move by ${currentPlayer.name}: ${aiMove.count} soldiers from ${aiMove.source} to ${aiMove.destination} - WebSocket sent (KV save deferred)`);
                     }
 
                     // Small delay between AI actions for better UX
@@ -88,22 +88,19 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
 
                 if (result.success && result.newState) {
                     currentState = result.newState;
+                    lastAttackSequence = undefined; // Clear attack sequence for turn end
 
-                    // Save game state after ending turn
+                    // Send WebSocket notification for turn end (but don't save to KV yet)
                     const updatedGame = await gameStorage.getGame(gameId);
                     if (updatedGame) {
                         updatedGame.worldConflictState = currentState.toJSON();
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
-                        
-                        // Clear attack sequence for turn end (no battle)
                         updatedGame.lastAttackSequence = undefined;
                         
-                        await gameStorage.saveGame(updatedGame);
-
-                        // Send WebSocket notification for turn end
+                        // Send WebSocket but DON'T save to KV
                         await WebSocketNotifications.gameUpdate(updatedGame);
-                        console.log(`✅ AI ${currentPlayer.name} ended turn - WebSocket sent`);
+                        console.log(`✅ AI ${currentPlayer.name} ended turn - WebSocket sent (KV save deferred)`);
                     }
                 } else {
                     console.error('Failed to end AI turn:', result.error);
@@ -125,6 +122,18 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
 
     const finalPlayer = currentState.getCurrentPlayer();
     console.log(`AI processing complete after ${turnCount} turns - current player: ${finalPlayer?.name} (isAI: ${finalPlayer?.isAI})`);
+
+    // Save ONCE after all AI turns are complete
+    const finalGame = await gameStorage.getGame(gameId);
+    if (finalGame) {
+        finalGame.worldConflictState = currentState.toJSON();
+        finalGame.currentPlayerSlot = currentState.currentPlayerSlot;
+        finalGame.lastMoveAt = Date.now();
+        finalGame.lastAttackSequence = lastAttackSequence;
+        
+        await gameStorage.saveGame(finalGame);
+        console.log(`💾 All AI turns complete - saved to KV (1 write for ${turnCount} AI actions)`);
+    }
 
     return currentState;
 }

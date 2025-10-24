@@ -110,7 +110,8 @@ export class GameApiClient {
         playerId,
         moveType: 'BUILD',
         regionIndex,
-        upgradeIndex
+        upgradeIndex,
+        deferKVWrite: true // Server-side batching flag
       })
     });
 
@@ -138,7 +139,7 @@ export class GameApiClient {
   }
 
   /**
-   * Execute a battle move (merged from BattleApiClient)
+   * Execute a battle move
    * Send move to server for validation and execution
    */
   async executeMove(move: BattleMove, playerId: string): Promise<BattleResult> {
@@ -153,7 +154,8 @@ export class GameApiClient {
           playerId,
           source: sourceRegionIndex,
           destination: targetRegionIndex,
-          count: soldierCount
+          count: soldierCount,
+          deferKVWrite: true // Server-side batching flag
         })
       });
 

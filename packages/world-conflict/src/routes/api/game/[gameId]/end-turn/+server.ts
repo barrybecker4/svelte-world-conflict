@@ -7,6 +7,7 @@ import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier'
 import { handleApiError } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { flushPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
 
 interface PendingMove {
     type: 'ARMY_MOVE' | 'BUILD';
@@ -38,6 +39,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         console.log(`🔚 End turn request for game ${gameId} from player ${playerId} with ${moves.length} pending moves`);
 
         const gameStorage = GameStorage.create(platform!);
+
+        // Flush any pending KV writes from this turn
+        await flushPendingUpdate(gameId, gameStorage);
 
         // Load the current game
         const game = await gameStorage.getGame(gameId);

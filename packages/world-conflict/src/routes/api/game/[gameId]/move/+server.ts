@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types.ts';
-import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
+import type { RequestHandler } from './$types';
+import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
-import { ArmyMoveCommand, BuildCommand, EndTurnCommand, CommandProcessor } from '$lib/game/commands';
+import { ArmyMoveCommand, BuildCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { handleApiError } from '$lib/server/api-utils';
+import { getPendingUpdate, setPendingUpdate, clearPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
 
 interface MoveRequest {
     playerId: string;
-    moveType: 'ARMY_MOVE' | 'BUILD' | 'END_TURN';
+    moveType: 'ARMY_MOVE' | 'BUILD';
 
     // Army move specific
     source?: number;
@@ -18,24 +19,43 @@ interface MoveRequest {
     // Build specific
     regionIndex?: number;
     upgradeIndex?: number;
+
+    // Server-side batching flag
+    deferKVWrite?: boolean;
 }
 
 /**
   * Handle player moves in World Conflict game
   * This endpoint processes player moves such as army movements, building, and ending turns.
   * It validates the move, applies the command, updates the game state, and sends notifications.
+  * 
+  * Server-side batching: If deferKVWrite is true, the game state is updated in memory
+  * but not written to KV until endTurn is called.
  */
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
         const moveData = await request.json() as MoveRequest;
 
+        console.log(`🎮 Move request for game ${gameId}:`, moveData.moveType);
+
         const gameStorage = GameStorage.create(platform!);
 
-        const game = await gameStorage.getGame(gameId);
+        // Get the most recent game state (from pending updates if available, otherwise from KV)
+        let game = getPendingUpdate(gameId);
         if (!game) {
+            console.log(`📥 No pending update, fetching from KV...`);
+            game = await gameStorage.getGame(gameId);
+        } else {
+            console.log(`📥 Using pending update from memory`);
+        }
+        
+        if (!game) {
+            console.error(`❌ Game ${gameId} not found`);
             return json({ error: 'Game not found' }, { status: 404 });
         }
+
+        console.log(`📖 Retrieved game state (currentPlayerSlot: ${game.currentPlayerSlot})`);
 
         // Reconstruct World Conflict game state
         const worldConflictState = new GameState(game.worldConflictState);
@@ -76,10 +96,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 );
                 break;
 
-            case 'END_TURN':
-                command = new EndTurnCommand(worldConflictState, player);
-                break;
-
             default:
                 return json({ error: 'Invalid move type: ' + moveData.moveType }, { status: 400 });
         }
@@ -95,18 +111,36 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Determine proper status
         const gameStatus: 'ACTIVE' | 'COMPLETED' | 'PENDING' = result.newState!.endResult ? 'COMPLETED' : 'ACTIVE';
 
-        // Save updated game state with attack sequence
+        // Get the resulting state
+        const newStateJSON = result.newState!.toJSON();
+
+        // Log ownership changes for debugging
+        if (moveData.moveType === 'ARMY_MOVE' && moveData.destination !== undefined) {
+            const oldOwner = game.worldConflictState.ownersByRegion?.[moveData.destination];
+            const newOwner = newStateJSON.ownersByRegion?.[moveData.destination];
+            console.log(`🗺️ Region ${moveData.destination} ownership: ${oldOwner} → ${newOwner}`);
+        }
+
+        // Update game record
         const updatedGame: GameRecord = {
             ...game,
-            worldConflictState: result.newState!.toJSON(),
+            worldConflictState: newStateJSON,
             lastMoveAt: Date.now(),
             status: gameStatus,
             lastAttackSequence: result.attackSequence // Store attack sequence for replay
         };
 
-        await gameStorage.saveGame(updatedGame);
+        // Server-side batching: defer KV write if requested
+        if (moveData.deferKVWrite) {
+            // Store in memory, don't write to KV yet
+            setPendingUpdate(gameId, updatedGame);
+        } else {
+            // Write immediately
+            await gameStorage.saveGame(updatedGame);
+            clearPendingUpdate(gameId); // Clear any pending updates
+        }
 
-        // Send WebSocket updates - pass the game record including attack sequence
+        // Send WebSocket updates - always send for real-time UI
         await WebSocketNotifications.gameUpdate(updatedGame);
 
         return json({
@@ -118,6 +152,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         });
 
     } catch (error) {
+        console.error('❌ Fatal error in move endpoint:', error);
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
         return handleApiError(error, 'processing move');
     }
 };
+

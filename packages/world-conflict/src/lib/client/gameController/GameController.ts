@@ -202,17 +202,17 @@ export class GameController {
   }
 
   /**
-   * End turn - send all accumulated moves to server
+   * End turn - flush any pending KV writes and transition to next player
    */
   async endTurn(): Promise<void> {
     // Stop the timer when ending turn
     this.turnTimerCoordinator.stopTimer();
 
     try {
-      // Moves are sent to server immediately when made (not batched)
-      console.log(`🔚 Ending turn (moves already sent to server)`);
+      // Moves are sent to server immediately (with deferred KV writes)
+      console.log(`🔚 Ending turn - flushing deferred KV writes`);
 
-      // Send end turn with empty pending moves array
+      // Send end turn - this will flush any deferred KV writes
       console.log('🔚 Sending endTurn request to server...');
       const result = await this.apiClient.endTurn(this.playerId, []);
       console.log('🔚 EndTurn response received:', result);

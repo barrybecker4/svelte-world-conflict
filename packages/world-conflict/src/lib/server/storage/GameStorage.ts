@@ -73,13 +73,23 @@ export class GameStorage {
         try {
             console.log(`Saving World Conflict game ${game.gameId} with status: ${game.status} pendingConfig: ${game.pendingConfiguration}`);
 
+            // Get previous game state to check if status changed
+            const previousGame = await this.getGame(game.gameId);
+            const statusChanged = !previousGame || previousGame.status !== game.status;
+
             await this.kv.put(`wc_game:${game.gameId}`, game);
 
-            // Update open games list if game status changed
-            if (game.status === 'ACTIVE' || game.status === 'COMPLETED') {
-                await this.removeFromOpenGamesList(game.gameId);
-            } else if (game.status === 'PENDING') {
-                await this.addToOpenGamesList(game);
+            // Update open games list ONLY if game status changed
+            if (statusChanged) {
+                if (game.status === 'ACTIVE' || game.status === 'COMPLETED') {
+                    await this.removeFromOpenGamesList(game.gameId);
+                    console.log(`📝 Game ${game.gameId} status changed to ${game.status} - removed from open games list`);
+                } else if (game.status === 'PENDING') {
+                    await this.addToOpenGamesList(game);
+                    console.log(`📝 Game ${game.gameId} status changed to PENDING - added to open games list`);
+                }
+            } else {
+                console.log(`📝 Game ${game.gameId} status unchanged (${game.status}) - skipping open games list update`);
             }
         } catch (error) {
             console.error(`Error saving World Conflict game ${game.gameId}:`, error);

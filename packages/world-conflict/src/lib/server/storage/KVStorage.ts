@@ -4,6 +4,9 @@
  */
 import { KVStorageAdapter, type StorageAdapter } from '@svelte-mp/framework/server';
 
+// Track KV writes for monitoring
+let kvWriteCount = 0;
+
 /**
  * KVStorage for World Conflict
  * Wraps the framework KVStorageAdapter with World Conflict-specific configuration
@@ -22,6 +25,8 @@ export class KVStorage implements StorageAdapter {
     }
 
     async put(key: string, value: any): Promise<void> {
+        kvWriteCount++;
+        console.log(`📊 KV WRITE #${kvWriteCount}: ${key}`);
         return this.adapter.put(key, value);
     }
 
