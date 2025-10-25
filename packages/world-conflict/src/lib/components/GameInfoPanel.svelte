@@ -77,7 +77,7 @@
         {#if isGameOver}
           Game over
         {:else}
-          Turn <span class="turn-number">{turnNumber}</span>{#if maxTurns} &nbsp;/ {maxTurns}{/if}
+          Turn <span class="turn-number" data-testid="turn-number">{turnNumber}</span>{#if maxTurns} &nbsp;/ {maxTurns}{/if}
         {/if}
       </div>
     </div>
@@ -91,17 +91,17 @@
       {@const regionCount = getRegionCount(player.slotIndex)}
       {@const faithCount = faithByPlayer[player.slotIndex]}
 
-      <div class="player-box" class:active={isActive}>
+      <div class="player-box" class:active={isActive} data-testid="player-info-{player.name}">
         <div class="player-color" style="background: {player.color};"></div>
         <div class="player-info">
-          <div class="player-name">{player.name}</div>
+          <div class="player-name" data-testid="{isActive ? 'current-turn-player' : ''}">{player.name}</div>
           <div class="player-stats">
             <div class="stat">
-              <span class="value">{regionCount}</span>
+              <span class="value" data-testid="player-territories">{regionCount}</span>
               <span class="symbol">{@html SYMBOLS.REGION}</span>
             </div>
             <div class="stat">
-              <span class="value">{faithCount}</span>
+              <span class="value" data-testid="player-units">{faithCount}</span>
               <span class="symbol">{@html SYMBOLS.FAITH}</span>
             </div>
             {#if !isAlive}
@@ -120,7 +120,7 @@
       class="info-panel"
       style={!isMyTurn && currentPlayerDarkColor ? `background-color: ${currentPlayerDarkColor};` : ''}
     >
-      <div class="instruction-text">
+      <div class="instruction-text" data-testid="current-phase">
         {instructionText}
       </div>
     </div>
@@ -152,7 +152,7 @@
       </Button>
     {/if}
 
-    <Button variant="danger" size="lg" uppercase on:click={onEndTurn}>
+    <Button variant="danger" size="lg" uppercase on:click={onEndTurn} data-testid="end-turn-btn">
       END TURN
     </Button>
   </Section>

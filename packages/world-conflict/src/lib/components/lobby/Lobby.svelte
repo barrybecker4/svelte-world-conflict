@@ -96,10 +96,10 @@
     </div>
 
     <div class="bottom-box">
-      <Button variant="primary" size="lg" on:click={close}>
+      <Button variant="primary" size="lg" on:click={close} data-testid="new-game-btn">
         New Game
       </Button>
-      <Button variant="ghost" size="lg" on:click={close}>
+      <Button variant="ghost" size="lg" on:click={close} data-testid="lobby-back-btn">
         Back
       </Button>
     </div>

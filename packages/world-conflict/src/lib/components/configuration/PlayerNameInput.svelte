@@ -34,6 +34,7 @@
     maxlength="20"
     on:keydown={handleKeydown}
     disabled={loading}
+    data-testid="player-name-input"
   />
   <Button
     variant="primary"
@@ -41,6 +42,7 @@
     disabled={!playerName.trim()}
     loading={loading}
     on:click={handleProceed}
+    data-testid="player-name-submit"
   >
     Continue
   </Button>

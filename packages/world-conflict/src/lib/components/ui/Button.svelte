@@ -35,6 +35,7 @@
   {type}
   {title}
   on:click={handleClick}
+  {...$$restProps}
 >
   {#if loading}
     <div class="btn-spinner"></div>

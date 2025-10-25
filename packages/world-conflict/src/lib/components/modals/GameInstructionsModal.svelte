@@ -104,7 +104,7 @@
   width="1000px"
   on:close={handleClose}
 >
-  <div class="tutorial-container">
+  <div class="tutorial-container" data-testid="instructions-modal">
     <div class="tutorial-header">
       <h1>World Conflict</h1>
 
@@ -121,7 +121,7 @@
       </div>
 
       <div class="close-button-wrapper">
-        <IconButton variant="default" size="lg" title="Close" on:click={handleClose}>
+        <IconButton variant="default" size="lg" title="Close" on:click={handleClose} data-testid="instructions-close-btn">
           ✕
         </IconButton>
       </div>
@@ -168,11 +168,11 @@
 
     <div class="bottom-box">
       {#if currentCard === totalCards - 1}
-        <Button variant="success" size="lg" on:click={complete}>
+        <Button variant="success" size="lg" on:click={complete} data-testid="instructions-proceed-btn">
           Got it!
         </Button>
       {:else}
-        <Button variant="primary" size="lg" on:click={nextCard}>
+        <Button variant="primary" size="lg" on:click={nextCard} data-testid="instructions-next-btn">
           Next →
         </Button>
       {/if}

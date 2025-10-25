@@ -256,6 +256,7 @@
             loading={creating}
             on:click={createGame}
             title={warning}
+            data-testid="create-game-btn"
           >
             Create Game
           </Button>

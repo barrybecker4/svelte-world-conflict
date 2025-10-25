@@ -78,7 +78,7 @@
 </script>
 
 <div class="waiting-room-overlay">
-  <div class="waiting-room-container">
+  <div class="waiting-room-container" data-testid="waiting-room">
     <LoadingState {loading} loadingText="Loading game...">
 
       {#if error}
@@ -135,6 +135,7 @@
                 size="lg"
                 on:click={handleStartGame}
                 disabled={loading}
+                data-testid="start-game-btn"
               >
                 Start Anyway
               </Button>
@@ -144,6 +145,7 @@
               size="lg"
               on:click={handleLeaveGame}
               disabled={loading}
+              data-testid="leave-game-btn"
             >
               Leave Game
             </Button>

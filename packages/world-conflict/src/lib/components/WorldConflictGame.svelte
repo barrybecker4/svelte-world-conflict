@@ -87,7 +87,7 @@
     <p>{$error}</p>
   </div>
 {:else}
-  <div class="game-container">
+  <div class="game-container" data-testid="game-interface">
     <!-- Game Info Panel or Temple Upgrade Panel -->
     {#if inBuildMode && buildRegion !== null}
       <TempleUpgradePanel
@@ -112,7 +112,7 @@
     {/if}
 
     <!-- Game Map -->
-    <div class="map-wrapper" bind:this={mapContainer}>
+    <div class="map-wrapper" bind:this={mapContainer} data-testid="game-map">
       <GameMap
         regions={$regions}
         currentPlayer={$currentPlayer ?? null}

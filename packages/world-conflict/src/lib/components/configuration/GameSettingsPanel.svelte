@@ -49,7 +49,7 @@
 <div class="settings-section">
   <div class="setting">
     <label for="ai-difficulty">AI Difficulty:</label>
-    <select id="ai-difficulty" bind:value={gameSettings.aiDifficulty}>
+    <select id="ai-difficulty" bind:value={gameSettings.aiDifficulty} data-testid="game-setting-aidifficulty">
       {#each difficultyOptions as difficulty}
         <option value={difficulty}>{difficulty}</option>
       {/each}
@@ -58,7 +58,7 @@
 
   <div class="setting">
     <label for="turns">Turns:</label>
-    <select id="turns" bind:value={gameSettings.maxTurns}>
+    <select id="turns" bind:value={gameSettings.maxTurns} data-testid="game-setting-maxturns">
       {#each turnOptions as option}
         <option value={option.value}>{option.label}</option>
       {/each}
@@ -67,7 +67,7 @@
 
   <div class="setting">
     <label for="time-limit">Time Limit:</label>
-    <select id="time-limit" bind:value={gameSettings.timeLimit}>
+    <select id="time-limit" bind:value={gameSettings.timeLimit} data-testid="game-setting-timelimit">
       {#each timeLimitOptions as option}
         <option value={option.value}>{option.label}</option>
       {/each}
@@ -76,7 +76,7 @@
 
   <div class="setting">
     <label for="map-size">Map Size:</label>
-    <select id="map-size" bind:value={gameSettings.mapSize}>
+    <select id="map-size" bind:value={gameSettings.mapSize} data-testid="game-setting-mapsize">
       {#each mapSizeOptions as size}
         <option value={size}>{size}</option>
       {/each}

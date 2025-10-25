@@ -113,9 +113,11 @@
     value={playerSlot.type}
     on:change={handleSlotTypeChange}
     class="slot-type-select"
+    data-testid="player-slot-{index}-type"
+    data-slot-type={playerSlot.type}
   >
     {#each slotTypes as type}
-      <option value={type}>{type}</option>
+      <option value={type} data-testid="player-slot-{index}-option-{type.toLowerCase()}">{type}</option>
     {/each}
   </select>
 </div>
