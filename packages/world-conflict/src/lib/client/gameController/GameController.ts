@@ -123,6 +123,39 @@ export class GameController {
         this.gameStore.gameState.set(event.detail.gameState);
       }) as EventListener);
     }
+
+    // Trigger AI processing if current player is AI
+    // This is done after client is fully initialized and connected
+    if (initialGameState) {
+      const currentPlayer = initialGameState.players?.find(
+        (p: any) => p.slotIndex === initialGameState.currentPlayerSlot
+      );
+      if (currentPlayer?.isAI) {
+        console.log('🤖 Current player is AI, triggering AI processing after client ready');
+        this.triggerAiProcessing();
+      }
+    }
+  }
+
+  /**
+   * Trigger AI turn processing on the server
+   * Called after client has loaded initial state and connected to WebSocket
+   */
+  private async triggerAiProcessing(): Promise<void> {
+    try {
+      const response = await fetch(`/api/game/${this.gameId}/process-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        console.error('❌ Failed to trigger AI processing:', response.statusText);
+      } else {
+        console.log('✅ AI processing triggered successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error triggering AI processing:', error);
+    }
   }
 
   /**

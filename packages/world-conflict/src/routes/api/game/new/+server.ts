@@ -6,8 +6,6 @@ import { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/entities/gameTypes';
 import { generateGameId, createPlayer, handleApiError } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
-import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
-import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 
 /**
  * Create a new game
@@ -30,37 +28,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
             throw new Error('Creator player not found in game record');
         }
 
-        if (gameRecord.status === 'ACTIVE') {
-            // pull out to aiMovesFirst(...)
-            const gameStorage = GameStorage.create(platform!);
-            const initialGameState = new GameState(gameRecord.worldConflictState);
-            const firstPlayer = initialGameState.getCurrentPlayer();
-
-            if (firstPlayer?.isAI) {
-                console.log(`First player is AI (${firstPlayer.name}), processing AI turns after game creation...`);
-
-                // Process AI turns until we reach a human player
-                const processedGameState = await processAiTurns(
-                    initialGameState,
-                    gameStorage,
-                    gameRecord.gameId,
-                    platform
-                );
-
-                // Update the game record with the processed state
-                gameRecord.worldConflictState = processedGameState.toJSON();
-                gameRecord.currentPlayerSlot = processedGameState.currentPlayerSlot;
-                gameRecord.lastMoveAt = Date.now();
-
-                // Save the updated state
-                await gameStorage.saveGame(gameRecord);
-
-                // Notify via WebSocket if available
-                await WebSocketNotifications.gameUpdate(gameRecord);
-
-                console.log(`AI processing complete after game creation, current player slot: ${processedGameState.currentPlayerSlot}`);
-            }
-        }
+        // AI turns will be triggered by the client after it loads the initial state and connects to WebSocket
+        // This ensures clients can see and animate the AI's moves properly
 
         return json({
             gameId: gameRecord.gameId,

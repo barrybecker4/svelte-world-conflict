@@ -6,7 +6,6 @@ import { Region } from '$lib/game/entities/Region';
 import { handleApiError } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
-import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
 
 /**
@@ -65,30 +64,12 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         await gameStorage.saveGame(updatedGame);
 
-        // Check if first player is AI and process AI turns if needed
-        const initialGameState = new GameState(updatedGame.worldConflictState);
-        const firstPlayer = initialGameState.getCurrentPlayer();
-
-        if (firstPlayer?.isAI) {
-            console.log(`First player is AI (${firstPlayer.name}), processing AI turns after manual start...`);
-
-            // Process AI turns until we reach a human player
-            const processedGameState = await processAiTurns(initialGameState, gameStorage, gameId, platform);
-
-            // Update the game with the processed state
-            updatedGame.worldConflictState = processedGameState.toJSON();
-            updatedGame.currentPlayerSlot = processedGameState.currentPlayerSlot;
-            updatedGame.lastMoveAt = Date.now();
-
-            console.log(`AI processing complete after manual start, current player slot: ${processedGameState.currentPlayerSlot}`);
-
-            // Save the updated game record
-            await gameStorage.saveGame(updatedGame);
-        }
-
-        // Notify all connected clients
-        await WebSocketNotifications.gameUpdate(updatedGame);
+        // Notify clients that the game has started
         await WebSocketNotifications.gameStarted(gameId, updatedGame);
+        await WebSocketNotifications.gameUpdate(updatedGame);
+
+        // AI turns will be triggered by the client after it loads the initial state and connects to WebSocket
+        // This ensures clients can see and animate the AI's moves properly
 
         return json({
             success: true,
@@ -121,7 +102,7 @@ function getAiLevelFromDifficulty(difficulty: string): number {
 function getPersonalitiesForDifficulty(difficulty: string): any[] {
     const targetLevel = getAiLevelFromDifficulty(difficulty);
     const matchingPersonalities = AI_PERSONALITIES.filter(p => p.level === targetLevel);
-    
+
     // If no exact match, return all personalities (shouldn't happen)
     return matchingPersonalities.length > 0 ? matchingPersonalities : [...AI_PERSONALITIES];
 }
@@ -129,8 +110,8 @@ function getPersonalitiesForDifficulty(difficulty: string): any[] {
 function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
     const players = [...game.players];
     const availablePersonalities = getPersonalitiesForDifficulty(aiDifficulty);
-    
-    console.log(`🤖 Filling AI slots with ${aiDifficulty} difficulty personalities:`, 
+
+    console.log(`🤖 Filling AI slots with ${aiDifficulty} difficulty personalities:`,
         availablePersonalities.map(p => p.name).join(', '));
 
     if (game.pendingConfiguration?.playerSlots) {
@@ -141,7 +122,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
             if (slot.type === 'Open' && !players.find(p => p.slotIndex === slot.index)) {
                 // Pick personality from those matching the difficulty level
                 const personality = availablePersonalities[slot.index % availablePersonalities.length];
-                
+
                 console.log(`Adding AI player to open slot ${slot.index}:`, {
                     index: slot.index,
                     name: slot.defaultName || `AI Player ${slot.index + 1}`,
@@ -165,7 +146,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
         while (players.length < GAME_CONSTANTS.MAX_PLAYERS) {
             const aiIndex = players.length;
             const personality = availablePersonalities[aiIndex % availablePersonalities.length];
-            
+
             players.push({
                 id: `ai_${aiIndex}`,
                 slotIndex: aiIndex,
