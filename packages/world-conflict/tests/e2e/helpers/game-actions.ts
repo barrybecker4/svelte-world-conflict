@@ -64,45 +64,41 @@ export async function dismissAnyModals(page: Page) {
  * Retries if the turn doesn't actually end (handles cases where actions are required first)
  */
 export async function endTurn(page: Page) {
-  const maxRetries = 3;
+  // First, dismiss any open modals that might block the button
+  await dismissAnyModals(page);
   
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    // First, dismiss any open modals that might block the button
-    await dismissAnyModals(page);
-    
-    const endTurnButton = page.getByTestId('end-turn-btn');
-    
-    // Check if button is enabled
-    const isEnabled = await endTurnButton.isEnabled().catch(() => false);
-    if (!isEnabled) {
-      console.log(`⚠️ End turn button not enabled on attempt ${attempt + 1}. Waiting...`);
-      await page.waitForTimeout(1000);
-      continue;
-    }
-    
-    // Get current turn player before clicking
-    const turnIndicator = page.getByTestId('current-turn-player');
-    const currentPlayerBefore = await turnIndicator.textContent();
-    
-    // Click end turn
-    await endTurnButton.click({ force: true });
-    
-    // Wait for turn to change
-    await page.waitForTimeout(1000);
-    
-    // Check if turn actually changed
-    const currentPlayerAfter = await turnIndicator.textContent();
-    if (currentPlayerBefore !== currentPlayerAfter) {
-      console.log(`✅ Turn ended successfully: ${currentPlayerBefore} → ${currentPlayerAfter}`);
-      return;
-    } else {
-      console.log(`⚠️ Turn didn't change after clicking (attempt ${attempt + 1}). Still: ${currentPlayerAfter}`);
-      // Try clicking again
-      await page.waitForTimeout(500);
-    }
+  const endTurnButton = page.getByTestId('end-turn-btn');
+  const turnIndicator = page.getByTestId('current-turn-player');
+  
+  // Get current turn player before clicking
+  const currentPlayerBefore = await turnIndicator.textContent().catch(() => null);
+  if (!currentPlayerBefore) {
+    console.warn('⚠️ Could not read current player before ending turn');
+    return;
   }
   
-  console.warn('⚠️ End turn may not have worked after 3 attempts');
+  // Wait for button to be enabled
+  await expect(endTurnButton).toBeEnabled({ timeout: TIMEOUTS.ELEMENT_LOAD });
+  
+  // Click end turn
+  await endTurnButton.click({ force: true });
+  
+  // Wait for turn to change (with timeout)
+  try {
+    await expect(turnIndicator).not.toContainText(currentPlayerBefore, { timeout: 3000 });
+    const currentPlayerAfter = await turnIndicator.textContent().catch(() => null);
+    console.log(`✅ Turn ended successfully: ${currentPlayerBefore} → ${currentPlayerAfter}`);
+  } catch (error) {
+    // Check if page is still alive
+    if (await page.isClosed()) {
+      console.log('⚠️ Page closed during turn end');
+      return;
+    }
+    
+    const currentPlayerAfter = await turnIndicator.textContent().catch(() => 'unknown');
+    console.warn(`⚠️ Turn may not have changed: ${currentPlayerBefore} → ${currentPlayerAfter}`);
+    // Continue anyway - the next assertion will catch if something is wrong
+  }
 }
 
 /**
