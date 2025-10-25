@@ -93,7 +93,7 @@
     // For neutral regions that are valid targets, use the current player's color
     if ((ownerIndex === undefined || ownerIndex === -1) && isValidTarget && currentPlayer) {
         const config = getPlayerConfig(currentPlayer.slotIndex);
-        return isSelected ? config.highlightEnd : config.highlightStart;
+        return config.highlightEnd;  // Strong highlight for valid targets
     }
 
     // For neutral regions that aren't valid targets, no highlight
@@ -102,8 +102,14 @@
     }
 
     const config = getPlayerConfig(ownerIndex);
-    // Use highlight colors - start for less intense, end for selected
-    return isSelected ? config.highlightEnd : config.highlightStart;
+    
+    // For owned regions that are valid targets, use the more prominent highlightEnd color
+    if (isValidTarget) {
+        return config.highlightEnd;
+    }
+    
+    // For selected source region or other movable regions, use subtle highlight
+    return config.highlightStart;
   }
 
   function canHighlightForTurn(region: Region): boolean {
