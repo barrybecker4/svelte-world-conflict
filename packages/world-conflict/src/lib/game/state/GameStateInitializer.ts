@@ -62,7 +62,7 @@ export class GameStateInitializer {
             maxTurns: maxTurns || GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX],
             moveTimeLimit: moveTimeLimit || GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT,
             aiDifficulty: aiDifficulty || AiDifficulty.RUDE,
-            players: [...players],
+            players: sortedPlayers, // Use sorted players array, not original unsorted array
             regions,
             ownersByRegion: {},
             templesByRegion: {},

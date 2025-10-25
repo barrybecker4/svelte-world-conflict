@@ -126,6 +126,15 @@ export class OpenGamesManager {
         const result = await response.json() as { player: any };
         const player = result.player;
 
+        console.log(`📥 Join response received:`, {
+          requestedSlot: slotIndex,
+          returnedPlayer: {
+            name: player.name,
+            slotIndex: player.slotIndex,
+            isAI: player.isAI
+          }
+        });
+
         const { goto } = await import('$app/navigation');
         const { saveGameCreator } = await import('$lib/client/stores/clientStorage');
 
@@ -135,7 +144,7 @@ export class OpenGamesManager {
           playerName: player.name
         });
 
-        console.log(`Successfully joined as player ${player.slotIndex}: ${player.name}`);
+        console.log(`✅ Saved to localStorage - playerSlotIndex: ${player.slotIndex}, playerName: ${player.name}`);
 
         // Cleanup BEFORE navigation to ensure polling stops immediately
         console.log('🚪 Joining game - cleaning up lobby resources before navigation');

@@ -13,7 +13,7 @@ export class FeedbackPlayer {
    * @returns Promise that resolves after animation completes
    */
   async playMovement(move: DetectedMove, gameState: any): Promise<void> {
-    console.log(`🚶 AI Move: ${move.soldierCount} soldiers moving from ${move.sourceRegion} to ${move.regionIndex}`);
+    console.log(`🚶 Move replay: ${move.soldierCount} soldiers moving from ${move.sourceRegion} to ${move.regionIndex}`);
 
     // If we know the source region, animate the movement
     if (move.sourceRegion !== undefined && gameState) {

@@ -43,7 +43,11 @@ export function useGameWebSocket(
     });
 
     wsClient.onGameUpdate((gameData) => {
-      console.log('📨 [WS UPDATE] Received game update');
+      console.log('📨 [WS UPDATE] Received game update', {
+        currentPlayerSlot: gameData?.currentPlayerSlot,
+        turnNumber: gameData?.turnNumber,
+        hasPlayers: !!gameData?.players
+      });
       onGameUpdate(gameData);
     });
 
