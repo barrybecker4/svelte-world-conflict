@@ -67,9 +67,30 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             targetSlotIndex = slot.slotIndex;
             console.log(`✅ Assigning player to slot ${targetSlotIndex}`);
         } else {
-            targetSlotIndex = game.players.length;
-            if (game.players.length >= GAME_CONSTANTS.MAX_PLAYERS) {
-                return json({ error: 'Game is full' }, { status: 400 });
+            // Find first available Open slot
+            if (game.pendingConfiguration?.playerSlots) {
+                const playerSlots = game.pendingConfiguration.playerSlots;
+                const openSlots = playerSlots
+                    .filter((slot: any) => slot.type === 'Open')
+                    .sort((a: any, b: any) => a.slotIndex - b.slotIndex);  // Sort by slot index
+                
+                // Find first open slot that isn't already taken
+                const availableSlot = openSlots.find((slot: any) => 
+                    !game.players.some((p: any) => p.slotIndex === slot.slotIndex)
+                );
+                
+                if (!availableSlot) {
+                    return json({ error: 'No available slots' }, { status: 400 });
+                }
+                
+                targetSlotIndex = availableSlot.slotIndex;
+                console.log(`✅ Auto-assigning player to first open slot ${targetSlotIndex}`);
+            } else {
+                // Fallback to legacy behavior for games without slot configuration
+                targetSlotIndex = game.players.length;
+                if (game.players.length >= GAME_CONSTANTS.MAX_PLAYERS) {
+                    return json({ error: 'Game is full' }, { status: 400 });
+                }
             }
         }
 

@@ -197,3 +197,129 @@ export async function getPlayerInfo(page: Page, playerName: string) {
   };
 }
 
+/**
+ * Synchronize turn transition across multiple player pages
+ * Ensures all players see the turn change before proceeding
+ */
+export async function synchronizeTurnTransition(
+  pages: Page[],
+  fromPlayer: string,
+  toPlayer: string
+): Promise<void> {
+  console.log(`⏳ Syncing turn transition: ${fromPlayer} → ${toPlayer}`);
+  
+  // Wait for all pages to show the new player's turn
+  await Promise.all(
+    pages.map(async (page, index) => {
+      const turnIndicator = page.getByTestId('current-turn-player');
+      try {
+        await expect(turnIndicator).toContainText(toPlayer, { 
+          timeout: TIMEOUTS.TURN_TRANSITION 
+        });
+        console.log(`  ✅ Player ${index + 1} sees ${toPlayer}'s turn`);
+      } catch (error) {
+        console.error(`  ❌ Player ${index + 1} failed to see ${toPlayer}'s turn`);
+        throw error;
+      }
+    })
+  );
+  
+  // Verify old player is no longer shown (extra validation)
+  await Promise.all(
+    pages.map(page =>
+      expect(page.getByTestId('current-turn-player'))
+        .not.toContainText(fromPlayer)
+    )
+  );
+  
+  console.log(`✅ All ${pages.length} players synchronized on ${toPlayer}'s turn`);
+}
+
+/**
+ * Verify turn order across multiple players
+ * Ensures all players see the same current player
+ */
+export async function verifyTurnOrder(
+  pages: Page[],
+  expectedPlayer: string
+): Promise<void> {
+  console.log(`🔍 Verifying all players see ${expectedPlayer}'s turn...`);
+  
+  // Check all pages show the same current player
+  const results = await Promise.all(
+    pages.map(async (page, index) => {
+      const indicator = page.getByTestId('current-turn-player');
+      const text = await indicator.textContent();
+      console.log(`  Player ${index + 1} sees: ${text}`);
+      return text;
+    })
+  );
+  
+  // Verify all pages agree
+  results.forEach((result, idx) => {
+    if (!result?.includes(expectedPlayer)) {
+      throw new Error(
+        `Page ${idx} shows wrong player: ${result}, expected: ${expectedPlayer}`
+      );
+    }
+  });
+  
+  console.log(`✅ All players agree: ${expectedPlayer}'s turn`);
+}
+
+/**
+ * Verify turn numbers match across all players
+ * Useful for detecting desyncs
+ */
+export async function verifyTurnNumberSync(pages: Page[]): Promise<number> {
+  const turnNumbers = await Promise.all(
+    pages.map(page => getCurrentTurn(page))
+  );
+  
+  const firstTurn = turnNumbers[0];
+  const allMatch = turnNumbers.every(turn => turn === firstTurn);
+  
+  if (!allMatch) {
+    console.error('❌ Turn number mismatch:', turnNumbers);
+    throw new Error(
+      `Turn numbers don't match across players: ${turnNumbers.join(', ')}`
+    );
+  }
+  
+  console.log(`✅ All players on turn ${firstTurn}`);
+  return firstTurn;
+}
+
+/**
+ * Execute a complete turn cycle for multiple players
+ * Each player takes their turn in sequence
+ */
+export async function executeMultiPlayerTurnCycle(
+  playersData: Array<{ page: Page; name: string }>
+): Promise<void> {
+  console.log(`🔄 Executing turn cycle for ${playersData.length} players...`);
+  
+  for (let i = 0; i < playersData.length; i++) {
+    const currentPlayer = playersData[i];
+    const nextPlayer = playersData[(i + 1) % playersData.length];
+    
+    console.log(`  🎲 ${currentPlayer.name}'s turn`);
+    
+    // Wait for current player's turn
+    await waitForTurnStart(currentPlayer.page, currentPlayer.name);
+    
+    // End turn
+    await endTurn(currentPlayer.page);
+    
+    // Wait for all players to see the transition
+    const allPages = playersData.map(p => p.page);
+    await synchronizeTurnTransition(
+      allPages,
+      currentPlayer.name,
+      nextPlayer.name
+    );
+  }
+  
+  console.log('✅ Turn cycle completed');
+}
+

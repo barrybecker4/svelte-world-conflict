@@ -28,7 +28,7 @@ export const GAME_SETTINGS = {
     timeLimit: 120,
   },
   QUICK: {
-    mapSize: 'Small',
+    mapSize: 'Medium',  // Medium has enough temples for 4 players
     aiDifficulty: 'Nice',
     maxTurns: 10,
     timeLimit: 60,
@@ -47,5 +47,59 @@ export const TIMEOUTS = {
   AI_TURN: 30000,
   TURN_TRANSITION: 5000,
   ELEMENT_LOAD: 5000,
+};
+
+export const WAITING_ROOM_TIMEOUTS = {
+  PLAYER_JOIN: 5000,        // Wait for player to join
+  WEBSOCKET_UPDATE: 3000,   // Wait for WebSocket propagation
+  START_BUTTON: 2000,       // Wait for start button to enable
+};
+
+export const TEST_SCENARIOS = {
+  TWO_HUMANS_ADJACENT: {
+    description: 'Two humans in slots 0-1',
+    slots: [
+      { type: 'Set', player: 'PLAYER1' },
+      { type: 'Open', player: 'PLAYER2' },
+      { type: 'Off', player: null },
+      { type: 'Off', player: null }
+    ]
+  },
+  TWO_HUMANS_CREATOR_LAST: {
+    description: 'Two humans, creator in last slot',
+    slots: [
+      { type: 'Open', player: 'PLAYER2' },
+      { type: 'Open', player: null },
+      { type: 'Open', player: null },
+      { type: 'Set', player: 'PLAYER1' }
+    ]
+  },
+  THREE_HUMANS_WITH_GAP: {
+    description: 'Three humans with slot 1 off',
+    slots: [
+      { type: 'Set', player: 'PLAYER1' },
+      { type: 'Off', player: null },
+      { type: 'Open', player: 'PLAYER2' },
+      { type: 'Open', player: 'PLAYER3' }
+    ]
+  },
+  FOUR_HUMANS_FULL: {
+    description: 'Four humans, all slots filled',
+    slots: [
+      { type: 'Set', player: 'PLAYER1' },
+      { type: 'Open', player: 'PLAYER2' },
+      { type: 'Open', player: 'PLAYER3' },
+      { type: 'Open', player: 'PLAYER4' }
+    ]
+  },
+  MIXED_HUMAN_AI: {
+    description: 'Mixed human and AI',
+    slots: [
+      { type: 'Open', player: 'PLAYER2' },
+      { type: 'Off', player: null },
+      { type: 'Set', player: 'PLAYER1' },
+      { type: 'AI', player: 'AI' }
+    ]
+  }
 };
 

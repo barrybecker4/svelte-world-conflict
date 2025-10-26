@@ -7,6 +7,7 @@ import { handleApiError } from '$lib/server/api-utils';
 import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
+import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 
 /**
  * Start a pending multiplayer game
@@ -119,23 +120,30 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
         const activeSlots = playerSlots.filter((slot: any) => slot && slot.type !== 'Off');
 
         for (const slot of activeSlots) {
-            if (slot.type === 'Open' && !players.find(p => p.slotIndex === slot.index)) {
+            // Use slotIndex property (not index) as saved by GameConfiguration
+            const slotIndex = slot.slotIndex;
+            
+            if (slot.type === 'Open' && !players.find(p => p.slotIndex === slotIndex)) {
                 // Pick personality from those matching the difficulty level
-                const personality = availablePersonalities[slot.index % availablePersonalities.length];
+                const personality = availablePersonalities[slotIndex % availablePersonalities.length];
 
-                console.log(`Adding AI player to open slot ${slot.index}:`, {
-                    index: slot.index,
-                    name: slot.defaultName || `AI Player ${slot.index + 1}`,
+                // Get default name from player config (not stored in slot)
+                const playerConfig = getPlayerConfigForSlot(slotIndex);
+                const aiName = playerConfig.defaultName;
+
+                console.log(`Adding AI player to open slot ${slotIndex}:`, {
+                    index: slotIndex,
+                    name: aiName,
                     type: 'AI',
                     personality: personality.name,
                     difficulty: aiDifficulty
                 });
 
                 players.push({
-                    id: `ai_${slot.index}`,
-                    slotIndex: slot.index,
-                    name: slot.defaultName || `AI Player ${slot.index + 1}`,
-                    color: getPlayerColor(slot.index),
+                    id: `ai_${slotIndex}`,
+                    slotIndex: slotIndex,
+                    name: aiName,
+                    color: getPlayerColor(slotIndex),
                     isAI: true,
                     personality: personality.name
                 });
@@ -174,4 +182,8 @@ function reconstructRegions(regionData: any): Region[] {
 function getPlayerColor(index: number): string {
     const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
     return colors[index % colors.length];
+}
+
+function getPlayerConfigForSlot(slotIndex: number) {
+    return getPlayerConfig(slotIndex);
 }

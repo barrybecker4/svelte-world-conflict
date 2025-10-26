@@ -5,6 +5,12 @@ pages_build_output_dir = "dist"
 # Add nodejs compatibility for SvelteKit
 compatibility_flags = ["nodejs_compat"]
 
+# Local development KV namespace
+[[kv_namespaces]]
+binding = "WORLD_CONFLICT_KV"
+id = "local-dev-storage"
+preview_id = "local-dev-storage"
+
 [env.preview]
 kv_namespaces = [
     { binding = "WORLD_CONFLICT_KV", id = "a776ced349e4415ab2b2f7c519fb9642" }

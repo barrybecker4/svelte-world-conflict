@@ -67,23 +67,51 @@ npx playwright test --ui
 
 ### Test Files
 - `single-human-ai.spec.ts` - Tests for single human + AI player scenarios
+- `multi-human-players.spec.ts` - Tests for multiple human player scenarios (see below)
 
 ## Current Test Coverage
 
-### Test 1: Human in slot 1, AI in slot 2
+### Single Player + AI Tests
+
+#### Test 1: Human in slot 1, AI in slot 2
 - Human player goes first
 - AI player goes second
 - Verifies turn order over multiple turns
 
-### Test 2: Human in slot 1, AI in slot 3 (slot 2 off)
+#### Test 2: Human in slot 1, AI in slot 3 (slot 2 off)
 - Human player goes first
 - AI player in slot 3 goes second (skipping inactive slot 2)
 - Verifies turn order correctly skips inactive slots
 
-### Test 3: AI in slot 1, Human in slot 4 (slots 2-3 off)
+#### Test 3: AI in slot 1, Human in slot 4 (slots 2-3 off)
 - AI player goes first
 - Human player in slot 4 goes second
 - Verifies AI can take first turn and human plays correctly after
+
+### Multi-Player Tests (In Progress)
+
+**Status**: ⚠️ Infrastructure complete, blocked by backend storage issue. See `IMPLEMENTATION_STATUS.md` for details.
+
+#### Test 1: Two Human Players - Adjacent Slots
+- Two players in slots 0-1
+- Verifies waiting room synchronization
+- Tests turn transitions with WebSocket updates
+- Validates turn counter sync across both players
+
+#### Test 2: Two Human Players - Start Anyway with AI
+- Creator in last slot, one joiner
+- Tests "start anyway" functionality
+- Remaining open slots fill with AI
+- Verifies mixed human/AI turn order
+
+#### Test 3: Three Human Players - With Inactive Slot
+- Three players with slot 1 inactive
+- Tests 3-way synchronization
+- Verifies inactive slots skipped in turn order
+
+**Coming Soon**: Tests 4-12 covering 4 players, edge cases, and gameplay scenarios.
+
+See `MULTI_PLAYER_TEST_PLAN.md` for complete test specifications.
 
 ## How Tests Work
 
@@ -185,13 +213,30 @@ npx playwright test --reporter=list
 5. **AI Player Names**: AI players use default names from `playerConfigs.ts` (Emerald, Crimson, Amber, Lavender), not generic names like "Player 1". Use `AI_PLAYER_NAMES` from test fixtures.
 6. **Game Modals**: Modals (like soldier selection) can block UI interactions. The `endTurn()` helper automatically dismisses modals before clicking.
 7. **Early Game Endings**: With only 2 players, games can end quickly if one player dominates. Test 3 handles this gracefully.
+8. **Multi-Player Storage**: Multi-player tests currently blocked by KV storage setup issue. See `IMPLEMENTATION_STATUS.md` for details and workarounds.
 
-## Future Test Cases
+## Multi-Player Test Documentation
 
-### Planned for Phase 2 (Multi-Human)
-- Test 4: Two human players in waiting room
-- Test 5: Human creates game with multiple open slots
-- Test 6: "Start anyway" with remaining slots becoming AI
+For comprehensive multi-player test information, see:
+- **MULTI_PLAYER_TEST_PLAN.md** - Full test specifications and architecture
+- **MULTI_PLAYER_QUICK_REFERENCE.md** - Quick lookup for common patterns
+- **TEST_SCENARIOS_VISUAL.md** - Visual diagrams of all test scenarios
+- **IMPLEMENTATION_ROADMAP.md** - Step-by-step implementation guide
+- **IMPLEMENTATION_STATUS.md** - Current status and known issues
+
+### Multi-Player Helper Functions
+
+New helper functions for multi-player tests (in `helpers/game-setup.ts`):
+- `joinExistingGame(page, gameId, playerName)` - Join a game via API
+- `waitForPlayerToJoin(page, playerName, slotIndex)` - Wait for WebSocket update
+- `startGameAnywayFromWaitingRoom(page)` - Start with unfilled slots
+- `waitForAllGamesToLoad(pages[])` - Sync multiple player loads
+
+New helper functions for multi-player coordination (in `helpers/game-actions.ts`):
+- `synchronizeTurnTransition(pages[], fromPlayer, toPlayer)` - Sync turn changes
+- `verifyTurnOrder(pages[], expectedPlayer)` - Validate turn order
+- `verifyTurnNumberSync(pages[])` - Check turn counter sync
+- `executeMultiPlayerTurnCycle(playersData[])` - Automate turn cycles
 
 ## Timeouts
 

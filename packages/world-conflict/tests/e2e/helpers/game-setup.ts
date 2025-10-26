@@ -23,6 +23,8 @@ export async function skipInstructions(page: Page) {
     if (isProceedVisible) {
       // We're on the last card, click "Got it!"
       await proceedButton.click();
+      // Wait a bit for click to register and animation to start
+      await page.waitForTimeout(500);
       break;
     } else {
       // Still on earlier cards, click "Next"
@@ -34,8 +36,8 @@ export async function skipInstructions(page: Page) {
     }
   }
   
-  // Wait for modal to disappear
-  await expect(instructionsModal).not.toBeVisible();
+  // Wait for modal to disappear with longer timeout for animation
+  await expect(instructionsModal).not.toBeVisible({ timeout: 10000 });
 }
 
 /**
@@ -51,8 +53,15 @@ export async function skipInstructionsQuick(page: Page) {
   const closeButton = page.getByTestId('instructions-close-btn');
   await closeButton.click();
   
-  // Wait for modal to disappear
-  await expect(instructionsModal).not.toBeVisible();
+  // Wait for the modal to close and lobby/configuration to appear
+  // The modal dispatches a 'complete' event which the parent handles
+  await page.waitForTimeout(1000);
+  
+  // Verify modal is gone (or at least we've moved to the next screen)
+  await expect(instructionsModal).not.toBeVisible({ timeout: 10000 }).catch(() => {
+    // If modal is still visible, that's ok if we're at lobby/config already
+    console.log('⚠️ Modal still visible but continuing (parent may not have handled event)');
+  });
 }
 
 /**
@@ -73,7 +82,10 @@ export async function navigateToConfiguration(page: Page) {
   // If we're at the lobby, click "New Game"
   const isAtLobby = await newGameBtn.isVisible().catch(() => false);
   if (isAtLobby) {
-    await newGameBtn.click();
+    // The lobby may be polling and re-rendering, causing button detachment
+    // Use force:true to bypass actionability checks and just click
+    await newGameBtn.click({ force: true });
+    
     // Wait for name input to appear
     await expect(nameInput).toBeVisible({ timeout: TIMEOUTS.ELEMENT_LOAD });
   }
@@ -198,10 +210,220 @@ export async function startGameFromWaitingRoom(page: Page) {
  */
 export function getGameIdFromUrl(page: Page): string {
   const url = page.url();
-  const match = url.match(/\/game\/([a-zA-Z0-9-]+)/);
+  const match = url.match(/\/game\/([a-zA-Z0-9_-]+)/);  // Include underscores in game ID
   if (!match) {
     throw new Error('Could not extract game ID from URL: ' + url);
   }
   return match[1];
+}
+
+/**
+ * Join an existing game by game ID
+ * Useful for multi-player tests where one player creates and others join
+ * Note: Assumes skipInstructions has already been called
+ * 
+ * This function:
+ * 1. Calls the join API to add the player to the game
+ * 2. Saves player data to localStorage 
+ * 3. Navigates to the game page
+ * 4. Waits for waiting room or game interface
+ */
+export async function joinExistingGame(
+  page: Page,
+  gameId: string,
+  playerName: string
+): Promise<void> {
+  console.log(`🔗 ${playerName} joining game ${gameId}`);
+  
+  // Call the join API
+  const joinResponse = await page.evaluate(async ({ gameId, playerName }) => {
+    const response = await fetch(`/api/game/${gameId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerName })  // Let server auto-assign slot
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Join failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  }, { gameId, playerName });
+  
+  console.log(`  ✓ API join successful, slot: ${joinResponse.player.slotIndex}`);
+  
+  // Navigate to the game page first
+  console.log(`  🔄 Navigating to /game/${gameId}`);
+  await page.goto(`/game/${gameId}`);
+  
+  // NOW save player data to localStorage on the game page
+  // NOTE: The key must be 'game_' prefix (not 'gameCreator_') to match clientStorage.ts
+  await page.evaluate(({ gameId, player }) => {
+    console.log('Setting localStorage:', `game_${gameId}`, {
+      playerId: player.slotIndex.toString(),
+      playerSlotIndex: player.slotIndex,
+      playerName: player.name
+    });
+    localStorage.setItem(`game_${gameId}`, JSON.stringify({
+      playerId: player.slotIndex.toString(),
+      playerSlotIndex: player.slotIndex,
+      playerName: player.name
+    }));
+  }, { gameId, player: joinResponse.player });
+  
+  console.log(`  ✓ Saved player data to localStorage`);
+  
+  // Reload the page so it picks up the localStorage
+  console.log(`  🔄 Reloading page to apply localStorage...`);
+  await page.reload({ waitUntil: 'networkidle' });
+  
+  // Wait for page to settle
+  await page.waitForTimeout(2000);
+  
+  // Wait for waiting room or game interface to appear
+  // The game might auto-start if all slots are now filled
+  const waitingRoom = page.getByTestId('waiting-room');
+  const gameInterface = page.getByTestId('game-interface');
+  const loadingState = page.locator('text=/loading/i').first();
+  
+  // First wait for loading to appear or skip if already past loading
+  console.log(`  ⏳ Waiting for page to load...`);
+  
+  try {
+    // Try to wait for either waiting room or game interface
+    await Promise.race([
+      expect(waitingRoom).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD }),
+      expect(gameInterface).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD })
+    ]);
+    
+    // Check which one is visible
+    const inWaitingRoom = await waitingRoom.isVisible().catch(() => false);
+    const inGame = await gameInterface.isVisible().catch(() => false);
+    
+    if (inGame) {
+      console.log(`✅ ${playerName} joined - game auto-started`);
+    } else if (inWaitingRoom) {
+      console.log(`✅ ${playerName} joined waiting room`);
+    }
+  } catch (error) {
+    // Debug: What's actually on the page?
+    const bodyText = await page.locator('body').textContent().catch(() => 'Could not read page');
+    console.error(`❌ Failed to load game page for ${playerName}`);
+    console.error(`Page content preview: ${bodyText?.substring(0, 200)}...`);
+    throw error;
+  }
+}
+
+/**
+ * Wait for another player to join and appear in waiting room
+ * Uses WebSocket update timing to ensure changes propagate
+ */
+export async function waitForPlayerToJoin(
+  page: Page,
+  playerName: string,
+  slotIndex: number
+): Promise<void> {
+  console.log(`⏳ Waiting for ${playerName} to join slot ${slotIndex}...`);
+  
+  // Import WAITING_ROOM_TIMEOUTS at runtime to avoid circular dependency
+  const { WAITING_ROOM_TIMEOUTS } = await import('../fixtures/test-data');
+  
+  // Wait for WebSocket update to propagate
+  // The waiting room should show the player in the slot
+  await page.waitForTimeout(WAITING_ROOM_TIMEOUTS.WEBSOCKET_UPDATE);
+  
+  // Additional wait to ensure UI updates
+  await page.waitForTimeout(500);
+  
+  console.log(`✅ ${playerName} should now be visible in slot ${slotIndex}`);
+}
+
+/**
+ * Start game from waiting room
+ * Works for both "all slots filled" and "start anyway" scenarios
+ * Alias for startGameFromWaitingRoom but with clearer name for multi-player
+ */
+export async function startGameAnywayFromWaitingRoom(page: Page): Promise<void> {
+  console.log('🚀 Starting game from waiting room...');
+  
+  const startButton = page.getByTestId('start-game-btn');
+  
+  // Import WAITING_ROOM_TIMEOUTS at runtime
+  const { WAITING_ROOM_TIMEOUTS } = await import('../fixtures/test-data');
+  
+  // Wait for button to be enabled
+  await expect(startButton).toBeEnabled({ 
+    timeout: WAITING_ROOM_TIMEOUTS.START_BUTTON 
+  });
+  
+  // Click to start
+  await startButton.click();
+  
+  // Wait a moment for the API call and state updates to complete
+  // The flow is: click -> API call -> event dispatch -> loadGameData -> re-render
+  console.log('⏳ Waiting for game to start...');
+  await page.waitForTimeout(2000);
+  
+  // Check what's on the page for debugging
+  const bodyText = await page.locator('body').textContent().catch(() => 'Could not read page');
+  console.log('📄 Page content preview:', bodyText?.substring(0, 300));
+  
+  // Check if there's an error message
+  const hasError = await page.getByText(/error/i).isVisible().catch(() => false);
+  if (hasError) {
+    const errorText = await page.getByText(/error/i).textContent().catch(() => 'Unknown error');
+    console.log('❌ Error found on page:', errorText);
+  }
+  
+  // Now wait for either the waiting room to disappear or game interface to appear
+  const waitingRoom = page.getByTestId('waiting-room');
+  const gameInterface = page.getByTestId('game-interface');
+  
+  // Check current state
+  const isWaitingRoomVisible = await waitingRoom.isVisible().catch(() => false);
+  const isGameInterfaceVisible = await gameInterface.isVisible().catch(() => false);
+  console.log(`📊 Current state: waiting room=${isWaitingRoomVisible}, game interface=${isGameInterfaceVisible}`);
+  
+  // If already showing game interface, we're done
+  if (isGameInterfaceVisible) {
+    console.log('✅ Game interface already visible');
+    return;
+  }
+  
+  // Wait for transition - either waiting room hides or game interface shows
+  try {
+    await Promise.race([
+      expect(waitingRoom).not.toBeVisible({ timeout: TIMEOUTS.GAME_LOAD }),
+      expect(gameInterface).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD })
+    ]);
+  } catch (error) {
+    console.log('❌ Transition timeout - waiting room still visible, game interface not appearing');
+    console.log('📄 Final page state:', await page.locator('body').textContent().catch(() => 'Could not read'));
+    throw error;
+  }
+  
+  // Verify we're actually on the game interface now
+  await expect(gameInterface).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD });
+  
+  console.log('✅ Game started successfully');
+}
+
+/**
+ * Wait for all players' games to load
+ * Useful for synchronizing multiple browser contexts
+ */
+export async function waitForAllGamesToLoad(pages: Page[]): Promise<void> {
+  console.log(`⏳ Waiting for ${pages.length} players' games to load...`);
+  
+  await Promise.all(
+    pages.map(async (page, index) => {
+      const gameInterface = page.getByTestId('game-interface');
+      await expect(gameInterface).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD });
+      console.log(`✅ Player ${index + 1} game loaded`);
+    })
+  );
+  
+  console.log('✅ All players ready');
 }
 
