@@ -37,6 +37,14 @@ npx playwright test --headed
 ### Run a specific test file
 ```bash
 npx playwright test tests/e2e/single-human-ai.spec.ts
+npx playwright test tests/e2e/multi-human-players.spec.ts
+npx playwright test tests/e2e/multi-human-gameplay.spec.ts
+npx playwright test tests/e2e/multi-human-edge-cases.spec.ts
+```
+
+### Run a specific test by name
+```bash
+npx playwright test -g "Test 4: Four Human Players"
 ```
 
 ### Run tests in debug mode
@@ -66,8 +74,10 @@ npx playwright test --ui
 - `game-actions.ts` - Helper functions for in-game actions (moves, attacks, turn management)
 
 ### Test Files
-- `single-human-ai.spec.ts` - Tests for single human + AI player scenarios
-- `multi-human-players.spec.ts` - Tests for multiple human player scenarios (see below)
+- `single-human-ai.spec.ts` - Tests for single human + AI player scenarios (3 tests)
+- `multi-human-players.spec.ts` - Core multi-player tests (Tests 1-9)
+- `multi-human-gameplay.spec.ts` - Gameplay integration tests (Tests 10-11)
+- `multi-human-edge-cases.spec.ts` - Advanced edge case tests (Tests 12-13)
 
 ## Current Test Coverage
 
@@ -88,28 +98,92 @@ npx playwright test --ui
 - Human player in slot 4 goes second
 - Verifies AI can take first turn and human plays correctly after
 
-### Multi-Player Tests (In Progress)
+### Multi-Player Tests
 
-**Status**: ⚠️ Infrastructure complete, blocked by backend storage issue. See `IMPLEMENTATION_STATUS.md` for details.
+**Status**: ✅ Comprehensive test suite implemented with 13 tests covering 2-4 players, edge cases, and gameplay integration.
 
-#### Test 1: Two Human Players - Adjacent Slots
+#### Core Multi-Player Tests (`multi-human-players.spec.ts`)
+
+**Test 1: Two Human Players - Adjacent Slots**
 - Two players in slots 0-1
 - Verifies waiting room synchronization
 - Tests turn transitions with WebSocket updates
 - Validates turn counter sync across both players
 
-#### Test 2: Two Human Players - Start Anyway with AI
+**Test 2: Two Human Players - Start Anyway with AI**
 - Creator in last slot, one joiner
 - Tests "start anyway" functionality
 - Remaining open slots fill with AI
 - Verifies mixed human/AI turn order
 
-#### Test 3: Three Human Players - With Inactive Slot
+**Test 3: Three Human Players - With Inactive Slot**
 - Three players with slot 1 inactive
 - Tests 3-way synchronization
 - Verifies inactive slots skipped in turn order
 
-**Coming Soon**: Tests 4-12 covering 4 players, edge cases, and gameplay scenarios.
+**Test 4: Four Human Players - Full Game**
+- All 4 slots filled with human players
+- Tests 4-way synchronization
+- Verifies complete turn cycles with all players
+- Validates auto-start when all slots filled
+
+**Test 5: Mixed Human/AI with Creator in Middle**
+- Creator in slot 2, player in slot 0, AI in slot 3, slot 1 off
+- Tests non-sequential player positions
+- Verifies turn order with mixed configuration
+- Tests AI turn integration
+
+**Test 6: Late Joiner - Game Already Started**
+- Player attempts to join after game starts
+- Verifies late joiner is rejected or redirected
+- Original game continues unaffected
+- Edge case: joining active games
+
+**Test 7: Player Leaves Waiting Room**
+- Player disconnects from waiting room
+- Slot becomes available again
+- Another player can join freed slot
+- Game starts normally with replacement player
+
+**Test 8: Rapid Join Scenario - Race Condition**
+- Two players join simultaneously
+- Tests concurrent join API calls
+- Verifies no slot collision
+- Both players assigned different slots
+
+**Test 9: Start Anyway with Minimal Players**
+- Creator starts game solo (no other humans)
+- 3 AI fill remaining slots
+- Tests 1 human + 3 AI gameplay
+- Verifies game progression with mostly AI
+
+#### Gameplay Integration Tests (`multi-human-gameplay.spec.ts`)
+
+**Test 10: Four Players - Territory Interactions**
+- 4 players in full game
+- Territory claiming and interactions
+- Map interaction testing
+- Verifies state synchronization during gameplay
+
+**Test 11: Connection Recovery - Page Reload**
+- 2-player game in progress
+- Player reloads page mid-game
+- Tests reconnection and state recovery
+- Gameplay continues normally after reload
+
+#### Advanced Edge Cases (`multi-human-edge-cases.spec.ts`)
+
+**Test 12: Multiple Games Simultaneously**
+- 2 separate games running at once
+- Game A: Players 1 & 2
+- Game B: Players 3 & 4
+- Verifies no state leakage between games
+
+**Test 13: Maximum Turn Limit**
+- Game with maxTurns: 3
+- Plays through all turns
+- Verifies game ends at turn limit
+- Tests end-game state detection
 
 See `MULTI_PLAYER_TEST_PLAN.md` for complete test specifications.
 
@@ -206,14 +280,15 @@ npx playwright test --reporter=list
 
 ## Known Issues / Limitations
 
-1. **Timing**: AI turns may take variable time depending on game complexity. Tests have 60s timeout.
+1. **Timing**: AI turns may take variable time depending on game complexity. Tests have adequate timeouts.
 2. **Randomness**: Game map generation is random, which can affect test stability
-3. **WebSocket**: Tests rely on WebSocket connections for real-time updates
+3. **WebSocket**: Tests rely on WebSocket connections for real-time updates. Some tests simulate disconnects/reconnects.
 4. **Instructions Modal**: The tutorial has 5 cards - `skipInstructions()` clicks through all of them. Use `skipInstructionsQuick()` for faster test runs.
 5. **AI Player Names**: AI players use default names from `playerConfigs.ts` (Emerald, Crimson, Amber, Lavender), not generic names like "Player 1". Use `AI_PLAYER_NAMES` from test fixtures.
 6. **Game Modals**: Modals (like soldier selection) can block UI interactions. The `endTurn()` helper automatically dismisses modals before clicking.
-7. **Early Game Endings**: With only 2 players, games can end quickly if one player dominates. Test 3 handles this gracefully.
-8. **Multi-Player Storage**: Multi-player tests currently blocked by KV storage setup issue. See `IMPLEMENTATION_STATUS.md` for details and workarounds.
+7. **Early Game Endings**: With only 2 players, games can end quickly if one player dominates. Tests handle this gracefully.
+8. **Map Size**: Use 'Medium' or larger maps for multi-player tests to ensure enough temple regions for all players.
+9. **Multi-Browser Tests**: Multi-player tests use multiple browser contexts simultaneously, which requires more system resources.
 
 ## Multi-Player Test Documentation
 
@@ -240,10 +315,18 @@ New helper functions for multi-player coordination (in `helpers/game-actions.ts`
 
 ## Timeouts
 
-Default timeouts are configured in `playwright.config.ts`:
+Default timeouts are configured in `playwright.config.ts` and `fixtures/test-data.ts`:
 - Element load: 5 seconds
 - AI turn: 30 seconds
 - Game load: 10 seconds
+- Turn transition: 5 seconds
+- WebSocket update: 3 seconds
+
+Test-specific timeouts:
+- Single-player tests: 90 seconds
+- Multi-player core tests: 180 seconds (3 minutes)
+- Gameplay integration: 240 seconds (4 minutes)
+- Advanced edge cases: 300 seconds (5 minutes)
 
 Adjust in `fixtures/test-data.ts` if needed.
 

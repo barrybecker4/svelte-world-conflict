@@ -1,0 +1,337 @@
+import { test, expect } from '@playwright/test';
+import {
+  skipInstructionsQuick,
+  navigateToConfiguration,
+  enterPlayerName,
+  configurePlayerSlot,
+  setGameSettings,
+  createGame,
+  waitForGameReady,
+  getGameIdFromUrl,
+} from './helpers/game-setup';
+import {
+  endTurn,
+  waitForTurnStart,
+  getCurrentTurn,
+  waitForGameLoad,
+} from './helpers/game-actions';
+import { TEST_PLAYERS, GAME_SETTINGS, SLOT_TYPES, TIMEOUTS } from './fixtures/test-data';
+
+/**
+ * Multi-Human Player E2E Tests
+ * 
+ * These tests verify multiplayer functionality with multiple human players
+ * using Playwright's multi-browser context feature.
+ * 
+ * NOTE: This is an EXAMPLE template. Rename to .spec.ts to run.
+ */
+
+test.describe('Multi-Human Player Tests', () => {
+  // Increase timeout for multi-player tests
+  test.setTimeout(90000);
+
+  test('Example Test 1: Two Human Players - Basic Flow', async ({ browser }) => {
+    // Create separate browser contexts for each player
+    // Each context has isolated cookies, localStorage, and session
+    const context1 = await browser.newContext();
+    const context2 = await browser.newContext();
+    
+    const player1Page = await context1.newPage();
+    const player2Page = await context2.newPage();
+
+    try {
+      console.log('🎮 Starting two-player test');
+
+      // ===== PLAYER 1: CREATE GAME =====
+      console.log('👤 Player 1: Creating game');
+      
+      // Navigate to home
+      await player1Page.goto('/');
+
+      // Skip instructions quickly
+      await skipInstructionsQuick(player1Page);
+
+      // Navigate to configuration
+      await navigateToConfiguration(player1Page);
+
+      // Enter player name
+      await enterPlayerName(player1Page, TEST_PLAYERS.PLAYER1);
+
+      // Configure slots:
+      // Slot 0: Player 1 (self) - already set
+      // Slot 1: Open for Player 2
+      // Slot 2: Off
+      // Slot 3: Off
+      await configurePlayerSlot(player1Page, 1, SLOT_TYPES.OPEN);
+      await configurePlayerSlot(player1Page, 2, SLOT_TYPES.OFF);
+      await configurePlayerSlot(player1Page, 3, SLOT_TYPES.OFF);
+
+      // Set game settings for faster testing
+      await setGameSettings(player1Page, GAME_SETTINGS.QUICK);
+
+      // Create game
+      await createGame(player1Page);
+
+      // Wait for game to be ready (should be in waiting room)
+      await waitForGameReady(player1Page);
+
+      // Get the game ID from URL
+      const gameId = getGameIdFromUrl(player1Page);
+      console.log(`📋 Game created with ID: ${gameId}`);
+
+      // Verify we're in waiting room
+      const waitingRoom1 = player1Page.getByTestId('waiting-room');
+      await expect(waitingRoom1).toBeVisible();
+
+      // ===== PLAYER 2: JOIN GAME =====
+      console.log('👤 Player 2: Joining game');
+
+      // Navigate to home
+      await player2Page.goto('/');
+
+      // Skip instructions
+      await skipInstructionsQuick(player2Page);
+
+      // TODO: Implement joinExistingGame helper
+      // For now, manually navigate to game URL
+      await player2Page.goto(`/game/${gameId}`);
+      
+      // May need to enter name if not in lobby flow
+      const nameInput = player2Page.getByTestId('player-name-input');
+      const nameInputVisible = await nameInput.isVisible().catch(() => false);
+      
+      if (nameInputVisible) {
+        await nameInput.fill(TEST_PLAYERS.PLAYER2);
+        await player2Page.getByTestId('player-name-submit').click();
+      }
+
+      // Wait for waiting room to load
+      const waitingRoom2 = player2Page.getByTestId('waiting-room');
+      await expect(waitingRoom2).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD });
+
+      console.log('✅ Player 2 joined waiting room');
+
+      // ===== WAIT FOR BOTH PLAYERS TO SEE EACH OTHER =====
+      // TODO: Implement waitForPlayerToJoin helper
+      // For now, use explicit wait
+      await player1Page.waitForTimeout(2000);
+      await player2Page.waitForTimeout(2000);
+
+      // ===== START GAME =====
+      console.log('🚀 Player 1: Starting game');
+
+      const startButton = player1Page.getByTestId('start-game-btn');
+      await expect(startButton).toBeEnabled({ timeout: 5000 });
+      await startButton.click();
+
+      // Wait for both players' games to load
+      console.log('⏳ Waiting for game to load for both players');
+      await Promise.all([
+        waitForGameLoad(player1Page),
+        waitForGameLoad(player2Page),
+      ]);
+
+      console.log('✅ Game loaded for both players');
+
+      // ===== VERIFY INITIAL TURN ORDER =====
+      // Player 1 (slot 0) should go first
+      await expect(player1Page.getByTestId('current-turn-player'))
+        .toContainText(TEST_PLAYERS.PLAYER1, { timeout: TIMEOUTS.TURN_TRANSITION });
+      
+      await expect(player2Page.getByTestId('current-turn-player'))
+        .toContainText(TEST_PLAYERS.PLAYER1, { timeout: TIMEOUTS.TURN_TRANSITION });
+
+      console.log('✅ Both players see Player 1 turn');
+
+      // Verify turn number is 1
+      const turn1Player1 = await getCurrentTurn(player1Page);
+      const turn1Player2 = await getCurrentTurn(player2Page);
+      expect(turn1Player1).toBe(1);
+      expect(turn1Player2).toBe(1);
+
+      // ===== TURN 1: PLAYER 1 =====
+      console.log('🎲 Turn 1: Player 1');
+      
+      await endTurn(player1Page);
+
+      // Wait for both players to see turn change to Player 2
+      console.log('⏳ Waiting for turn transition to Player 2');
+      await Promise.all([
+        expect(player1Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER2, { timeout: TIMEOUTS.TURN_TRANSITION }),
+        expect(player2Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER2, { timeout: TIMEOUTS.TURN_TRANSITION })
+      ]);
+
+      console.log('✅ Both players see Player 2 turn');
+
+      // ===== TURN 1: PLAYER 2 =====
+      console.log('🎲 Turn 1: Player 2');
+
+      await waitForTurnStart(player2Page, TEST_PLAYERS.PLAYER2);
+      await endTurn(player2Page);
+
+      // Wait for turn change back to Player 1
+      console.log('⏳ Waiting for turn transition back to Player 1');
+      await Promise.all([
+        expect(player1Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER1, { timeout: TIMEOUTS.TURN_TRANSITION }),
+        expect(player2Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER1, { timeout: TIMEOUTS.TURN_TRANSITION })
+      ]);
+
+      console.log('✅ Both players see Player 1 turn (turn 2)');
+
+      // Verify turn number is now 2
+      const turn2Player1 = await getCurrentTurn(player1Page);
+      const turn2Player2 = await getCurrentTurn(player2Page);
+      expect(turn2Player1).toBe(2);
+      expect(turn2Player2).toBe(2);
+
+      // ===== TURN 2: PLAYER 1 =====
+      console.log('🎲 Turn 2: Player 1');
+
+      await endTurn(player1Page);
+
+      // Wait for turn change
+      await Promise.all([
+        expect(player1Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER2, { timeout: TIMEOUTS.TURN_TRANSITION }),
+        expect(player2Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER2, { timeout: TIMEOUTS.TURN_TRANSITION })
+      ]);
+
+      // ===== TURN 2: PLAYER 2 =====
+      console.log('🎲 Turn 2: Player 2');
+
+      await endTurn(player2Page);
+
+      // Wait for turn 3
+      await Promise.all([
+        expect(player1Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER1, { timeout: TIMEOUTS.TURN_TRANSITION }),
+        expect(player2Page.getByTestId('current-turn-player'))
+          .toContainText(TEST_PLAYERS.PLAYER1, { timeout: TIMEOUTS.TURN_TRANSITION })
+      ]);
+
+      // Verify turn 3
+      const turn3Player1 = await getCurrentTurn(player1Page);
+      const turn3Player2 = await getCurrentTurn(player2Page);
+      expect(turn3Player1).toBe(3);
+      expect(turn3Player2).toBe(3);
+
+      console.log('✅ Example Test 1 completed successfully');
+      console.log('📊 Completed 2 full turn cycles with 2 human players');
+
+    } finally {
+      // Always clean up browser contexts
+      console.log('🧹 Cleaning up browser contexts');
+      await context1.close();
+      await context2.close();
+    }
+  });
+
+  test.skip('Example Test 2: Three Players with Start Anyway', async ({ browser }) => {
+    // TODO: Implement this test
+    // This is a template showing the structure for 3-player test
+
+    const context1 = await browser.newContext();
+    const context2 = await browser.newContext();
+    const context3 = await browser.newContext();
+
+    const player1Page = await context1.newPage();
+    const player2Page = await context2.newPage();
+    const player3Page = await context3.newPage();
+
+    try {
+      // Player 1 creates game with 3 open slots
+      // Player 2 joins
+      // Player 1 clicks "start anyway" before Player 3 joins
+      // Game starts with 2 humans + 2 AI
+      // Verify turn order includes AI turns
+
+      // TODO: Implement test steps
+
+    } finally {
+      await context1.close();
+      await context2.close();
+      await context3.close();
+    }
+  });
+});
+
+/**
+ * HELPER FUNCTIONS TO IMPLEMENT
+ * 
+ * These should be added to helpers/game-setup.ts:
+ */
+
+/**
+ * Join an existing game by game ID
+ * 
+ * @example
+ * await joinExistingGame(player2Page, gameId, TEST_PLAYERS.PLAYER2);
+ */
+// async function joinExistingGame(page: Page, gameId: string, playerName: string) {
+//   await page.goto(`/game/${gameId}`);
+//   
+//   const nameInput = page.getByTestId('player-name-input');
+//   if (await nameInput.isVisible().catch(() => false)) {
+//     await nameInput.fill(playerName);
+//     await page.getByTestId('player-name-submit').click();
+//   }
+//   
+//   const waitingRoom = page.getByTestId('waiting-room');
+//   await expect(waitingRoom).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD });
+// }
+
+/**
+ * Wait for another player to join and appear in waiting room
+ * 
+ * @example
+ * await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER2, 1);
+ */
+// async function waitForPlayerToJoin(
+//   page: Page,
+//   playerName: string,
+//   slotIndex: number
+// ) {
+//   // Wait for WebSocket update to propagate
+//   await page.waitForTimeout(2000);
+//   
+//   // TODO: Add proper selector for player slot card
+//   // For now, just wait for WebSocket propagation
+//   
+//   console.log(`✅ Player ${playerName} joined slot ${slotIndex}`);
+// }
+
+/**
+ * Synchronize turn transition across multiple player pages
+ * 
+ * @example
+ * await synchronizeTurnTransition(
+ *   [player1Page, player2Page],
+ *   TEST_PLAYERS.PLAYER1,
+ *   TEST_PLAYERS.PLAYER2
+ * );
+ */
+// async function synchronizeTurnTransition(
+//   pages: Page[],
+//   fromPlayer: string,
+//   toPlayer: string
+// ) {
+//   await Promise.all(
+//     pages.map(page =>
+//       expect(page.getByTestId('current-turn-player'))
+//         .toContainText(toPlayer, { timeout: TIMEOUTS.TURN_TRANSITION })
+//     )
+//   );
+//   
+//   await Promise.all(
+//     pages.map(page =>
+//       expect(page.getByTestId('current-turn-player'))
+//         .not.toContainText(fromPlayer)
+//     )
+//   );
+// }
+
