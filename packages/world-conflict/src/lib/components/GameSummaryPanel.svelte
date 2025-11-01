@@ -64,7 +64,7 @@
   $: gameEndReason = getGameEndReason();
 </script>
 
-<div style="--side-panel-width: {GAME_CONSTANTS.SIDE_PANEL_WIDTH}px;">
+<div style="--side-panel-width: {GAME_CONSTANTS.SIDE_PANEL_WIDTH}px; --player-name-max-width: {GAME_CONSTANTS.PLAYER_NAME_MAX_WIDTH}px;">
 <Panel variant="glass" padding={false} customClass="game-summary-panel">
 
   <!-- Game Over Header -->
@@ -208,6 +208,10 @@
     font-weight: var(--font-bold, bold);
     color: var(--text-primary, #f7fafc);
     margin-bottom: 8px;
+    max-width: var(--player-name-max-width);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .winner-message {
@@ -306,6 +310,7 @@
     overflow: hidden;
     white-space: nowrap;
     line-height: 1.2;
+    max-width: var(--player-name-max-width);
   }
 
   .ranking-stats {

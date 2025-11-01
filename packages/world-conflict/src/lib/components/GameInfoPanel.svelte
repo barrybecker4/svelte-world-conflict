@@ -68,7 +68,7 @@
   })();
 </script>
 
-<div style="--side-panel-width: {GAME_CONSTANTS.SIDE_PANEL_WIDTH}px;">
+<div style="--side-panel-width: {GAME_CONSTANTS.SIDE_PANEL_WIDTH}px; --player-name-max-width: {GAME_CONSTANTS.PLAYER_NAME_MAX_WIDTH}px;">
 <Panel variant="glass" padding={false} customClass="game-info-panel">
 
   <!-- Turn Section -->
@@ -153,7 +153,7 @@
       </Button>
     {/if}
 
-    <Button variant="danger" size="lg" uppercase on:click={onEndTurn} data-testid="end-turn-btn">
+    <Button variant="danger" size="lg" uppercase disabled={!isMyTurn} on:click={onEndTurn} data-testid="end-turn-btn">
       END TURN
     </Button>
   </Section>
@@ -252,6 +252,7 @@
     white-space: nowrap;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
     flex: 0 0 auto;
+    max-width: var(--player-name-max-width);
   }
 
   .player-stats {

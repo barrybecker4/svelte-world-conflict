@@ -49,7 +49,8 @@ export const GAME_CONSTANTS = {
     BATTLE_TIMEOUT_MS: 3000, // Default battle timeout to prevent stuck battles
 
     // UI Layout
-    SIDE_PANEL_WIDTH: 380, // Width in pixels for GameInfoPanel and GameSummaryPanel
+    SIDE_PANEL_WIDTH: 400, // Width in pixels for GameInfoPanel and GameSummaryPanel
+    PLAYER_NAME_MAX_WIDTH: 130, // Max width in pixels for player names with ellipsis
 
     // AI Processing
     AI_ACTION_DELAY_MS: 100, // Delay between AI actions for UX
