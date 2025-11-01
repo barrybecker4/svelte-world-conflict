@@ -1,15 +1,16 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
+  import GameSummaryPanel from './GameSummaryPanel.svelte';
   import TempleUpgradePanel from './TempleUpgradePanel.svelte';
   import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
   import GameInstructions from './modals/GameInstructionsModal.svelte';
-  import GameSummaryModal from './modals/gameSummary/GameSummaryModal.svelte';
   import LoadingState from './ui/LoadingState.svelte';
   import Banner from './ui/Banner.svelte';
   import { createGameStateStore } from '$lib/client/stores/gameStateStore';
   import { GameController } from '$lib/client/gameController/GameController';
+  import type { Player } from '$lib/game/state/GameState';
 
   export let gameId: string;
   export let playerId: string;
@@ -36,6 +37,9 @@
   const { modalState, moveState, isConnected, tutorialTips } = controller.getStores();
 
   let mapContainer: HTMLElement;
+  let showVictoryBanner = false;
+  let showGameSummary = false;
+  let gameWinner: Player | 'DRAWN_GAME' | null = null;
 
   $: selectedRegion = $moveState.sourceRegion !== null
     ? $regions.find(r => r.index === $moveState.sourceRegion) || null
@@ -49,6 +53,13 @@
   // Check for game end
   $: if ($gameState && $players.length > 0) {
     controller.checkGameEnd($gameState, $players);
+  }
+
+  // Show victory banner when game ends
+  $: if ($gameState && $players.length > 0 && $modalState.showGameSummary && !showVictoryBanner && !showGameSummary) {
+    // Game just ended, show victory banner
+    showVictoryBanner = true;
+    gameWinner = $modalState.winner;
   }
 
   $: moveMode = $moveState.mode;
@@ -77,6 +88,12 @@
     controller.destroy();
     window.location.href = '/';
   }
+
+  function handleVictoryBannerComplete() {
+    console.log('🎉 Victory banner completed, showing summary panel');
+    showVictoryBanner = false;
+    showGameSummary = true;
+  }
 </script>
 
 {#if $loading}
@@ -88,8 +105,15 @@
   </div>
 {:else}
   <div class="game-container" data-testid="game-interface">
-    <!-- Game Info Panel or Temple Upgrade Panel -->
-    {#if inBuildMode && buildRegion !== null}
+    <!-- Game Info Panel, Temple Upgrade Panel, or Game Summary Panel -->
+    {#if showGameSummary && $gameState}
+      <GameSummaryPanel
+        gameState={$gameState}
+        players={$players}
+        winner={gameWinner}
+        onPlayAgain={handlePlayAgain}
+      />
+    {:else if inBuildMode && buildRegion !== null}
       <TempleUpgradePanel
         regionIndex={buildRegion}
         gameState={$gameState}
@@ -151,6 +175,17 @@
       {/if}
     {/each}
 
+    <!-- Victory Banner -->
+    {#if showVictoryBanner}
+      <Banner
+        player={null}
+        type="victory"
+        winner={gameWinner}
+        duration={3000}
+        onComplete={handleVictoryBannerComplete}
+      />
+    {/if}
+
     <!-- Modals -->
     {#if $modalState.showSoldierSelection && $modalState.soldierSelectionData}
       <SoldierSelectionModal
@@ -163,16 +198,6 @@
 
     {#if $modalState.showInstructions}
       <GameInstructions on:close={() => controller.closeInstructions()} />
-    {/if}
-
-    {#if $modalState.showGameSummary && $gameState}
-      <GameSummaryModal
-        gameState={$gameState}
-        players={$players}
-        winner={$modalState.winner}
-        isVisible={$modalState.showGameSummary}
-        on:playAgain={handlePlayAgain}
-      />
     {/if}
 
     {#if import.meta.env.DEV}

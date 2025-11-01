@@ -320,10 +320,6 @@ export class GameController {
     this.modalManager.closeInstructions();
   }
 
-  closeGameSummary(): void {
-    this.modalManager.closeGameSummary();
-  }
-
   /**
    * Resign from the game
    */

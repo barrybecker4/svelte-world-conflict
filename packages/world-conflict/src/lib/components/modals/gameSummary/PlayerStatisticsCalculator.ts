@@ -17,6 +17,14 @@ export class PlayerStatisticsCalculator {
   }
 
   /**
+   * Calculate total score based on regions, soldiers, and faith
+   * Regions: 1000 points, Soldiers: 10 points, Faith: 1 point
+   */
+  private calculateScore(regionCount: number, soldierCount: number, faithCount: number): number {
+    return (1000 * regionCount) + (10 * soldierCount) + faithCount;
+  }
+
+  /**
    * Calculate statistics for all players and rank them by score
    */
   calculatePlayerStats(players: Player[]): PlayerStats[] {
@@ -24,23 +32,10 @@ export class PlayerStatisticsCalculator {
       return [];
     }
 
-    const stats = players.map(player => {
-      const regionCount = this.getRegionCount(player.slotIndex);
-      const soldierCount = this.getTotalSoldiers(player.slotIndex);
-      const faithCount = this.gameState.faithByPlayer[player.slotIndex] || 0;
-
-      // Calculate total score (same as game logic: 1000 * regions + soldiers)
-      const totalScore = (1000 * regionCount) + soldierCount;
-
-      return {
-        player,
-        regionCount,
-        soldierCount,
-        faithCount,
-        totalScore,
-        rank: 0 // Will be calculated after sorting
-      };
-    });
+    const stats = players.map(player => ({
+      ...this.getPlayerStats(player),
+      rank: 0 // Will be calculated after sorting
+    }));
 
     // Sort by score descending and assign ranks
     stats.sort((a, b) => b.totalScore - a.totalScore);
@@ -79,7 +74,7 @@ export class PlayerStatisticsCalculator {
     const regionCount = this.getRegionCount(player.slotIndex);
     const soldierCount = this.getTotalSoldiers(player.slotIndex);
     const faithCount = this.gameState.faithByPlayer[player.slotIndex] || 0;
-    const totalScore = (1000 * regionCount) + soldierCount;
+    const totalScore = this.calculateScore(regionCount, soldierCount, faithCount);
 
     return {
       player,

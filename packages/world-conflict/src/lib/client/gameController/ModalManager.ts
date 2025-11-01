@@ -73,7 +73,8 @@ export class ModalManager {
   }
 
   /**
-   * Show the game summary modal with winner information
+   * Trigger game end flow with winner information
+   * Shows victory banner followed by summary panel in left nav
    */
   showGameSummary(winner: Player | 'DRAWN_GAME'): void {
     this.modalState.update(s => ({
@@ -81,13 +82,6 @@ export class ModalManager {
       winner,
       showGameSummary: true
     }));
-  }
-
-  /**
-   * Close the game summary modal
-   */
-  closeGameSummary(): void {
-    this.modalState.update(s => ({ ...s, showGameSummary: false }));
   }
 }
 

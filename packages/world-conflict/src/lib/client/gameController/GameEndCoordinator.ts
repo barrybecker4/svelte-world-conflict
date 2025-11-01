@@ -48,7 +48,7 @@ export class GameEndCoordinator {
 
       audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
 
-      // Show modal (winner is guaranteed to exist when game has ended)
+      // Trigger game summary display (will show victory banner then summary panel)
       this.modalManager.showGameSummary(endResult.winner!);
     }
   }

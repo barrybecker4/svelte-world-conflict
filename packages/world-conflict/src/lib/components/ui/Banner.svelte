@@ -5,11 +5,12 @@
   import type { Player } from '$lib/game/state/GameState';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
-  export let player: Player;
+  export let player: Player | null = null;
   export let isVisible: boolean = true;
   export let onComplete: () => void = () => {};
-  export let type: 'turn' | 'elimination' = 'turn';
+  export let type: 'turn' | 'elimination' | 'victory' = 'turn';
   export let duration: number | undefined = undefined; // Optional override for banner duration
+  export let winner: Player | 'DRAWN_GAME' | null = null; // For victory banners
 
   let bannerElement: HTMLElement;
   let animationComplete = false;
@@ -19,12 +20,12 @@
   $: bannerDuration = duration !== undefined ? duration : GAME_CONSTANTS.BANNER_TIME;
 
   // Reset animation state when player or type changes
-  $: if (player || type) {
-    console.log(`🎭 Banner component rendering for player:`, {
-      name: player.name,
-      slotIndex: player.slotIndex,
-      isAI: player.isAI,
+  $: if (player || type || winner) {
+    console.log(`🎭 Banner component rendering:`, {
+      playerName: player?.name,
+      playerSlotIndex: player?.slotIndex,
       type,
+      winner,
       isVisible
     });
     animationComplete = false;
@@ -43,9 +44,10 @@
     }
   });
 
-  $: playerColor = getPlayerColor(player.slotIndex);
-  $: isAI = player.isAI;
+  $: playerColor = player ? getPlayerColor(player.slotIndex) : (winner && winner !== 'DRAWN_GAME' ? getPlayerColor(winner.slotIndex) : '#60a5fa');
+  $: isAI = player?.isAI ?? false;
   $: isElimination = type === 'elimination';
+  $: isVictory = type === 'victory';
 
   function skipBanner() {
     if (timer) {
@@ -66,24 +68,51 @@
        tabindex="0">
     <div class="turn-banner"
          class:elimination={isElimination}
+         class:victory={isVictory}
          transition:scale={{ duration: 600, start: 0.3 }}
          style="--player-color: {playerColor}">
       <div class="banner-content">
         <div class="turn-label">
-          {#if isElimination}
+          {#if isVictory}
+            {#if winner === 'DRAWN_GAME'}
+              GAME DRAW
+            {:else}
+              VICTORY
+            {/if}
+          {:else if isElimination}
             ELIMINATED
           {:else}
             {isAI ? 'AI' : 'PLAYER'} TURN
           {/if}
         </div>
-        <div class="player-name" class:eliminated={isElimination}>
-          {player.name}
+        <div class="player-name" class:eliminated={isElimination} class:winner={isVictory && winner !== 'DRAWN_GAME'}>
+          {#if isVictory}
+            {#if winner === 'DRAWN_GAME'}
+              Game Ended in a Tie
+            {:else if winner}
+              {winner.name} Wins!
+            {:else}
+              Game Over
+            {/if}
+          {:else if player}
+            {player.name}
+          {/if}
         </div>
-        <div class="player-indicator" 
-             class:eliminated={isElimination}
-             style="background-color: {playerColor}; {isElimination ? 'opacity: 0.5;' : ''}"></div>
+        {#if !isVictory}
+          <div class="player-indicator" 
+               class:eliminated={isElimination}
+               style="background-color: {playerColor}; {isElimination ? 'opacity: 0.5;' : ''}"></div>
+        {/if}
         <div class="banner-subtitle">
-          {#if isElimination}
+          {#if isVictory}
+            {#if winner === 'DRAWN_GAME'}
+              No clear victor
+            {:else if winner}
+              Congratulations!
+            {:else}
+              Final results
+            {/if}
+          {:else if isElimination}
             Conquered by opponents
           {:else}
             {isAI ? 'AI is thinking...' : 'Your move!'}
@@ -94,7 +123,7 @@
         </div>
       </div>
       <div class="banner-effects">
-        <div class="energy-pulse" class:fade-pulse={isElimination}></div>
+        <div class="energy-pulse" class:fade-pulse={isElimination} class:victory-pulse={isVictory}></div>
         <div class="corner-frame top-left"></div>
         <div class="corner-frame top-right"></div>
         <div class="corner-frame bottom-left"></div>
@@ -148,6 +177,31 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
+  .turn-banner.victory {
+    background: linear-gradient(135deg,
+                rgba(15, 30, 15, 0.95),
+                rgba(30, 45, 30, 0.95));
+    border: 3px solid #facc15;
+    box-shadow:
+      0 20px 40px rgba(0, 0, 0, 0.7),
+      0 0 60px rgba(250, 204, 21, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .turn-banner.victory .turn-label {
+    color: #facc15;
+    text-shadow: 0 0 20px #facc15;
+  }
+
+  .turn-banner.victory .player-name.winner {
+    background: none;
+    -webkit-text-fill-color: var(--player-color);
+    color: var(--player-color);
+    text-shadow: 
+      2px 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 20px var(--player-color);
+  }
+
   .banner-content {
     position: relative;
     z-index: 2;
@@ -183,6 +237,16 @@
     text-decoration: line-through;
     text-decoration-color: #dc2626;
     text-decoration-thickness: 3px;
+  }
+
+  .player-name.winner {
+    font-size: 3rem;
+    background: linear-gradient(135deg, #facc15, #f59e0b);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    animation: victoryGlow 2s ease-in-out infinite alternate;
   }
 
   .player-indicator {
@@ -252,6 +316,12 @@
     background: radial-gradient(circle, var(--player-color) 0%, transparent 70%);
     opacity: 0.05;
     animation: fadeOut 2s ease-in-out infinite;
+  }
+
+  .energy-pulse.victory-pulse {
+    background: radial-gradient(circle, #facc15 0%, transparent 70%);
+    opacity: 0.15;
+    animation: victoryPulse 2s ease-in-out infinite;
   }
 
   .corner-frame {
@@ -335,6 +405,30 @@
     }
     50% {
       opacity: 0.6;
+    }
+  }
+
+  @keyframes victoryGlow {
+    0% {
+      filter: drop-shadow(0 0 20px #facc15);
+    }
+    100% {
+      filter: drop-shadow(0 0 40px #f59e0b);
+    }
+  }
+
+  @keyframes victoryPulse {
+    0% {
+      transform: translate(-50%, -50%) scale(0.9);
+      opacity: 0.15;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.3);
+      opacity: 0.25;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(0.9);
+      opacity: 0.15;
     }
   }
 
