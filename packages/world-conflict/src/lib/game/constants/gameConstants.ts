@@ -48,6 +48,9 @@ export const GAME_CONSTANTS = {
     // Battle/Combat timing
     BATTLE_TIMEOUT_MS: 3000, // Default battle timeout to prevent stuck battles
 
+    // UI Layout
+    SIDE_PANEL_WIDTH: 380, // Width in pixels for GameInfoPanel and GameSummaryPanel
+
     // AI Processing
     AI_ACTION_DELAY_MS: 100, // Delay between AI actions for UX
     MAX_AI_TURNS: 50, // Safety limit to prevent infinite loops

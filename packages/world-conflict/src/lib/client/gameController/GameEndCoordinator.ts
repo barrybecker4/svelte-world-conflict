@@ -14,15 +14,18 @@ export class GameEndCoordinator {
   private turnTimerCoordinator: TurnTimerCoordinator;
   private playerId: string;
   private gameEndChecked = false;
+  private updateGameState: ((updater: (state: GameStateData) => GameStateData) => void) | null = null;
 
   constructor(
     playerId: string,
     modalManager: ModalManager,
-    turnTimerCoordinator: TurnTimerCoordinator
+    turnTimerCoordinator: TurnTimerCoordinator,
+    updateGameState?: (updater: (state: GameStateData) => GameStateData) => void
   ) {
     this.playerId = playerId;
     this.modalManager = modalManager;
     this.turnTimerCoordinator = turnTimerCoordinator;
+    this.updateGameState = updateGameState || null;
   }
 
   /**
@@ -37,6 +40,18 @@ export class GameEndCoordinator {
 
     if (endResult.isGameEnded) {
       this.gameEndChecked = true;
+
+      // Set endResult on the game state so UI can react
+      if (this.updateGameState && gameState) {
+        console.log('🏁 Setting endResult on game state:', endResult.winner);
+        this.updateGameState((state) => {
+          if (!state) return state;
+          return {
+            ...state,
+            endResult: endResult.winner
+          };
+        });
+      }
 
       // Stop the timer when the game ends
       this.turnTimerCoordinator.stopTimer();

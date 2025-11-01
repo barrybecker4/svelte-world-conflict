@@ -6,6 +6,7 @@
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { SYMBOLS } from '$lib/game/constants/symbols';
   import { PlayerStatisticsCalculator } from '$lib/components/modals/gameSummary/PlayerStatisticsCalculator';
+  import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   export let gameState: GameStateData;
   export let players: Player[];
@@ -63,6 +64,7 @@
   $: gameEndReason = getGameEndReason();
 </script>
 
+<div style="--side-panel-width: {GAME_CONSTANTS.SIDE_PANEL_WIDTH}px;">
 <Panel variant="glass" padding={false} customClass="game-summary-panel">
 
   <!-- Game Over Header -->
@@ -141,11 +143,12 @@
   </Section>
 
 </Panel>
+</div>
 
 <style>
   /* Main container */
   :global(.game-summary-panel) {
-    width: 280px;
+    width: var(--side-panel-width);
     height: 100vh;
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
     border: 1px solid var(--border-light, #374151);
@@ -241,8 +244,10 @@
 
   .ranking-box {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding: var(--space-3, 12px);
     border-radius: var(--radius-md, 6px);
     background: rgba(15, 23, 42, 0.4);
@@ -289,7 +294,7 @@
   }
 
   .ranking-player-details {
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
   }
 
@@ -305,8 +310,8 @@
 
   .ranking-stats {
     display: flex;
-    gap: 8px;
-    justify-content: space-around;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .ranking-stat {

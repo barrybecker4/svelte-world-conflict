@@ -53,7 +53,12 @@ export class GameController {
     this.turnTimerCoordinator = new TurnTimerCoordinator(playerId, () => this.endTurn());
     this.battleCoordinator = new BattleCoordinator(gameId, playerId, gameStore, this.undoManager);
     this.moveUICoordinator = new MoveUICoordinator(gameStore, this.modalManager);
-    this.gameEndCoordinator = new GameEndCoordinator(playerId, this.modalManager, this.turnTimerCoordinator);
+    this.gameEndCoordinator = new GameEndCoordinator(
+      playerId, 
+      this.modalManager, 
+      this.turnTimerCoordinator,
+      (updater) => gameStore.gameState.update(updater)
+    );
     this.templeActionCoordinator = new TempleActionCoordinator(playerId, this.apiClient, this.undoManager, gameStore);
 
     this.websocket = useGameWebSocket(gameId, (gameData) => {

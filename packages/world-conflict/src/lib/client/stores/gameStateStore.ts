@@ -178,6 +178,9 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     ([$gameState, $players]) => {
         if (!$gameState || !$players.length) return false;
 
+        // Don't allow turns if game has ended
+        if ($gameState.endResult) return false;
+
         // Find the player whose turn it is (by slot index)
         const currentTurnPlayer = $players.find((p: any) => (p as any).slotIndex === ($gameState as any).currentPlayerSlot);
 

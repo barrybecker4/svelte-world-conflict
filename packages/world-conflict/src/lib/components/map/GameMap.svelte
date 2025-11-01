@@ -83,12 +83,18 @@
     return 1;
   }
 
-  function getInnerBorderColor(region: Region, isSelected: boolean = false, isValidTarget: boolean = false): string {
+  function getInnerBorderColor(region: Region, isSelected: boolean = false, isValidTarget: boolean = false, isWinnerRegion: boolean = false): string {
     if (!gameState?.ownersByRegion) {
         return '';
     }
 
     const ownerIndex = gameState.ownersByRegion[region.index];
+
+    // For winner regions at game end, use light highlight
+    if (isWinnerRegion && gameState.endResult) {
+        const config = getPlayerConfig(ownerIndex);
+        return config.highlightStart;
+    }
 
     // For neutral regions that are valid targets, use the current player's color
     if ((ownerIndex === undefined || ownerIndex === -1) && isValidTarget && currentPlayer) {
@@ -116,6 +122,9 @@
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
     if (!currentPlayer) return false;
+    
+    // Don't allow highlighting if game has ended
+    if (gameState.endResult) return false;
 
     // Only highlight if it's the current player's turn (not just any player's turn)
     if (currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
@@ -130,8 +139,35 @@
     return isOwnedByCurrentPlayer && hasMovableSoldiers && !wasConqueredThisTurn;
   }
 
+  function isWinnerRegion(region: Region): boolean {
+    if (!gameState?.endResult || gameState.endResult === 'DRAWN_GAME') {
+      return false;
+    }
+
+    const winner = gameState.endResult;
+    const ownerIndex = gameState.ownersByRegion?.[region.index];
+    const isWinner = ownerIndex === winner.slotIndex;
+    
+    // Debug logging for first winner region found
+    if (isWinner) {
+      console.log('🏆 Winner region detected:', { 
+        regionIndex: region.index, 
+        ownerIndex, 
+        winnerSlotIndex: winner.slotIndex,
+        winnerName: winner.name 
+      });
+    }
+    
+    return isWinner;
+  }
+
   function handleRegionClick(region: Region): void {
     if (effectivePreviewMode) return;
+
+    // Don't allow clicks if game has ended
+    if (gameState?.endResult) {
+      return;
+    }
 
     // Don't allow clicks if no moves remaining
     if (!gameState || gameState.movesRemaining <= 0) {
@@ -148,6 +184,11 @@
 
   function handleTempleClick(regionIndex: number): void {
     if (effectivePreviewMode) return;
+
+    // Don't allow temple clicks if game has ended
+    if (gameState?.endResult) {
+      return;
+    }
 
     // Don't allow temple clicks if no moves remaining
     if (!gameState || gameState.movesRemaining <= 0) {
@@ -176,9 +217,11 @@
       {@const isSelected = selectedRegion ? selectedRegion.index === region.index : false}
       {@const isValidTarget = validTargetRegions.includes(region.index)}
       {@const isMovable = canHighlightForTurn(region)}
+      {@const isWinner = isWinnerRegion(region)}
       {@const hasMovesRemaining = !!(gameState && gameState.movesRemaining > 0)}
       {@const isMyTurn = !!(currentPlayer && gameState && currentPlayer.slotIndex === gameState.currentPlayerSlot)}
-      {@const isClickable = !!(hasMovesRemaining && isMyTurn)}
+      {@const gameHasEnded = !!(gameState?.endResult)}
+      {@const isClickable = !!(hasMovesRemaining && isMyTurn && !gameHasEnded)}
       <RegionRenderer
         {region}
         {gameState}
@@ -186,12 +229,12 @@
         isValidTarget={isValidTarget}
         isSelected={isSelected}
         isPreviewMode={effectivePreviewMode}
-        canHighlight={isMovable}
+        canHighlight={isMovable || isWinner}
         isBattleInProgress={battlesInProgress.has(region.index)}
         fillColor={getRegionColor(region)}
         borderColor={getBorderColor(region)}
         borderWidth={getBorderWidth(region)}
-        innerBorderColor={isSelected || isMovable || isValidTarget ? getInnerBorderColor(region, isSelected, isValidTarget) : ''}
+        innerBorderColor={isSelected || isMovable || isValidTarget || isWinner ? getInnerBorderColor(region, isSelected, isValidTarget, isWinner) : ''}
         innerBorderWidth={isSelected ? 10 : 8}
         isClickable={isClickable}
         onRegionClick={handleRegionClick}
