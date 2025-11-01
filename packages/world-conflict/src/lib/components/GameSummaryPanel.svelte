@@ -116,15 +116,15 @@
         </div>
 
         <div class="ranking-stats">
-          <div class="ranking-stat" title="Regions controlled">
+          <div class="ranking-stat" data-tooltip="Regions controlled">
             <span class="stat-value">{regionCount}</span>
             <span class="stat-symbol">{@html SYMBOLS.REGION}</span>
           </div>
-          <div class="ranking-stat" title="Soldiers in army">
+          <div class="ranking-stat" data-tooltip="Soldiers in army">
             <span class="stat-value">{stat.soldierCount}</span>
             <span class="stat-symbol">{@html SYMBOLS.SOLDIER}</span>
           </div>
-          <div class="ranking-stat" title="Faith accumulated">
+          <div class="ranking-stat" data-tooltip="Faith accumulated">
             <span class="stat-value">{faithCount}</span>
             <span class="stat-symbol">{@html SYMBOLS.FAITH}</span>
           </div>

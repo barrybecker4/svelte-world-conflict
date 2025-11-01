@@ -96,16 +96,16 @@
         <div class="player-info">
           <div class="player-name" data-testid="{isActive ? 'current-turn-player' : ''}">{player.name}</div>
           <div class="player-stats">
-            <div class="stat" title="Regions controlled">
+            <div class="stat" data-tooltip="Regions controlled">
               <span class="value" data-testid="player-territories">{regionCount}</span>
               <span class="symbol">{@html SYMBOLS.REGION}</span>
             </div>
-            <div class="stat" title="Faith accumulated">
+            <div class="stat" data-tooltip="Faith accumulated">
               <span class="value" data-testid="player-units">{faithCount}</span>
               <span class="symbol">{@html SYMBOLS.FAITH}</span>
             </div>
             {#if !isAlive}
-              <div class="stat" title="Player eliminated">
+              <div class="stat" data-tooltip="Player eliminated">
                 <span class="symbol dead">{@html SYMBOLS.DEAD}</span>
               </div>
             {/if}
@@ -269,7 +269,6 @@
     padding: 0.4rem 0.6rem;
     border-radius: 4px;
     border: 1px solid var(--border-light, #374151);
-    cursor: help;
   }
 
   .stat .value {
