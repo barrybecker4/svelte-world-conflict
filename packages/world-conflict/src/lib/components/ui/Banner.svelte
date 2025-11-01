@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { fade, scale } from 'svelte/transition';
+  import { onDestroy } from 'svelte';
   import { getPlayerColor } from '$lib/game/constants/playerConfigs';
   import type { Player } from '$lib/game/state/GameState';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
@@ -15,6 +14,8 @@
   let bannerElement: HTMLElement;
   let animationComplete = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let animating = false;
+  let fadingOut = false;
 
   // Use custom duration if provided, otherwise use default from constants
   $: bannerDuration = duration !== undefined ? duration : GAME_CONSTANTS.BANNER_TIME;
@@ -29,13 +30,27 @@
       isVisible
     });
     animationComplete = false;
+    animating = false;
+    fadingOut = false;
+    
+    // Trigger animation
+    setTimeout(() => {
+      animating = true;
+    }, 10);
+    
     if (timer) {
       clearTimeout(timer);
     }
+    
+    // Trigger fade-out 500ms before banner completes
     timer = setTimeout(() => {
-      animationComplete = true;
-      onComplete();
-    }, bannerDuration);
+      fadingOut = true;
+      // Complete after fade-out finishes
+      setTimeout(() => {
+        animationComplete = true;
+        onComplete();
+      }, 500);
+    }, bannerDuration - 500);
   }
 
   onDestroy(() => {
@@ -45,9 +60,26 @@
   });
 
   $: playerColor = player ? getPlayerColor(player.slotIndex) : (winner && winner !== 'DRAWN_GAME' ? getPlayerColor(winner.slotIndex) : '#60a5fa');
-  $: isAI = player?.isAI ?? false;
   $: isElimination = type === 'elimination';
   $: isVictory = type === 'victory';
+
+  // Generate banner text
+  $: bannerText = (() => {
+    if (isVictory) {
+      if (winner === 'DRAWN_GAME') {
+        return 'Game Draw!';
+      } else if (winner) {
+        return `${winner.name} Won!`;
+      } else {
+        return 'Game Over';
+      }
+    } else if (isElimination && player) {
+      return `${player.name} has been eliminated!`;
+    } else if (player) {
+      return `${player.name}'s turn`;
+    }
+    return '';
+  })();
 
   function skipBanner() {
     if (timer) {
@@ -59,392 +91,84 @@
 </script>
 
 {#if isVisible && !animationComplete}
-  <div class="turn-banner-overlay"
-       transition:fade={{ duration: 300 }}
-       bind:this={bannerElement}
+  <div class="banner-container"
        on:click={skipBanner}
        on:keydown={(e) => e.key === 'Enter' && skipBanner()}
        role="button"
        tabindex="0">
-    <div class="turn-banner"
+    <div class="banner"
+         class:animating
+         class:fading-out={fadingOut}
          class:elimination={isElimination}
          class:victory={isVictory}
-         transition:scale={{ duration: 600, start: 0.3 }}
-         style="--player-color: {playerColor}">
-      <div class="banner-content">
-        <div class="turn-label">
-          {#if isVictory}
-            {#if winner === 'DRAWN_GAME'}
-              GAME DRAW
-            {:else}
-              VICTORY
-            {/if}
-          {:else if isElimination}
-            ELIMINATED
-          {:else}
-            {isAI ? 'AI' : 'PLAYER'} TURN
-          {/if}
-        </div>
-        <div class="player-name" class:eliminated={isElimination} class:winner={isVictory && winner !== 'DRAWN_GAME'}>
-          {#if isVictory}
-            {#if winner === 'DRAWN_GAME'}
-              Game Ended in a Tie
-            {:else if winner}
-              {winner.name} Wins!
-            {:else}
-              Game Over
-            {/if}
-          {:else if player}
-            {player.name}
-          {/if}
-        </div>
-        {#if !isVictory}
-          <div class="player-indicator" 
-               class:eliminated={isElimination}
-               style="background-color: {playerColor}; {isElimination ? 'opacity: 0.5;' : ''}"></div>
-        {/if}
-        <div class="banner-subtitle">
-          {#if isVictory}
-            {#if winner === 'DRAWN_GAME'}
-              No clear victor
-            {:else if winner}
-              Congratulations!
-            {:else}
-              Final results
-            {/if}
-          {:else if isElimination}
-            Conquered by opponents
-          {:else}
-            {isAI ? 'AI is thinking...' : 'Your move!'}
-          {/if}
-        </div>
-        <div class="skip-hint">
-          Click to continue
-        </div>
-      </div>
-      <div class="banner-effects">
-        <div class="energy-pulse" class:fade-pulse={isElimination} class:victory-pulse={isVictory}></div>
-        <div class="corner-frame top-left"></div>
-        <div class="corner-frame top-right"></div>
-        <div class="corner-frame bottom-left"></div>
-        <div class="corner-frame bottom-right"></div>
-      </div>
+         bind:this={bannerElement}
+         style="background: {playerColor};">
+      {bannerText}
     </div>
   </div>
 {/if}
 
 <style>
-  .turn-banner-overlay {
+  .banner-container {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3); /* Not too opaque */
-    backdrop-filter: blur(1px); /* Not too much blurring */
-    display: flex;
-    align-items: center;
-    justify-content: center;
     z-index: 1000;
+    pointer-events: none;
     cursor: pointer;
   }
 
-  .turn-banner {
-    position: relative;
-    background: linear-gradient(135deg,
-                rgba(15, 23, 42, 0.95),
-                rgba(30, 41, 59, 0.95));
-    border: 3px solid var(--player-color);
-    border-radius: 16px;
-    padding: 2rem 3rem;
-    min-width: 400px;
+  .banner {
+    position: absolute;
+    top: 40%;
+    left: -2.5%;
+    height: 10.8%;
+    width: 105%;
     text-align: center;
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.5),
-      0 0 50px rgba(var(--player-color), 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    overflow: hidden;
-  }
-
-  .turn-banner.elimination {
-    background: linear-gradient(135deg,
-                rgba(20, 20, 20, 0.95),
-                rgba(40, 30, 30, 0.95));
-    /* Keep player color for border - don't override with red */
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.7),
-      0 0 50px var(--player-color),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-
-  .turn-banner.victory {
-    background: linear-gradient(135deg,
-                rgba(15, 30, 15, 0.95),
-                rgba(30, 45, 30, 0.95));
-    border: 3px solid #facc15;
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.7),
-      0 0 60px rgba(250, 204, 21, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-
-  .turn-banner.victory .turn-label {
-    color: #facc15;
-    text-shadow: 0 0 20px #facc15;
-  }
-
-  .turn-banner.victory .player-name.winner {
-    background: none;
-    -webkit-text-fill-color: var(--player-color);
-    color: var(--player-color);
-    text-shadow: 
-      2px 2px 4px rgba(0, 0, 0, 0.8),
-      0 0 20px var(--player-color);
-  }
-
-  .banner-content {
-    position: relative;
-    z-index: 2;
-  }
-
-  .turn-label {
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: var(--player-color);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-    text-shadow: 0 0 10px currentColor;
-  }
-
-  .turn-banner.elimination .turn-label {
-    color: var(--player-color);
-    text-shadow: 0 0 10px var(--player-color);
-  }
-
-  .player-name {
-    font-size: 2.5rem;
-    font-weight: 900;
+    padding-top: 1%;
+    padding-right: 10%;
+    border: 2px solid black;
     color: white;
-    margin-bottom: 1rem;
-    text-shadow:
-      2px 2px 4px rgba(0, 0, 0, 0.8),
-      0 0 20px var(--player-color);
-    animation: nameGlow 2s ease-in-out infinite alternate;
+    z-index: 100;
+    font-size: 3.2em;
+    box-shadow: 0 10px 10px 5px rgba(0, 0, 0, 0.7), inset 0 20px 2px rgba(255, 255, 255, 0.05);
+    text-shadow: 2px 2px #000;
+    transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+    pointer-events: auto;
+    
+    /* Initial state */
+    opacity: 0;
+    transform: translate3d(10px, -20px, 0);
   }
 
-  .player-name.eliminated {
-    text-decoration: line-through;
-    text-decoration-color: #dc2626;
-    text-decoration-thickness: 3px;
+  .banner.animating {
+    /* Animated state */
+    opacity: 1;
+    transform: translate3d(10px, 20px, 0);
   }
 
-  .player-name.winner {
-    font-size: 3rem;
-    background: linear-gradient(135deg, #facc15, #f59e0b);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: none;
-    animation: victoryGlow 2s ease-in-out infinite alternate;
+  .banner.fading-out {
+    /* Fade out state */
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
   }
 
-  .player-indicator {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    margin: 1rem auto;
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    box-shadow:
-      0 0 20px currentColor,
-      inset 0 0 20px rgba(255, 255, 255, 0.1);
-    animation: pulse 2s ease-in-out infinite;
+  .banner.elimination {
+    background: #222 !important;
   }
 
-  .player-indicator.eliminated {
-    border-color: rgba(220, 38, 38, 0.5);
-    box-shadow:
-      0 0 20px rgba(220, 38, 38, 0.5),
-      inset 0 0 20px rgba(0, 0, 0, 0.5);
-    animation: fadeOut 2s ease-in-out infinite;
-  }
-
-  .banner-subtitle {
-    font-size: 1.1rem;
-    color: #94a3b8;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    margin-bottom: 1rem;
-  }
-
-  .skip-hint {
-    font-size: 0.8rem;
-    color: #64748b;
-    font-weight: 400;
-    margin-top: 0.5rem;
-    opacity: 0.8;
-  }
-
-  .banner-effects {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-  }
-
-  .energy-pulse {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle,
-                var(--player-color) 0%,
-                transparent 70%);
-    opacity: 0.1;
-    border-radius: 50%;
-    animation: energyPulse 3s ease-in-out infinite;
-  }
-
-  .energy-pulse.fade-pulse {
-    width: 200%;
-    height: 200%;
-    /* Use player color instead of hardcoded red */
-    background: radial-gradient(circle, var(--player-color) 0%, transparent 70%);
-    opacity: 0.05;
-    animation: fadeOut 2s ease-in-out infinite;
-  }
-
-  .energy-pulse.victory-pulse {
-    background: radial-gradient(circle, #facc15 0%, transparent 70%);
-    opacity: 0.15;
-    animation: victoryPulse 2s ease-in-out infinite;
-  }
-
-  .corner-frame {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    border: 2px solid var(--player-color);
-    opacity: 0.6;
-  }
-
-  .corner-frame.top-left {
-    top: 10px;
-    left: 10px;
-    border-right: none;
-    border-bottom: none;
-    border-top-left-radius: 8px;
-  }
-
-  .corner-frame.top-right {
-    top: 10px;
-    right: 10px;
-    border-left: none;
-    border-bottom: none;
-    border-top-right-radius: 8px;
-  }
-
-  .corner-frame.bottom-left {
-    bottom: 10px;
-    left: 10px;
-    border-right: none;
-    border-top: none;
-    border-bottom-left-radius: 8px;
-  }
-
-  .corner-frame.bottom-right {
-    bottom: 10px;
-    right: 10px;
-    border-left: none;
-    border-top: none;
-    border-bottom-right-radius: 8px;
-  }
-
-  @keyframes nameGlow {
-    0% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px var(--player-color); }
-    100% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 30px var(--player-color); }
-  }
-
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-      box-shadow: 0 0 20px var(--player-color), inset 0 0 20px rgba(255, 255, 255, 0.1);
-    }
-    50% {
-      transform: scale(1.05);
-      box-shadow: 0 0 30px var(--player-color), inset 0 0 30px rgba(255, 255, 255, 0.2);
-    }
-    100% {
-      transform: scale(1);
-      box-shadow: 0 0 20px var(--player-color), inset 0 0 20px rgba(255, 255, 255, 0.1);
-    }
-  }
-
-  @keyframes energyPulse {
-    0% {
-      transform: translate(-50%, -50%) scale(0.8);
-      opacity: 0.1;
-    }
-    50% {
-      transform: translate(-50%, -50%) scale(1.2);
-      opacity: 0.2;
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(0.8);
-      opacity: 0.1;
-    }
-  }
-
-  @keyframes fadeOut {
-    0%, 100% {
-      opacity: 0.3;
-    }
-    50% {
-      opacity: 0.6;
-    }
-  }
-
-  @keyframes victoryGlow {
-    0% {
-      filter: drop-shadow(0 0 20px #facc15);
-    }
-    100% {
-      filter: drop-shadow(0 0 40px #f59e0b);
-    }
-  }
-
-  @keyframes victoryPulse {
-    0% {
-      transform: translate(-50%, -50%) scale(0.9);
-      opacity: 0.15;
-    }
-    50% {
-      transform: translate(-50%, -50%) scale(1.3);
-      opacity: 0.25;
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(0.9);
-      opacity: 0.15;
-    }
+  .banner.victory {
+    background: linear-gradient(135deg, #facc15, #f59e0b) !important;
+    color: #1f2937;
+    text-shadow: 2px 2px rgba(255, 255, 255, 0.3);
   }
 
   @media (max-width: 640px) {
-    .turn-banner {
-      min-width: 300px;
-      padding: 1.5rem 2rem;
-    }
-
-    .player-name {
+    .banner {
       font-size: 2rem;
-    }
-
-    .player-indicator {
-      width: 50px;
-      height: 50px;
+      height: 8%;
     }
   }
 </style>
