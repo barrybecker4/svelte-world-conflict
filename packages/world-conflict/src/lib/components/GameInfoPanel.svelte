@@ -96,16 +96,16 @@
         <div class="player-info">
           <div class="player-name" data-testid="{isActive ? 'current-turn-player' : ''}">{player.name}</div>
           <div class="player-stats">
-            <div class="stat">
+            <div class="stat" title="Regions controlled">
               <span class="value" data-testid="player-territories">{regionCount}</span>
               <span class="symbol">{@html SYMBOLS.REGION}</span>
             </div>
-            <div class="stat">
+            <div class="stat" title="Faith accumulated">
               <span class="value" data-testid="player-units">{faithCount}</span>
               <span class="symbol">{@html SYMBOLS.FAITH}</span>
             </div>
             {#if !isAlive}
-              <div class="stat">
+              <div class="stat" title="Player eliminated">
                 <span class="symbol dead">{@html SYMBOLS.DEAD}</span>
               </div>
             {/if}
@@ -172,7 +172,7 @@
 <style>
   /* Main container */
   :global(.game-info-panel) {
-    width: 280px;
+    width: 380px;
     height: 100vh;
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
     border: 1px solid var(--border-light, #374151);
@@ -210,7 +210,7 @@
   .player-box {
     display: flex;
     align-items: center;
-    gap: var(--space-3, 12px);
+    gap: 12px;
     padding: var(--space-3, 12px);
     border-radius: var(--radius-md, 6px);
     background: rgba(15, 23, 42, 0.4);
@@ -235,30 +235,41 @@
   .player-info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .player-name {
     font-weight: var(--font-semibold, 600);
     color: var(--text-primary, #f7fafc);
     font-size: var(--text-sm, 0.875rem);
-    margin-bottom: 4px;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+    flex: 0 0 auto;
   }
 
   .player-stats {
     display: flex;
-    gap: var(--space-2, 8px);
-    justify-content: space-between;
+    gap: 6px;
     font-size: var(--text-sm, 0.85rem);
+    flex: 1;
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   .stat {
     display: flex;
     align-items: center;
     gap: 2px;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-light, #374151);
+    cursor: help;
   }
 
   .stat .value {

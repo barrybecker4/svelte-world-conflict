@@ -182,7 +182,7 @@
 <style>
   /* Main container */
   :global(.game-info-panel) {
-    width: 280px;
+    width: 380px;
     height: 100vh;
     background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
     border: 1px solid var(--border-light, #374151);
