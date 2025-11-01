@@ -63,10 +63,16 @@ class TurnManager {
       const currentPlayer = players.find(p => p.slotIndex === gameState.currentPlayerSlot);
       const arrayIndex = currentPlayer ? players.indexOf(currentPlayer) : 0;
 
+      // Set previousSlotIndex to track first player
+      this.previousSlotIndex = gameState.currentPlayerSlot;
+
+      // Show banner for the first player's turn
       this.turnState.update(state => ({
           ...state,
           currentPlayerIndex: arrayIndex,
           previousPlayerIndex: null,
+          showBanner: true,
+          bannerComplete: false,
           turnStartTime: Date.now()
       }));
   }

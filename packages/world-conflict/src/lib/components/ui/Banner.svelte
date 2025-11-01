@@ -159,12 +159,6 @@
     background: #222 !important;
   }
 
-  .banner.victory {
-    background: linear-gradient(135deg, #facc15, #f59e0b) !important;
-    color: #1f2937;
-    text-shadow: 2px 2px rgba(255, 255, 255, 0.3);
-  }
-
   @media (max-width: 640px) {
     .banner {
       font-size: 2rem;
