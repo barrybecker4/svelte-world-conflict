@@ -233,12 +233,13 @@
 
   .debug-info {
     position: fixed;
-    bottom: var(--space-2);
-    right: var(--space-2);
-    padding: var(--space-2);
+    bottom: 8px;
+    left: 8px;
+    padding: 8px;
     background: rgba(0, 0, 0, 0.7);
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
-    border-radius: var(--radius-md);
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    z-index: 1001;
   }
 </style>
