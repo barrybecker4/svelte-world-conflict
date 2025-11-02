@@ -55,11 +55,13 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             aiDifficulty
         );
 
+        const gameStateJSON = gameState.toJSON();
+
         const updatedGame = {
             ...game,
             players: updatedPlayers,
             status: 'ACTIVE' as const,
-            worldConflictState: gameState.toJSON(),
+            worldConflictState: gameStateJSON,
             lastMoveAt: Date.now()
         };
 

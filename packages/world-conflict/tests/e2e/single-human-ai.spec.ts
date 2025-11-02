@@ -257,10 +257,10 @@ test.describe('Single Human + AI Tests', () => {
       return;
     }
 
-    // Step 12: Now it should be human player's turn
-    await waitForTurnStart(page, TEST_PLAYERS.PLAYER1);
+    // Step 12: Now it should be human player's turn (should be turn 1)
+    await waitForTurnStart(page, TEST_PLAYERS.PLAYER1, 1);
 
-    // Step 13: Verify we're still on turn 1 (human is second in turn order)
+    // Step 13: Verify we're on turn 1 (human is second in turn order)
     const turn1Number = await getCurrentTurn(page);
     expect(turn1Number).toBe(1);
 
@@ -286,10 +286,10 @@ test.describe('Single Human + AI Tests', () => {
       return;
     }
 
-    // Step 18: Back to human
-    await waitForTurnStart(page, TEST_PLAYERS.PLAYER1);
+    // Step 18: Back to human (should be turn 2)
+    await waitForTurnStart(page, TEST_PLAYERS.PLAYER1, 2);
 
-    // Step 19: Should now be turn 2
+    // Step 19: Verify turn number is 2
     const turn2Number = await getCurrentTurn(page);
     expect(turn2Number).toBe(2);
 

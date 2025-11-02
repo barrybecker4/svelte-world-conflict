@@ -9,6 +9,8 @@ export interface CommandResult {
 }
 
 export class CommandProcessor {
+    public isSimulation: boolean = false;
+
     process(command: Command): CommandResult {
         try {
             const validation = command.validate();
@@ -18,6 +20,9 @@ export class CommandProcessor {
                     error: validation.errors.join(', ')
                 };
             }
+
+            // Pass simulation flag to command
+            (command as any).isSimulation = this.isSimulation;
 
             const newState = command.execute();
             

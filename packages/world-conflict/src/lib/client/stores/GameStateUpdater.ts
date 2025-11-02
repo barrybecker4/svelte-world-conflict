@@ -104,27 +104,14 @@ export class GameStateUpdater {
     // Use lastRawState for comparison (not the display state which might have overrides)
     const currentState = this.lastRawState;
 
+    // Ensure battle states are cleared from server updates
+    const cleanState = clearBattleState(updatedState);
+
     // Check if turn changed (either player changed OR turn number increased, indicating a full round)
     const playerChanged = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
     const turnNumberIncreased = currentState && updatedState.turnNumber > currentState.turnNumber;
     const isNewTurn = playerChanged || turnNumberIncreased;
     const isOtherPlayersTurn = updatedState.currentPlayerSlot !== this.playerSlotIndex;
-
-    console.log('🎯 Turn transition check:', {
-        'currentState.currentPlayerSlot': currentState?.currentPlayerSlot,
-        'currentState.turnNumber': currentState?.turnNumber,
-        'updatedState.currentPlayerSlot': updatedState.currentPlayerSlot,
-        'updatedState.turnNumber': updatedState.turnNumber,
-        'my playerSlotIndex': this.playerSlotIndex,
-        'playerChanged': playerChanged,
-        'turnNumberIncreased': turnNumberIncreased,
-        'isNewTurn': isNewTurn,
-        'isOtherPlayersTurn': isOtherPlayersTurn,
-        'queueLength': this.updateQueue.length
-    });
-
-    // Ensure battle states are cleared from server updates
-    const cleanState = clearBattleState(updatedState);
 
     // Check for eliminations in the updated state (e.g., from AI moves)
     this.checkForEliminations(cleanState);
@@ -135,21 +122,15 @@ export class GameStateUpdater {
         // Update players store BEFORE transition so TurnManager can use updated list
         this.playersStore.set(cleanState.players || []);
         
-        console.log('🎯 About to transition to player:', {
-          currentPlayerSlot: cleanState.currentPlayerSlot,
-          playerName: cleanState.players?.find((p: any) => p.slotIndex === cleanState.currentPlayerSlot)?.name,
-          allPlayers: cleanState.players?.map((p: any) => ({ name: p.name, slot: p.slotIndex }))
-        });
-        
         await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
 
         // Update currentPlayerSlot and turnNumber immediately so UI/tests see correct turn
         // But delay other state updates for animations
         this.gameStateStore.update(state => state ? { 
-          ...state, 
-          currentPlayerSlot: cleanState.currentPlayerSlot,
-          turnNumber: cleanState.turnNumber 
-        } : state);
+            ...state, 
+            currentPlayerSlot: cleanState.currentPlayerSlot,
+            turnNumber: cleanState.turnNumber 
+          } : state);
 
         // Play appropriate sounds and handle animations based on whose turn it is
         if (isOtherPlayersTurn) {

@@ -228,6 +228,7 @@ function isDumbMove(state: GameState, player: Player, source: Region, dest: Regi
  */
 function executeMove(state: GameState, move: Command): GameState {
     const processor = new CommandProcessor();
+    processor.isSimulation = true; // Suppress logs during AI thinking
     const result = processor.process(move);
 
     if (result.success && result.newState) {

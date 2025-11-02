@@ -62,26 +62,28 @@ export class ArmyMoveCommand extends Command {
       const needsCombat = targetSoldiers.length > 0 &&
                          (targetOwner === undefined || targetOwner !== this.player.slotIndex);
 
-      console.log('🎯 Combat check:', {
-        destination: this.destination,
-        targetSoldiers: targetSoldiers.length,
-        targetOwner: targetOwner !== undefined ? targetOwner : 'neutral',
-        playerSlotIndex: this.player.slotIndex,
-        needsCombat
-      });
+      // console.log('🎯 Combat check:', {
+      //   destination: this.destination,
+      //   targetSoldiers: targetSoldiers.length,
+      //   targetOwner: targetOwner !== undefined ? targetOwner : 'neutral',
+      //   playerSlotIndex: this.player.slotIndex,
+      //   needsCombat
+      // });
 
       if (needsCombat) {
         const generator = new AttackSequenceGenerator({
           source: this.source,
           destination: this.destination,
           count: this.count
-        }, newState.rng);
+        }, newState.rng, this.isSimulation);
         this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
 
-        console.log('⚔️ Generated attack sequence:', {
-          hasSequence: !!this.attackSequence,
-          sequenceLength: this.attackSequence?.length || 0
-        });
+        if (!this.isSimulation) {
+          console.log('⚔️ Generated attack sequence:', {
+            hasSequence: !!this.attackSequence,
+            sequenceLength: this.attackSequence?.length || 0
+          });
+        }
       }
 
       this.executeMoveLogic(newState);
@@ -96,14 +98,14 @@ export class ArmyMoveCommand extends Command {
         const wasNeutralRegion = !state.isOwnedBy(this.destination, this.player) && toList.length === 0;
         const previousOwner = wasEnemyRegion ? state.owner(this.destination) : undefined;
 
-        console.log('🎯 Move logic:', {
-            destination: this.destination,
-            wasEnemyRegion,
-            wasNeutralRegion,
-            previousOwner,
-            toListBefore: toList.length,
-            fromListBefore: fromList.length
-        });
+        // console.log('🎯 Move logic:', {
+        //     destination: this.destination,
+        //     wasEnemyRegion,
+        //     wasNeutralRegion,
+        //     previousOwner,
+        //     toListBefore: toList.length,
+        //     fromListBefore: fromList.length
+        // });
 
         if (this.attackSequence && this.attackSequence.length > 0) {
             this.handleCombatResult(state, fromList, toList);
@@ -112,16 +114,16 @@ export class ArmyMoveCommand extends Command {
             this.transferSoldiers(state, fromList, toList, this.count);
         }
 
-        console.log('🎯 After combat/movement:', {
-            toListAfter: toList.length,
-            fromListAfter: fromList.length
-        });
+        // console.log('🎯 After combat/movement:', {
+        //     toListAfter: toList.length,
+        //     fromListAfter: fromList.length
+        // });
 
         // Check if we conquered the region (defenders eliminated or neutral)
         const conqueredRegion = (wasEnemyRegion && toList.length === 0) || wasNeutralRegion;
 
         if (conqueredRegion) {
-            console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.slotIndex);
+            //console.log('🏆 CONQUERING region', this.destination, 'for player', this.player.slotIndex);
             state.setOwner(this.destination, this.player);
 
             // Check if the previous owner was eliminated
@@ -133,7 +135,7 @@ export class ArmyMoveCommand extends Command {
             if ((wasEnemyRegion || wasNeutralRegion) && fromList.length > 0 && this.attackSequence && this.attackSequence.length > 0) {
                 const attackersToMove = Math.min(this.count, fromList.length);
                 this.transferSoldiers(state, fromList, toList, attackersToMove);
-                console.log('🏆 Moved', attackersToMove, 'surviving attackers to conquered region');
+                //console.log('🏆 Moved', attackersToMove, 'surviving attackers to conquered region');
             }
 
             // Update conquered regions list
@@ -154,7 +156,9 @@ export class ArmyMoveCommand extends Command {
         
         if (PlayerEliminationService.isPlayerEliminated(gameStateData, playerSlotIndex)) {
             // Player has been eliminated!
-            console.log(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
+            if (!this.isSimulation) {
+                console.log(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
+            }
             
             // Initialize eliminatedPlayers array if it doesn't exist
             if (!state.state.eliminatedPlayers) {
@@ -170,11 +174,13 @@ export class ArmyMoveCommand extends Command {
 
     // Apply attack sequence results
     private handleCombatResult(state: GameState, fromList: Soldier[], toList: Soldier[]): void {
-        console.log('🔍 handleCombatResult - before combat:', {
-            attackers: fromList.length,
-            defenders: toList.length,
-            hasAttackSequence: !!this.attackSequence
-        });
+        if (!this.isSimulation) {
+            console.log('🔍 handleCombatResult - before combat:', {
+                attackers: fromList.length,
+                defenders: toList.length,
+                hasAttackSequence: !!this.attackSequence
+            });
+        }
 
         if (!this.attackSequence) return;
 
@@ -193,11 +199,13 @@ export class ArmyMoveCommand extends Command {
             }
         }
 
-        console.log('🔍 handleCombatResult - after combat:', {
-            attackers: fromList.length,
-            defenders: toList.length,
-            defendersEliminated: toList.length === 0
-        });
+        if (!this.isSimulation) {
+            console.log('🔍 handleCombatResult - after combat:', {
+                attackers: fromList.length,
+                defenders: toList.length,
+                defendersEliminated: toList.length === 0
+            });
+        }
     }
 
     private transferSoldiers(state: GameState, fromList: Soldier[], toList: Soldier[], count: number): void {
@@ -208,7 +216,7 @@ export class ArmyMoveCommand extends Command {
                 toList.push(soldier);
             }
         }
-        console.log('🚶 Transferred', actualCount, 'soldiers');
+        //console.log('🚶 Transferred', actualCount, 'soldiers');
     }
 
     serialize(): any {

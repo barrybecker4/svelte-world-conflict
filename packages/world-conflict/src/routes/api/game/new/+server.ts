@@ -82,7 +82,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       regions,
       players,
       currentPlayerSlot: 0,
-      turnCount: 0,
+      turnNumber: 0,
       maxTurns,
       moveTimeLimit: timeLimit,
       aiDifficulty: settings?.aiDifficulty || aiDifficulty || 'Normal',

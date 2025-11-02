@@ -30,6 +30,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
     const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS; // Safety limit to prevent infinite loops
     let lastAttackSequence: any[] | undefined = undefined;
 
+    console.log(`🤖 Processing AI turns for game ${gameId}, starting with ${currentPlayer?.name}`);
     console.log(`Starting AI turn processing - current player: ${currentPlayer?.name} (isAI: ${currentPlayer?.isAI})`);
 
     // Continue processing AI turns until we reach a human player or game ends

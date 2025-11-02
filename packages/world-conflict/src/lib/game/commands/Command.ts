@@ -16,6 +16,7 @@ export abstract class Command {
     protected timestamp: string;
     protected id: string;
     protected previousState?: GameState;
+    public isSimulation: boolean = false; // Set to true when command is used in AI simulations
 
     constructor(gameState: GameState, player: Player) {
         this.gameState = gameState;

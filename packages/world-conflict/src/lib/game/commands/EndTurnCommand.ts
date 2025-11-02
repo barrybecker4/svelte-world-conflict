@@ -32,7 +32,6 @@ export class EndTurnCommand extends Command {
         const newState = this.gameState.copy() as GameState;
 
         const beforeFaith = newState.getPlayerFaith(this.player.slotIndex);
-     
 
         this.income = IncomeCalculator.calculateIncome(newState, this.player);
 
@@ -48,15 +47,15 @@ export class EndTurnCommand extends Command {
 
         const players = newState.players;
 
-        console.log('🔄 EndTurnCommand - Before turn advance:', {
-          'currentPlayerSlotIndex': newState.currentPlayerSlot,
-          'currentPlayerName': this.player.name,
-          'players': players.map(p => ({
-            slotIndex: p.slotIndex,
-            name: p.name,
-            isAI: p.isAI
-          }))
-        });
+        // console.log('🔄 EndTurnCommand - Before turn advance:', {
+        //   'currentPlayerSlotIndex': newState.currentPlayerSlot,
+        //   'currentPlayerName': this.player.name,
+        //   'players': players.map(p => ({
+        //     slotIndex: p.slotIndex,
+        //     name: p.name,
+        //     isAI: p.isAI
+        //   }))
+        // });
 
         const nextSlotIndex = this.getNextActiveSlot(newState.currentPlayerSlot, players, newState);
         newState.currentPlayerSlot = nextSlotIndex;
@@ -71,17 +70,16 @@ export class EndTurnCommand extends Command {
         newState.conqueredRegions = [];
         newState.state.eliminatedPlayers = []; // Clear elimination events for next turn
 
-        console.log('🔄 Turn advanced:', {
-          'from': `${this.player.name} (slot ${this.player.slotIndex})`,
-          'to': `${this.getPlayerBySlot(nextSlotIndex, players)?.name} (slot ${nextSlotIndex})`,
-          'newPlayerSlotIndex': newState.currentPlayerSlot
-        });
+        // console.log('🔄 Turn advanced:', {
+        //   'from': `${this.player.name} (slot ${this.player.slotIndex})`,
+        //   'to': `${this.getPlayerBySlot(nextSlotIndex, players)?.name} (slot ${nextSlotIndex})`,
+        //   'newPlayerSlotIndex': newState.currentPlayerSlot
+        // });
 
         // Check if we completed a full round (back to first active slot)
         const activeSlots = this.getActiveSlots(players, newState);
         if (nextSlotIndex === activeSlots[0]) {
-          newState.turnNumber++;
-          console.log(`New turn: ${newState.turnNumber}`);
+            newState.state.turnNumber++;
         }
 
         return newState;
@@ -106,15 +104,15 @@ export class EndTurnCommand extends Command {
                 owner => owner === p.slotIndex
             ).length;
             
-            if (regionCount === 0) {
-                console.log(`💀 Player ${p.name} (slot ${p.slotIndex}) is eliminated, skipping in turn order`);
-            }
+            // if (regionCount === 0) {
+            //     console.log(`💀 Player ${p.name} (slot ${p.slotIndex}) is eliminated, skipping in turn order`);
+            // }
             
             return regionCount > 0;
         });
         
         const activeSlots = activePlayers.map(p => p.slotIndex).sort((a, b) => a - b);
-        console.log(`🔄 Active player slots: ${JSON.stringify(activeSlots)} (${activePlayers.map(p => p.name).join(', ')})`);
+        // console.log(`🔄 Active player slots: ${JSON.stringify(activeSlots)} (${activePlayers.map(p => p.name).join(', ')})`);
         
         return activeSlots;
     }
@@ -125,7 +123,7 @@ export class EndTurnCommand extends Command {
 
 
     private generateSoldiersAtTemples(state: GameState): void {
-        console.log(`Checking temples for player ${this.player.slotIndex}:`);
+        // console.log(`Checking temples for player ${this.player.slotIndex}:`);
 
         for (const [regionIndex, temple] of Object.entries(state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);
@@ -137,13 +135,13 @@ export class EndTurnCommand extends Command {
                 this.generatedSoldiers.push(regionIdx);
 
                 const afterSoldiers = state.soldiersByRegion[regionIdx]?.length || 0;
-                console.log(`   Region ${regionIdx}: ${beforeSoldiers} → ${afterSoldiers} soldiers (+1)`);
+                // console.log(`   Region ${regionIdx}: ${beforeSoldiers} → ${afterSoldiers} soldiers (+1)`);
             }
         }
 
-        if (this.generatedSoldiers.length === 0) {
-            console.log(`   No temples owned by player ${this.player.slotIndex}`);
-        }
+        // if (this.generatedSoldiers.length === 0) {
+        //     console.log(`   No temples owned by player ${this.player.slotIndex}`);
+        // }
     }
 
     private getTemplesSoldiers(state: GameState, phase: string): Array<{ regionIdx: number, soldiers: number }> {

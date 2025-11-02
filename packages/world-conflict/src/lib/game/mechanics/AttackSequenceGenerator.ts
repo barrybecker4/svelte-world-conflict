@@ -31,10 +31,11 @@ export class AttackSequenceGenerator {
     private fromOwner: number | undefined;
     private toOwner: number | undefined;
     private rng: RandomNumberGenerator;
+    private isSimulation: boolean = false;
 
     private static readonly WIN_THRESHOLD = 120;
 
-    constructor(armyMove: ArmyMoveData, rng: RandomNumberGenerator) {
+    constructor(armyMove: ArmyMoveData, rng: RandomNumberGenerator, isSimulation: boolean = false) {
         this.fromRegion = armyMove.source;
         this.toRegion = armyMove.destination;
         this.soldiers = armyMove.count;
@@ -42,6 +43,7 @@ export class AttackSequenceGenerator {
         this.fromOwner = undefined;
         this.toOwner = undefined;
         this.rng = rng;
+        this.isSimulation = isSimulation;
     }
 
     /**
@@ -143,7 +145,9 @@ export class AttackSequenceGenerator {
     ): void {
         if (!this.state) return;
 
-        console.log(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders`);
+        if (!this.isSimulation) {
+            console.log(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders`);
+        }
 
         // Conduct battle rounds until one side is eliminated
         let attackersRemaining = this.incomingSoldiers;
@@ -162,7 +166,9 @@ export class AttackSequenceGenerator {
             totalAttackerCasualties += battleResult.attackerCasualties;
             totalDefenderCasualties += battleResult.defenderCasualties;
 
-            console.log(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
+            if (!this.isSimulation) {
+                console.log(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
+            }
 
             // Emit a separate event for this round with running totals
             attackSequence.push({
@@ -187,7 +193,9 @@ export class AttackSequenceGenerator {
         this.incomingSoldiers = attackersRemaining;
 
         const winner = defendersRemaining > 0 ? 'defender' : 'attacker';
-        console.log(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
+        if (!this.isSimulation) {
+            console.log(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
+        }
     }
 
     /**
@@ -211,7 +219,7 @@ export class AttackSequenceGenerator {
         const attackerRolls = this.rollDice(attackerDice).sort((a, b) => b - a); // Highest first
         const defenderRolls = this.rollDice(defenderDice).sort((a, b) => b - a); // Highest first
 
-        console.log(`Dice - Attackers: [${attackerRolls.join(',')}] vs Defenders: [${defenderRolls.join(',')}]`);
+        //console.log(`Dice - Attackers: [${attackerRolls.join(',')}] vs Defenders: [${defenderRolls.join(',')}]`);
 
         let attackerCasualties = 0;
         let defenderCasualties = 0;
@@ -220,20 +228,20 @@ export class AttackSequenceGenerator {
         // First comparison (highest dice)
         if (attackerRolls[0] > defenderRolls[0]) {
             defenderCasualties++;
-            console.log(`   Round 1: Attacker ${attackerRolls[0]} > Defender ${defenderRolls[0]} - Defender loses 1`);
+            //console.log(`   Round 1: Attacker ${attackerRolls[0]} > Defender ${defenderRolls[0]} - Defender loses 1`);
         } else {
             attackerCasualties++;
-            console.log(`   Round 1: Attacker ${attackerRolls[0]} ≤ Defender ${defenderRolls[0]} - Attacker loses 1`);
+            //console.log(`   Round 1: Attacker ${attackerRolls[0]} ≤ Defender ${defenderRolls[0]} - Attacker loses 1`);
         }
 
         // Second comparison (if both sides have multiple dice)
         if (attackerRolls.length > 1 && defenderRolls.length > 1) {
             if (attackerRolls[1] > defenderRolls[1]) {
                 defenderCasualties++;
-                console.log(`   Round 2: Attacker ${attackerRolls[1]} > Defender ${defenderRolls[1]} - Defender loses 1`);
+                //console.log(`   Round 2: Attacker ${attackerRolls[1]} > Defender ${defenderRolls[1]} - Defender loses 1`);
             } else {
                 attackerCasualties++;
-                console.log(`   Round 2: Attacker ${attackerRolls[1]} ≤ Defender ${defenderRolls[1]} - Attacker loses 1`);
+                //console.log(`   Round 2: Attacker ${attackerRolls[1]} ≤ Defender ${defenderRolls[1]} - Attacker loses 1`);
             }
         }
 

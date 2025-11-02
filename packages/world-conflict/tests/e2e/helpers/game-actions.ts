@@ -104,7 +104,7 @@ export async function endTurn(page: Page) {
 /**
  * Wait for player's turn to start
  */
-export async function waitForTurnStart(page: Page, playerName: string) {
+export async function waitForTurnStart(page: Page, playerName: string, expectedTurnNumber?: number) {
   // Wait for turn indicator showing it's this player's turn
   const turnIndicator = page.getByTestId('current-turn-player');
   await expect(turnIndicator).toContainText(playerName, { timeout: TIMEOUTS.TURN_TRANSITION });
@@ -112,6 +112,22 @@ export async function waitForTurnStart(page: Page, playerName: string) {
   // Also check that action buttons are enabled
   const endTurnButton = page.getByTestId('end-turn-btn');
   await expect(endTurnButton).toBeEnabled({ timeout: TIMEOUTS.TURN_TRANSITION });
+  
+  // If expected turn number is provided, wait for it to update
+  if (expectedTurnNumber !== undefined) {
+    await waitForTurnNumber(page, expectedTurnNumber);
+  } else {
+    // Otherwise just wait a bit for state updates to complete
+    await page.waitForTimeout(200);
+  }
+}
+
+/**
+ * Wait for turn number to reach a specific value
+ */
+export async function waitForTurnNumber(page: Page, expectedTurn: number) {
+  const turnDisplay = page.getByTestId('turn-number');
+  await expect(turnDisplay).toHaveText(expectedTurn.toString(), { timeout: TIMEOUTS.TURN_TRANSITION });
 }
 
 /**
