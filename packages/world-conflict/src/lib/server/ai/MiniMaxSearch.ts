@@ -9,7 +9,7 @@ import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
 import { EndTurnCommand } from '$lib/game/commands/EndTurnCommand';
 import { CommandProcessor } from '$lib/game/commands/CommandProcessor';
 import { heuristicForPlayer } from './AiHeuristics';
-import { shuffle } from '$lib/game/utils/arrayUtils';
+import { shuffleWithRng } from '$lib/game/utils/arrayUtils';
 import type { AiLevel } from '$lib/game/entities/aiPersonalities';
 
 /**
@@ -208,7 +208,8 @@ function possibleMoves(state: GameState): Command[] {
     }
 
     // Return shuffled moves to avoid bias from generation order
-    return shuffle(moves);
+    // Use seeded RNG for deterministic behavior
+    return shuffleWithRng(moves, state.rng);
 }
 
 /**

@@ -80,6 +80,7 @@ export function createMockGameStateData(options: {
     soldiersByRegion?: Record<number, any[]>;
     templesByRegion?: Record<number, Temple>;
     faithByPlayer?: Record<number, number>;
+    rngSeed?: string;
 }): GameStateData {
     const players = options.players || [
         createMockPlayer({ slotIndex: 0, name: 'Player 1', isAI: false }),
@@ -108,7 +109,8 @@ export function createMockGameStateData(options: {
         templesByRegion: options.templesByRegion || {},
         faithByPlayer: options.faithByPlayer || { 0: 100, 1: 100 },
         conqueredRegions: [],
-        eliminatedPlayers: []
+        eliminatedPlayers: [],
+        rngSeed: options.rngSeed || 'test-seed-12345' // Fixed seed for deterministic tests
     };
 }
 

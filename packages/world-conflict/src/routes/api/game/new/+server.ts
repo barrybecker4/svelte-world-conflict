@@ -54,7 +54,8 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
       timeLimit = 30,
       playerSlots = [], // For configured games (from GameConfiguration)
       settings,
-      selectedMapRegions
+      selectedMapRegions,
+      seed // Optional seed for deterministic RNG (mainly for testing)
   } = body;
 
   if (!playerName?.trim()) {
@@ -74,7 +75,7 @@ function createGameRecord(body: any, platform: App.Platform): GameRecord {
   let initialGameState;
   if (gameStatus === 'ACTIVE') {
     const difficulty = settings?.aiDifficulty || aiDifficulty || 'Normal';
-    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns, timeLimit, difficulty);
+    initialGameState = GameState.createInitialState(gameId, players, regions, maxTurns, timeLimit, difficulty, seed);
   } else {
     initialGameState = {
       gameId,

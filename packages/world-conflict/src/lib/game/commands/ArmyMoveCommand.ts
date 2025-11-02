@@ -75,7 +75,7 @@ export class ArmyMoveCommand extends Command {
           source: this.source,
           destination: this.destination,
           count: this.count
-        });
+        }, newState.rng);
         this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
 
         console.log('⚔️ Generated attack sequence:', {

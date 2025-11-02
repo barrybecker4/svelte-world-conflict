@@ -6,12 +6,14 @@ import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/va
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
 import { Regions } from '$lib/game/entities/Regions';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
+import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
 
 // Re-export types for convenience
 export type { Player, Region, GameStateData, Soldier, Temple };
 
 export class GameState {
     public state: GameStateData;
+    public rng: RandomNumberGenerator;
 
     constructor(data: GameStateData) {
         this.state = { ...data };
@@ -25,13 +27,26 @@ export class GameState {
         if (!this.state.faithByPlayer) this.state.faithByPlayer = {};
         if (!this.state.conqueredRegions) this.state.conqueredRegions = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
+
+        // Initialize or restore RNG
+        if (this.state.rngSeed && this.state.rngState) {
+            // Restore from serialized state
+            this.rng = new RandomNumberGenerator(this.state.rngSeed, this.state.rngState);
+        } else if (this.state.rngSeed) {
+            // Initialize from seed
+            this.rng = new RandomNumberGenerator(this.state.rngSeed);
+        } else {
+            // Fallback: create with default seed (shouldn't happen in normal flow)
+            this.state.rngSeed = `default-${Date.now()}`;
+            this.rng = new RandomNumberGenerator(this.state.rngSeed);
+        }
     }
 
     /**
      * Create initial game state - uses GameStateInitializer to prepare data
      */
-    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameState {
-        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}`);
+    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameState {
+        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}, seed: ${seed}`);
 
         let regions: Region[];
 
@@ -39,12 +54,12 @@ export class GameState {
         // GameStateData must use Region[] (not Regions) for proper JSON serialization
         regions = (regionData?.length > 0)
             ? Regions.fromJSON(regionData).getAll()
-            : Regions.createBasic(Math.max(players.length * 3, 12)).getAll();
+            : Regions.createBasic(Math.max(players.length * 3, 12), seed).getAll();
 
         console.log(`Using ${regions.length} regions for game initialization`);
 
         const initializer = new GameStateInitializer();
-        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty);
+        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
 
         return new GameState(initialStateData);
     }
@@ -482,6 +497,9 @@ export class GameState {
             soldiersByRegionCopy[Number(key)] = soldiers ? soldiers.map(s => ({ ...s })) : [];
         }
 
+        // Serialize RNG state
+        const rngState = this.rng.getState();
+
         return {
             ...this.state,
             players: [...this.state.players],
@@ -492,7 +510,9 @@ export class GameState {
             soldiersByRegion: soldiersByRegionCopy,
             floatingText: this.state.floatingText ? [...this.state.floatingText] : undefined,
             conqueredRegions: this.state.conqueredRegions ? [...this.state.conqueredRegions] : undefined,
-            eliminatedPlayers: this.state.eliminatedPlayers ? [...this.state.eliminatedPlayers] : undefined
+            eliminatedPlayers: this.state.eliminatedPlayers ? [...this.state.eliminatedPlayers] : undefined,
+            rngSeed: rngState.seed,
+            rngState: rngState.state
         };
     }
 

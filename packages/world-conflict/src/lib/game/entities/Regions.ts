@@ -1,4 +1,5 @@
 import { Region, type RegionData } from './Region';
+import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
 
 /**
  * A collection class for managing regions in the game
@@ -130,7 +131,10 @@ export class Regions {
         return region ? region.isNeighborOf(regionB) : false;
     }
 
-    static createBasic(count: number): Regions {
+    static createBasic(count: number, seed?: string): Regions {
+        // Create RNG for map generation if seed provided
+        const rng = seed ? new RandomNumberGenerator(seed) : null;
+        
         const regionData: RegionData[] = [];
 
         for (let i = 0; i < count; i++) {
@@ -138,8 +142,8 @@ export class Regions {
                 index: i,
                 name: `Region ${i + 1}`,
                 neighbors: [],
-                x: Math.random() * 800,
-                y: Math.random() * 600,
+                x: rng ? rng.next() * 800 : Math.random() * 800,
+                y: rng ? rng.next() * 600 : Math.random() * 600,
                 hasTemple: i < Math.ceil(count / 3),
                 points: []
             });
@@ -149,7 +153,7 @@ export class Regions {
 
         // Add some basic neighbor relationships
         regions.regions.forEach((region, index) => {
-            const neighborCount = Math.min(3, Math.floor(Math.random() * 4) + 1);
+            const neighborCount = Math.min(3, rng ? rng.nextInt(1, 4) : Math.floor(Math.random() * 4) + 1);
             for (let i = 0; i < neighborCount; i++) {
                 const neighborIndex = (index + i + 1) % regions.regions.length;
                 if (!region.neighbors.includes(neighborIndex)) {

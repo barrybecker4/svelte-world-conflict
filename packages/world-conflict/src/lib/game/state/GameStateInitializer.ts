@@ -13,8 +13,8 @@ export class GameStateInitializer {
      * Note: Accepts Region[] (not Regions) because GameStateData must be JSON-serializable.
      * Use Regions.getAll() to convert from Regions to Region[] before calling this.
      */
-    createInitialStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameStateData {
-        return this.createInitializedGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty);
+    createInitialStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
+        return this.createInitializedGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
     }
 
     /**
@@ -31,10 +31,10 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameStateData {
+    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
         console.log(`Creating preview state with ${regions.length} regions`);
 
-        const stateData = this.createGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty);
+        const stateData = this.createGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
         this.initializeStartingPositions(stateData);
 
         players.forEach(player => {
@@ -43,15 +43,19 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string): GameStateData {
+    private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
         const sortedPlayers = [...players].sort((a, b) => a.slotIndex - b.slotIndex);
         const sortedPlayerIndices = sortedPlayers.map(p => p.slotIndex);
         const currentPlayerSlot = sortedPlayerIndices[0];
+
+        // Generate seed if not provided - use gameId and timestamp for uniqueness
+        const rngSeed = seed || `${gameId}-${Date.now()}`;
 
         console.log(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.slotIndex})`));
         console.log(`Setting initial currentPlayerSlot to ${currentPlayerSlot}`);
         console.log(`Setting moveTimeLimit to ${moveTimeLimit}`);
         console.log(`Setting aiDifficulty to ${aiDifficulty}`);
+        console.log(`Setting RNG seed to ${rngSeed}`);
 
         return {
             id: Date.now(),
@@ -69,7 +73,8 @@ export class GameStateInitializer {
             soldiersByRegion: {},
             faithByPlayer: {},
             floatingText: [],
-            conqueredRegions: []
+            conqueredRegions: [],
+            rngSeed
         };
     }
 

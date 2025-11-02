@@ -71,4 +71,8 @@ export interface GameStateData {
     moveTimeLimit?: number;
     maxTurns?: number;
     aiDifficulty?: string;
+    
+    // Random number generator state for deterministic gameplay
+    rngSeed?: string;
+    rngState?: any; // seedrandom state object
 }

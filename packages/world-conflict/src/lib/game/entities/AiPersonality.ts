@@ -4,6 +4,7 @@
  */
 import { TEMPLE_UPGRADES } from '$lib/game/constants/templeUpgradeDefinitions';
 import { type AiLevel } from './aiPersonalities';
+import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
 
 export interface AiPersonalityData {
     name: string;
@@ -60,7 +61,7 @@ export class AiPersonality {
     /**
      * Determine if AI should buy soldiers based on current faith and eagerness
      */
-    shouldBuySoldiers(currentFaith: number, soldierCost: number): boolean {
+    shouldBuySoldiers(currentFaith: number, soldierCost: number, rng: RandomNumberGenerator): boolean {
         if (currentFaith < soldierCost) return false;
 
         // Higher eagerness = more likely to buy soldiers
@@ -69,7 +70,7 @@ export class AiPersonality {
         const baseChance = this.soldierEagerness;
         const extraChance = canAffordMultiple ? 0.2 : 0;
 
-        return Math.random() < (baseChance + extraChance);
+        return rng.chance(baseChance + extraChance);
     }
 
     /**

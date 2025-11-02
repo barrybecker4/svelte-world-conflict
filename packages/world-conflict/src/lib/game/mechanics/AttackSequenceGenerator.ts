@@ -1,4 +1,5 @@
 import type { Player, GameState } from '$lib/game/state/GameState.ts';
+import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
 
 export interface AttackEvent {
     attackerCasualties?: number;      // Casualties in this round only
@@ -29,16 +30,18 @@ export class AttackSequenceGenerator {
     private incomingSoldiers: number;
     private fromOwner: number | undefined;
     private toOwner: number | undefined;
+    private rng: RandomNumberGenerator;
 
     private static readonly WIN_THRESHOLD = 120;
 
-    constructor(armyMove: ArmyMoveData) {
+    constructor(armyMove: ArmyMoveData, rng: RandomNumberGenerator) {
         this.fromRegion = armyMove.source;
         this.toRegion = armyMove.destination;
         this.soldiers = armyMove.count;
         this.incomingSoldiers = 0;
         this.fromOwner = undefined;
         this.toOwner = undefined;
+        this.rng = rng;
     }
 
     /**
@@ -243,7 +246,7 @@ export class AttackSequenceGenerator {
     private rollDice(count: number): number[] {
         const rolls: number[] = [];
         for (let i = 0; i < count; i++) {
-            rolls.push(Math.floor(Math.random() * 6) + 1); // 1-6
+            rolls.push(this.rng.rollDice(6)); // 1-6
         }
         return rolls;
     }

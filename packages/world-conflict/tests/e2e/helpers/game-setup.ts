@@ -457,3 +457,68 @@ export async function waitForAllGamesToLoad(pages: Page[]): Promise<void> {
   console.log('✅ All players ready');
 }
 
+/**
+ * Create a game directly via API with optional seed for deterministic testing
+ * This bypasses the UI and allows tests to specify exact game configuration
+ * 
+ * @param page - Playwright page
+ * @param playerName - Name of the creating player
+ * @param config - Game configuration
+ * @param seed - Optional seed for deterministic RNG (for testing battle outcomes)
+ * @returns Game ID and player data
+ */
+export async function createGameWithSeed(
+  page: Page,
+  playerName: string,
+  config: {
+    playerSlots?: any[];
+    settings?: {
+      mapSize?: string;
+      aiDifficulty?: string;
+      maxTurns?: number;
+      timeLimit?: number;
+    };
+    gameType?: string;
+    selectedMapRegions?: any[];
+  },
+  seed?: string
+): Promise<{ gameId: string; player: any; gameState: any }> {
+  console.log(`🎲 Creating game with seed: ${seed || 'random'}`);
+  
+  const response = await page.evaluate(async ({ playerName, config, seed }) => {
+    const response = await fetch('/api/game/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        playerName,
+        ...config,
+        seed // Add seed parameter
+      })
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `Game creation failed: ${response.status}`);
+    }
+    
+    return await response.json();
+  }, { playerName, config, seed });
+  
+  console.log(`✅ Game created: ${response.gameId} with seed: ${seed || 'random'}`);
+  
+  // Save player data to localStorage
+  await page.evaluate(({ gameId, player }) => {
+    localStorage.setItem(`game_${gameId}`, JSON.stringify({
+      playerId: player.slotIndex.toString(),
+      playerSlotIndex: player.slotIndex,
+      playerName: player.name
+    }));
+  }, { gameId: response.gameId, player: response.player });
+  
+  return {
+    gameId: response.gameId,
+    player: response.player,
+    gameState: response.gameState
+  };
+}
+
