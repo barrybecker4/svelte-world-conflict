@@ -85,7 +85,7 @@
   </Section>
 
   <!-- Players Section -->
-  <Section title="" flex={true} flexDirection="column" gap="8px" customClass="flex-1">
+  <Section title="" padding="12px" flex={true} flexDirection="column" gap="8px" customClass="flex-1">
     {#each players.slice().sort((a, b) => a.slotIndex - b.slotIndex) as player, slotOrderIndex}
       {@const isActive = player.slotIndex === currentPlayerSlot}
       {@const isAlive = isPlayerAlive(player.slotIndex)}
@@ -180,7 +180,8 @@
     border: 1px solid var(--border-light, #374151);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   /* Turn section */
@@ -212,12 +213,13 @@
   .player-box {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: var(--space-3, 12px);
+    gap: 10px;
+    padding: 10px 8px 10px 12px;
     border-radius: var(--radius-md, 6px);
     background: rgba(15, 23, 42, 0.4);
     border: 1px solid transparent;
     transition: all 0.2s ease;
+    min-width: 0;
   }
 
   .player-box.active {
@@ -269,7 +271,7 @@
     align-items: center;
     gap: 2px;
     background: rgba(15, 23, 42, 0.6);
-    padding: 0.4rem 0.6rem;
+    padding: 0.35rem 0.5rem;
     border-radius: 4px;
     border: 1px solid var(--border-light, #374151);
   }
@@ -354,5 +356,6 @@
   :global(.flex-1) {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
   }
 </style>

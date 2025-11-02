@@ -81,16 +81,14 @@
         <div class="winner-label draw">Draw</div>
         <div class="winner-message">Game ended in a tie</div>
       {:else if winner}
-        <div class="winner-label">🏆 Winner</div>
-        <div class="winner-name">{winner.name}</div>
-        <div class="winner-color" style="background: linear-gradient(135deg, {getPlayerColorStart(winner.slotIndex)}, {getPlayerColorEnd(winner.slotIndex)});"></div>
+        <div class="winner-label">🏆 Winner: <span class="winner-name-inline">{winner.name}</span></div>
       {/if}
       <div class="end-reason">{gameEndReason}</div>
     </div>
   </Section>
 
   <!-- Final Rankings -->
-  <Section title="Final Rankings" flex={true} flexDirection="column" gap="8px" customClass="flex-1 rankings-section">
+  <Section title="Final Rankings" padding="12px" flex={true} flexDirection="column" gap="8px" customClass="flex-1 rankings-section">
     {#each playerStats as stat}
       {@const isWinner = stat.player === winner}
       {@const isEliminated = stat.regionCount === 0}
@@ -154,7 +152,8 @@
     border: 1px solid var(--border-light, #374151);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   /* Header Section */
@@ -191,23 +190,22 @@
   }
 
   .winner-label {
-    font-size: var(--text-sm, 0.875rem);
+    font-size: var(--text-lg, 1.125rem);
     font-weight: 700;
-    letter-spacing: 0.1em;
     color: #facc15;
-    text-transform: uppercase;
     margin-bottom: 6px;
   }
 
   .winner-label.draw {
     color: #94a3b8;
+    font-size: var(--text-sm, 0.875rem);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
-  .winner-name {
-    font-size: var(--text-lg, 1.125rem);
+  .winner-name-inline {
     font-weight: var(--font-bold, bold);
     color: var(--text-primary, #f7fafc);
-    margin-bottom: 8px;
     max-width: var(--player-name-max-width);
     text-overflow: ellipsis;
     overflow: hidden;
@@ -218,15 +216,6 @@
     font-size: var(--text-base, 1rem);
     color: var(--text-secondary, #cbd5e1);
     margin-bottom: 8px;
-  }
-
-  .winner-color {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    margin: 8px auto;
-    border: 2px solid var(--border-medium, #374151);
-    box-shadow: 0 0 20px rgba(250, 204, 21, 0.3);
   }
 
   .end-reason {
@@ -244,6 +233,7 @@
   :global(.rankings-section) {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .ranking-box {
@@ -251,12 +241,13 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: var(--space-3, 12px);
+    gap: 8px;
+    padding: 10px 8px 10px 12px;
     border-radius: var(--radius-md, 6px);
     background: rgba(15, 23, 42, 0.4);
     border: 1px solid transparent;
     transition: all 0.2s ease;
+    min-width: 0;
   }
 
   .ranking-box:hover {
@@ -287,6 +278,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: 1;
+    min-width: 0;
   }
 
   .ranking-player-color {
@@ -324,7 +317,7 @@
     align-items: center;
     gap: 2px;
     background: rgba(15, 23, 42, 0.6);
-    padding: 0.4rem 0.6rem;
+    padding: 0.35rem 0.5rem;
     border-radius: 4px;
     border: 1px solid var(--border-light, #374151);
   }
@@ -344,6 +337,7 @@
   :global(.flex-1) {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
   }
 </style>
 

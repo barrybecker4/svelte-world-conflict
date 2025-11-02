@@ -143,9 +143,17 @@ export class GameStateUpdater {
         
         await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
 
+        // Update currentPlayerSlot and turnNumber immediately so UI/tests see correct turn
+        // But delay other state updates for animations
+        this.gameStateStore.update(state => state ? { 
+          ...state, 
+          currentPlayerSlot: cleanState.currentPlayerSlot,
+          turnNumber: cleanState.turnNumber 
+        } : state);
+
         // Play appropriate sounds and handle animations based on whose turn it is
         if (isOtherPlayersTurn) {
-          // DON'T update game state yet - keep old state for animations
+          // DON'T update full game state yet - keep old state for animations
           // The animations will update to intermediate states, then we apply final state
           
           // It's another player's turn - wait for banner, then replay moves
