@@ -2,6 +2,7 @@ import { get } from 'svelte/store';
 import { BattleManager } from '$lib/client/rendering/BattleManager';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { UndoManager } from './UndoManager';
+import { MoveQueue } from './MoveQueue';
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 
 /**
@@ -11,20 +12,22 @@ import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationS
 export class BattleCoordinator {
   private battleManager: BattleManager;
   private undoManager: UndoManager;
+  private moveQueue: MoveQueue;
   private gameStore: any;
   private playerId: string;
   private battleInProgress = false;
 
   constructor(
-    gameId: string,
     playerId: string,
     gameStore: any,
-    undoManager: UndoManager
+    undoManager: UndoManager,
+    moveQueue: MoveQueue
   ) {
     this.playerId = playerId;
     this.gameStore = gameStore;
     this.undoManager = undoManager;
-    this.battleManager = new BattleManager(gameId, null as any);
+    this.moveQueue = moveQueue;
+    this.battleManager = new BattleManager(parseInt(playerId), null as any);
   }
 
   getBattleManager(): BattleManager {
@@ -56,11 +59,19 @@ export class BattleCoordinator {
     this.battleInProgress = true;
     console.log('🔒 Battle in progress, WebSocket updates will be delayed');
 
-    const result = await this.battleManager.executeMove(battleMove, this.playerId, currentRegions);
+    const result = await this.battleManager.executeMove(battleMove, currentRegions);
 
     if (!result.success) {
       throw new Error(result.error || 'Move failed');
     }
+
+    // Queue the move to be sent to server at turn end
+    this.moveQueue.push({
+      type: 'ARMY_MOVE',
+      source: sourceRegionIndex,
+      destination: targetRegionIndex,
+      count: soldierCount
+    });
 
     this.completeBattle(result, onTooltipUpdate);
   }
@@ -123,12 +134,18 @@ export class BattleCoordinator {
       this.gameStore.handleGameStateUpdate(result.gameState);
     }
 
-    // Disable undo after a battle (battles cannot be undone)
-    this.undoManager.disableUndo();
+    // Only disable undo if this was an actual battle (has attackSequence)
+    // Peaceful moves into unoccupied regions should remain undoable
+    if (result.attackSequence && result.attackSequence.length > 0) {
+      this.undoManager.disableUndo();
+      console.log('🚫 Battle completed - undo disabled');
+    } else {
+      console.log('✅ Peaceful move completed - undo still available');
+    }
 
     // Clear battle in progress flag
     this.battleInProgress = false;
-    console.log('🔓 Battle complete, WebSocket updates resumed');
+    console.log('🔓 Move complete, WebSocket updates resumed');
   }
 
   /**

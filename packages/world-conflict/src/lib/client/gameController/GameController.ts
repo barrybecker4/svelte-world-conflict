@@ -5,13 +5,17 @@ import { useGameWebSocket } from '$lib/client/composables/useGameWebsocket';
 import { ModalManager } from './ModalManager';
 import { GameApiClient } from './GameApiClient';
 import { UndoManager } from './UndoManager';
+import { MoveQueue } from './MoveQueue';
+import { LocalMoveExecutor } from './LocalMoveExecutor';
 import { TutorialCoordinator } from './TutorialCoordinator';
 import { TurnTimerCoordinator } from './TurnTimerCoordinator';
 import { BattleCoordinator } from './BattleCoordinator';
 import { MoveUICoordinator } from './MoveUICoordinator';
 import { GameEndCoordinator } from './GameEndCoordinator';
-import { TempleActionCoordinator } from './TempleActionCoordinator';
 import { GameStateUpdater } from '$lib/client/stores/GameStateUpdater';
+import { GameState } from '$lib/game/state/GameState';
+import { BuildCommand } from '$lib/game/commands/BuildCommand';
+import { CommandProcessor } from '$lib/game/commands/CommandProcessor';
 
 /**
  * Single controller that manages all game logic
@@ -24,6 +28,8 @@ export class GameController {
   private websocket: ReturnType<typeof useGameWebSocket>;
   private gameStore: any;
   private undoManager: UndoManager;
+  private moveQueue: MoveQueue;
+  private localExecutor: LocalMoveExecutor;
 
   // Coordinators
   private tutorialCoordinator: TutorialCoordinator;
@@ -31,7 +37,6 @@ export class GameController {
   private battleCoordinator: BattleCoordinator;
   private moveUICoordinator: MoveUICoordinator;
   private gameEndCoordinator: GameEndCoordinator;
-  private templeActionCoordinator: TempleActionCoordinator;
 
   // State
   private lastTurnNumber: number = -1;
@@ -47,11 +52,13 @@ export class GameController {
     this.modalManager = new ModalManager();
     this.apiClient = new GameApiClient(gameId);
     this.undoManager = new UndoManager();
+    this.moveQueue = new MoveQueue();
+    this.localExecutor = new LocalMoveExecutor();
 
     // Initialize coordinators
     this.tutorialCoordinator = new TutorialCoordinator(playerId);
     this.turnTimerCoordinator = new TurnTimerCoordinator(playerId, () => this.endTurn());
-    this.battleCoordinator = new BattleCoordinator(gameId, playerId, gameStore, this.undoManager);
+    this.battleCoordinator = new BattleCoordinator(playerId, gameStore, this.undoManager, this.moveQueue);
     this.moveUICoordinator = new MoveUICoordinator(gameStore, this.modalManager);
     this.gameEndCoordinator = new GameEndCoordinator(
       playerId, 
@@ -59,14 +66,14 @@ export class GameController {
       this.turnTimerCoordinator,
       (updater) => gameStore.gameState.update(updater)
     );
-    this.templeActionCoordinator = new TempleActionCoordinator(playerId, this.apiClient, this.undoManager, gameStore);
 
     this.websocket = useGameWebSocket(gameId, (gameData) => {
-      // Check if turn has changed - if so, reset undo manager
+      // Check if turn has changed - if so, reset undo manager and move queue
       if (gameData.turnNumber !== undefined && gameData.turnNumber !== this.lastTurnNumber) {
-        console.log(`🔄 Turn changed from ${this.lastTurnNumber} to ${gameData.turnNumber} - resetting undo manager`);
+        console.log(`🔄 Turn changed from ${this.lastTurnNumber} to ${gameData.turnNumber} - resetting undo manager and move queue`);
         this.lastTurnNumber = gameData.turnNumber;
         this.undoManager.reset();
+        this.moveQueue.clear();
       }
 
       this.gameStore.handleGameStateUpdate(gameData);
@@ -235,27 +242,77 @@ export class GameController {
   }
 
   /**
-   * Purchase temple upgrade (delegates to TempleActionCoordinator)
+   * Purchase temple upgrade (execute locally and queue for server)
    */
   async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
-    await this.templeActionCoordinator.purchaseUpgrade(regionIndex, upgradeIndex);
+    const gameState = get(this.gameStore.gameState) as GameStateData | null;
+    const playerSlotIndex = parseInt(this.playerId);
+
+    if (!gameState) {
+      console.error('❌ No game state available');
+      return;
+    }
+
+    try {
+      // Save state for undo
+      this.undoManager.saveState(gameState, playerSlotIndex);
+
+      // Execute the BUILD command locally
+      const gameStateObj = new GameState(gameState);
+      const player = gameStateObj.getPlayerBySlotIndex(playerSlotIndex);
+      
+      if (!player) {
+        throw new Error(`Player not found: ${playerSlotIndex}`);
+      }
+
+      const command = new BuildCommand(gameStateObj, player, regionIndex, upgradeIndex);
+      const processor = new CommandProcessor();
+      const result = processor.process(command);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Build command failed');
+      }
+
+      // Update local game state
+      const newGameStateData = result.newState!.toJSON();
+      this.gameStore.handleGameStateUpdate(newGameStateData);
+
+      // Queue the move to be sent at turn end
+      this.moveQueue.push({
+        type: 'BUILD',
+        regionIndex,
+        upgradeIndex
+      });
+
+      // Temple upgrades disable undo (like battles)
+      this.undoManager.disableUndo();
+      console.log('🏛️ Temple upgrade purchased locally - undo disabled');
+
+    } catch (error) {
+      console.error('❌ Purchase upgrade error:', error);
+      alert('Error purchasing upgrade: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
   }
 
   /**
-   * End turn - flush any pending KV writes and transition to next player
+   * End turn - send all queued moves to server and transition to next player
    */
   async endTurn(): Promise<void> {
     // Stop the timer when ending turn
     this.turnTimerCoordinator.stopTimer();
 
     try {
-      // Moves are sent to server immediately (with deferred KV writes)
-      console.log(`🔚 Ending turn - flushing deferred KV writes`);
+      // Get all queued moves
+      const queuedMoves = this.moveQueue.getAll();
+      console.log(`🔚 Ending turn with ${queuedMoves.length} queued moves`);
 
-      // Send end turn - this will flush any deferred KV writes
-      console.log('🔚 Sending endTurn request to server...');
-      const result = await this.apiClient.endTurn(this.playerId, []);
+      // Send end turn with all queued moves
+      console.log('🔚 Sending endTurn request to server with queued moves...');
+      const result = await this.apiClient.endTurn(this.playerId, queuedMoves);
       console.log('🔚 EndTurn response received:', result);
+
+      // Clear the move queue after successful send
+      this.moveQueue.clear();
 
       // Reset move state
       this.moveUICoordinator.resetMoveState();
@@ -266,7 +323,7 @@ export class GameController {
   }
 
   /**
-   * Undo the last move
+   * Undo the last move (client-side only until turn ends)
    */
   async undo(): Promise<void> {
     const gameState = get(this.gameStore.gameState) as GameStateData | null;
@@ -277,7 +334,7 @@ export class GameController {
       return;
     }
 
-    console.log('↩️ GameController: Performing undo');
+    console.log('↩️ GameController: Performing local undo');
 
     // Get the previous state
     const previousState = this.undoManager.undo();
@@ -286,6 +343,10 @@ export class GameController {
       console.warn('⚠️ No previous state available for undo');
       return;
     }
+
+    // Remove the last move from the queue (it was never sent to server)
+    const removedMove = this.moveQueue.pop();
+    console.log('↩️ Removed move from queue:', removedMove);
 
     // Clear any active move UI state
     this.moveUICoordinator.resetMoveState(previousState.movesRemaining || 3);
@@ -305,7 +366,7 @@ export class GameController {
     // Update tooltips
     this.updateTooltips();
 
-    console.log('✅ Undo complete');
+    console.log('✅ Undo complete (local only, moves sent at turn end)');
   }
 
   /**
