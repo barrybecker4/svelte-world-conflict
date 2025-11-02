@@ -126,13 +126,14 @@
     left: -2.5%;
     height: 10.8%;
     width: 105%;
-    text-align: center;
-    padding-top: 1%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding-right: 10%;
     border: 2px solid black;
     color: white;
     z-index: 100;
-    font-size: 3.2em;
+    font-size: clamp(1.5rem, 5vh, 6rem);
     box-shadow: 0 10px 10px 5px rgba(0, 0, 0, 0.7), inset 0 20px 2px rgba(255, 255, 255, 0.05);
     text-shadow: 2px 2px #000;
     transition: opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
@@ -161,7 +162,7 @@
 
   @media (max-width: 640px) {
     .banner {
-      font-size: 2rem;
+      font-size: clamp(1rem, 4vh, 3rem);
       height: 8%;
     }
   }
