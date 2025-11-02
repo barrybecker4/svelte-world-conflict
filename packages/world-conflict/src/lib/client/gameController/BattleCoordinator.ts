@@ -123,6 +123,9 @@ export class BattleCoordinator {
       this.gameStore.handleGameStateUpdate(result.gameState);
     }
 
+    // Disable undo after a battle (battles cannot be undone)
+    this.undoManager.disableUndo();
+
     // Clear battle in progress flag
     this.battleInProgress = false;
     console.log('🔓 Battle complete, WebSocket updates resumed');
