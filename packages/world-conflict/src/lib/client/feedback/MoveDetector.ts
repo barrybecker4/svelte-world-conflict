@@ -53,10 +53,10 @@ export class MoveDetector {
     const oldOwners = previousState.ownersByRegion || {};
     const regions = newState.regions || [];
 
-    // Find regions that lost soldiers
-    const regionsWithLosses: Array<{regionIndex: number, loss: number}> = [];
+    // Find regions that lost soldiers (store owner info for validation)
+    const regionsWithLosses: Array<{regionIndex: number, loss: number, owner: number}> = [];
     // Find regions that gained soldiers
-    const regionsWithGains: Array<{regionIndex: number, gain: number, wasConquest: boolean}> = [];
+    const regionsWithGains: Array<{regionIndex: number, gain: number, wasConquest: boolean, newOwner: number, oldOwner?: number}> = [];
 
     Object.keys(newSoldiers).forEach(regionIndex => {
       const newCount = (newSoldiers[regionIndex] || []).length;
@@ -65,17 +65,19 @@ export class MoveDetector {
       const oldOwner = oldOwners[regionIndex];
       const idx = parseInt(regionIndex);
 
-      if (newCount < oldCount && owner !== undefined) {
-        // Region lost soldiers (likely source of move)
-        regionsWithLosses.push({ regionIndex: idx, loss: oldCount - newCount });
+      // Only track losses where ownership didn't change (true source regions, not defenders who lost a battle)
+      // If ownership changed, the losses were battle casualties, not a movement source
+      if (newCount < oldCount && owner !== undefined && owner === oldOwner) {
+        // Region lost soldiers but kept same owner (source of move or failed attack)
+        regionsWithLosses.push({ regionIndex: idx, loss: oldCount - newCount, owner });
       } else if (newCount > oldCount) {
         // Region gained soldiers (likely target of move)
         const wasConquest = oldOwner !== undefined && oldOwner !== owner;
-        regionsWithGains.push({ regionIndex: idx, gain: newCount - oldCount, wasConquest });
+        regionsWithGains.push({ regionIndex: idx, gain: newCount - oldCount, wasConquest, newOwner: owner, oldOwner });
       }
     });
 
-    // Try to pair losses with gains based on adjacency
+    // Try to pair losses with gains based on adjacency AND ownership
     const pairs = new Map<number, number>();
     const usedSources = new Set<number>();
 
@@ -83,8 +85,8 @@ export class MoveDetector {
       const targetRegion = regions.find((r: any) => r.index === gain.regionIndex);
       if (!targetRegion) continue;
 
-      // Find the best matching source: a region that lost soldiers and is adjacent
-      let bestSource: {regionIndex: number, loss: number} | null = null;
+      // Find the best matching source: a region that lost soldiers, is adjacent, and has matching ownership
+      let bestSource: {regionIndex: number, loss: number, owner: number} | null = null;
       for (const loss of regionsWithLosses) {
         // Skip if already used
         if (usedSources.has(loss.regionIndex)) continue;
@@ -94,10 +96,18 @@ export class MoveDetector {
 
         // Check if regions are adjacent
         const areNeighbors = sourceRegion.neighbors && sourceRegion.neighbors.includes(gain.regionIndex);
+        if (!areNeighbors) continue;
 
-        if (areNeighbors) {
+        // CRITICAL FIX: Check ownership consistency
+        // For conquests: source owner should match new owner of target (the attacker)
+        // For peaceful moves: source owner should match target owner
+        const isValidOwnership = gain.wasConquest 
+          ? loss.owner === gain.newOwner  // Conquest: attacker owns source
+          : loss.owner === gain.newOwner; // Peaceful: same owner for both
+
+        if (isValidOwnership) {
           bestSource = loss;
-          break; // Found an adjacent source
+          break; // Found a valid adjacent source with correct ownership
         }
       }
 
@@ -105,6 +115,12 @@ export class MoveDetector {
       if (bestSource) {
         usedSources.add(bestSource.regionIndex);
         pairs.set(gain.regionIndex, bestSource.regionIndex);
+        
+        // Debug logging for movement pairing
+        console.log(`🔗 Movement pair: ${bestSource.regionIndex} -> ${gain.regionIndex} (owner: ${bestSource.owner}, wasConquest: ${gain.wasConquest})`);
+      } else {
+        // Log when we can't find a source (helps debug animation issues)
+        console.log(`⚠️ No valid source found for region ${gain.regionIndex} (gain: ${gain.gain}, wasConquest: ${gain.wasConquest}, owner: ${gain.newOwner})`);
       }
     }
 
