@@ -18,6 +18,7 @@
   export let borderWidth: number = 1;
   export let innerBorderColor: string = '';
   export let innerBorderWidth: number = 8;
+  export let innerBorderOpacity: number = 1;
   export let isClickable: boolean = true;
   export let renderArmies: boolean = true;
   export let onRegionClick: (region: Region) => void = () => {};
@@ -85,6 +86,7 @@
       fill="none"
       stroke={innerBorderColor}
       stroke-width={innerBorderWidth}
+      opacity={innerBorderOpacity}
       class="inner-border"
       style="pointer-events: none;"
       clip-path="url(#clip-{region.index})"

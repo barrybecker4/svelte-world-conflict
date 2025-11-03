@@ -43,6 +43,12 @@ export class EndTurnCommand extends Command {
         const gameEndResult = checkGameEnd(newState.toJSON(), newState.players);
         if (gameEndResult.isGameEnded) {
             newState.endResult = gameEndResult.winner;
+            // Don't advance turn when game ends - keep current player as the one who ended the game
+            console.log('🏁 Game ended, not advancing turn. Winner:', gameEndResult.winner);
+            newState.movesRemaining = 0; // No more moves
+            newState.conqueredRegions = [];
+            newState.state.eliminatedPlayers = [];
+            return newState;
         }
 
         const players = newState.players;

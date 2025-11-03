@@ -48,6 +48,11 @@
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
   $: effectivePreviewMode = isPreviewMode || detectedPreviewMode || previewMode;
 
+  // Log game end state
+  $: if (gameState?.endResult && gameState.endResult !== 'DRAWN_GAME') {
+    console.log('🏁 Game ended. Winner:', gameState.endResult.name, 'slot:', gameState.endResult.slotIndex);
+  }
+
   // Update battles in progress
   $: {
     if (gameState?.battlesInProgress) {
@@ -109,12 +114,17 @@
 
     const config = getPlayerConfig(ownerIndex);
     
+    // For selected source region, always use the light highlight (takes priority)
+    if (isSelected) {
+        return config.highlightStart;
+    }
+    
     // For owned regions that are valid targets, use the more prominent highlightEnd color
     if (isValidTarget) {
         return config.highlightEnd;
     }
     
-    // For selected source region or other movable regions, use subtle highlight
+    // For other movable regions, use subtle highlight
     return config.highlightStart;
   }
 
@@ -146,19 +156,7 @@
 
     const winner = gameState.endResult;
     const ownerIndex = gameState.ownersByRegion?.[region.index];
-    const isWinner = ownerIndex === winner.slotIndex;
-    
-    // Debug logging for first winner region found
-    if (isWinner) {
-      console.log('🏆 Winner region detected:', { 
-        regionIndex: region.index, 
-        ownerIndex, 
-        winnerSlotIndex: winner.slotIndex,
-        winnerName: winner.name 
-      });
-    }
-    
-    return isWinner;
+    return ownerIndex === winner.slotIndex;
   }
 
   function handleRegionClick(region: Region): void {
@@ -222,6 +220,7 @@
       {@const isMyTurn = !!(currentPlayer && gameState && currentPlayer.slotIndex === gameState.currentPlayerSlot)}
       {@const gameHasEnded = !!(gameState?.endResult)}
       {@const isClickable = !!(hasMovesRemaining && isMyTurn && !gameHasEnded)}
+      {@const innerBorderOpacity = isWinner ? 0.6 : (isSelected ? 0.5 : (isValidTarget ? 0.4 : (isMovable ? 0.25 : 0)))}
       <RegionRenderer
         {region}
         {gameState}
@@ -235,7 +234,8 @@
         borderColor={getBorderColor(region)}
         borderWidth={getBorderWidth(region)}
         innerBorderColor={isSelected || isMovable || isValidTarget || isWinner ? getInnerBorderColor(region, isSelected, isValidTarget, isWinner) : ''}
-        innerBorderWidth={isSelected ? 10 : 8}
+        innerBorderWidth={isWinner ? 10 : (isSelected ? 10 : 8)}
+        innerBorderOpacity={innerBorderOpacity}
         isClickable={isClickable}
         onRegionClick={handleRegionClick}
         onTempleClick={handleTempleClick}
