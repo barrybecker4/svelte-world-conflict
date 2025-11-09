@@ -48,8 +48,8 @@ class TurnManager {
   );
 
   public readonly shouldHighlightRegions = derived(
-    this.turnState,
-    state => state.bannerComplete && !state.isTransitioning
+    [this.turnState, this.gameState],
+    ([state, gameState]) => state.bannerComplete && !state.isTransitioning && !gameState?.endResult
   );
 
   /**
@@ -66,13 +66,14 @@ class TurnManager {
       // Set previousSlotIndex to track first player
       this.previousSlotIndex = gameState.currentPlayerSlot;
 
-      // Show banner for the first player's turn
+      // For the initial game state, show highlights immediately without banner
+      // Banners are only for turn transitions, not the initial state
       this.turnState.update(state => ({
           ...state,
           currentPlayerIndex: arrayIndex,
           previousPlayerIndex: null,
-          showBanner: true,
-          bannerComplete: false,
+          showBanner: false,
+          bannerComplete: true,
           turnStartTime: Date.now()
       }));
   }

@@ -8,6 +8,7 @@ import { SOUNDS } from '$lib/client/audio/sounds';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 import { clearBattleState } from '$lib/game/utils/GameStateUtils';
+import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 
 /**
  * Manages WebSocket game state updates with proper queuing and orchestration.
@@ -123,6 +124,21 @@ export class GameStateUpdater {
 
     // Check for eliminations in the updated state (e.g., from AI moves)
     this.checkForEliminations(cleanState);
+
+    // Check if game has ended BEFORE processing turn transition
+    const gameEndResult = checkGameEnd(cleanState, cleanState.players || []);
+    if (gameEndResult.isGameEnded) {
+      console.log('🏁 Game ended detected in state update, setting endResult immediately');
+      cleanState.endResult = gameEndResult.winner;
+      // Don't show turn banner if game has ended - apply state immediately
+      this.gameStateStore.set(cleanState);
+      this.regionsStore.set(cleanState.regions || []);
+      this.playersStore.set(cleanState.players || []);
+      this.lastRawState = cleanState;
+      this.isProcessingUpdate = false;
+      this.processNextUpdate();
+      return;
+    }
 
     if (isNewTurn) {
       console.log('🔄 Turn transition detected - showing turn banner for slot:', updatedState.currentPlayerSlot);

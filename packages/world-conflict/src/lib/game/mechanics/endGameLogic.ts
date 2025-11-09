@@ -95,7 +95,8 @@ function determineWinnerByScore(gameState: GameStateData, players: Player[]): Pl
   const scoreCalculator = new ScoreCalculator(gameState);
   const playerScores = players.map(player => ({
     player,
-    score: scoreCalculator.calculatePlayerScore(player.slotIndex)
+    score: scoreCalculator.calculatePlayerScore(player.slotIndex),
+    regions: scoreCalculator.getRegionCount(player.slotIndex),
   }));
 
   // Sort by score descending

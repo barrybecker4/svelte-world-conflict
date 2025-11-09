@@ -143,7 +143,7 @@
         {selectedRegion}
         {validTargetRegions}
         gameState={$gameState}
-        showTurnHighlights={$shouldHighlightRegions ?? true}
+        showTurnHighlights={($shouldHighlightRegions ?? true) && !$gameState?.endResult}
         tutorialTips={$tutorialTips}
         onRegionClick={(region) => {
           console.log('🗺️ GameMap click received in component:', { region, isMyTurn: $isMyTurn });

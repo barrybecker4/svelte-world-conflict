@@ -95,13 +95,12 @@
 
     const ownerIndex = gameState.ownersByRegion[region.index];
 
-    // For winner regions at game end, use light highlight
+    // For winner regions at game end, use bright highlight
     if (isWinnerRegion && gameState.endResult) {
-        const config = getPlayerConfig(ownerIndex);
-        return config.highlightStart;
+        return '#fff';  // Bright white for winner regions
     }
 
-    // For neutral regions that are valid targets, use the current player's color
+    // For neutral regions that are valid targets, use the current player's bright color
     if ((ownerIndex === undefined || ownerIndex === -1) && isValidTarget && currentPlayer) {
         const config = getPlayerConfig(currentPlayer.slotIndex);
         return config.highlightEnd;  // Strong highlight for valid targets
@@ -113,28 +112,37 @@
     }
 
     const config = getPlayerConfig(ownerIndex);
-    
-    // For selected source region, always use the light highlight (takes priority)
+
+    // For selected source region, use bright white with slight color tint
     if (isSelected) {
-        return config.highlightStart;
+        return '#fff';  // Bright white makes selection very obvious
     }
-    
-    // For owned regions that are valid targets, use the more prominent highlightEnd color
+
+    // For owned regions that are valid targets, use bright highlight
     if (isValidTarget) {
-        return config.highlightEnd;
+        return '#ffd700';  // Gold color for valid targets
     }
-    
-    // For other movable regions, use subtle highlight
-    return config.highlightStart;
+
+    // For other movable regions, use bright white to make them clearly visible
+    return '#fff';  // Use white instead of subtle highlight color
   }
 
   function canHighlightForTurn(region: Region): boolean {
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
     if (!currentPlayer) return false;
-    
+
     // Don't allow highlighting if game has ended
-    if (gameState.endResult) return false;
+    if (gameState.endResult) {
+      // Debug log
+      if (region.index === 0) {
+        console.log('🚫 canHighlightForTurn blocked - game ended:', {
+          regionIndex: region.index,
+          endResult: gameState.endResult
+        });
+      }
+      return false;
+    }
 
     // Only highlight if it's the current player's turn (not just any player's turn)
     if (currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
@@ -212,15 +220,17 @@
     <!-- Regions layer (bottom) -->
     <g filter="url(#regionShadow)">
     {#each regions as region (region.index)}
-      {@const isSelected = selectedRegion ? selectedRegion.index === region.index : false}
-      {@const isValidTarget = validTargetRegions.includes(region.index)}
-      {@const isMovable = canHighlightForTurn(region)}
+      {@const gameHasEnded = !!(gameState?.endResult)}
+      {@const isSelected = gameHasEnded ? false : (selectedRegion ? selectedRegion.index === region.index : false)}
+      {@const isValidTarget = gameHasEnded ? false : validTargetRegions.includes(region.index)}
+      {@const isMovable = gameHasEnded ? false : canHighlightForTurn(region)}
       {@const isWinner = isWinnerRegion(region)}
       {@const hasMovesRemaining = !!(gameState && gameState.movesRemaining > 0)}
       {@const isMyTurn = !!(currentPlayer && gameState && currentPlayer.slotIndex === gameState.currentPlayerSlot)}
-      {@const gameHasEnded = !!(gameState?.endResult)}
       {@const isClickable = !!(hasMovesRemaining && isMyTurn && !gameHasEnded)}
-      {@const innerBorderOpacity = isWinner ? 0.6 : (isSelected ? 0.5 : (isValidTarget ? 0.4 : (isMovable ? 0.25 : 0)))}
+      {@const innerBorderOpacity = isWinner ? 0.85 : (isSelected ? 0.75 : (isValidTarget ? 0.65 : (isMovable ? 0.55 : 0)))}
+      {@const soldierCount = gameState?.soldiersByRegion?.[region.index]?.length || 0}
+      {@const canHighlightProp = isMovable || isWinner}
       <RegionRenderer
         {region}
         {gameState}
@@ -234,7 +244,7 @@
         borderColor={getBorderColor(region)}
         borderWidth={getBorderWidth(region)}
         innerBorderColor={isSelected || isMovable || isValidTarget || isWinner ? getInnerBorderColor(region, isSelected, isValidTarget, isWinner) : ''}
-        innerBorderWidth={isWinner ? 10 : (isSelected ? 10 : 8)}
+        innerBorderWidth={isWinner ? 14 : (isSelected ? 12 : 10)}
         innerBorderOpacity={innerBorderOpacity}
         isClickable={isClickable}
         onRegionClick={handleRegionClick}
