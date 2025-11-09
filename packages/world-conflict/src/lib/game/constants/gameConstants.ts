@@ -22,7 +22,7 @@ export const GAME_CONSTANTS = {
     // Game timing
     MOVE_DELAY: 500,
     PLAYBACK_DELAY: 500,
-    AI_THINK_TIME: 1000,
+    AI_THINK_TIME: 100, // Reduced for Cloudflare Workers CPU time limits
     BANNER_TIME: 2000,
 
     // Animation timing (milliseconds)
