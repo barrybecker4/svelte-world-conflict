@@ -111,6 +111,9 @@ export class GameController {
     // Register callback to check if battle is in progress
     this.gameStore.setIsBattleInProgressCallback(() => this.battleCoordinator.isBattleInProgress());
 
+    // Register callback to trigger AI processing when turn changes to AI player
+    this.gameStore.setTriggerAiProcessingCallback(() => this.triggerAiProcessing());
+
     await this.websocket.initialize();
     await audioSystem.enable();
 

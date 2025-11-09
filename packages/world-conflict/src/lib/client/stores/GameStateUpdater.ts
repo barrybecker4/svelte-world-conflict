@@ -25,6 +25,7 @@ export class GameStateUpdater {
   private lastRawState: GameStateData | null = null; // Track raw state without overrides
   private onTurnReadyCallback: ((gameState: GameStateData) => void) | null = null;
   private isBattleInProgressCallback: (() => boolean) | null = null;
+  private triggerAiProcessingCallback: (() => Promise<void>) | null = null;
   private static isReplayingMoves = false; // Global flag to prevent state contamination during AI replay
 
   constructor(
@@ -50,6 +51,13 @@ export class GameStateUpdater {
    */
   setIsBattleInProgressCallback(callback: () => boolean): void {
     this.isBattleInProgressCallback = callback;
+  }
+
+  /**
+   * Set callback to trigger AI processing when turn changes to AI player
+   */
+  setTriggerAiProcessingCallback(callback: () => Promise<void>): void {
+    this.triggerAiProcessingCallback = callback;
   }
 
   /**
@@ -132,6 +140,10 @@ export class GameStateUpdater {
             turnNumber: cleanState.turnNumber 
           } : state);
 
+        // Check if the new current player is AI
+        const currentPlayer = cleanState.players.find(p => p.slotIndex === cleanState.currentPlayerSlot);
+        const isAiPlayer = currentPlayer?.isAI;
+
         // Play appropriate sounds and handle animations based on whose turn it is
         if (isOtherPlayersTurn) {
           // DON'T update full game state yet - keep old state for animations
@@ -150,6 +162,15 @@ export class GameStateUpdater {
           this.gameStateStore.set(cleanState);
           this.regionsStore.set(cleanState.regions || []);
           this.playersStore.set(cleanState.players || []);
+
+          // If the new current player is AI, trigger AI processing
+          if (isAiPlayer && this.triggerAiProcessingCallback) {
+            console.log('🤖 Turn changed to AI player, triggering AI processing');
+            // Don't await - let it run in background
+            this.triggerAiProcessingCallback().catch(error => {
+              console.error('❌ Error triggering AI processing:', error);
+            });
+          }
         } else {
           // It's now our turn
           audioSystem.playSound(SOUNDS.GAME_STARTED);

@@ -256,6 +256,11 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     // Set callback to check if a battle is in progress
     setIsBattleInProgressCallback: (callback: () => boolean) => {
       gameStateUpdater.setIsBattleInProgressCallback(callback);
+    },
+
+    // Set callback to trigger AI processing when turn changes to AI player
+    setTriggerAiProcessingCallback: (callback: () => Promise<void>) => {
+      gameStateUpdater.setTriggerAiProcessingCallback(callback);
     }
   };
 }
