@@ -99,7 +99,8 @@ export async function miniMaxSearch(
             }
 
             // Continue thinking (async to allow other operations)
-            setImmediate(() => doSomeWork());
+            // Use setTimeout instead of setImmediate for Cloudflare Workers compatibility
+            setTimeout(() => doSomeWork(), 0);
         }
 
         doSomeWork();
