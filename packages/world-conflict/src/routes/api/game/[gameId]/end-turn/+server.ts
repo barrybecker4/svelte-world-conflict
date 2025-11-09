@@ -132,6 +132,13 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const nextPlayer = finalGameState.getCurrentPlayer();
         const isNextPlayerAi = nextPlayer?.isAI;
 
+        console.log(`🔄 Turn ended - Next player is ${nextPlayer?.name} (AI: ${isNextPlayerAi}, movesRemaining: ${finalGameState.movesRemaining})`);
+
+        // If next player is AI, process their turns immediately on the server
+        if (isNextPlayerAi) {
+            finalGameState = await processAiTurns(finalGameState, gameStorage, gameId, platform);
+        }
+
         // Save the game state with the new current player
         const updatedGame = {
             ...game,
