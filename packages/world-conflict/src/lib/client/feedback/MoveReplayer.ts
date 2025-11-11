@@ -60,6 +60,16 @@ export class MoveReplayer {
     // Detect what changed between states to determine move types
     const moves = this.moveDetector.detectMoves(newState, previousState);
 
+    console.log(`📊 Move detection results: ${moves.length} moves detected`, moves);
+
+    // Special case: If we have an attack sequence but no moves detected,
+    // it means the player loaded the page after the move already happened.
+    // In this case, we can't replay because we don't have the pre-move state.
+    if (attackSequence && attackSequence.length > 0 && moves.length === 0) {
+      console.log('⚠️ Attack sequence present but no moves detected - player likely loaded after move was made');
+      console.log('   Cannot replay battle without pre-move state. Showing final state only.');
+    }
+
     // Attach attack sequence, regions, and game state to conquest moves if available
     if (attackSequence && moves.length > 0) {
       const conquestMove = moves.find(m => m.type === 'conquest');

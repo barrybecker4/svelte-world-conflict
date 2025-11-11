@@ -15,16 +15,39 @@ export class FeedbackPlayer {
   async playMovement(move: DetectedMove, gameState: any): Promise<void> {
     console.log(`🚶 Move replay: ${move.soldierCount} soldiers moving from ${move.sourceRegion} to ${move.regionIndex}`);
 
+    // Check for missing source region
+    if (move.sourceRegion === undefined) {
+      console.warn(`⚠️ FeedbackPlayer: Cannot animate movement to region ${move.regionIndex} - source region unknown`, {
+        move,
+        hasGameState: !!gameState
+      });
+      // Play sound and visual feedback anyway
+      audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
+      this.highlightRegion(move.regionIndex, 'movement');
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
+      });
+      return;
+    }
+
     // If we know the source region, animate the movement
-    if (move.sourceRegion !== undefined && gameState) {
+    if (gameState) {
       const sourceRegion = move.sourceRegion;
       const targetRegion = move.regionIndex;
       const soldierCount = move.soldierCount || 0;
-      
+
+      console.log(`🎬 Creating peaceful movement animation state`, {
+        sourceRegion,
+        targetRegion,
+        soldierCount,
+        soldiersAtSource: gameState.soldiersByRegion?.[sourceRegion]?.length || 0,
+        soldiersAtTarget: gameState.soldiersByRegion?.[targetRegion]?.length || 0
+      });
+
       // Create animation state: Mark soldiers as moving (keep at source for same DOM elements)
       const animationState = JSON.parse(JSON.stringify(gameState));
       const sourceSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
-      
+
       // VALIDATION: Ensure we have enough soldiers at source
       if (sourceSoldiers.length < soldierCount) {
         console.error(`❌ Invalid animation state: trying to move ${soldierCount} soldiers but only ${sourceSoldiers.length} at source region ${sourceRegion}`);
@@ -32,16 +55,18 @@ export class FeedbackPlayer {
         // Skip animation if state is invalid - the final state will still be applied correctly
         return;
       }
-      
+
       // Mark soldiers as moving (they stay in source array for rendering)
       // IMPORTANT: Server uses pop() which takes from END of array, so mark the LAST N soldiers
       const startIndex = Math.max(0, sourceSoldiers.length - soldierCount);
+      console.log(`   Marking soldiers ${startIndex} to ${sourceSoldiers.length - 1} as moving`);
       for (let i = startIndex; i < sourceSoldiers.length; i++) {
         sourceSoldiers[i].movingToRegion = targetRegion;
       }
-      
+
       // Apply animation state
       if (typeof window !== 'undefined') {
+        console.log(`   ✅ Dispatching battleStateUpdate event for peaceful movement`);
         window.dispatchEvent(new CustomEvent('battleStateUpdate', {
           detail: { gameState: animationState }
         }));
@@ -55,9 +80,11 @@ export class FeedbackPlayer {
     this.highlightRegion(move.regionIndex, 'movement');
 
     // Wait for CSS transition to complete
+    console.log(`⏱️ Waiting ${GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS}ms for movement animation to complete`);
     await new Promise<void>((resolve) => {
       setTimeout(() => resolve(), GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
     });
+    console.log(`✅ Movement animation complete`);
   }
 
   /**

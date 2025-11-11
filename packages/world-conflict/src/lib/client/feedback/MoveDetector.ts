@@ -27,6 +27,15 @@ export class MoveDetector {
   detectMoves(newState: any, previousState: any): DetectedMove[] {
     const moves: DetectedMove[] = [];
 
+    console.log('🔍 MoveDetector: Comparing states', {
+      previousTurn: previousState?.turnNumber,
+      newTurn: newState?.turnNumber,
+      previousPlayer: previousState?.currentPlayerSlot,
+      newPlayer: newState?.currentPlayerSlot,
+      previousRegionsWithOwners: Object.keys(previousState?.ownersByRegion || {}).length,
+      newRegionsWithOwners: Object.keys(newState?.ownersByRegion || {}).length
+    });
+
     // Build adjacency map for pairing movements
     const movementPairs = this.buildMovementPairs(newState, previousState);
 
@@ -38,6 +47,8 @@ export class MoveDetector {
 
     // Check for temple upgrades
     this.detectTemplateUpgrades(newState, previousState, moves);
+
+    console.log(`✅ MoveDetector: Detection complete - found ${moves.length} moves`);
 
     return moves;
   }
@@ -72,31 +83,49 @@ export class MoveDetector {
         regionsWithLosses.push({ regionIndex: idx, loss: oldCount - newCount, owner });
       } else if (newCount > oldCount) {
         // Region gained soldiers (likely target of move)
-        const wasConquest = oldOwner !== undefined && oldOwner !== owner;
+        // Detect conquests: enemy territory (owner changed) OR neutral with defenders (no old owner but had soldiers)
+        const wasEnemyConquest = oldOwner !== undefined && oldOwner !== owner;
+        const wasNeutralConquest = oldOwner === undefined && oldCount > 0;
+        const wasConquest = wasEnemyConquest || wasNeutralConquest;
         regionsWithGains.push({ regionIndex: idx, gain: newCount - oldCount, wasConquest, newOwner: owner, oldOwner });
       }
     });
 
     // Try to pair losses with gains based on adjacency AND ownership
+    // Allow a source region to be used multiple times if it has enough losses
     const pairs = new Map<number, number>();
-    const usedSources = new Set<number>();
+    const remainingLosses = new Map<number, number>();
+    regionsWithLosses.forEach(loss => {
+      remainingLosses.set(loss.regionIndex, loss.loss);
+    });
 
-    for (const gain of regionsWithGains) {
+    // Process conquests first (priority over peaceful moves)
+    const conquests = regionsWithGains.filter(g => g.wasConquest);
+    const peacefulMoves = regionsWithGains.filter(g => !g.wasConquest);
+    const orderedGains = [...conquests, ...peacefulMoves];
+
+    for (const gain of orderedGains) {
       const targetRegion = regions.find((r: any) => r.index === gain.regionIndex);
       if (!targetRegion) continue;
+
+      console.log(`🔍 Looking for source for region ${gain.regionIndex} (gain: ${gain.gain}, wasConquest: ${gain.wasConquest}, newOwner: ${gain.newOwner}, oldOwner: ${gain.oldOwner})`);
 
       // Find the best matching source: a region that lost soldiers, is adjacent, and has matching ownership
       let bestSource: {regionIndex: number, loss: number, owner: number} | null = null;
       for (const loss of regionsWithLosses) {
-        // Skip if already used
-        if (usedSources.has(loss.regionIndex)) continue;
+        // Skip if this source has no remaining losses to allocate
+        const remaining = remainingLosses.get(loss.regionIndex) || 0;
+        if (remaining <= 0) continue;
 
         const sourceRegion = regions.find((r: any) => r.index === loss.regionIndex);
         if (!sourceRegion) continue;
 
         // Check if regions are adjacent
         const areNeighbors = sourceRegion.neighbors && sourceRegion.neighbors.includes(gain.regionIndex);
-        if (!areNeighbors) continue;
+        if (!areNeighbors) {
+          console.log(`  ❌ Region ${loss.regionIndex} not adjacent to ${gain.regionIndex}`);
+          continue;
+        }
 
         // CRITICAL FIX: Check ownership consistency
         // For conquests: source owner should match new owner of target (the attacker)
@@ -104,6 +133,8 @@ export class MoveDetector {
         const isValidOwnership = gain.wasConquest 
           ? loss.owner === gain.newOwner  // Conquest: attacker owns source
           : loss.owner === gain.newOwner; // Peaceful: same owner for both
+
+        console.log(`  🔎 Checking region ${loss.regionIndex}: adjacent=${areNeighbors}, owner=${loss.owner}, validOwnership=${isValidOwnership}`);
 
         if (isValidOwnership) {
           bestSource = loss;
@@ -113,14 +144,18 @@ export class MoveDetector {
 
       // If we found a valid adjacent source, record the pairing
       if (bestSource) {
-        usedSources.add(bestSource.regionIndex);
         pairs.set(gain.regionIndex, bestSource.regionIndex);
         
+        // Decrement remaining losses for this source
+        const remaining = remainingLosses.get(bestSource.regionIndex) || 0;
+        remainingLosses.set(bestSource.regionIndex, remaining - gain.gain);
+        
         // Debug logging for movement pairing
-        console.log(`🔗 Movement pair: ${bestSource.regionIndex} -> ${gain.regionIndex} (owner: ${bestSource.owner}, wasConquest: ${gain.wasConquest})`);
+        console.log(`✅ Movement pair: ${bestSource.regionIndex} -> ${gain.regionIndex} (allocated ${gain.gain} of ${bestSource.loss} losses, ${remaining - gain.gain} remaining)`);
       } else {
         // Log when we can't find a source (helps debug animation issues)
         console.log(`⚠️ No valid source found for region ${gain.regionIndex} (gain: ${gain.gain}, wasConquest: ${gain.wasConquest}, owner: ${gain.newOwner})`);
+        console.log(`   Available losses:`, regionsWithLosses.map(l => `${l.regionIndex}(owner:${l.owner}, loss:${l.loss}, remaining:${remainingLosses.get(l.regionIndex)})`));
       }
     }
 
@@ -182,11 +217,26 @@ export class MoveDetector {
     const newSoldiers = newState.soldiersByRegion || {};
     const oldSoldiers = previousState.soldiersByRegion || {};
     const newOwners = newState.ownersByRegion || {};
+    const oldOwners = previousState.ownersByRegion || {};
+
+    // Build set of conquered regions to avoid detecting them as movements
+    const conqueredRegions = new Set<number>();
+    moves.forEach(move => {
+      if (move.type === 'conquest') {
+        conqueredRegions.add(move.regionIndex);
+      }
+    });
 
     Object.keys(newSoldiers).forEach(regionIndex => {
       const newCount = (newSoldiers[regionIndex] || []).length;
       const oldCount = (oldSoldiers[regionIndex] || []).length;
       const idx = parseInt(regionIndex);
+
+      // Skip if this region was conquered - conquest animation handles everything
+      if (conqueredRegions.has(idx)) {
+        console.log(`⚔️ Skipping movement detection for region ${idx} (already handled by conquest)`);
+        return;
+      }
 
       if (newCount > oldCount && newOwners[regionIndex] === previousState.playerSlotIndex) {
         // Soldiers were recruited (only if same owner)
@@ -196,8 +246,19 @@ export class MoveDetector {
           soldierCount: newCount - oldCount
         });
       } else if (newCount > oldCount) {
-        // Soldiers moved into this region - check if we have a source
+        // Soldiers moved into this region (peaceful move) - check if we have a source
         const sourceRegion = movementPairs.get(idx);
+        
+        console.log(`🚶 MoveDetector: Movement detected to region ${idx}`, {
+          regionIndex: idx,
+          oldCount,
+          newCount,
+          soldierCount: newCount - oldCount,
+          sourceRegion,
+          hasSourceRegion: sourceRegion !== undefined,
+          ownershipChanged: oldOwners[regionIndex] !== newOwners[regionIndex]
+        });
+        
         moves.push({
           type: 'movement',
           regionIndex: idx,

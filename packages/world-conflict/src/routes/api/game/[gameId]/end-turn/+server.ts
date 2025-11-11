@@ -73,6 +73,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         // Process all pending moves first (if any)
         const commandProcessor = new CommandProcessor();
+        let lastAttackSequence: any[] | undefined = undefined;
+        
         for (let i = 0; i < moves.length; i++) {
             const move = moves[i];
             console.log(`📝 Processing pending move ${i + 1}/${moves.length}:`, move);
@@ -115,6 +117,13 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
             // Update game state with the result
             gameState = moveResult.newState!;
+            
+            // Capture attack sequence if this move generated one
+            if (moveResult.attackSequence) {
+                lastAttackSequence = moveResult.attackSequence;
+                console.log(`💥 Move ${i + 1} generated attack sequence with ${moveResult.attackSequence.length} events`);
+            }
+            
             console.log(`✅ Move ${i + 1} processed successfully`);
         }
 
@@ -139,16 +148,28 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             finalGameState = await processAiTurns(finalGameState, gameStorage, gameId, platform);
         }
 
-        // Save the game state with the new current player
-        const updatedGame = {
+        // Send WebSocket notification with attack sequence from the last move
+        // This allows other players to see the battle animation
+        const updatedGameWithSequence = {
             ...game,
             worldConflictState: finalGameState.toJSON(),
             currentPlayerSlot: finalGameState.currentPlayerSlot,
             lastMoveAt: Date.now(),
-            lastAttackSequence: undefined // Clear attack sequence for turn end
+            lastAttackSequence // Include attack sequence from the last move that generated one
+        };
+        
+        if (lastAttackSequence) {
+            console.log(`📡 Sending WebSocket update with attack sequence (${lastAttackSequence.length} events)`);
+        }
+        
+        await WebSocketNotifications.gameUpdate(updatedGameWithSequence);
+
+        // Now save to storage with attack sequence cleared (no need to persist it)
+        const updatedGame = {
+            ...updatedGameWithSequence,
+            lastAttackSequence: undefined // Clear for storage
         };
         await gameStorage.saveGame(updatedGame);
-        await WebSocketNotifications.gameUpdate(updatedGame);
 
         console.log(`📊 Turn processing complete, final player slot: ${finalGameState.currentPlayerSlot}`);
 

@@ -88,6 +88,9 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
         const currentPlayers = initialGameState.players || [];
 
         turnManager.initialize(initialGameState, currentPlayers);
+        
+        // Initialize GameStateUpdater with initial state so it can detect future changes
+        gameStateUpdater.initializeWithState(initialGameState);
       }
 
       loading.set(false);

@@ -132,16 +132,36 @@ export class GameController {
     // Listen for battle state updates (for soldier positioning animations)
     if (typeof window !== 'undefined') {
       window.addEventListener('battleStateUpdate', ((event: CustomEvent) => {
-        // During move replay, animation states should not contaminate the stored game state
-        // Only update for our own moves (which use animation states correctly)
-        if (GameStateUpdater.isCurrentlyReplayingMoves()) {
-          console.log('⚔️ Skipping game state update during move replay (animation only)');
-          // The animation state will still be visible via the event, but won't pollute the store
-          return;
-        }
-        console.log('⚔️ Received battleStateUpdate event, updating game state for animation');
+        // Allow animation states to update the store during replay
+        // These temporary animation states (movingToRegion, attackedRegion) enable smooth transitions
+        // The final clean state will overwrite them after animations complete (see GameStateUpdater.ts)
+        const animationState = event.detail.gameState;
+        
+        // Log soldier positions to debug animation issues
+        const regionsWithMarkers = new Map<number, string[]>();
+        Object.entries(animationState.soldiersByRegion || {}).forEach(([regionIndex, soldiers]: [string, any[]]) => {
+          const markers = soldiers
+            .filter((s: any) => s.movingToRegion !== undefined || s.attackedRegion !== undefined)
+            .map((s: any) => {
+              if (s.movingToRegion !== undefined) return `${s.i}→${s.movingToRegion}`;
+              if (s.attackedRegion !== undefined) return `${s.i}⚔${s.attackedRegion}`;
+              return '';
+            })
+            .filter(Boolean);
+          if (markers.length > 0) {
+            regionsWithMarkers.set(parseInt(regionIndex), markers);
+          }
+        });
+        
+        console.log('⚔️ Received battleStateUpdate event, updating game state for animation', {
+          regionsWithAnimations: Array.from(regionsWithMarkers.entries()).map(([region, markers]) => ({
+            region,
+            animations: markers
+          }))
+        });
+        
         // Update store directly to avoid queuing delays
-        this.gameStore.gameState.set(event.detail.gameState);
+        this.gameStore.gameState.set(animationState);
       }) as EventListener);
     }
 

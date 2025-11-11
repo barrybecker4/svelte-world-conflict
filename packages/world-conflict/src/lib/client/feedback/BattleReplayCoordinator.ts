@@ -30,9 +30,22 @@ export class BattleReplayCoordinator {
    * @returns Promise that resolves when all animations complete
    */
   async playConquest(move: DetectedMove, regions: any[]): Promise<void> {
+    console.log(`⚔️ BattleReplayCoordinator.playConquest`, {
+      hasAttackSequence: !!move.attackSequence,
+      attackSequenceLength: move.attackSequence?.length || 0,
+      hasBattleAnimationSystem: !!this.battleAnimationSystem,
+      sourceRegion: move.sourceRegion,
+      targetRegion: move.regionIndex
+    });
+    
     if (move.attackSequence && move.attackSequence.length > 0 && this.battleAnimationSystem) {
+      console.log(`✅ Playing full battle animation`);
       await this.playFullBattleAnimation(move, regions);
     } else {
+      console.log(`⚠️ Playing simple conquest feedback (no attack sequence or battle system)`, {
+        hasAttackSequence: !!move.attackSequence,
+        hasBattleSystem: !!this.battleAnimationSystem
+      });
       await this.playSimpleConquestFeedback(move);
     }
   }
@@ -46,11 +59,19 @@ export class BattleReplayCoordinator {
     const previousGameState = (move as any).previousGameState;
     const finalGameState = (move as any).finalGameState;
 
+    // Calculate how many soldiers actually attacked by comparing states
+    const previousSourceCount = previousGameState.soldiersByRegion?.[sourceRegion]?.length || 0;
+    const finalSourceCount = finalGameState.soldiersByRegion?.[sourceRegion]?.length || 0;
+    const attackingSoldierCount = previousSourceCount - finalSourceCount;
+
+    console.log(`⚔️ Battle replay: ${attackingSoldierCount} soldiers attacked (${previousSourceCount} before, ${finalSourceCount} after at source)`);
+
     // Step 1: Set up halfway positioning for attacking soldiers
     const animationState = await this.prepareAttackAnimation(
       previousGameState,
       sourceRegion,
-      targetRegion
+      targetRegion,
+      attackingSoldierCount
     );
 
     // Step 2: Play battle sequence with casualty effects
@@ -77,7 +98,8 @@ export class BattleReplayCoordinator {
   private async prepareAttackAnimation(
     previousGameState: any,
     sourceRegion: number,
-    targetRegion: number
+    targetRegion: number,
+    attackingSoldierCount: number
   ): Promise<any> {
     if (!previousGameState || !previousGameState.soldiersByRegion) {
       return null;
@@ -87,18 +109,20 @@ export class BattleReplayCoordinator {
     const animationState = JSON.parse(JSON.stringify(previousGameState));
 
     // Set attackedRegion on attacking soldiers (for halfway positioning)
-    const attackingSoldiers = animationState.soldiersByRegion[sourceRegion] || [];
+    const soldierArray = animationState.soldiersByRegion[sourceRegion] || [];
 
-    // Mark soldiers as attacking (they stay in source array for rendering)
+    // Mark ONLY the soldiers that are attacking (they stay in source array for rendering)
     // Server uses pop() which takes from END of array, so mark the LAST N soldiers
-    // We mark ALL soldiers at source for now since we don't know exact count until after battle
+    const startIndex = Math.max(0, soldierArray.length - attackingSoldierCount);
     console.log(
-      `⚔️ AI Battle: Setting attackedRegion on ${attackingSoldiers.length} soldiers from region ${sourceRegion} to ${targetRegion}`
+      `⚔️ Battle animation: Marking ${attackingSoldierCount} soldiers (indices ${startIndex}-${soldierArray.length - 1}) as attacking from region ${sourceRegion} to ${targetRegion}`
     );
 
-    attackingSoldiers.forEach((soldier: any) => {
-      soldier.attackedRegion = targetRegion;
-    });
+    for (let i = startIndex; i < soldierArray.length; i++) {
+      soldierArray[i].attackedRegion = targetRegion;
+    }
+
+    console.log(`✅ Soldiers at source: ${startIndex} staying, ${attackingSoldierCount} attacking`);
 
     // Trigger state update to show halfway positioning
     this.dispatchBattleStateUpdate(animationState);
@@ -244,27 +268,33 @@ export class BattleReplayCoordinator {
   ): any {
     const newAnimationState = JSON.parse(JSON.stringify(finalGameState));
 
-    // Get surviving soldier IDs (these are now at target in finalGameState)
-    const survivorIds = new Set(targetSoldiersInFinal.map((s: any) => s.i));
+    console.log(`🔍 buildConquestAnimationState: Building animation for conquest from ${sourceRegion} to ${targetRegion}`);
+    console.log(`   Target has ${targetSoldiersInFinal.length} soldiers in final state:`, targetSoldiersInFinal.map((s: any) => s.i));
 
-    // Find survivors from the attack in the PREVIOUS animation state
-    const currentSourceSoldiers = previousGameState.soldiersByRegion?.[sourceRegion] || [];
-    const survivingAttackers = currentSourceSoldiers.filter(
-      (s: any) => s.attackedRegion === targetRegion && survivorIds.has(s.i)
-    );
+    // Use finalGameState as source of truth for soldier data
+    // In finalGameState: soldiers at source = stayed, soldiers at target = survivors
+    const soldiersThatStayed = finalGameState.soldiersByRegion?.[sourceRegion] || [];
+    const survivors = targetSoldiersInFinal; // Already have these
 
-    console.log(`Found ${survivingAttackers.length} surviving attackers to animate (out of ${targetSoldiersInFinal.length} at target)`);
+    console.log(`   🏠 Soldiers that stayed at source (${soldiersThatStayed.length}):`, soldiersThatStayed.map((s: any) => s.i));
+    console.log(`   ✅ Survivors to animate to target (${survivors.length}):`, survivors.map((s: any) => s.i));
 
     // CRITICAL: Clear target region FIRST to avoid duplicates
     newAnimationState.soldiersByRegion[targetRegion] = [];
 
-    // Then place survivors at source with movingToRegion set
-    // This ensures each soldier is in exactly ONE region at a time
-    newAnimationState.soldiersByRegion[sourceRegion] = survivingAttackers.map((s: any) => ({
+    // Place survivors at source with movingToRegion marker so they animate to target
+    // Use clean soldier data from finalGameState
+    const survivorsMoving = survivors.map((s: any) => ({
       ...s,
-      attackedRegion: undefined,
       movingToRegion: targetRegion
     }));
+    
+    // Combine soldiers that stayed with survivors that are moving
+    // All soldiers use data from finalGameState (correct state, no stale markers)
+    newAnimationState.soldiersByRegion[sourceRegion] = [
+      ...soldiersThatStayed,  // Already correct from finalGameState
+      ...survivorsMoving      // From finalGameState.target, with movingToRegion added
+    ];
 
     // Update ownership so color changes with soldiers
     newAnimationState.ownersByRegion = {

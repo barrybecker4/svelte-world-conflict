@@ -41,6 +41,17 @@ export class GameStateUpdater {
   ) {}
 
   /**
+   * Initialize with the initial game state (call after loading from server)
+   */
+  initializeWithState(initialState: GameStateData): void {
+    this.lastRawState = clearBattleState(initialState);
+    console.log('📍 GameStateUpdater: Initialized with initial state', {
+      currentPlayerSlot: initialState.currentPlayerSlot,
+      turnNumber: initialState.turnNumber
+    });
+  }
+
+  /**
    * Set callback to be called when player's turn is ready for interaction
    */
   setOnTurnReadyCallback(callback: (gameState: GameStateData) => void): void {
@@ -120,7 +131,21 @@ export class GameStateUpdater {
     const playerChanged = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
     const turnNumberIncreased = currentState && updatedState.turnNumber > currentState.turnNumber;
     const isNewTurn = playerChanged || turnNumberIncreased;
-    const isOtherPlayersTurn = updatedState.currentPlayerSlot !== this.playerSlotIndex;
+    
+    // Detect if this was another player's move by checking who had the turn BEFORE (in currentState)
+    // If the previous player was someone else and the turn changed, they made the move
+    const previousPlayerSlot = currentState?.currentPlayerSlot;
+    const wasPreviousPlayerSomeoneElse = previousPlayerSlot !== undefined && previousPlayerSlot !== this.playerSlotIndex;
+    const isOtherPlayerMove = wasPreviousPlayerSomeoneElse && playerChanged;
+    
+    console.log('🔍 Move detection:', {
+      mySlotIndex: this.playerSlotIndex,
+      previousPlayerSlot,
+      currentPlayerSlot: updatedState.currentPlayerSlot,
+      playerChanged,
+      wasPreviousPlayerSomeoneElse,
+      isOtherPlayerMove
+    });
 
     // Check for eliminations in the updated state (e.g., from AI moves)
     this.checkForEliminations(cleanState);
@@ -161,7 +186,7 @@ export class GameStateUpdater {
         const isAiPlayer = currentPlayer?.isAI;
 
         // Play appropriate sounds and handle animations based on whose turn it is
-        if (isOtherPlayersTurn) {
+        if (isOtherPlayerMove) {
           // DON'T update full game state yet - keep old state for animations
           // The animations will update to intermediate states, then we apply final state
           
@@ -179,6 +204,8 @@ export class GameStateUpdater {
           
           // Clear flag before applying final state
           GameStateUpdater.isReplayingMoves = false;
+          
+          console.log('✅ Animations complete, applying final clean state');
           
           // NOW apply the final state after animations complete
           this.gameStateStore.set(cleanState);
@@ -218,9 +245,9 @@ export class GameStateUpdater {
       console.log('🔄 Same player slot move detected');
       turnManager.updateGameState(cleanState);
 
-      // Only replay moves if it's another player's turn (to avoid double animations)
+      // Only replay moves if it's another player's move (to avoid double animations)
       // When it's our own move, BattleManager already animated it
-      if (isOtherPlayersTurn) {
+      if (isOtherPlayerMove) {
         console.log('🔄 Replaying other player\'s move');
         // DON'T update game state yet - keep old state for animations
         
@@ -233,6 +260,8 @@ export class GameStateUpdater {
         
         // Clear flag before applying final state
         GameStateUpdater.isReplayingMoves = false;
+        
+        console.log('✅ Animations complete, applying final clean state (same player slot)');
         
         // NOW apply the final state after animations complete
         this.gameStateStore.set(cleanState);
