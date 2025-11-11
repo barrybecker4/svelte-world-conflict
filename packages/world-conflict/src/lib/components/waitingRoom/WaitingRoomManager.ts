@@ -84,36 +84,54 @@ export class WaitingRoomManager {
 
       // Register callbacks for WebSocket events
       this.wsClient.onGameStarted((data: any) => {
-        console.log('🚀 Game auto-started - all slots filled', data);
+        console.log('🚀 [WaitingRoom] Received gameStarted WebSocket message', data);
         // Disconnect WebSocket BEFORE transitioning to avoid conflicts
-        console.log('🔌 Disconnecting waiting room WebSocket before game transition');
+        console.log('🔌 [WaitingRoom] Disconnecting WebSocket before game transition');
         this.wsClient.disconnect();
         this.wsClient = null;
         // Game has started, trigger callback to transition to playing state
+        console.log('🚀 [WaitingRoom] Triggering onGameStarted callback');
         this.onGameStarted?.();
       });
 
       this.wsClient.onPlayerJoined((data: any) => {
-        console.log(`📨 Player joined:`, data);
+        console.log(`📨 [WaitingRoom] Received playerJoined WebSocket message:`, data);
         // Reload game state to show updated player list
         this.loadGameState();
       });
 
+      // Track if we've been subscribed
+      let hasSubscribed = false;
+      
       this.wsClient.onConnected(() => {
-        console.log(`✅ WebSocket connected for waiting room (game ${this.gameId})`);
+        console.log(`✅ [WaitingRoom] WebSocket connected for game ${this.gameId}, waiting for subscription confirmation...`);
+      });
+      
+      // Listen for subscription confirmation
+      this.wsClient.on('subscribed', (message: any) => {
+        hasSubscribed = true;
+        const subscribedGameId = message.gameId || message;
+        console.log(`✅ [WaitingRoom] Successfully subscribed to game ${subscribedGameId}`);
+        if (subscribedGameId !== this.gameId) {
+          console.error(`❌ [WaitingRoom] Subscription game ID mismatch! Expected ${this.gameId}, got ${subscribedGameId}`);
+          this.error.set(`Subscription error: wrong game ID`);
+        }
       });
 
       this.wsClient.onDisconnected(() => {
-        console.warn(`❌ WebSocket disconnected from waiting room (game ${this.gameId})`);
+        console.error(`❌ [WaitingRoom] WebSocket DISCONNECTED from game ${this.gameId} - this means we won't receive gameStarted notifications!`);
+        this.error.set('Connection lost. Please refresh the page.');
       });
 
       this.wsClient.onError((error: string) => {
-        console.error(`❌ WebSocket error in waiting room:`, error);
+        console.error(`❌ [WaitingRoom] WebSocket error for game ${this.gameId}:`, error);
+        this.error.set(`Connection error: ${error}`);
       });
 
       // Connect to the WebSocket for this game
+      console.log(`🔌 [WaitingRoom] Attempting to connect WebSocket for game ${this.gameId}...`);
       await this.wsClient.connect(this.gameId);
-      console.log(`🔌 Connected to WebSocket for game ${this.gameId}`);
+      console.log(`🔌 [WaitingRoom] WebSocket connect() call completed for game ${this.gameId}`);
     } catch (error: any) {
       console.error('❌ Error setting up real-time updates:', error);
       this.wsConnected.set(false);

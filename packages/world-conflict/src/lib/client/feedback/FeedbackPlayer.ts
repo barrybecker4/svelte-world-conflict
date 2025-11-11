@@ -25,6 +25,14 @@ export class FeedbackPlayer {
       const animationState = JSON.parse(JSON.stringify(gameState));
       const sourceSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
       
+      // VALIDATION: Ensure we have enough soldiers at source
+      if (sourceSoldiers.length < soldierCount) {
+        console.error(`❌ Invalid animation state: trying to move ${soldierCount} soldiers but only ${sourceSoldiers.length} at source region ${sourceRegion}`);
+        console.error('This indicates the gameState was contaminated with animation state from a previous move');
+        // Skip animation if state is invalid - the final state will still be applied correctly
+        return;
+      }
+      
       // Mark soldiers as moving (they stay in source array for rendering)
       // IMPORTANT: Server uses pop() which takes from END of array, so mark the LAST N soldiers
       const startIndex = Math.max(0, sourceSoldiers.length - soldierCount);

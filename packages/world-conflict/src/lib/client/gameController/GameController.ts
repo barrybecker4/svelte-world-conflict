@@ -132,9 +132,15 @@ export class GameController {
     // Listen for battle state updates (for soldier positioning animations)
     if (typeof window !== 'undefined') {
       window.addEventListener('battleStateUpdate', ((event: CustomEvent) => {
+        // During move replay, animation states should not contaminate the stored game state
+        // Only update for our own moves (which use animation states correctly)
+        if (GameStateUpdater.isCurrentlyReplayingMoves()) {
+          console.log('⚔️ Skipping game state update during move replay (animation only)');
+          // The animation state will still be visible via the event, but won't pollute the store
+          return;
+        }
         console.log('⚔️ Received battleStateUpdate event, updating game state for animation');
         // Update store directly to avoid queuing delays
-        // Note: We allow these updates during AI replay as they ARE the animation states we want to show
         this.gameStore.gameState.set(event.detail.gameState);
       }) as EventListener);
     }

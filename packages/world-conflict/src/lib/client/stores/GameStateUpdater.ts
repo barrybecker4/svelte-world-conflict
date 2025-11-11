@@ -170,9 +170,15 @@ export class GameStateUpdater {
             setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME);
           });
 
+          // Set flag to prevent animation states from contaminating game state
+          GameStateUpdater.isReplayingMoves = true;
+
           // Detect and replay moves using state comparison
           console.log('📼 Detecting and replaying moves from state diff');
           await this.moveReplayer.replayMoves(updatedState, currentState);
+          
+          // Clear flag before applying final state
+          GameStateUpdater.isReplayingMoves = false;
           
           // NOW apply the final state after animations complete
           this.gameStateStore.set(cleanState);

@@ -57,17 +57,23 @@ async function handleDurableObjectRequest(request: Request, env: any): Promise<R
     
     // Use location hint to ensure consistent global routing
     // All game instances route to Western North America for accessibility from any region
+    // NOTE: Location hint is disabled in local dev as wrangler dev doesn't fully support it
     const locationHint = 'wnam'; // Western North America (California, Oregon)
+    const isLocalDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
     
     console.log('[Worker] Routing request to Durable Object:', {
       pathname: new URL(request.url).pathname,
       method: request.method,
       gameId,
-      locationHint
+      locationHint: isLocalDev ? 'disabled (local dev)' : locationHint,
+      environment: env.ENVIRONMENT || 'not set (assumed local dev)'
     });
 
     const id = env.WEBSOCKET_SERVER.idFromName(gameId);
-    const durableObject = env.WEBSOCKET_SERVER.get(id, { locationHint });
+    // Only use locationHint in production to avoid routing issues in local dev
+    const durableObject = isLocalDev 
+      ? env.WEBSOCKET_SERVER.get(id)
+      : env.WEBSOCKET_SERVER.get(id, { locationHint });
 
     return durableObject.fetch(request);
   } catch (error) {
