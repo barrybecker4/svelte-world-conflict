@@ -135,7 +135,7 @@ curl -X POST https://svelte-world-conflict-websocket.barrybecker4.workers.dev/no
   -d '{"gameId":"test","message":{"type":"gameUpdate","gameState":{}}}'
 ```
 
-### 2. Test Game Deployment
+### 2. Test Game Deployment (Manual)
 
 1. Visit your Cloudflare Pages URL
 2. Create a new game
@@ -143,7 +143,28 @@ curl -X POST https://svelte-world-conflict-websocket.barrybecker4.workers.dev/no
 4. Test making moves
 5. Open in another browser/tab to test multiplayer
 
-### 3. Check Logs
+### 3. Test Game Deployment (Automated E2E Tests)
+
+Run the full Playwright test suite against your deployed app:
+
+```bash
+cd packages/world-conflict
+npx playwright test --config=playwright.config.production.ts
+```
+
+This will:
+- Run all e2e tests against the deployed app
+- Test multiplayer functionality with real WebSocket connections
+- Verify game logic, turn order, AI players, and more
+- Create real game data in your production KV storage
+
+**Tips:**
+- Use `--headed` flag to watch tests execute
+- Use `--ui` flag for interactive debugging
+- Run specific test files: `npx playwright test tests/e2e/single-human-ai.spec.ts --config=playwright.config.production.ts`
+- See `packages/world-conflict/tests/e2e/README.md` for more options
+
+### 4. Check Logs
 
 View worker logs in real-time:
 

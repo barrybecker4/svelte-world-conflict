@@ -115,7 +115,7 @@ async function notifyClients(gameId: string, message: any) {
 │ • WebSocket     │                   │ • Session mgmt   │               │ • Game      │
 │   Client        │                   │ • Broadcasting   │               │   Logic     │
 └─────────────────┘                   └──────────────────┘               │ • Storage   │
-                                                                          └─────────────┘
+                                                                         └─────────────┘
 ```
 
 ## API Reference

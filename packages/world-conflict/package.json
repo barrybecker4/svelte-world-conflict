@@ -16,6 +16,9 @@
     "test:e2e:multi": "playwright test multi-human",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
+    "test:e2e:prod": "playwright test --config=playwright.config.production.ts",
+    "test:e2e:prod:headed": "playwright test --config=playwright.config.production.ts --headed",
+    "test:e2e:prod:ui": "playwright test --config=playwright.config.production.ts --ui",
     "deploy": "npm run build && wrangler pages deploy dist"
   },
   "devDependencies": {

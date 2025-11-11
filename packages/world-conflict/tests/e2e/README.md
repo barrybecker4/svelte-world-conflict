@@ -57,6 +57,49 @@ npx playwright test --debug
 npx playwright test --ui
 ```
 
+### Run tests against deployed production environment
+
+By default, tests run against a local dev server. To test against the deployed production app:
+
+```bash
+# Use the production config
+npx playwright test --config=playwright.config.production.ts
+
+# Or specify a custom URL
+BASE_URL=https://your-custom-url.pages.dev npx playwright test --config=playwright.config.production.ts
+```
+
+**Important Notes:**
+- The production config (`playwright.config.production.ts`) uses `https://svelte-world-conflict.pages.dev` by default
+- Tests will interact with the live production environment and create real game data in KV storage
+- Make sure both the game app AND the WebSocket worker are deployed before running tests
+- WebSocket worker URL: `https://svelte-world-conflict-websocket.barrybecker4.workers.dev`
+- Consider using a preview/staging environment for testing instead of production
+
+**Running specific tests against production:**
+```bash
+# Run a single test file
+npx playwright test tests/e2e/single-human-ai.spec.ts --config=playwright.config.production.ts
+
+# Run tests in headed mode to watch
+npx playwright test --config=playwright.config.production.ts --headed
+
+# Run with UI mode for debugging
+npx playwright test --config=playwright.config.production.ts --ui
+```
+
+**Convenient npm scripts:**
+```bash
+# Run all e2e tests against production
+npm run test:e2e:prod
+
+# Run in headed mode
+npm run test:e2e:prod:headed
+
+# Run in UI mode
+npm run test:e2e:prod:ui
+```
+
 ## Test Structure
 
 ### Fixtures (`fixtures/`)
