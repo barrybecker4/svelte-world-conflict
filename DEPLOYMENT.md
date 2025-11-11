@@ -65,6 +65,16 @@ npx wrangler deploy
 
 **Important:** The worker name is configured to match your existing deployment (`svelte-world-conflict-websocket`), so this will update your existing worker with the new framework code.
 
+### Geographic Routing
+
+The WebSocket worker uses **location hints** to ensure players from different countries can join the same game. All Durable Objects are routed to Western North America (`wnam`) by default, which ensures:
+
+- ✅ Players from California, Japan, Europe, etc. can all join the same game
+- ✅ Consistent routing across all Cloudflare datacenters
+- ✅ Low-latency access for most users (especially in Americas and Asia-Pacific)
+
+This is configured automatically in the worker code - no additional setup required.
+
 ### Verify Worker Deployment
 
 Test the health endpoint:
@@ -143,6 +153,13 @@ curl -X POST https://svelte-world-conflict-websocket.barrybecker4.workers.dev/no
 4. Test making moves
 5. Open in another browser/tab to test multiplayer
 
+**Test Cross-Geographic Multiplayer:**
+1. Create a new game in one location (e.g., California)
+2. Share the game URL with a friend in another country (e.g., Japan)
+3. Have them join the game
+4. Both players should see real-time updates
+5. Check browser console and worker logs for any routing issues
+
 ### 3. Test Game Deployment (Automated E2E Tests)
 
 Run the full Playwright test suite against your deployed app:
@@ -182,6 +199,8 @@ cd packages/svelte-multiplayer-framework/src/worker
 npx wrangler deploy
 ```
 
+**Important:** After deploying with location hints, existing game sessions may need to be recreated. Players should create new games to ensure proper geographic routing.
+
 ### Update Game
 
 ```bash
@@ -200,6 +219,33 @@ npm run deploy -w world-conflict
 2. **Check browser console** for WebSocket errors
 
 3. **Verify URL in config** matches deployed worker
+
+### Players Can't Join from Different Countries
+
+If players in different geographic locations (e.g., California and Japan) cannot join each other's games:
+
+1. **Verify location hints are enabled** - Check that the worker code includes:
+   ```typescript
+   const durableObject = env.WEBSOCKET_SERVER.get(id, { locationHint: 'wnam' });
+   ```
+
+2. **Check worker logs** for routing errors:
+   ```bash
+   cd packages/svelte-multiplayer-framework/src/worker
+   npx wrangler tail
+   ```
+
+3. **Test WebSocket connection** from both locations:
+   - Check browser console for connection errors
+   - Look for "WebSocket closed" or "Failed to connect" messages
+   - Verify both players are connecting to the same gameId
+
+4. **Alternative location hints** - If latency is poor for some regions, you can change the location hint in `worker/index.ts`:
+   - `"wnam"` - Western North America (best for Americas + Asia-Pacific)
+   - `"weur"` - Western Europe (best for Europe + Africa)
+   - `"apac"` - Asia Pacific (best for Asia + Oceania)
+
+**Note:** All players must connect after the location hint is deployed. Old game sessions may not work across regions.
 
 ### KV Storage Issues
 

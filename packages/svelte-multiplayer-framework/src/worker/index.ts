@@ -55,14 +55,19 @@ async function handleDurableObjectRequest(request: Request, env: any): Promise<R
   try {
     const gameId = await getGameIdFromRequest(request);
     
+    // Use location hint to ensure consistent global routing
+    // All game instances route to Western North America for accessibility from any region
+    const locationHint = 'wnam'; // Western North America (California, Oregon)
+    
     console.log('[Worker] Routing request to Durable Object:', {
       pathname: new URL(request.url).pathname,
       method: request.method,
-      gameId
+      gameId,
+      locationHint
     });
 
     const id = env.WEBSOCKET_SERVER.idFromName(gameId);
-    const durableObject = env.WEBSOCKET_SERVER.get(id);
+    const durableObject = env.WEBSOCKET_SERVER.get(id, { locationHint });
 
     return durableObject.fetch(request);
   } catch (error) {
