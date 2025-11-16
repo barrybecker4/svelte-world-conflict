@@ -25,7 +25,7 @@ export class ScoreCalculator {
   /**
    * Get total number of soldiers owned by a player across all regions
    */
-  private getTotalSoldiers(playerSlotIndex: number): number {
+  getTotalSoldiers(playerSlotIndex: number): number {
     const { ownersByRegion, soldiersByRegion } = this.gameState;
 
     if (!ownersByRegion || !soldiersByRegion) {

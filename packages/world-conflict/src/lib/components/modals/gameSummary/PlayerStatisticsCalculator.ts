@@ -1,4 +1,5 @@
 import type { Player, GameStateData } from '$lib/game/state/GameState';
+import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 export interface PlayerStats {
   player: Player;
@@ -11,17 +12,11 @@ export interface PlayerStats {
 
 export class PlayerStatisticsCalculator {
   private gameState: GameStateData;
+  private scoreCalculator: ScoreCalculator;
 
   constructor(gameState: GameStateData) {
     this.gameState = gameState;
-  }
-
-  /**
-   * Calculate total score based on regions, soldiers, and faith
-   * Regions: 1000 points, Soldiers: 10 points, Faith: 1 point
-   */
-  private calculateScore(regionCount: number, soldierCount: number, faithCount: number): number {
-    return (1000 * regionCount) + (10 * soldierCount) + faithCount;
+    this.scoreCalculator = new ScoreCalculator(gameState);
   }
 
   /**
@@ -46,35 +41,11 @@ export class PlayerStatisticsCalculator {
     return stats;
   }
 
-  private getRegionCount(playerSlotIndex: number): number {
-    if (!this.gameState?.ownersByRegion) {
-      return 0;
-    }
-    return Object.values(this.gameState.ownersByRegion)
-      .filter(owner => owner === playerSlotIndex).length;
-  }
-
-  private getTotalSoldiers(playerSlotIndex: number): number {
-    if (!this.gameState?.soldiersByRegion) {
-      return 0;
-    }
-
-    let total = 0;
-    Object.entries(this.gameState.soldiersByRegion).forEach(([regionIndexStr, soldiers]) => {
-      const regionIndex = parseInt(regionIndexStr);
-      if (this.gameState.ownersByRegion[regionIndex] === playerSlotIndex) {
-        total += soldiers.length;
-      }
-    });
-
-    return total;
-  }
-
   getPlayerStats(player: Player): Omit<PlayerStats, 'rank'> {
-    const regionCount = this.getRegionCount(player.slotIndex);
-    const soldierCount = this.getTotalSoldiers(player.slotIndex);
+    const regionCount = this.scoreCalculator.getRegionCount(player.slotIndex);
+    const soldierCount = this.scoreCalculator.getTotalSoldiers(player.slotIndex);
     const faithCount = this.gameState.faithByPlayer[player.slotIndex] || 0;
-    const totalScore = this.calculateScore(regionCount, soldierCount, faithCount);
+    const totalScore = this.scoreCalculator.calculatePlayerScore(player.slotIndex);
 
     return {
       player,
@@ -86,7 +57,7 @@ export class PlayerStatisticsCalculator {
   }
 
   isPlayerEliminated(playerSlotIndex: number): boolean {
-    return this.getRegionCount(playerSlotIndex) === 0;
+    return this.scoreCalculator.getRegionCount(playerSlotIndex) === 0;
   }
 
   getActivePlayers(players: Player[]): Player[] {
