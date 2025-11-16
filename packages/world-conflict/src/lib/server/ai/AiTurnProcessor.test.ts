@@ -294,15 +294,28 @@ describe('AiTurnProcessor', () => {
             const aiPlayer1 = createMockPlayer({ slotIndex: 0, name: 'AI 1', isAI: true, personality: 'Defender' });
             const aiPlayer2 = createMockPlayer({ slotIndex: 1, name: 'AI 2', isAI: true, personality: 'Aggressor' });
             
+            // Create a more balanced setup so AIs don't eliminate each other immediately
+            // Give each AI multiple regions spread out to allow multiple turns
             const gameState = createMockGameState({
                 players: [aiPlayer1, aiPlayer2],
                 currentPlayerSlot: 0,
                 regions: [
-                    createMockRegion({ index: 0, neighbors: [1] }),
-                    createMockRegion({ index: 1, neighbors: [0] })
+                    createMockRegion({ index: 0, neighbors: [1, 2] }),
+                    createMockRegion({ index: 1, neighbors: [0, 3] }),
+                    createMockRegion({ index: 2, neighbors: [0, 4] }),
+                    createMockRegion({ index: 3, neighbors: [1, 5] }),
+                    createMockRegion({ index: 4, neighbors: [2, 5] }),
+                    createMockRegion({ index: 5, neighbors: [3, 4] })
                 ],
-                ownersByRegion: { 0: 0, 1: 1 },
-                soldiersByRegion: { 0: [{ i: 1 }, { i: 2 }], 1: [{ i: 3 }, { i: 4 }] },
+                ownersByRegion: { 0: 0, 1: 0, 2: 1, 3: 1, 4: 1, 5: 0 },
+                soldiersByRegion: { 
+                    0: [{ i: 1 }, { i: 2 }], 
+                    1: [{ i: 3 }], 
+                    2: [{ i: 4 }, { i: 5 }],
+                    3: [{ i: 6 }],
+                    4: [{ i: 7 }],
+                    5: [{ i: 8 }]
+                },
                 movesRemaining: 3,
                 maxTurns: 10,
                 turnNumber: 1,
