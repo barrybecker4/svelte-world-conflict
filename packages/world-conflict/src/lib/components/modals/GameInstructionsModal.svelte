@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
@@ -8,12 +8,17 @@
   import { loadPlayerName } from '$lib/client/stores/clientStorage';
   import { VERSION } from '$lib/version';
 
-  const dispatch = createEventDispatcher();
+  interface Props {
+    oncomplete?: () => void;
+    onclose?: () => void;
+  }
 
-  let currentCard = 0;
-  let isOpen = true;
+  let { oncomplete, onclose }: Props = $props();
+
+  let currentCard = $state(0);
+  let isOpen = $state(true);
   const totalCards = 5;
-  let userName = '';
+  let userName = $state('');
 
   onMount(() => {
     userName = loadPlayerName();
@@ -87,15 +92,16 @@
 
   function complete() {
     console.log('📖 Got it! - Instructions complete');
-    dispatch('complete');
+    oncomplete?.();
     isOpen = false;
   }
 
   function handleClose() {
+    onclose?.();
     complete();
   }
 
-  $: currentTutorial = tutorialCards[currentCard];
+  const currentTutorial = $derived(tutorialCards[currentCard]);
 </script>
 
 <Modal
@@ -184,33 +190,33 @@
   .tutorial-container {
     position: relative;
     width: 90%;
-    padding: 2rem;
+    padding: 1.25rem;
     left: 50px;
   }
 
   .tutorial-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     position: relative;
   }
 
   .tutorial-header h1 {
-    font-size: 5rem;
+    font-size: 3rem;
     font-weight: bold;
     background: linear-gradient(135deg, #60a5fa, #a855f7, #ec4899);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
   }
 
   .user-info {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-    font-size: 1rem;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
     color: #94a3b8;
   }
 
@@ -221,7 +227,7 @@
   .user-info a {
     color: #dde;
     text-decoration: none;
-    padding: 0.35rem 0.75rem;
+    padding: 0.25rem 0.6rem;
     border-radius: 6px;
     transition: all 0.2s ease;
   }
@@ -235,8 +241,8 @@
     background: rgba(15, 23, 42, 0.8);
     border: 2px solid #475569;
     border-radius: 12px;
-    padding: 2rem;
-    min-height: 300px;
+    padding: 1.25rem;
+    min-height: 220px;
     backdrop-filter: blur(10px);
   }
 
@@ -248,17 +254,17 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .card-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: #f8fafc;
     margin: 0;
   }
 
   .icon {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
 
   .card-content {
@@ -268,11 +274,12 @@
   }
 
   .card-content li {
-    margin-bottom: 1rem;
-    padding-left: 1.5rem;
+    margin-bottom: 0.6rem;
+    padding-left: 1.25rem;
     position: relative;
-    line-height: 1.6;
+    line-height: 1.4;
     color: #e2e8f0;
+    font-size: 0.95rem;
   }
 
   .card-content li::before {
@@ -287,14 +294,14 @@
     position: absolute;
     top: 0;
     right: 0;
-    padding: 0.5rem;
+    padding: 0.25rem;
   }
 
   .close-button-wrapper :global(.icon-btn) {
     background: transparent;
     border: none;
     color: #94a3b8;
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
 
   .close-button-wrapper :global(.icon-btn:hover) {
@@ -337,8 +344,8 @@
   }
 
   .bottom-box {
-    font-size: 1.2rem;
-    padding: 1rem 3rem;
+    font-size: 1rem;
+    padding: 0.75rem 2rem;
     text-align: center;
   }
 </style>

@@ -198,7 +198,7 @@
     {/if}
 
     {#if $modalState.showInstructions}
-      <GameInstructions on:close={() => controller.closeInstructions()} />
+      <GameInstructions onclose={() => controller.closeInstructions()} />
     {/if}
 
     {#if import.meta.env.DEV}

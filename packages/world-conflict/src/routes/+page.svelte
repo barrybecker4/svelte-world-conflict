@@ -92,7 +92,7 @@
 </script>
 
 {#if showInstructions}
-  <GameInstructions on:complete={handleInstructionsComplete} />
+  <GameInstructions oncomplete={handleInstructionsComplete} />
 {/if}
 
 {#if showLobby}
