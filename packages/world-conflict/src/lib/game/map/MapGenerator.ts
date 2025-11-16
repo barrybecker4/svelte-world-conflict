@@ -13,8 +13,11 @@ export interface MapGenerationOptions {
 
 const MIN_REGION_SIZE_MAP = { Small: 7, Medium: 4, Large: 3 };
 const MAX_REGION_SIZE_MAP = { Small: 16, Medium: 12, Large: 10 };
-const BASE_NUM_REGIONS_MAP = { Small: 3, Medium: 14, Large: 36 };
+const BASE_NUM_REGIONS_MAP = { Small: 5, Medium: 14, Large: 36 };
 const REGIONS_PER_PLAYER_ALLOCATION_MAP = { Small: 2, Medium: 3, Large: 4 };
+
+// Minimum regions required for a playable game
+const MIN_REGIONS_FOR_PLAYERS = 5;
 
 // Perturb constant for consistent randomization
 let perturbConst: number | null = null;
@@ -76,6 +79,15 @@ export class MapGenerator {
         }
 
         regionMap.fillNeighborLists();
+        
+        // Validate minimum region count for playable game
+        if (regions.length < MIN_REGIONS_FOR_PLAYERS) {
+            throw new Error(
+                `Map generation failed: Generated ${regions.length} regions but need at least ${MIN_REGIONS_FOR_PLAYERS} for ${playerCount} players. ` +
+                `Try using a larger map size or reduce the number of players.`
+            );
+        }
+        
         return regions;
     }
 
