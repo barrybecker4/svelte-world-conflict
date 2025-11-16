@@ -11,6 +11,41 @@ import { CommandProcessor, EndTurnCommand } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { pickAiMove } from './AiDecisionMaker';
+import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
+import { BuildCommand } from '$lib/game/commands/BuildCommand';
+import { TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
+
+/**
+ * Extract move metadata from AI command for animation purposes
+ */
+function extractMoveMetadata(command: any): { type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn', sourceRegion?: number, targetRegion?: number, soldierCount?: number } | undefined {
+    if (command instanceof ArmyMoveCommand) {
+        return {
+            type: 'army_move',
+            sourceRegion: command.source,
+            targetRegion: command.destination,
+            soldierCount: command.count
+        };
+    } else if (command instanceof BuildCommand) {
+        // Check if it's a soldier recruit or temple upgrade
+        if (command.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
+            return {
+                type: 'recruit',
+                targetRegion: command.regionIndex
+            };
+        } else {
+            return {
+                type: 'upgrade',
+                targetRegion: command.regionIndex
+            };
+        }
+    } else if (command instanceof EndTurnCommand) {
+        return {
+            type: 'end_turn'
+        };
+    }
+    return undefined;
+}
 
 /**
  * Process AI turns until we reach a human player or game ends
@@ -29,6 +64,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
     let turnCount = 0;
     const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS; // Safety limit to prevent infinite loops
     let lastAttackSequence: any[] | undefined = undefined;
+    let lastMoveMetadata: any = undefined;
 
     console.log(`🤖 Processing AI turns for game ${gameId}, starting with ${currentPlayer?.name}`);
     console.log(`Starting AI turn processing - current player: ${currentPlayer?.name} (isAI: ${currentPlayer?.isAI})`);
@@ -59,6 +95,10 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         lastAttackSequence = undefined;
                     }
 
+                    // Extract move metadata for client animation
+                    const moveMetadata = extractMoveMetadata(aiMove);
+                    lastMoveMetadata = moveMetadata;
+
                     // Send WebSocket notification immediately for this move (but don't save to KV yet)
                     const updatedGame = await gameStorage.getGame(gameId);
                     if (updatedGame) {
@@ -66,8 +106,8 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
                         updatedGame.lastAttackSequence = lastAttackSequence;
+                        updatedGame.lastMove = moveMetadata;
 
-                        // Send WebSocket but DON'T save to KV
                         await WebSocketNotifications.gameUpdate(updatedGame);
                         console.log(`✅ AI move by ${currentPlayer.name} (${aiMove.constructor.name}) - WebSocket sent (KV save deferred)`);
                     }
@@ -91,6 +131,10 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                     currentState = result.newState;
                     lastAttackSequence = undefined; // Clear attack sequence for turn end
 
+                    // Extract move metadata for end turn
+                    const moveMetadata = extractMoveMetadata(endTurnCommand);
+                    lastMoveMetadata = moveMetadata;
+
                     // Send WebSocket notification for turn end (but don't save to KV yet)
                     const updatedGame = await gameStorage.getGame(gameId);
                     if (updatedGame) {
@@ -98,8 +142,8 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
                         updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
                         updatedGame.lastMoveAt = Date.now();
                         updatedGame.lastAttackSequence = undefined;
+                        updatedGame.lastMove = moveMetadata;
 
-                        // Send WebSocket but DON'T save to KV
                         await WebSocketNotifications.gameUpdate(updatedGame);
                         console.log(`✅ AI ${currentPlayer.name} ended turn - WebSocket sent (KV save deferred)`);
                     }
@@ -131,6 +175,7 @@ export async function processAiTurns(gameState: GameState, gameStorage: GameStor
         finalGame.currentPlayerSlot = currentState.currentPlayerSlot;
         finalGame.lastMoveAt = Date.now();
         finalGame.lastAttackSequence = lastAttackSequence;
+        finalGame.lastMove = lastMoveMetadata;
 
         await gameStorage.saveGame(finalGame);
         console.log(`💾 All AI turns complete - saved to KV (1 write for ${turnCount} AI actions)`);

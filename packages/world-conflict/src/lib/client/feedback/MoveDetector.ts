@@ -84,9 +84,11 @@ export class MoveDetector {
       } else if (newCount > oldCount) {
         // Region gained soldiers (likely target of move)
         // Detect conquests: enemy territory (owner changed) OR neutral with defenders (no old owner but had soldiers)
+        // OR empty neutral (no old owner, no soldiers, but now has owner and soldiers)
         const wasEnemyConquest = oldOwner !== undefined && oldOwner !== owner;
         const wasNeutralConquest = oldOwner === undefined && oldCount > 0;
-        const wasConquest = wasEnemyConquest || wasNeutralConquest;
+        const wasEmptyNeutralConquest = oldOwner === undefined && oldCount === 0 && newCount > 0;
+        const wasConquest = wasEnemyConquest || wasNeutralConquest || wasEmptyNeutralConquest;
         regionsWithGains.push({ regionIndex: idx, gain: newCount - oldCount, wasConquest, newOwner: owner, oldOwner });
       }
     });
@@ -181,10 +183,12 @@ export class MoveDetector {
       // Detect conquests:
       // 1. Enemy territory conquered (oldOwner changed)
       // 2. Neutral territory with defenders conquered (oldOwner undefined but had soldiers)
+      // 3. Empty neutral territory conquered (oldOwner undefined, no soldiers, but ownership gained)
       const isEnemyConquest = oldOwner !== undefined && newOwner !== oldOwner;
       const isNeutralConquest = oldOwner === undefined && oldCount > 0 && newOwner !== undefined;
+      const isEmptyNeutralConquest = oldOwner === undefined && oldCount === 0 && newOwner !== undefined && newCount > 0;
 
-      if (isEnemyConquest || isNeutralConquest) {
+      if (isEnemyConquest || isNeutralConquest || isEmptyNeutralConquest) {
         const sourceRegion = movementPairs.get(idx); // Get source from movement pairs
 
         console.log('⚔️ MoveDetector: Conquest detected', {
@@ -194,7 +198,8 @@ export class MoveDetector {
           oldCount,
           newCount,
           sourceRegion,
-          isNeutral: isNeutralConquest
+          isNeutral: isNeutralConquest,
+          isEmptyNeutral: isEmptyNeutralConquest
         });
 
         moves.push({

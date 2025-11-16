@@ -10,10 +10,11 @@ class WebSocketNotifier {
     private readonly timeout = 3000;
 
     async gameUpdate(game: GameRecord): Promise<void> {
-        // Include attack sequence for battle replay
+        // Include attack sequence and move metadata for battle replay and animation
         const gameStateWithSequence = {
             ...game.worldConflictState,
-            attackSequence: game.lastAttackSequence
+            attackSequence: game.lastAttackSequence,
+            lastMove: game.lastMove
         };
         await this.send(game.gameId, 'gameUpdate', gameStateWithSequence);
     }

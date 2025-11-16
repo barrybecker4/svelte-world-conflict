@@ -33,6 +33,51 @@ export class MoveReplayer {
   }
 
   /**
+   * Construct a DetectedMove from server-provided move metadata
+   */
+  private constructMoveFromMetadata(
+    lastMove: { type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn', sourceRegion?: number, targetRegion?: number, soldierCount?: number },
+    newState: any,
+    previousState: any
+  ): DetectedMove {
+    if (lastMove.type === 'army_move') {
+      const targetRegion = lastMove.targetRegion!;
+      const previousOwner = previousState.ownersByRegion?.[targetRegion];
+      const newOwner = newState.ownersByRegion?.[targetRegion];
+      const wasConquest = previousOwner !== newOwner;
+      
+      if (wasConquest) {
+        return {
+          type: 'conquest',
+          regionIndex: targetRegion,
+          sourceRegion: lastMove.sourceRegion,
+          oldOwner: previousOwner,
+          newOwner: newOwner
+        };
+      } else {
+        return {
+          type: 'movement',
+          regionIndex: targetRegion,
+          sourceRegion: lastMove.sourceRegion,
+          soldierCount: lastMove.soldierCount || 0
+        };
+      }
+    } else if (lastMove.type === 'recruit') {
+      return {
+        type: 'recruitment',
+        regionIndex: lastMove.targetRegion!
+      };
+    } else if (lastMove.type === 'upgrade') {
+      return {
+        type: 'upgrade',
+        regionIndex: lastMove.targetRegion!
+      };
+    }
+
+    throw new Error(`Unknown move type: ${lastMove.type}`);
+  }
+
+  /**
    * Main entry point: Play sound effects and show visual feedback for other player moves
    * Uses TaskQueue to ensure moves play sequentially without overlap
    * @param newState - The updated game state
@@ -40,62 +85,44 @@ export class MoveReplayer {
    * @returns Promise that resolves when all moves complete
    */
   async replayMoves(newState: any, previousState: any): Promise<void> {
-    if (!previousState) {
-      console.log('No previous state available for move replay');
-      return;
-    }
+    if (!previousState) return;
 
-    console.log('Playing other player moves...');
-
-    // Extract attack sequence and regions from new state if available
     const attackSequence = newState.attackSequence;
+    const lastMove = newState.lastMove;
     const regions = newState.regions || [];
 
-    console.log('🔍 MoveReplayer: Attack sequence check:', {
-      hasAttackSequence: !!attackSequence,
-      attackSequenceLength: attackSequence?.length || 0,
-      regionsCount: regions.length
-    });
-
-    // Detect what changed between states to determine move types
-    const moves = this.moveDetector.detectMoves(newState, previousState);
-
-    console.log(`📊 Move detection results: ${moves.length} moves detected`, moves);
-
-    // Special case: If we have an attack sequence but no moves detected,
-    // it means the player loaded the page after the move already happened.
-    // In this case, we can't replay because we don't have the pre-move state.
-    if (attackSequence && attackSequence.length > 0 && moves.length === 0) {
-      console.log('⚠️ Attack sequence present but no moves detected - player likely loaded after move was made');
-      console.log('   Cannot replay battle without pre-move state. Showing final state only.');
+    // Prefer server-provided move metadata over client-side detection
+    let moves: DetectedMove[] = [];
+    
+    if (lastMove && lastMove.type !== 'end_turn') {
+      moves = [this.constructMoveFromMetadata(lastMove, newState, previousState)];
+    } else {
+      moves = this.moveDetector.detectMoves(newState, previousState);
     }
 
-    // Attach attack sequence, regions, and game state to conquest moves if available
+    // Attach attack sequence and context to conquest moves
     if (attackSequence && moves.length > 0) {
       const conquestMove = moves.find(m => m.type === 'conquest');
       if (conquestMove) {
-        console.log('✅ MoveReplayer: Attaching attack sequence to conquest move', {
-          sequenceLength: attackSequence.length,
-          regionIndex: conquestMove.regionIndex
-        });
         conquestMove.attackSequence = attackSequence;
-        (conquestMove as any).regions = regions; // Attach regions for animation
-        (conquestMove as any).previousGameState = previousState; // Attach previous state for soldier positioning
-        (conquestMove as any).finalGameState = newState; // Attach final state for survivor detection
-      } else {
-        console.log('⚠️ MoveReplayer: Attack sequence present but no conquest move found');
+        (conquestMove as any).regions = regions;
+        (conquestMove as any).previousGameState = previousState;
+        (conquestMove as any).finalGameState = newState;
       }
     }
 
-    if (moves.length === 0) {
-      console.log('No moves detected to replay');
-      return;
-    }
+    // Attach context to all conquest moves
+    moves.forEach(move => {
+      if (move.type === 'conquest') {
+        (move as any).previousGameState = previousState;
+        (move as any).finalGameState = newState;
+        (move as any).regions = regions;
+      }
+    });
 
-    console.log(`Replaying ${moves.length} moves:`, moves);
+    if (moves.length === 0) return;
 
-    // Queue all moves sequentially using TaskQueue
-    // Each move's duration is determined by its actual animation time
+    // Queue moves sequentially
     for (const move of moves) {
       await animationQueue.enqueue(0, async () => {
         await this.playMoveWithFeedback(move, regions, previousState);
@@ -105,33 +132,21 @@ export class MoveReplayer {
 
   /**
    * Play a single move with appropriate sound and visual feedback
-   * @param move - The move to play back
-   * @param regions - The regions array for battle animations
-   * @param previousState - The game state before the move (for animation)
-   * @returns Promise that resolves when move animation completes
    */
   private async playMoveWithFeedback(move: DetectedMove, regions: any[], previousState: any): Promise<void> {
-    console.log('Playing move:', move);
-
     switch (move.type) {
       case 'conquest':
         await this.battleCoordinator.playConquest(move, regions);
         break;
-
       case 'movement':
         await this.feedbackPlayer.playMovement(move, previousState);
         break;
-
       case 'recruitment':
         await this.feedbackPlayer.playRecruitment(move);
         break;
-
       case 'upgrade':
         await this.feedbackPlayer.playUpgrade(move);
         break;
-
-      default:
-        console.log('Unknown move type:', move.type);
     }
   }
 }

@@ -12,6 +12,12 @@ export interface GameRecord {
     currentPlayerSlot: number;
     gameType: 'MULTIPLAYER' | 'AI';
     lastAttackSequence?: any[]; // Attack sequence from the last move for battle replay
+    lastMove?: {
+        type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn';
+        sourceRegion?: number;
+        targetRegion?: number;
+        soldierCount?: number;
+    };
 
     // Optional configuration for PENDING games that need to be completed
     pendingConfiguration?: {

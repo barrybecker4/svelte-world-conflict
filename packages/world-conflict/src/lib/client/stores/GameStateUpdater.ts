@@ -133,10 +133,10 @@ export class GameStateUpdater {
     const isNewTurn = playerChanged || turnNumberIncreased;
     
     // Detect if this was another player's move by checking who had the turn BEFORE (in currentState)
-    // If the previous player was someone else and the turn changed, they made the move
+    // If the previous player was someone else, we should animate their move
     const previousPlayerSlot = currentState?.currentPlayerSlot;
     const wasPreviousPlayerSomeoneElse = previousPlayerSlot !== undefined && previousPlayerSlot !== this.playerSlotIndex;
-    const isOtherPlayerMove = wasPreviousPlayerSomeoneElse && playerChanged;
+    const isOtherPlayerMove = wasPreviousPlayerSomeoneElse;
     
     console.log('🔍 Move detection:', {
       mySlotIndex: this.playerSlotIndex,
@@ -207,6 +207,9 @@ export class GameStateUpdater {
           
           console.log('✅ Animations complete, applying final clean state');
           
+          // Update lastRawState to prevent infinite loop
+          this.lastRawState = cleanState;
+          
           // NOW apply the final state after animations complete
           this.gameStateStore.set(cleanState);
           this.regionsStore.set(cleanState.regions || []);
@@ -228,6 +231,9 @@ export class GameStateUpdater {
           await new Promise<void>((resolve) => {
             setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
           });
+          
+          // Update lastRawState to prevent infinite loop
+          this.lastRawState = cleanState;
           
           // Apply state after banner
           this.gameStateStore.set(cleanState);
@@ -263,6 +269,9 @@ export class GameStateUpdater {
         
         console.log('✅ Animations complete, applying final clean state (same player slot)');
         
+        // Update lastRawState to prevent infinite loop
+        this.lastRawState = cleanState;
+        
         // NOW apply the final state after animations complete
         this.gameStateStore.set(cleanState);
         this.regionsStore.set(cleanState.regions || []);
@@ -271,6 +280,10 @@ export class GameStateUpdater {
         console.log('✅ Applying update for our own move (already animated by BattleManager)');
         // For our own moves, BattleManager already animated and GameController will update
         // But we still need to apply this state update (it might be the GameController update)
+        
+        // Update lastRawState to prevent infinite loop
+        this.lastRawState = cleanState;
+        
         this.gameStateStore.set(cleanState);
         this.regionsStore.set(cleanState.regions || []);
         this.playersStore.set(cleanState.players || []);
