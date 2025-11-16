@@ -90,7 +90,7 @@
   <!-- Final Rankings -->
   <Section title="Final Rankings" padding="12px" flex={true} flexDirection="column" gap="8px" customClass="flex-1 rankings-section">
     {#each playerStats as stat}
-      {@const isWinner = stat.player === winner}
+      {@const isWinner = winner !== 'DRAWN_GAME' && winner !== null && stat.player.slotIndex === winner.slotIndex}
       {@const isEliminated = stat.regionCount === 0}
       {@const regionCount = getRegionCount(stat.player.slotIndex)}
       {@const faithCount = faithByPlayer[stat.player.slotIndex]}
