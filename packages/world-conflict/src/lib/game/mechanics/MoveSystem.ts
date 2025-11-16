@@ -1,4 +1,15 @@
 import type { MoveState, MoveAction } from './moveTypes';
+import {
+  IDLE,
+  SELECT_SOURCE,
+  ADJUST_SOLDIERS,
+  SELECT_TARGET,
+  BUILD,
+  RESET,
+  CANCEL,
+  CONFIRM_MOVE,
+  ENTER_BUILD_MODE
+} from './moveConstants';
 
 export class MoveSystem {
   private state: MoveState;
@@ -16,7 +27,7 @@ export class MoveSystem {
     this.onStateChange = onStateChange;
 
     this.state = {
-      mode: 'IDLE',
+      mode: IDLE,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: null,
@@ -34,24 +45,24 @@ export class MoveSystem {
     console.log(`🖱️ MoveSystem.handleRegionClick: ${regionIndex}, current mode: ${this.state.mode}`);
 
     switch (this.state.mode) {
-      case 'IDLE':
+      case IDLE:
         this.selectSourceRegion(regionIndex);
         break;
 
-      case 'SELECT_SOURCE':
+      case SELECT_SOURCE:
         this.selectSourceRegion(regionIndex);
         break;
 
-      case 'ADJUST_SOLDIERS':
+      case ADJUST_SOLDIERS:
         // Click during soldier adjustment = cancel
         this.cancelMove();
         break;
 
-      case 'SELECT_TARGET':
+      case SELECT_TARGET:
         this.selectTargetRegion(regionIndex);
         break;
 
-      case 'BUILD':
+      case BUILD:
         // Building mode - ignore region clicks or cancel
         this.cancelMove();
         break;
@@ -68,37 +79,37 @@ export class MoveSystem {
     console.log(`🎬 MoveSystem.processAction:`, action);
 
     switch (action.type) {
-      case 'SELECT_SOURCE':
+      case SELECT_SOURCE:
         if (action.payload?.regionIndex !== undefined) {
           this.selectSourceRegion(action.payload.regionIndex);
         }
         break;
 
-      case 'ADJUST_SOLDIERS':
+      case ADJUST_SOLDIERS:
         if (action.payload?.soldierCount !== undefined) {
           this.adjustSoldierCount(action.payload.soldierCount);
         }
         break;
 
-      case 'SELECT_TARGET':
+      case SELECT_TARGET:
         if (action.payload?.regionIndex !== undefined) {
           this.selectTargetRegion(action.payload.regionIndex);
         }
         break;
 
-      case 'CONFIRM_MOVE':
+      case CONFIRM_MOVE:
         this.confirmMove();
         break;
 
-      case 'CANCEL':
+      case CANCEL:
         this.cancelMove();
         break;
 
-      case 'RESET':
+      case RESET:
         this.reset();
         break;
 
-      case 'ENTER_BUILD_MODE':
+      case ENTER_BUILD_MODE:
         this.enterBuildMode();
         break;
 
@@ -137,7 +148,7 @@ export class MoveSystem {
 
     // Set state and notify - go directly to target selection
     this.updateState({
-      mode: 'SELECT_TARGET',
+      mode: SELECT_TARGET,
       sourceRegion: regionIndex,
       targetRegion: null,
       buildRegion: null,
@@ -174,7 +185,7 @@ export class MoveSystem {
 
     console.log('🏛️ Temple click confirmed - entering BUILD mode');
     this.updateState({
-      mode: 'BUILD',
+      mode: BUILD,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: regionIndex,
@@ -251,7 +262,7 @@ export class MoveSystem {
     this.updateState({
       ...this.state,
       targetRegion: regionIndex,
-      mode: 'ADJUST_SOLDIERS',
+      mode: ADJUST_SOLDIERS,
       isMoving: false
     });
 
@@ -281,7 +292,7 @@ export class MoveSystem {
 
       // Reset state
       this.updateState({
-        mode: 'IDLE',
+        mode: IDLE,
         sourceRegion: null,
         targetRegion: null,
         buildRegion: null,
@@ -303,7 +314,7 @@ export class MoveSystem {
   private confirmMove(): void {
     console.log('✅ MoveSystem.confirmMove');
 
-    if (this.state.mode === 'ADJUST_SOLDIERS' && this.state.sourceRegion !== null && this.state.targetRegion !== null) {
+    if (this.state.mode === ADJUST_SOLDIERS && this.state.sourceRegion !== null && this.state.targetRegion !== null) {
       // Execute the move with the selected soldier count
       this.updateState({
         ...this.state,
@@ -320,7 +331,7 @@ export class MoveSystem {
     console.log('MoveSystem.cancelMove');
 
     this.updateState({
-      mode: 'IDLE',
+      mode: IDLE,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: null,
@@ -338,7 +349,7 @@ export class MoveSystem {
     console.log('🔄 MoveSystem.reset');
 
     this.updateState({
-      mode: 'IDLE',
+      mode: IDLE,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: null,
@@ -356,7 +367,7 @@ export class MoveSystem {
     console.log('🏗️ MoveSystem.enterBuildMode');
 
     this.updateState({
-      mode: 'BUILD',
+      mode: BUILD,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: null,

@@ -9,6 +9,7 @@
   import AudioButton from '$lib/components/configuration/AudioButton.svelte';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { SYMBOLS } from '$lib/game/constants/symbols';
+  import { IDLE, SELECT_SOURCE, ADJUST_SOLDIERS, SELECT_TARGET, BUILD } from '$lib/game/mechanics/moveConstants';
 
   export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
@@ -17,7 +18,7 @@
   export let onUndo: () => void = () => {};
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
-  export let moveMode: string = 'IDLE';
+  export let moveMode: string = IDLE;
   export let playerSlotIndex: number;
   export let canUndo: boolean = false;
 
@@ -30,8 +31,8 @@
   $: turnNumber = (gameState?.turnNumber ?? 0) + 1;
   $: maxTurns = gameState?.maxTurns && gameState.maxTurns !== GAME_CONSTANTS.UNLIMITED_TURNS ? gameState.maxTurns : null;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
-  $: isMoving = moveMode !== 'IDLE';
-  $: showCancelButton = isMoving && moveMode !== 'SELECT_SOURCE';
+  $: isMoving = moveMode !== IDLE;
+  $: showCancelButton = isMoving && moveMode !== SELECT_SOURCE;
   $: turnLimitExceeded = maxTurns !== null && turnNumber > maxTurns;
   $: isGameOver = (gameState?.endResult !== null && gameState?.endResult !== undefined) || turnLimitExceeded;
 
@@ -54,13 +55,13 @@
     }
 
     switch (moveMode) {
-      case 'SELECT_SOURCE':
+      case SELECT_SOURCE:
         return 'Click on a region to move or attack with its army.';
-      case 'ADJUST_SOLDIERS':
+      case ADJUST_SOLDIERS:
         return 'Click on this region again to choose how many to move.\nClick on a target region to move the army.';
-      case 'SELECT_TARGET':
+      case SELECT_TARGET:
         return 'Click on a target region to move the army.';
-      case 'BUILD':
+      case BUILD:
         return 'Click on a temple to buy soldiers or upgrades.';
       default:
         return 'Click on a region to move or attack with its army.\nClick on a temple to buy soldiers or upgrades.';

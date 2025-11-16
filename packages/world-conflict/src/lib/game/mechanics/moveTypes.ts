@@ -1,3 +1,5 @@
+import type { MoveMode, MoveActionType } from './moveConstants';
+
 /**
  * Represents the current state of the move system
  * Used to track progress through the three-step move process:
@@ -7,7 +9,7 @@
  */
 export interface MoveState {
   /** Current mode of the move system */
-  mode: 'IDLE' | 'SELECT_SOURCE' | 'ADJUST_SOLDIERS' | 'SELECT_TARGET' | 'BUILD';
+  mode: MoveMode;
 
   /** Index of the selected source region, null if none selected */
   sourceRegion: number | null;
@@ -37,7 +39,7 @@ export interface MoveState {
  */
 export interface MoveAction {
   /** The type of action to perform */
-  type: 'RESET' | 'SELECT_SOURCE' | 'ADJUST_SOLDIERS' | 'SELECT_TARGET' | 'CANCEL' | 'CONFIRM_MOVE' | 'ENTER_BUILD_MODE';
+  type: MoveActionType;
 
   /** Optional payload data for the action */
   payload?: {

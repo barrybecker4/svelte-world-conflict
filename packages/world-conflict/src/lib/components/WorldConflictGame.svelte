@@ -11,6 +11,7 @@
   import { createGameStateStore } from '$lib/client/stores/gameStateStore';
   import { GameController } from '$lib/client/gameController/GameController';
   import type { Player } from '$lib/game/state/GameState';
+  import { BUILD } from '$lib/game/mechanics/moveConstants';
 
   export let gameId: string;
   export let playerId: string;
@@ -64,7 +65,7 @@
 
   $: moveMode = $moveState.mode;
   $: buildRegion = $moveState.buildRegion;
-  $: inBuildMode = moveMode === 'BUILD' && buildRegion !== null;
+  $: inBuildMode = moveMode === BUILD && buildRegion !== null;
   // canUndo needs to react to gameState changes, so we reference $gameState to create the dependency
   $: canUndo = $gameState ? controller.canUndo() : false;
 

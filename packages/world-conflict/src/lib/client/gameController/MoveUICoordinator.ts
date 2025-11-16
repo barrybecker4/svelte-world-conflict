@@ -1,5 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import type { MoveState } from '$lib/game/mechanics/moveTypes';
+import { IDLE, ADJUST_SOLDIERS, CANCEL } from '$lib/game/mechanics/moveConstants';
 import { ModalManager } from './ModalManager';
 
 /**
@@ -17,7 +18,7 @@ export class MoveUICoordinator {
 
     // Initialize move state store
     this.moveState = writable({
-      mode: 'IDLE',
+      mode: IDLE,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: null,
@@ -45,7 +46,7 @@ export class MoveUICoordinator {
 
     // Show soldier selection modal when needed (after both source and target are selected)
     // But don't show it if we're already executing a move
-    const shouldShowModal = newState.mode === 'ADJUST_SOLDIERS'
+    const shouldShowModal = newState.mode === ADJUST_SOLDIERS
       && newState.sourceRegion !== null
       && newState.targetRegion !== null
       && !newState.isMoving;
@@ -88,7 +89,7 @@ export class MoveUICoordinator {
     // Execute the move with the selected count
     const moveSystem = this.gameStore.getMoveSystem();
     moveSystem?.processAction({
-      type: 'ADJUST_SOLDIERS',
+      type: ADJUST_SOLDIERS,
       payload: { soldierCount: count }
     });
   }
@@ -100,7 +101,7 @@ export class MoveUICoordinator {
     this.modalManager.hideSoldierSelection();
 
     const moveSystem = this.gameStore.getMoveSystem();
-    moveSystem?.processAction({ type: 'CANCEL' });
+    moveSystem?.processAction({ type: CANCEL });
   }
 
   /**
@@ -109,7 +110,7 @@ export class MoveUICoordinator {
   closeTempleUpgradePanel(): void {
     console.log('🏛️ MoveUICoordinator.closeTempleUpgradePanel');
     const moveSystem = this.gameStore.getMoveSystem();
-    moveSystem?.processAction({ type: 'CANCEL' });
+    moveSystem?.processAction({ type: CANCEL });
   }
 
   /**
@@ -167,7 +168,7 @@ export class MoveUICoordinator {
    */
   resetMoveState(availableMoves: number = 3): void {
     this.moveState.set({
-      mode: 'IDLE',
+      mode: IDLE,
       sourceRegion: null,
       targetRegion: null,
       buildRegion: null,
