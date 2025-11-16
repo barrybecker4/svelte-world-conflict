@@ -14,7 +14,6 @@
   export let gameState: GameStateData | null = null;
   export let players: Player[] = [];
   export let onEndTurn: () => void = () => {};
-  export let onCancelMove: () => void = () => {};
   export let onUndo: () => void = () => {};
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
@@ -31,8 +30,6 @@
   $: turnNumber = (gameState?.turnNumber ?? 0) + 1;
   $: maxTurns = gameState?.maxTurns && gameState.maxTurns !== GAME_CONSTANTS.UNLIMITED_TURNS ? gameState.maxTurns : null;
   $: movesRemaining = gameState?.movesRemaining ?? 3;
-  $: isMoving = moveMode !== IDLE;
-  $: showCancelButton = isMoving && moveMode !== SELECT_SOURCE;
   $: turnLimitExceeded = maxTurns !== null && turnNumber > maxTurns;
   $: isGameOver = (gameState?.endResult !== null && gameState?.endResult !== undefined) || turnLimitExceeded;
 
@@ -144,15 +141,9 @@
   </Section>
 
   <Section title="" flex={true} flexDirection="column" gap="8px">
-    {#if showCancelButton}
-      <Button variant="danger" uppercase on:click={onCancelMove}>
-        Cancel Move
-      </Button>
-    {:else}
-      <Button variant="secondary" uppercase disabled={!canUndo || !isMyTurn} on:click={onUndo}>
-        ↩️ Undo
-      </Button>
-    {/if}
+    <Button variant="secondary" uppercase disabled={!canUndo || !isMyTurn} on:click={onUndo}>
+      ↩️ Undo
+    </Button>
 
     <Button variant="danger" size="lg" uppercase disabled={!isMyTurn} on:click={onEndTurn} data-testid="end-turn-btn">
       END TURN
