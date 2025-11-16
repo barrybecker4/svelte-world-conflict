@@ -57,7 +57,7 @@
   }
 
   .section-header {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .section-title {

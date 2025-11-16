@@ -127,8 +127,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 6px;
-    padding: 6px 8px;
+    margin-bottom: 4px;
+    padding: 4px 6px;
     background: #374151;
     border-radius: 6px;
   }

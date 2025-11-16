@@ -108,7 +108,7 @@
   }
 </script>
 
-<Section title="" padding="12px 16px" borderBottom={true}>
+<Section title="" padding="8px 12px" borderBottom={true}>
   {#each slots as slot, index}
     <PlayerConfiguration
       playerSlot={slot}

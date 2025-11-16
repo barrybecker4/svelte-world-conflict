@@ -230,7 +230,7 @@
     <div class="configuration-main">
       <!-- Left Panel: Configuration -->
       <Panel variant="dark" blur={true} customClass="config-panel">
-        <Section title="Player {playerName} Setup" borderBottom={true} padding="12px">
+        <Section title="Player {playerName} Setup" borderBottom={true} padding="8px">
         </Section>
 
         <PlayerSlots
@@ -251,7 +251,7 @@
 
           <Button
             variant="primary"
-            size="lg"
+            size="md"
             disabled={createGameDisabled}
             loading={creating}
             on:click={createGame}

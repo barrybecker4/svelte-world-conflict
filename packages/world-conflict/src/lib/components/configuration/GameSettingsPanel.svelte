@@ -86,14 +86,14 @@
 
 <style>
   .settings-section {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
   }
 
   .setting {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
   .setting label {
