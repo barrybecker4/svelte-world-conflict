@@ -48,7 +48,6 @@ export class EndTurnCommand extends Command {
             newState.movesRemaining = 0; // No more moves
             newState.conqueredRegions = [];
             newState.state.eliminatedPlayers = [];
-            newState.state.floatingText = [];
             return newState;
         }
 
@@ -76,7 +75,6 @@ export class EndTurnCommand extends Command {
         newState.numBoughtSoldiers = 0;
         newState.conqueredRegions = [];
         newState.state.eliminatedPlayers = []; // Clear elimination events for next turn
-        newState.state.floatingText = []; // Clear floating text for next turn
 
         // console.log('🔄 Turn advanced:', {
         //   'from': `${this.player.name} (slot ${this.player.slotIndex})`,

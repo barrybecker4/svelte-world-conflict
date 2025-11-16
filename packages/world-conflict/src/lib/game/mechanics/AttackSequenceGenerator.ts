@@ -97,7 +97,29 @@ export class AttackSequenceGenerator {
                         width: 7
                     }]
                 });
+            } else {
+                // Attackers won - show "Conquered!" text
+                const fromOwnerPlayer = this.fromOwner !== undefined ? players.find(p => p.slotIndex === this.fromOwner) : undefined;
+                const color = '#ffee11'; // Gold/yellow color
+                attackSequence.push({
+                    floatingText: [{
+                        regionIdx: this.toRegion,
+                        color,
+                        text: "Conquered!",
+                        width: 7
+                    }]
+                });
             }
+        } else if (defendingSoldiers === 0 && this.incomingSoldiers > 0) {
+            // No combat needed - neutral region conquered
+            attackSequence.push({
+                floatingText: [{
+                    regionIdx: this.toRegion,
+                    color: '#ffee11', // Gold/yellow color
+                    text: "Conquered!",
+                    width: 7
+                }]
+            });
         }
 
         // Add final delay to allow smoke animations to complete

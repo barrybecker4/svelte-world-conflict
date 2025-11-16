@@ -7,7 +7,6 @@
   import RegionRenderer from './RegionRenderer.svelte';
   import Army from './Army.svelte';
   import SmokeLayer from './SmokeLayer.svelte';
-  import FloatingTextLayer from './FloatingTextLayer.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
 
   export let regions: Region[] = [];
@@ -275,11 +274,6 @@
 
     <!-- Smoke layer (top-most) - rendered above everything -->
     <SmokeLayer />
-
-    <!-- Floating text layer - rendered above smoke -->
-    <FloatingTextLayer 
-      floatingTexts={gameState?.floatingText || []}
-    />
   </svg>
 
   <!-- Tutorial Tooltips -->
