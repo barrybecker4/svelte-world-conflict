@@ -155,7 +155,7 @@
   </Section>
 
   <!-- Upgrade Options -->
-  <Section title="" flex={true} flexDirection="column" gap="8px" customClass="flex-1 upgrade-options-section">
+  <Section title="" flex={true} flexDirection="column" gap="6px" customClass="flex-1 upgrade-options-section">
     {#each availableOptions as option}
       <button
         class="upgrade-option"
@@ -203,18 +203,18 @@
 
   .temple-header {
     text-align: center;
-    padding: var(--space-3, 12px);
+    padding: var(--space-2, 8px);
   }
 
   .temple-name {
-    font-size: var(--text-lg, 1.125rem);
+    font-size: var(--text-base, 1rem);
     font-weight: var(--font-bold, bold);
     color: var(--text-primary, #f7fafc);
-    margin: 0 0 4px 0;
+    margin: 0 0 2px 0;
   }
 
   .temple-description {
-    font-size: var(--text-sm, 0.875rem);
+    font-size: var(--text-xs, 0.75rem);
     color: var(--text-secondary, #cbd5e1);
     margin: 0;
   }
@@ -225,11 +225,11 @@
   }
 
   .action-banner {
-    padding: var(--space-3, 12px);
+    padding: var(--space-2, 8px);
     text-align: center;
     font-weight: var(--font-semibold, 600);
     color: var(--text-primary, #f7fafc);
-    font-size: var(--text-base, 1rem);
+    font-size: var(--text-sm, 0.875rem);
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
   }
 
@@ -242,13 +242,13 @@
 
   .stat-item {
     text-align: center;
-    padding: var(--space-2, 8px);
+    padding: 6px var(--space-2, 8px);
     background: rgba(15, 23, 42, 0.4);
     border-radius: var(--radius-sm, 4px);
   }
 
   .stat-value {
-    font-size: var(--text-xl, 1.25rem);
+    font-size: var(--text-base, 1rem);
     font-weight: var(--font-bold, bold);
     color: var(--text-primary, #f7fafc);
     margin-bottom: 2px;
@@ -276,8 +276,8 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
-    padding: var(--space-3, 12px);
+    gap: 2px;
+    padding: 8px var(--space-2, 8px);
     background: rgba(15, 23, 42, 0.6);
     border: 2px solid rgba(100, 116, 139, 0.3);
     border-radius: var(--radius-md, 6px);
