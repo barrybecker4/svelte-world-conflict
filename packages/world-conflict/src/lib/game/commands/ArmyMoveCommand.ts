@@ -122,6 +122,21 @@ export class ArmyMoveCommand extends Command {
                 state.conqueredRegions = [];
             }
             state.conqueredRegions.push(this.destination);
+
+            // Add floating "Conquered!" text
+            const conqueredRegion = state.regions.find(r => r.index === this.destination);
+            if (conqueredRegion) {
+                if (!state.state.floatingText) {
+                    state.state.floatingText = [];
+                }
+                state.state.floatingText.push({
+                    x: conqueredRegion.x,
+                    y: conqueredRegion.y,
+                    text: 'Conquered!',
+                    color: '#ffee11', // Gold/yellow color
+                    duration: 2000 // 2 seconds
+                });
+            }
         }
 
         state.movesRemaining = Math.max(0, state.movesRemaining - 1);
