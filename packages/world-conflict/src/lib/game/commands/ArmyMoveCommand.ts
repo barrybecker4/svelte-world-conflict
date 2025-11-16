@@ -114,6 +114,9 @@ export class ArmyMoveCommand extends Command {
                 this.transferSoldiers(state, fromList, toList, attackersToMove);
             }
 
+            // Remove temple upgrades when region is conquered
+            this.removeTempleUpgrade(state, this.destination);
+
             // Update conquered regions list
             if (!state.conqueredRegions) {
                 state.conqueredRegions = [];
@@ -145,6 +148,33 @@ export class ArmyMoveCommand extends Command {
             if (!state.state.eliminatedPlayers.includes(playerSlotIndex)) {
                 state.state.eliminatedPlayers.push(playerSlotIndex);
             }
+        }
+    }
+
+    /**
+     * Remove temple upgrade from a conquered region
+     * Resets the temple back to basic (no upgrade, level 0)
+     */
+    private removeTempleUpgrade(state: GameState, regionIndex: number): void {
+        const temple = state.state.templesByRegion[regionIndex];
+        
+        if (temple && temple.upgradeIndex !== undefined) {
+            if (!this.isSimulation) {
+                console.log(`🏛️ ArmyMoveCommand: Removing temple upgrade at conquered region ${regionIndex}`);
+            }
+            
+            // Reset temple to basic (no upgrade)
+            const basicTemple = {
+                regionIndex: regionIndex,
+                upgradeIndex: undefined,
+                level: 0
+            };
+            
+            // Replace the entire templesByRegion object to ensure Svelte reactivity
+            state.state.templesByRegion = {
+                ...state.state.templesByRegion,
+                [regionIndex]: basicTemple
+            };
         }
     }
 

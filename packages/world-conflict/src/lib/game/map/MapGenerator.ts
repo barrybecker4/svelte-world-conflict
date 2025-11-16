@@ -88,7 +88,40 @@ export class MapGenerator {
             );
         }
         
+        // Ensure we have enough temple regions for all players
+        this.ensureMinimumTemples(regions, playerCount);
+        
         return regions;
+    }
+
+    /**
+     * Ensures there are enough temple regions for all players
+     * If there aren't enough temples, converts non-temple regions to temple regions
+     */
+    private ensureMinimumTemples(regions: Region[], playerCount: number): void {
+        const templeRegions = regions.filter(r => r.hasTemple);
+        const neededTemples = playerCount;
+        
+        if (templeRegions.length < neededTemples) {
+            console.log(`⚠️ Only ${templeRegions.length} temple regions found, need ${neededTemples} for ${playerCount} players`);
+            
+            // Get non-temple regions
+            const nonTempleRegions = regions.filter(r => !r.hasTemple);
+            
+            // Convert enough non-temple regions to temple regions
+            const templeDeficit = neededTemples - templeRegions.length;
+            for (let i = 0; i < Math.min(templeDeficit, nonTempleRegions.length); i++) {
+                const region = nonTempleRegions[i];
+                // Modify the hasTemple property directly (it's a readonly property, but we're in the generation phase)
+                (region as any).hasTemple = true;
+                console.log(`✅ Converted region ${region.index} to temple region`);
+            }
+            
+            const finalTempleCount = regions.filter(r => r.hasTemple).length;
+            console.log(`🏛️ Final temple count: ${finalTempleCount} (need ${neededTemples})`);
+        } else {
+            console.log(`✅ Sufficient temples: ${templeRegions.length} temple regions for ${playerCount} players`);
+        }
     }
 
     private addRegion(bounds: Bounds, regionCount: number, regions: Region[], regionMap: RegionMap): number {
