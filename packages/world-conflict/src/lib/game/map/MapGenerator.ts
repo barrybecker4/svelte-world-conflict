@@ -20,6 +20,9 @@ const REGIONS_PER_PLAYER_ALLOCATION_MAP = { Small: 2, Medium: 3, Large: 4 };
 // Minimum regions = MAX_PLAYERS + 1 (ensures at least one neutral region even at max player count)
 const MIN_REGIONS_REQUIRED = GAME_CONSTANTS.MAX_PLAYERS + 1;
 
+// Maximum attempts to generate a valid map before giving up
+const MAX_GENERATION_ATTEMPTS = 5;
+
 // Perturb constant for consistent randomization
 let perturbConst: number | null = null;
 const PERTURB_SCALE = 0.4;
@@ -42,7 +45,40 @@ export class MapGenerator {
         const playerCount = options.playerCount || 4;
         const mapSize = options.size;
 
-        // Reset perturbation constant for each map generation
+        // Try generating the map multiple times if it fails
+        let lastError: Error | null = null;
+        for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+            try {
+                const regions = this.attemptMapGeneration(mapSize, playerCount);
+                
+                // Success! Log if we needed multiple attempts
+                if (attempt > 1) {
+                    console.log(`✅ Map generation succeeded on attempt ${attempt}/${MAX_GENERATION_ATTEMPTS}`);
+                }
+                
+                return regions;
+            } catch (error) {
+                lastError = error as Error;
+                if (attempt < MAX_GENERATION_ATTEMPTS) {
+                    console.log(`⚠️ Map generation attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed, retrying...`);
+                }
+            }
+        }
+
+        // All attempts failed
+        throw new Error(
+            `Map generation failed after ${MAX_GENERATION_ATTEMPTS} attempts. ` +
+            `Last error: ${lastError?.message || 'Unknown error'}. ` +
+            `Try using a larger map size.`
+        );
+    }
+
+    /**
+     * Single attempt to generate a map
+     * @throws Error if minimum region requirements are not met
+     */
+    private attemptMapGeneration(mapSize: MapSize, playerCount: number): Region[] {
+        // Reset perturbation constant for each attempt
         perturbConst = null;
 
         const minRegionSize = MIN_REGION_SIZE_MAP[mapSize];
@@ -85,9 +121,8 @@ export class MapGenerator {
         // Always need MIN_REGIONS_REQUIRED (MAX_PLAYERS + 1) to ensure at least one neutral region
         if (regions.length < MIN_REGIONS_REQUIRED) {
             throw new Error(
-                `Map generation failed: Generated ${regions.length} regions but need at least ${MIN_REGIONS_REQUIRED} ` +
-                `(${GAME_CONSTANTS.MAX_PLAYERS} max players + 1 neutral region minimum). ` +
-                `Try using a larger map size.`
+                `Generated ${regions.length} regions but need at least ${MIN_REGIONS_REQUIRED} ` +
+                `(${GAME_CONSTANTS.MAX_PLAYERS} max players + 1 neutral region minimum)`
             );
         }
         
