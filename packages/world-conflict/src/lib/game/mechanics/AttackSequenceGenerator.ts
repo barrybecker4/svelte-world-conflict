@@ -34,6 +34,9 @@ export class AttackSequenceGenerator {
     private isSimulation: boolean = false;
 
     private static readonly WIN_THRESHOLD = 120;
+    private static readonly CONQUERED_TEXT = 'Conquered!';
+    private static readonly DEFENDED_TEXT = 'Defended!';
+    private static readonly CONQUERED_COLOR = '#ffee11'; // Gold/yellow color
 
     constructor(armyMove: ArmyMoveData, rng: RandomNumberGenerator, isSimulation: boolean = false) {
         this.fromRegion = armyMove.source;
@@ -89,37 +92,20 @@ export class AttackSequenceGenerator {
             if (toList.length > 0) {
                 const toOwnerPlayer = this.toOwner !== undefined ? players.find(p => p.slotIndex === this.toOwner) : undefined;
                 const color = toOwnerPlayer?.color || '#fff';
-                attackSequence.push({
-                    floatingText: [{
-                        regionIdx: this.toRegion,
-                        color,
-                        text: "Defended!",
-                        width: 7
-                    }]
-                });
+                attackSequence.push(
+                    this.createFloatingText(this.toRegion, color, AttackSequenceGenerator.DEFENDED_TEXT)
+                );
             } else {
                 // Attackers won - show "Conquered!" text
-                const fromOwnerPlayer = this.fromOwner !== undefined ? players.find(p => p.slotIndex === this.fromOwner) : undefined;
-                const color = '#ffee11'; // Gold/yellow color
-                attackSequence.push({
-                    floatingText: [{
-                        regionIdx: this.toRegion,
-                        color,
-                        text: "Conquered!",
-                        width: 7
-                    }]
-                });
+                attackSequence.push(
+                    this.createFloatingText(this.toRegion, AttackSequenceGenerator.CONQUERED_COLOR, AttackSequenceGenerator.CONQUERED_TEXT)
+                );
             }
         } else if (defendingSoldiers === 0 && this.incomingSoldiers > 0) {
             // No combat needed - neutral region conquered
-            attackSequence.push({
-                floatingText: [{
-                    regionIdx: this.toRegion,
-                    color: '#ffee11', // Gold/yellow color
-                    text: "Conquered!",
-                    width: 7
-                }]
-            });
+            attackSequence.push(
+                this.createFloatingText(this.toRegion, AttackSequenceGenerator.CONQUERED_COLOR, AttackSequenceGenerator.CONQUERED_TEXT)
+            );
         }
 
         // Add final delay to allow smoke animations to complete
@@ -128,6 +114,20 @@ export class AttackSequenceGenerator {
         });
 
         return attackSequence;
+    }
+
+    /**
+     * Create a floating text event
+     */
+    private createFloatingText(regionIdx: number, color: string, text: string): AttackEvent {
+        return {
+            floatingText: [{
+                regionIdx,
+                color,
+                text,
+                width: 7
+            }]
+        };
     }
 
     private recordPreemptiveDamage(
