@@ -3,6 +3,7 @@ import { RegionMap } from '$lib/game/map/RegionMap';
 import { Bounds } from '$lib/game/map/Bounds.ts';
 import { PositionSet } from '$lib/game/map/PositionSet';
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export interface MapGenerationOptions {
     size: 'Small' | 'Medium' | 'Large';
@@ -16,8 +17,8 @@ const MAX_REGION_SIZE_MAP = { Small: 16, Medium: 12, Large: 10 };
 const BASE_NUM_REGIONS_MAP = { Small: 5, Medium: 14, Large: 36 };
 const REGIONS_PER_PLAYER_ALLOCATION_MAP = { Small: 2, Medium: 3, Large: 4 };
 
-// Minimum regions required for a playable game
-const MIN_REGIONS_FOR_PLAYERS = 5;
+// Minimum regions = MAX_PLAYERS + 1 (ensures at least one neutral region even at max player count)
+const MIN_REGIONS_REQUIRED = GAME_CONSTANTS.MAX_PLAYERS + 1;
 
 // Perturb constant for consistent randomization
 let perturbConst: number | null = null;
@@ -81,10 +82,12 @@ export class MapGenerator {
         regionMap.fillNeighborLists();
         
         // Validate minimum region count for playable game
-        if (regions.length < MIN_REGIONS_FOR_PLAYERS) {
+        // Always need MIN_REGIONS_REQUIRED (MAX_PLAYERS + 1) to ensure at least one neutral region
+        if (regions.length < MIN_REGIONS_REQUIRED) {
             throw new Error(
-                `Map generation failed: Generated ${regions.length} regions but need at least ${MIN_REGIONS_FOR_PLAYERS} for ${playerCount} players. ` +
-                `Try using a larger map size or reduce the number of players.`
+                `Map generation failed: Generated ${regions.length} regions but need at least ${MIN_REGIONS_REQUIRED} ` +
+                `(${GAME_CONSTANTS.MAX_PLAYERS} max players + 1 neutral region minimum). ` +
+                `Try using a larger map size.`
             );
         }
         
