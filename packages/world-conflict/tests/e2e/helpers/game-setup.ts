@@ -1,4 +1,5 @@
-import { Page, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { TIMEOUTS } from '../fixtures/test-data';
 
 /**
@@ -274,12 +275,12 @@ export async function joinExistingGame(
     });
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const error = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
       throw new Error(error.error || `Join failed: ${response.status}`);
     }
     
     return await response.json();
-  }, { gameId, playerName });
+  }, { gameId, playerName }) as any;
   
   console.log(`  ✓ API join successful, slot: ${joinResponse.player.slotIndex}`);
   
@@ -497,12 +498,12 @@ export async function createGameWithSeed(
     });
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const error = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
       throw new Error(error.error || `Game creation failed: ${response.status}`);
     }
     
     return await response.json();
-  }, { playerName, config, seed });
+  }, { playerName, config, seed }) as any;
   
   console.log(`✅ Game created: ${response.gameId} with seed: ${seed || 'random'}`);
   

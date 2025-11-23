@@ -138,8 +138,8 @@ export class GameController {
 
         // Log soldier positions to debug animation issues
         const regionsWithMarkers = new Map<number, string[]>();
-        Object.entries(animationState.soldiersByRegion || {}).forEach(([regionIndex, soldiers]: [string, any[]]) => {
-          const markers = soldiers
+        Object.entries(animationState.soldiersByRegion || {}).forEach(([regionIndex, soldiers]) => {
+          const markers = (soldiers as any[])
             .filter((s: any) => s.movingToRegion !== undefined || s.attackedRegion !== undefined)
             .map((s: any) => {
               if (s.movingToRegion !== undefined) return `${s.i}→${s.movingToRegion}`;

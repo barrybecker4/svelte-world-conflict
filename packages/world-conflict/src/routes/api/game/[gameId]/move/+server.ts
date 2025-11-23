@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { GameStorage } from '$lib/server/storage/GameStorage';
+import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { ArmyMoveCommand, BuildCommand, CommandProcessor } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         let game = getPendingUpdate(gameId);
         if (!game) {
             console.log(`📥 No pending update, fetching from KV...`);
-            game = await gameStorage.getGame(gameId);
+            game = await gameStorage.getGame(gameId) || undefined;
         } else {
             console.log(`📥 Using pending update from memory`);
         }

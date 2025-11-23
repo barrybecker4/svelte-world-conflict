@@ -2,7 +2,8 @@
  * World Conflict-specific wrapper around the framework WebSocketClient
  * This maintains backward compatibility with existing code
  */
-import { WebSocketClient, type WebSocketConfig } from '@svelte-mp/framework/client';
+import { WebSocketClient } from '@svelte-mp/framework/client';
+import type { WebSocketConfig } from '@svelte-mp/framework/shared';
 import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
 
 /**

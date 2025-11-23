@@ -1,6 +1,7 @@
 import type { Player } from '$lib/game/state/GameState';
 import type { GameRecord } from '../storage/GameStorage';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
+import type { NotificationResponse } from '@svelte-mp/framework/shared';
 
 /**
  * Handles notifying WebSocket clients about game updates
@@ -96,7 +97,7 @@ class WebSocketNotifier {
                 throw new Error(`Failed to notify WebSocket worker: ${response.statusText} (${response.status})`);
             }
 
-            const result = await response.json();
+            const result = await response.json() as NotificationResponse;
             if (result.sentCount === 0) {
                 console.warn(`⚠️ [WebSocketNotifier] ${type} notification sent but NO CLIENTS received it for game ${gameId}:`, {
                     result,

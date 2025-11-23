@@ -40,7 +40,7 @@ export const SLOT_TYPES = {
   OPEN: 'Open',  // Open for another human
   AI: 'AI',      // AI player
   OFF: 'Off',    // Inactive slot
-};
+} as const;
 
 export const TIMEOUTS = {
   GAME_LOAD: 10000,

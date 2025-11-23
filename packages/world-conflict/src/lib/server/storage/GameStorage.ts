@@ -22,7 +22,7 @@ export interface GameRecord {
     // Optional configuration for PENDING games that need to be completed
     pendingConfiguration?: {
         playerSlots: Array<{
-            index: number;
+            slotIndex: number;
             type: PlayerSlotType;
             name: string;
             customName?: string;

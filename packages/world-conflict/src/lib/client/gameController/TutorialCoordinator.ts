@@ -38,6 +38,8 @@ export class TutorialCoordinator {
       return;
     }
 
+    if (!gameState) return;
+
     const isMyTurn = gameState.currentPlayerSlot === this.playerSlotIndex;
     const selectedRegionIndex = moveState?.sourceRegion ?? null;
 

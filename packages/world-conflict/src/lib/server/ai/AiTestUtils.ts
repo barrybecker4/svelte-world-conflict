@@ -3,7 +3,9 @@
  * Provides mock factories and helpers for creating test data
  */
 
-import { GameState, type Player, type Region, type GameStateData, type Temple } from '$lib/game/state/GameState';
+import { vi } from 'vitest';
+import { GameState, type Player, type GameStateData, type Temple } from '$lib/game/state/GameState';
+import { Region } from '$lib/game/entities/Region';
 import type { GameStorage } from '$lib/server/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
@@ -36,18 +38,20 @@ export function createMockRegion(options: {
     x?: number;
     y?: number;
 }): Region {
-    return {
+    return new Region({
         index: options.index,
+        name: `Region ${options.index}`,
         neighbors: options.neighbors || [],
-        x: options.x || 100 + options.index * 50,
-        y: options.y || 100 + options.index * 50,
+        x: options.x ?? 100 + options.index * 50,
+        y: options.y ?? 100 + options.index * 50,
+        hasTemple: false,
         points: [
-            { x: options.x || 100, y: options.y || 100 },
-            { x: (options.x || 100) + 30, y: options.y || 100 },
-            { x: (options.x || 100) + 30, y: (options.y || 100) + 30 },
-            { x: options.x || 100, y: (options.y || 100) + 30 }
+            { x: options.x ?? 100, y: options.y ?? 100 },
+            { x: (options.x ?? 100) + 30, y: options.y ?? 100 },
+            { x: (options.x ?? 100) + 30, y: (options.y ?? 100) + 30 },
+            { x: options.x ?? 100, y: (options.y ?? 100) + 30 }
         ]
-    };
+    });
 }
 
 /**
@@ -61,7 +65,7 @@ export function createMockTemple(options: {
     return {
         regionIndex: options.regionIndex,
         upgradeIndex: options.upgradeIndex,
-        level: options.level
+        level: options.level ?? 1
     };
 }
 
@@ -80,6 +84,7 @@ export function createMockGameStateData(options: {
     soldiersByRegion?: Record<number, any[]>;
     templesByRegion?: Record<number, Temple>;
     faithByPlayer?: Record<number, number>;
+    eliminatedPlayers?: number[];
     rngSeed?: string;
 }): GameStateData {
     const players = options.players || [
@@ -109,7 +114,7 @@ export function createMockGameStateData(options: {
         templesByRegion: options.templesByRegion || {},
         faithByPlayer: options.faithByPlayer || { 0: 100, 1: 100 },
         conqueredRegions: [],
-        eliminatedPlayers: [],
+        eliminatedPlayers: options.eliminatedPlayers || [],
         rngSeed: options.rngSeed || 'test-seed-12345' // Fixed seed for deterministic tests
     };
 }
