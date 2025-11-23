@@ -48,5 +48,34 @@ export class PlayerEliminationService {
     const regionCounts = this.getRegionCountByPlayer(gameState);
     return (regionCounts.get(playerSlotIndex) || 0) === 0;
   }
+
+  /**
+   * Eliminate a player from the game
+   * - Adds them to the eliminatedPlayers array
+   * - Removes ownership of all their regions (regions become neutral/gray)
+   * - Keeps soldiers in place
+   */
+  static eliminatePlayer(gameState: GameStateData, playerSlotIndex: number): void {
+    // Add to eliminatedPlayers array if not already there
+    if (!gameState.eliminatedPlayers) {
+      gameState.eliminatedPlayers = [];
+    }
+    if (!gameState.eliminatedPlayers.includes(playerSlotIndex)) {
+      gameState.eliminatedPlayers.push(playerSlotIndex);
+      console.log(`💀 Eliminating player ${playerSlotIndex} - adding to eliminatedPlayers array`);
+    }
+
+    // Remove ownership of all regions owned by this player
+    // Soldiers remain, but regions become neutral (gray)
+    const regionsCleared: number[] = [];
+    for (const regionIndex in gameState.ownersByRegion) {
+      if (gameState.ownersByRegion[regionIndex] === playerSlotIndex) {
+        delete gameState.ownersByRegion[regionIndex];
+        regionsCleared.push(parseInt(regionIndex));
+      }
+    }
+
+    console.log(`💀 Cleared ownership of ${regionsCleared.length} regions for player ${playerSlotIndex}:`, regionsCleared);
+  }
 }
 
