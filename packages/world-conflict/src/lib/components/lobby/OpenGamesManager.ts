@@ -5,6 +5,9 @@ import {
   type BaseSlotInfo
 } from '$lib/client/slots/slotUtils';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { loadPlayerName, saveGameCreator } from '$lib/client/stores/clientStorage';
+import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+import { goto } from '$app/navigation';
 
 export interface GameSlotInfo extends BaseSlotInfo {
   canJoin: boolean;
@@ -106,12 +109,16 @@ export class OpenGamesManager {
 
   async joinGameInSlot(gameId: string, slotIndex: number) {
     try {
-      let playerName;
-      try {
-        const { getPlayerConfig } = await import('$lib/game/constants/playerConfigs');
-        playerName = getPlayerConfig(slotIndex).defaultName;
-      } catch (error) {
-        playerName = getDefaultPlayerName(slotIndex);
+      // Load the player's saved name from localStorage
+      let playerName = loadPlayerName();
+
+      // Fallback to default slot name if no saved name
+      if (!playerName) {
+        try {
+          playerName = getPlayerConfig(slotIndex).defaultName;
+        } catch (error) {
+          playerName = getDefaultPlayerName(slotIndex);
+        }
       }
 
       console.log(`Attempting to join game ${gameId} in slot ${slotIndex} as "${playerName}"`);
@@ -134,9 +141,6 @@ export class OpenGamesManager {
             isAI: player.isAI
           }
         });
-
-        const { goto } = await import('$app/navigation');
-        const { saveGameCreator } = await import('$lib/client/stores/clientStorage');
 
         saveGameCreator(gameId, {
           playerId: player.slotIndex.toString(),
