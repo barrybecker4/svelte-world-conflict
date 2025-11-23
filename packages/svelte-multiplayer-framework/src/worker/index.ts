@@ -1,4 +1,5 @@
 import { WebSocketServer } from './WebSocketServer';
+import { isLocalDevelopment } from '../shared/config';
 
 /**
  * Common CORS headers for cross-origin requests
@@ -54,26 +55,48 @@ export default {
 async function handleDurableObjectRequest(request: Request, env: any): Promise<Response> {
   try {
     const gameId = await getGameIdFromRequest(request);
+    const url = new URL(request.url);
     
     // Use location hint to ensure consistent global routing
     // All game instances route to Western North America for accessibility from any region
-    // NOTE: Location hint is disabled in local dev as wrangler dev doesn't fully support it
+    // NOTE: Location hint is disabled in local dev (localhost) to avoid routing issues with wrangler dev
     const locationHint = 'wnam'; // Western North America (California, Oregon)
-    const isLocalDev = env.ENVIRONMENT === 'development' || !env.ENVIRONMENT;
+    
+    // Detect local dev using shared utility function
+    // This is more reliable than env variables which may not be set correctly
+    const isLocalDev = isLocalDevelopment(url);
+    
+    // Get Cloudflare datacenter information if available (only in production)
+    const cfDatacenter = (request as any).cf?.colo || 'unknown';
+    const cfCountry = (request as any).cf?.country || 'unknown';
     
     console.log('[Worker] Routing request to Durable Object:', {
-      pathname: new URL(request.url).pathname,
+      pathname: url.pathname,
       method: request.method,
       gameId,
       locationHint: isLocalDev ? 'disabled (local dev)' : locationHint,
-      environment: env.ENVIRONMENT || 'not set (assumed local dev)'
+      isLocalDev,
+      hostname: url.hostname,
+      port: url.port,
+      cfDatacenter,
+      cfCountry,
+      requestId: crypto.randomUUID()
     });
 
     const id = env.WEBSOCKET_SERVER.idFromName(gameId);
-    // Only use locationHint in production to avoid routing issues in local dev
+    
+    // Only use locationHint in production to ensure cross-region routing
+    // In local dev, skip locationHint as wrangler dev doesn't support it properly
     const durableObject = isLocalDev 
       ? env.WEBSOCKET_SERVER.get(id)
       : env.WEBSOCKET_SERVER.get(id, { locationHint });
+    
+    console.log('[Worker] Durable Object requested:', {
+      gameId,
+      durableObjectId: id.toString(),
+      usedLocationHint: !isLocalDev,
+      locationHint: isLocalDev ? 'none' : locationHint
+    });
 
     return durableObject.fetch(request);
   } catch (error) {

@@ -41,7 +41,21 @@ export class WebSocketServer {
     server.accept();
     this.sessionManager.addSession(sessionId, server);
 
-    console.log(`WebSocket connection established for session ${sessionId}`);
+    // Extract request metadata for debugging cross-region issues
+    const url = new URL(request.url);
+    const gameId = url.searchParams.get('gameId') || 'unknown';
+    const cfInfo = (request as any).cf || {};
+    
+    console.log(`🔌 [DO] WebSocket connection established:`, {
+      sessionId,
+      gameId,
+      durableObjectId: this.state.id.toString(),
+      clientDatacenter: cfInfo.colo || 'unknown',
+      clientCountry: cfInfo.country || 'unknown',
+      clientCity: cfInfo.city || 'unknown',
+      clientTimezone: cfInfo.timezone || 'unknown',
+      timestamp: Date.now()
+    });
 
     // Handle incoming messages
     server.addEventListener('message', (event) => {
@@ -114,16 +128,31 @@ export class WebSocketServer {
       const gameSessions = this.sessionManager.getGameSessions(gameId);
       
       console.log(`📬 [DO] Notification received for game ${gameId}:`, {
+        durableObjectId: this.state.id.toString(),
         messageType: message.type,
         totalSessions: allSessions,
         gameSessionsCount: gameSessions.length,
-        gameSessions: gameSessions
+        gameSessions: gameSessions,
+        timestamp: Date.now()
       });
       
       const sentCount = this.sessionManager.broadcastToGame(gameId, message);
 
       if (sentCount === 0) {
-        console.warn(`⚠️ [DO] No sessions received notification for game ${gameId}. Sessions found: ${gameSessions.length}`);
+        console.warn(`⚠️ [DO] No sessions received notification for game ${gameId}:`, {
+          durableObjectId: this.state.id.toString(),
+          sessionsFound: gameSessions.length,
+          allSessions: allSessions,
+          messageType: message.type
+        });
+      } else {
+        console.log(`✅ [DO] Notification broadcast successful:`, {
+          durableObjectId: this.state.id.toString(),
+          gameId,
+          sentCount,
+          totalGameSessions: gameSessions.length,
+          messageType: message.type
+        });
       }
 
       return new Response(
@@ -198,8 +227,10 @@ export class WebSocketServer {
     const existingGameSessions = this.sessionManager.getGameSessions(gameId);
     
     console.log(`📝 [DO] Session ${sessionId} subscribing to game ${gameId}:`, {
+      durableObjectId: this.state.id.toString(),
       totalSessionsBefore: allSessions,
-      existingGameSessions: existingGameSessions.length
+      existingGameSessions: existingGameSessions.length,
+      existingSessionIds: existingGameSessions
     });
 
     try {
@@ -207,9 +238,11 @@ export class WebSocketServer {
       const updatedGameSessions = this.sessionManager.getGameSessions(gameId);
       
       console.log(`✅ [DO] Session ${sessionId} successfully subscribed to game ${gameId}:`, {
+        durableObjectId: this.state.id.toString(),
         totalSessions: allSessions,
         gameSessionsNow: updatedGameSessions.length,
-        allGameSessions: updatedGameSessions
+        allGameSessions: updatedGameSessions,
+        timestamp: Date.now()
       });
       
       this.sessionManager.sendToSession(sessionId, {

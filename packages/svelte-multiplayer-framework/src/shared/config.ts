@@ -2,6 +2,40 @@
  * WebSocket configuration utilities
  */
 
+/**
+ * Check if we're running in local development environment
+ *
+ * @param urlOrHostname - Optional URL object or hostname string. If not provided, uses window.location in browser context
+ * @returns true if running locally, false if in production
+ */
+export function isLocalDevelopment(urlOrHostname?: URL | string): boolean {
+  let hostname: string;
+  let port: string | undefined;
+
+  if (urlOrHostname instanceof URL) {
+    // Worker context - URL object provided
+    hostname = urlOrHostname.hostname;
+    port = urlOrHostname.port;
+  } else if (typeof urlOrHostname === 'string') {
+    // Hostname string provided
+    hostname = urlOrHostname;
+  } else if (typeof window !== 'undefined') {
+    // Browser context - use window.location
+    hostname = window.location.hostname;
+    port = window.location.port;
+  } else {
+    // No context available, assume production
+    return false;
+  }
+
+  // Check for localhost/127.0.0.1 or local dev port (8787 for wrangler dev)
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    port === '8787'
+  );
+}
+
 export interface WebSocketConfig {
   /**
    * Production WebSocket worker URL (without protocol)
@@ -36,8 +70,7 @@ export function buildWebSocketUrl(gameId: string, config: WebSocketConfig): stri
   }
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const isLocal =
-    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isLocal = isLocalDevelopment();
 
   // Validate workerUrl for production
   if (!isLocal && !config.workerUrl) {

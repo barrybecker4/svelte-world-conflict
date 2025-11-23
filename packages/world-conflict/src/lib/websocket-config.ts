@@ -3,6 +3,8 @@
  * This file can be imported from anywhere in the application
  */
 
+import { isLocalDevelopment } from '@svelte-mp/framework/shared';
+
 // Update with your deployed worker URL
 export const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
 
@@ -27,8 +29,7 @@ export function buildWebSocketUrl(gameId: string): string {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const isLocal = window.location.hostname === 'localhost' ||
-                    window.location.hostname === '127.0.0.1';
+    const isLocal = isLocalDevelopment();
 
     const host = isLocal
         ? 'localhost:8787'
