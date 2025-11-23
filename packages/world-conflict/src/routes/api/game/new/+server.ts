@@ -174,11 +174,18 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
                 finalGameType = 'AI'; // All slots are filled with Set/AI players
             }
 
+            let creatorAdded = false;
             for (let i = 0; i < activeSlots.length; i++) {
                 const slot = activeSlots[i];
                 if (slot.type === 'Set') {
                     // Human player
-                    players.push(createPlayer(slot.customName || slot.name, slot.slotIndex, false));
+                    // If this is the first Set slot and we haven't added the creator yet, use the creator's name
+                    const playerNameForSlot = !creatorAdded ? playerName.trim() : (slot.customName || slot.name);
+                    players.push(createPlayer(playerNameForSlot, slot.slotIndex, false));
+                    if (!creatorAdded) {
+                        console.log(`✅ Added creator "${playerName}" to slot ${slot.slotIndex}`);
+                        creatorAdded = true;
+                    }
                 } else if (slot.type === 'Open') {
                     // Open slot - don't add a player yet, they'll join later
                     continue;
@@ -186,6 +193,13 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
                     // AI player - create with difficulty-based personality
                     players.push(createPlayer(slot.defaultName, slot.slotIndex, true, aiDifficulty));
                 }
+            }
+            
+            // Ensure the creator is added even if no "Set" slots were found
+            if (!creatorAdded) {
+                console.warn(`⚠️ Creator "${playerName}" not added during slot processing, adding to first active slot`);
+                const firstSlot = activeSlots[0];
+                players.push(createPlayer(playerName.trim(), firstSlot.slotIndex, false));
             }
         }
     } else {

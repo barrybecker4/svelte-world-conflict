@@ -7,7 +7,8 @@ import { writable, type Writable } from 'svelte/store';
  */
 export function useGameWebSocket(
   gameId: string,
-  onGameUpdate: (gameData: any) => void
+  onGameUpdate: (gameData: any) => void,
+  playerId?: string
 ) {
   let wsClient: GameWebSocketClient | null = null;
   const connected: Writable<boolean> = writable(false);
@@ -18,6 +19,7 @@ export function useGameWebSocket(
   async function initialize(): Promise<void> {
     console.log('[WS INIT] Starting WebSocket initialization');
     console.log('[WS INIT] gameId:', gameId, 'type:', typeof gameId);
+    console.log('[WS INIT] playerId:', playerId || 'none (observer)');
 
     // Validate gameId
     if (!gameId || gameId === 'null' || gameId === 'undefined' || gameId === '') {
@@ -28,8 +30,8 @@ export function useGameWebSocket(
 
     console.log('[WS INIT] gameId is valid');
 
-    // Create WebSocket client
-    wsClient = new GameWebSocketClient();
+    // Create WebSocket client with playerId for disconnect tracking
+    wsClient = new GameWebSocketClient(playerId);
     console.log('[WS INIT] GameWebSocketClient created');
 
     // Sync the client's connected store with our local store

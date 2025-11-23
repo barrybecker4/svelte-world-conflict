@@ -71,10 +71,11 @@ export class WaitingRoomManager {
     try {
       // Import GameWebSocketClient
       const { GameWebSocketClient } = await import('$lib/client/websocket/GameWebSocketClient');
-      
-      // Create WebSocket client instance
-      this.wsClient = new GameWebSocketClient();
-      console.log(`🔌 Setting up WebSocket connection for game ${this.gameId}`);
+
+      // Create WebSocket client instance with playerId for disconnect tracking
+      const playerIdStr = this.currentPlayerId !== null ? this.currentPlayerId.toString() : undefined;
+      this.wsClient = new GameWebSocketClient(playerIdStr);
+      console.log(`🔌 Setting up WebSocket connection for game ${this.gameId} (playerId: ${playerIdStr || 'none'})`);
 
       // Monitor connection state
       this.wsStateUnsubscribe = this.wsClient.connected.subscribe((isConnected: boolean) => {
@@ -85,11 +86,9 @@ export class WaitingRoomManager {
       // Register callbacks for WebSocket events
       this.wsClient.onGameStarted((data: any) => {
         console.log('🚀 [WaitingRoom] Received gameStarted WebSocket message', data);
-        // Disconnect WebSocket BEFORE transitioning to avoid conflicts
-        console.log('🔌 [WaitingRoom] Disconnecting WebSocket before game transition');
-        this.wsClient.disconnect();
-        this.wsClient = null;
-        // Game has started, trigger callback to transition to playing state
+        // Don't disconnect here - the game screen will establish its own connection
+        // This waiting room connection will be cleaned up when the component unmounts
+        // The server ignores disconnects within a few seconds of game start to prevent false eliminations
         console.log('🚀 [WaitingRoom] Triggering onGameStarted callback');
         this.onGameStarted?.();
       });
@@ -100,13 +99,25 @@ export class WaitingRoomManager {
         this.loadGameState();
       });
 
+      this.wsClient.onGameUpdate((data: any) => {
+        console.log(`📨 [WaitingRoom] Received gameUpdate WebSocket message:`, data);
+        // Check if game has started (transitioned from PENDING to ACTIVE)
+        if (data.status === 'ACTIVE') {
+          console.log('🎮 [WaitingRoom] Game transitioned to ACTIVE via gameUpdate (keeping WebSocket connected)');
+          this.onGameStarted?.();
+        } else {
+          // Just update the game state (e.g. player list changes)
+          this.loadGameState();
+        }
+      });
+
       // Track if we've been subscribed
       let hasSubscribed = false;
-      
+
       this.wsClient.onConnected(() => {
         console.log(`✅ [WaitingRoom] WebSocket connected for game ${this.gameId}, waiting for subscription confirmation...`);
       });
-      
+
       // Listen for subscription confirmation
       this.wsClient.on('subscribed', (message: any) => {
         hasSubscribed = true;
@@ -237,14 +248,14 @@ export class WaitingRoomManager {
 
   destroy() {
     console.log('🧹 Cleaning up WaitingRoomManager');
-    
+
     // Disconnect WebSocket client
     if (this.wsClient) {
       console.log('🔌 Disconnecting WebSocket client');
       this.wsClient.disconnect();
       this.wsClient = null;
     }
-    
+
     // Clean up subscriptions
     if (this.wsUnsubscribe) {
       this.wsUnsubscribe();
@@ -254,7 +265,7 @@ export class WaitingRoomManager {
       this.wsStateUnsubscribe();
       this.wsStateUnsubscribe = null;
     }
-    
+
     this.wsConnected.set(false);
   }
 }

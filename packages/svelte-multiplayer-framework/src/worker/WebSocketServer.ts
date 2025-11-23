@@ -77,12 +77,27 @@ export class WebSocketServer {
       console.log(
         `WebSocket closed for session ${sessionId}: code=${event.code}, reason=${event.reason}`
       );
-      this.sessionManager.removeSession(sessionId);
+      const { gameId, playerId } = this.sessionManager.removeSession(sessionId);
+      
+      console.log(`🔍 [DO] Disconnect detected - gameId: ${gameId}, playerId: ${playerId || 'NONE'}`);
+      
+      // If player was identified, notify the game application about the disconnect
+      if (gameId && playerId) {
+        console.log(`📞 [DO] Calling notifyPlayerDisconnect for player ${playerId} in game ${gameId}`);
+        this.notifyPlayerDisconnect(gameId, playerId);
+      } else {
+        console.log(`⚠️ [DO] Skipping disconnect notification - missing ${!gameId ? 'gameId' : 'playerId'}`);
+      }
     });
 
     server.addEventListener('error', (event) => {
       console.error(`WebSocket error for session ${sessionId}:`, event);
-      this.sessionManager.removeSession(sessionId);
+      const { gameId, playerId } = this.sessionManager.removeSession(sessionId);
+      
+      // If player was identified, notify the game application about the disconnect
+      if (gameId && playerId) {
+        this.notifyPlayerDisconnect(gameId, playerId);
+      }
     });
 
     // Return the client side of the WebSocket pair
@@ -184,11 +199,14 @@ export class WebSocketServer {
   }
 
   handleMessage(sessionId: string, message: any): void {
-    console.log(`📨 Processing message from ${sessionId}: ${message.type}`);
+    console.log(`📨 Processing message from ${sessionId}: ${message.type}`, {
+      gameId: message.gameId,
+      playerId: message.playerId || 'NONE'
+    });
 
     switch (message.type) {
       case 'subscribe':
-        this.handleSubscribe(sessionId, message.gameId);
+        this.handleSubscribe(sessionId, message.gameId, message.playerId);
         break;
 
       case 'unsubscribe':
@@ -212,7 +230,7 @@ export class WebSocketServer {
     }
   }
 
-  handleSubscribe(sessionId: string, gameId: string): void {
+  handleSubscribe(sessionId: string, gameId: string, playerId?: string): void {
     if (!gameId) {
       console.error(`❌ [DO] Session ${sessionId} tried to subscribe without gameId`);
       this.sessionManager.sendToSession(sessionId, {
@@ -230,11 +248,12 @@ export class WebSocketServer {
       durableObjectId: this.state.id.toString(),
       totalSessionsBefore: allSessions,
       existingGameSessions: existingGameSessions.length,
-      existingSessionIds: existingGameSessions
+      existingSessionIds: existingGameSessions,
+      playerId: playerId || 'none (observer)'
     });
 
     try {
-      this.sessionManager.subscribeToGame(sessionId, gameId);
+      this.sessionManager.subscribeToGame(sessionId, gameId, playerId);
       const updatedGameSessions = this.sessionManager.getGameSessions(gameId);
       
       console.log(`✅ [DO] Session ${sessionId} successfully subscribed to game ${gameId}:`, {
@@ -242,6 +261,7 @@ export class WebSocketServer {
         totalSessions: allSessions,
         gameSessionsNow: updatedGameSessions.length,
         allGameSessions: updatedGameSessions,
+        playerId: playerId || 'none',
         timestamp: Date.now()
       });
       
@@ -269,6 +289,48 @@ export class WebSocketServer {
         gameId,
         timestamp: Date.now()
       });
+    }
+  }
+
+  /**
+   * Notify the game application that a player has disconnected
+   * Uses convention-based endpoint: POST /api/game/{gameId}/player-event
+   * This allows game-specific handling of disconnects (elimination, grace period, etc.)
+   */
+  async notifyPlayerDisconnect(gameId: string, playerId: string): Promise<void> {
+    try {
+      console.log(`🔌 [DO] Player ${playerId} disconnected from game ${gameId}, notifying application...`);
+      
+      // Build the notification URL
+      // In production, this should point to the application's API
+      // The env.WORKER_URL should be set to the application's base URL
+      const baseUrl = this.env.WORKER_URL || 'http://localhost:5173';
+      const url = `${baseUrl}/api/game/${gameId}/player-event`;
+      
+      const payload = {
+        type: 'disconnect',
+        playerId,
+        timestamp: Date.now()
+      };
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (response.ok) {
+        console.log(`✅ [DO] Successfully notified application of player ${playerId} disconnect`);
+      } else if (response.status === 404) {
+        console.log(`ℹ️ [DO] Player-event endpoint not found (404) - game doesn't implement disconnect handling`);
+      } else {
+        console.warn(`⚠️ [DO] Failed to notify disconnect: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      // Log but don't throw - disconnect notifications are best-effort
+      console.error(`❌ [DO] Error notifying player disconnect:`, error);
     }
   }
 }

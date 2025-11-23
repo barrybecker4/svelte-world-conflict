@@ -12,7 +12,6 @@ import { TurnTimerCoordinator } from './TurnTimerCoordinator';
 import { BattleCoordinator } from './BattleCoordinator';
 import { MoveUICoordinator } from './MoveUICoordinator';
 import { GameEndCoordinator } from './GameEndCoordinator';
-import { GameStateUpdater } from '$lib/client/stores/GameStateUpdater';
 import { GameState } from '$lib/game/state/GameState';
 import { BuildCommand } from '$lib/game/commands/BuildCommand';
 import { CommandProcessor } from '$lib/game/commands/CommandProcessor';
@@ -61,8 +60,8 @@ export class GameController {
     this.battleCoordinator = new BattleCoordinator(playerId, gameStore, this.undoManager, this.moveQueue);
     this.moveUICoordinator = new MoveUICoordinator(gameStore, this.modalManager);
     this.gameEndCoordinator = new GameEndCoordinator(
-      playerId, 
-      this.modalManager, 
+      playerId,
+      this.modalManager,
       this.turnTimerCoordinator,
       (updater) => gameStore.gameState.update(updater)
     );
@@ -79,7 +78,7 @@ export class GameController {
       this.gameStore.handleGameStateUpdate(gameData);
       // Update tooltips after game state changes from websocket
       this.updateTooltips();
-    });
+    }, playerId); // Pass playerId for disconnect tracking
 
     // Set callback to start timer when player's turn is ready
     this.gameStore.setOnTurnReadyCallback((gameState: GameStateData) => {
@@ -136,7 +135,7 @@ export class GameController {
         // These temporary animation states (movingToRegion, attackedRegion) enable smooth transitions
         // The final clean state will overwrite them after animations complete (see GameStateUpdater.ts)
         const animationState = event.detail.gameState;
-        
+
         // Log soldier positions to debug animation issues
         const regionsWithMarkers = new Map<number, string[]>();
         Object.entries(animationState.soldiersByRegion || {}).forEach(([regionIndex, soldiers]: [string, any[]]) => {
@@ -152,14 +151,14 @@ export class GameController {
             regionsWithMarkers.set(parseInt(regionIndex), markers);
           }
         });
-        
+
         console.log('⚔️ Received battleStateUpdate event, updating game state for animation', {
           regionsWithAnimations: Array.from(regionsWithMarkers.entries()).map(([region, markers]) => ({
             region,
             animations: markers
           }))
         });
-        
+
         // Update store directly to avoid queuing delays
         this.gameStore.gameState.set(animationState);
       }) as EventListener);
@@ -289,7 +288,7 @@ export class GameController {
       // Execute the BUILD command locally
       const gameStateObj = new GameState(gameState);
       const player = gameStateObj.getPlayerBySlotIndex(playerSlotIndex);
-      
+
       if (!player) {
         throw new Error(`Player not found: ${playerSlotIndex}`);
       }

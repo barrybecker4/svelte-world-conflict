@@ -4,10 +4,12 @@
 export class SessionManager {
   private sessions: Map<string, WebSocket>;
   private gameSubscriptions: Map<string, string>; // sessionId -> gameId
+  private playerSessions: Map<string, string>; // sessionId -> playerId
 
   constructor() {
     this.sessions = new Map();
     this.gameSubscriptions = new Map();
+    this.playerSessions = new Map();
   }
 
   generateSessionId(): string {
@@ -22,10 +24,16 @@ export class SessionManager {
     console.log(`Session ${sessionId} added`);
   }
 
-  removeSession(sessionId: string): void {
+  removeSession(sessionId: string): { gameId?: string; playerId?: string } {
     console.log(`Session ${sessionId} disconnected`);
+    const gameId = this.gameSubscriptions.get(sessionId);
+    const playerId = this.playerSessions.get(sessionId);
+    
     this.sessions.delete(sessionId);
     this.gameSubscriptions.delete(sessionId);
+    this.playerSessions.delete(sessionId);
+    
+    return { gameId, playerId };
   }
 
   getSession(sessionId: string): WebSocket | undefined {
@@ -37,13 +45,18 @@ export class SessionManager {
     return ws !== undefined && ws.readyState === 1;
   }
 
-  subscribeToGame(sessionId: string, gameId: string): void {
+  subscribeToGame(sessionId: string, gameId: string, playerId?: string): void {
     if (!this.sessions.has(sessionId)) {
       throw new Error(`Session ${sessionId} not found`);
     }
 
     this.gameSubscriptions.set(sessionId, gameId);
-    console.log(`Session ${sessionId} subscribed to game ${gameId}`);
+    if (playerId) {
+      this.playerSessions.set(sessionId, playerId);
+      console.log(`Session ${sessionId} subscribed to game ${gameId} as player ${playerId}`);
+    } else {
+      console.log(`Session ${sessionId} subscribed to game ${gameId} (no player ID - observer)`);
+    }
   }
 
   unsubscribeFromGame(sessionId: string): string | null {
@@ -58,6 +71,10 @@ export class SessionManager {
 
   getSessionGame(sessionId: string): string | undefined {
     return this.gameSubscriptions.get(sessionId);
+  }
+
+  getSessionPlayer(sessionId: string): string | undefined {
+    return this.playerSessions.get(sessionId);
   }
 
   getGameSessions(gameId: string): string[] {

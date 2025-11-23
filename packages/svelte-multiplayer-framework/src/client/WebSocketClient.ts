@@ -9,13 +9,15 @@ import { writable, type Writable } from 'svelte/store';
 export class WebSocketClient {
   private ws: WebSocket | null = null;
   private gameId: string | null = null;
+  private playerId: string | null = null;
   private messageHandler: MessageHandler;
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private config: WebSocketConfig;
   public connected: Writable<boolean>;
 
-  constructor(config: WebSocketConfig) {
+  constructor(config: WebSocketConfig, playerId?: string) {
     this.config = config;
+    this.playerId = playerId || null;
     this.messageHandler = new MessageHandler();
     this.connected = writable(false);
   }
@@ -102,7 +104,15 @@ export class WebSocketClient {
         this.clearConnectionTimeout();
         this.connected.set(true);
 
-        this.send({ type: 'subscribe', gameId: this.gameId! });
+        // Send subscribe message with optional playerId for disconnect tracking
+        const subscribeMessage: any = { type: 'subscribe', gameId: this.gameId! };
+        if (this.playerId) {
+          subscribeMessage.playerId = this.playerId;
+          console.log(`🆔 [WS] Subscribing with playerId: ${this.playerId}`);
+        } else {
+          console.log(`⚠️ [WS] Subscribing WITHOUT playerId (observer mode)`);
+        }
+        this.send(subscribeMessage);
         this.messageHandler.triggerConnected();
 
         resolve();

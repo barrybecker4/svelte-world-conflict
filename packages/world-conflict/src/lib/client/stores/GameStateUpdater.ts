@@ -77,7 +77,16 @@ export class GameStateUpdater {
    */
   private checkForEliminations(gameState: GameStateData): void {
     const eliminatedPlayers = PlayerEliminationService.checkForEliminations(gameState);
-    
+
+    if (eliminatedPlayers.length > 0) {
+      console.log('💀 Eliminated players detected:', {
+        eliminatedPlayers,
+        turnNumber: gameState.turnNumber,
+        allPlayers: gameState.players?.map(p => ({ name: p.name, slot: p.slotIndex })),
+        ownersByRegion: gameState.ownersByRegion
+      });
+    }
+
     // Show elimination banners for each eliminated player
     for (const playerSlotIndex of eliminatedPlayers) {
       this.showEliminationBanner(playerSlotIndex);
@@ -131,13 +140,13 @@ export class GameStateUpdater {
     const playerChanged = currentState && updatedState.currentPlayerSlot !== currentState.currentPlayerSlot;
     const turnNumberIncreased = currentState && updatedState.turnNumber > currentState.turnNumber;
     const isNewTurn = playerChanged || turnNumberIncreased;
-    
+
     // Detect if this was another player's move by checking who had the turn BEFORE (in currentState)
     // If the previous player was someone else, we should animate their move
     const previousPlayerSlot = currentState?.currentPlayerSlot;
     const wasPreviousPlayerSomeoneElse = previousPlayerSlot !== undefined && previousPlayerSlot !== this.playerSlotIndex;
     const isOtherPlayerMove = wasPreviousPlayerSomeoneElse;
-    
+
     console.log('🔍 Move detection:', {
       mySlotIndex: this.playerSlotIndex,
       previousPlayerSlot,
@@ -167,18 +176,18 @@ export class GameStateUpdater {
 
     if (isNewTurn) {
       console.log('🔄 Turn transition detected - showing turn banner for slot:', updatedState.currentPlayerSlot);
-        
+
         // Update players store BEFORE transition so TurnManager can use updated list
         this.playersStore.set(cleanState.players || []);
-        
+
         await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
 
         // Update currentPlayerSlot and turnNumber immediately so UI/tests see correct turn
         // But delay other state updates for animations
-        this.gameStateStore.update(state => state ? { 
-            ...state, 
+        this.gameStateStore.update(state => state ? {
+            ...state,
             currentPlayerSlot: cleanState.currentPlayerSlot,
-            turnNumber: cleanState.turnNumber 
+            turnNumber: cleanState.turnNumber
           } : state);
 
         // Check if the new current player is AI
@@ -189,7 +198,7 @@ export class GameStateUpdater {
         if (isOtherPlayerMove) {
           // DON'T update full game state yet - keep old state for animations
           // The animations will update to intermediate states, then we apply final state
-          
+
           // It's another player's turn - wait for banner, then replay moves
           await new Promise<void>((resolve) => {
             setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME);
@@ -201,15 +210,15 @@ export class GameStateUpdater {
           // Detect and replay moves using state comparison
           console.log('📼 Detecting and replaying moves from state diff');
           await this.moveReplayer.replayMoves(updatedState, currentState);
-          
+
           // Clear flag before applying final state
           GameStateUpdater.isReplayingMoves = false;
-          
+
           console.log('✅ Animations complete, applying final clean state');
-          
+
           // Update lastRawState to prevent infinite loop
           this.lastRawState = cleanState;
-          
+
           // NOW apply the final state after animations complete
           this.gameStateStore.set(cleanState);
           this.regionsStore.set(cleanState.regions || []);
@@ -231,10 +240,10 @@ export class GameStateUpdater {
           await new Promise<void>((resolve) => {
             setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
           });
-          
+
           // Update lastRawState to prevent infinite loop
           this.lastRawState = cleanState;
-          
+
           // Apply state after banner
           this.gameStateStore.set(cleanState);
           this.regionsStore.set(cleanState.regions || []);
@@ -256,22 +265,22 @@ export class GameStateUpdater {
       if (isOtherPlayerMove) {
         console.log('🔄 Replaying other player\'s move');
         // DON'T update game state yet - keep old state for animations
-        
+
         // Set flag to prevent animation states from contaminating game state
         GameStateUpdater.isReplayingMoves = true;
-        
+
         // Detect and replay moves using state comparison
         console.log('📼 Detecting and replaying moves from state diff');
         await this.moveReplayer.replayMoves(updatedState, currentState);
-        
+
         // Clear flag before applying final state
         GameStateUpdater.isReplayingMoves = false;
-        
+
         console.log('✅ Animations complete, applying final clean state (same player slot)');
-        
+
         // Update lastRawState to prevent infinite loop
         this.lastRawState = cleanState;
-        
+
         // NOW apply the final state after animations complete
         this.gameStateStore.set(cleanState);
         this.regionsStore.set(cleanState.regions || []);
@@ -280,10 +289,10 @@ export class GameStateUpdater {
         console.log('✅ Applying update for our own move (already animated by BattleManager)');
         // For our own moves, BattleManager already animated and GameController will update
         // But we still need to apply this state update (it might be the GameController update)
-        
+
         // Update lastRawState to prevent infinite loop
         this.lastRawState = cleanState;
-        
+
         this.gameStateStore.set(cleanState);
         this.regionsStore.set(cleanState.regions || []);
         this.playersStore.set(cleanState.players || []);

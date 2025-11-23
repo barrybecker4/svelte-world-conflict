@@ -22,6 +22,7 @@ export interface GameStateMessage extends BaseMessage {
 export interface SubscribeMessage extends BaseMessage {
   type: 'subscribe';
   gameId: string;
+  playerId?: string; // Optional player identifier (e.g., slot index) for disconnect tracking
 }
 
 /**

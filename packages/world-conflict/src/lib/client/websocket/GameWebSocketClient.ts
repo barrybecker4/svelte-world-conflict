@@ -10,11 +10,11 @@ import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
  * Wraps the framework WebSocketClient with game-specific configuration
  */
 export class GameWebSocketClient extends WebSocketClient {
-  constructor() {
+  constructor(playerId?: string) {
     const config: WebSocketConfig = {
       workerUrl: WEBSOCKET_WORKER_URL,
       localHost: 'localhost:8787'
     };
-    super(config);
+    super(config, playerId);
   }
 }
