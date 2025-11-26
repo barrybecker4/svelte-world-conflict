@@ -67,42 +67,6 @@ npm run check            # Type-check with svelte-check
 npm run deploy           # Deploy to Cloudflare Pages
 ```
 
-## 🎯 Project Structure
-
-```
-src/
-├── lib/
-│   ├── client/                    # Client-side code
-│   │   ├── audio/                 # Sound system
-│   │   ├── composables/           # Composable hooks
-│   │   ├── feedback/              # Battle replay & tutorials
-│   │   ├── gameController/        # Game state orchestration
-│   │   ├── rendering/             # Battle animations
-│   │   ├── stores/                # Svelte stores
-│   │   └── websocket/             # WebSocket client wrapper
-│   ├── components/                # Svelte components
-│   │   ├── configuration/         # Game setup
-│   │   ├── lobby/                 # Game lobby
-│   │   ├── map/                   # Game map rendering
-│   │   ├── modals/                # Modal dialogs
-│   │   ├── ui/                    # Reusable UI components
-│   │   └── waitingRoom/           # Pre-game waiting room
-│   ├── game/                      # Core game logic
-│   │   ├── commands/              # Game commands
-│   │   ├── constants/             # Game constants
-│   │   ├── entities/              # Game entities
-│   │   ├── map/                   # Map generation
-│   │   ├── mechanics/             # Game mechanics
-│   │   └── validation/            # Move validation
-│   └── server/                    # Server-side code
-│       ├── ai/                    # AI opponents
-│       └── storage/               # Storage layer (uses framework)
-├── routes/                        # SvelteKit routes
-│   ├── api/                       # API endpoints
-│   │   └── game/                  # Game API routes
-│   └── game/[gameId]/             # Game page
-└── app.html                       # HTML template
-```
 
 ## 🎮 How to Play
 

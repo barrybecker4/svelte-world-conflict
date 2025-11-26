@@ -91,6 +91,12 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
         
         // Initialize GameStateUpdater with initial state so it can detect future changes
         gameStateUpdater.initializeWithState(initialGameState);
+
+        // Show initial turn banner if it's the local player's turn
+        // Do this after a short delay to allow the UI to render first
+        setTimeout(() => {
+          turnManager.showInitialTurnBanner(playerSlotIndex);
+        }, 100);
       }
 
       loading.set(false);
@@ -205,6 +211,17 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   const shouldHighlightRegions = turnManager.shouldHighlightRegions;
   const gameStateFromTurnManager = turnManager.gameData;
 
+  // Replay banner stores - for showing banners before replaying other players' moves
+  const shouldShowReplayBanner = turnManager.shouldShowReplayBanner;
+  const replayPlayer = turnManager.replayPlayer;
+
+  /**
+   * Complete replay banner (called when replay banner animation finishes)
+   */
+  function completeReplayBanner() {
+    turnManager.onReplayBannerComplete();
+  }
+
   return {
     // Core stores
     gameState,
@@ -227,11 +244,16 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     shouldHighlightRegions,
     gameStateFromTurnManager,
 
+    // Replay banner stores
+    shouldShowReplayBanner,
+    replayPlayer,
+
     // Actions
     loadGameState,
     initializeGame,
     handleGameStateUpdate,
     completeBanner,
+    completeReplayBanner,
     completeEliminationBanner,
     showEliminationBanner,
     resetTurnManager,

@@ -112,10 +112,22 @@ export class GameStateUpdater {
 
   /**
    * Process queued updates one at a time
+   * 
+   * Banner sequencing for multiplayer:
+   * 1. When receiving another player's moves, show THEIR banner first
+   * 2. Replay their moves
+   * 3. Only when it's OUR turn, show OUR "your turn" banner
    */
   private async processNextUpdate() {
     if (this.updateQueue.length === 0) {
       this.isProcessingUpdate = false;
+      return;
+    }
+
+    // Wait for initialization before processing updates
+    if (!this.lastRawState) {
+      console.log('⏸️ Waiting for initialization before processing WebSocket update...');
+      setTimeout(() => this.processNextUpdate(), 100);
       return;
     }
 
@@ -147,14 +159,20 @@ export class GameStateUpdater {
     const wasPreviousPlayerSomeoneElse = previousPlayerSlot !== undefined && previousPlayerSlot !== this.playerSlotIndex;
     const isOtherPlayerMove = wasPreviousPlayerSomeoneElse;
 
+    // Check if the turn is now transitioning to the local player
+    const isNowMyTurn = cleanState.currentPlayerSlot === this.playerSlotIndex;
+
     console.log('🔍 Move detection:', {
       mySlotIndex: this.playerSlotIndex,
       previousPlayerSlot,
       currentPlayerSlot: updatedState.currentPlayerSlot,
-      playerChanged,
-      wasPreviousPlayerSomeoneElse,
-      isOtherPlayerMove
+      isNewTurn,
+      isOtherPlayerMove,
+      isNowMyTurn
     });
+
+    // Update players store early so TurnManager can use updated list
+    this.playersStore.set(cleanState.players || []);
 
     // Check for eliminations in the updated state (e.g., from AI moves)
     this.checkForEliminations(cleanState);
@@ -174,129 +192,180 @@ export class GameStateUpdater {
       return;
     }
 
-    if (isNewTurn) {
-      console.log('🔄 Turn transition detected - showing turn banner for slot:', updatedState.currentPlayerSlot);
+    // Handle other player's moves - show THEIR banner before replaying moves
+    if (isOtherPlayerMove && previousPlayerSlot !== undefined) {
+      console.log(`🔄 Processing move from player slot ${previousPlayerSlot}`);
 
-        // Update players store BEFORE transition so TurnManager can use updated list
-        this.playersStore.set(cleanState.players || []);
+      // Show replay banner for the player who made the move (before replaying)
+      // TurnManager will only show if different from last shown banner
+      await turnManager.showReplayBannerForPlayer(previousPlayerSlot);
 
+      // Set flag to prevent animation states from contaminating game state
+      GameStateUpdater.isReplayingMoves = true;
+
+      // Detect and replay moves using state comparison
+      console.log('📼 Detecting and replaying moves from state diff');
+      await this.moveReplayer.replayMoves(updatedState, currentState);
+
+      // Clear flag before applying final state
+      GameStateUpdater.isReplayingMoves = false;
+
+      console.log('✅ Animations complete for other player\'s move');
+
+      // Update game state after replay
+      turnManager.updateGameState(cleanState);
+
+      // Update lastRawState to prevent infinite loop
+      this.lastRawState = cleanState;
+
+      // Apply the final state after animations complete
+      this.gameStateStore.set(cleanState);
+      this.regionsStore.set(cleanState.regions || []);
+      this.playersStore.set(cleanState.players || []);
+
+      // If turn changed to local player, show "your turn" banner
+      if (isNewTurn && isNowMyTurn) {
+        console.log('🎯 Turn is now mine - clearing replay tracking and showing my turn banner');
+        
+        // Clear replay banner tracking so next round of replays will show correctly
+        turnManager.clearReplayBannerTracking();
+
+        // Show "your turn" banner
         await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
-
-        // Update currentPlayerSlot and turnNumber immediately so UI/tests see correct turn
-        // But delay other state updates for animations
+        
+        // Update UI state
         this.gameStateStore.update(state => state ? {
-            ...state,
-            currentPlayerSlot: cleanState.currentPlayerSlot,
-            turnNumber: cleanState.turnNumber
-          } : state);
+          ...state,
+          currentPlayerSlot: cleanState.currentPlayerSlot,
+          turnNumber: cleanState.turnNumber
+        } : state);
 
-        // Check if the new current player is AI
+        audioSystem.playSound(SOUNDS.GAME_STARTED);
+
+        // Wait for banner to complete
+        await new Promise<void>((resolve) => {
+          setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
+        });
+
+        // Ensure the turn transition is complete and highlighting is enabled
+        turnManager.onBannerComplete();
+        turnManager.enableHighlighting();
+
+        // Notify that our turn is ready for interaction
+        if (this.onTurnReadyCallback) {
+          console.log('⏰ Turn is ready - notifying callback');
+          this.onTurnReadyCallback(cleanState);
+        }
+      } else if (isNewTurn) {
+        // Turn changed to another player (not us) - check if AI
         const currentPlayer = cleanState.players.find(p => p.slotIndex === cleanState.currentPlayerSlot);
         const isAiPlayer = currentPlayer?.isAI;
 
-        // Play appropriate sounds and handle animations based on whose turn it is
-        if (isOtherPlayerMove) {
-          // DON'T update full game state yet - keep old state for animations
-          // The animations will update to intermediate states, then we apply final state
+        // IMPORTANT: Update TurnManager's slot tracking so next transitionToPlayer works correctly
+        turnManager.updatePlayerSlotTracking(cleanState.currentPlayerSlot);
 
-          // It's another player's turn - wait for banner, then replay moves
-          await new Promise<void>((resolve) => {
-            setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME);
+        // Update currentPlayerSlot for UI
+        this.gameStateStore.update(state => state ? {
+          ...state,
+          currentPlayerSlot: cleanState.currentPlayerSlot,
+          turnNumber: cleanState.turnNumber
+        } : state);
+
+        // If the new current player is AI, trigger AI processing
+        if (isAiPlayer && this.triggerAiProcessingCallback) {
+          console.log('🤖 Turn changed to AI player, triggering AI processing');
+          // Don't await - let it run in background
+          this.triggerAiProcessingCallback().catch(error => {
+            console.error('❌ Error triggering AI processing:', error);
           });
-
-          // Set flag to prevent animation states from contaminating game state
-          GameStateUpdater.isReplayingMoves = true;
-
-          // Detect and replay moves using state comparison
-          console.log('📼 Detecting and replaying moves from state diff');
-          await this.moveReplayer.replayMoves(updatedState, currentState);
-
-          // Clear flag before applying final state
-          GameStateUpdater.isReplayingMoves = false;
-
-          console.log('✅ Animations complete, applying final clean state');
-
-          // Update lastRawState to prevent infinite loop
-          this.lastRawState = cleanState;
-
-          // NOW apply the final state after animations complete
-          this.gameStateStore.set(cleanState);
-          this.regionsStore.set(cleanState.regions || []);
-          this.playersStore.set(cleanState.players || []);
-
-          // If the new current player is AI, trigger AI processing
-          if (isAiPlayer && this.triggerAiProcessingCallback) {
-            console.log('🤖 Turn changed to AI player, triggering AI processing');
-            // Don't await - let it run in background
-            this.triggerAiProcessingCallback().catch(error => {
-              console.error('❌ Error triggering AI processing:', error);
-            });
-          }
-        } else {
-          // It's now our turn
-          audioSystem.playSound(SOUNDS.GAME_STARTED);
-
-          // Wait for banner to complete
-          await new Promise<void>((resolve) => {
-            setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
-          });
-
-          // Update lastRawState to prevent infinite loop
-          this.lastRawState = cleanState;
-
-          // Apply state after banner
-          this.gameStateStore.set(cleanState);
-          this.regionsStore.set(cleanState.regions || []);
-          this.playersStore.set(cleanState.players || []);
-
-          // Notify that our turn is ready for interaction (after banner completes)
-          if (this.onTurnReadyCallback) {
-            console.log('⏰ Turn is ready - notifying callback');
-            this.onTurnReadyCallback(cleanState);
-          }
         }
-    } else {
-      // Same player slot - could be our move or another player's move (in multiplayer)
-      console.log('🔄 Same player slot move detected');
+      }
+    } else if (isNewTurn && isNowMyTurn) {
+      // Turn changed directly to us (no other player moves to replay)
+      console.log('🎯 Turn transition directly to me');
+      
+      // Clear any previous replay banner tracking
+      turnManager.clearReplayBannerTracking();
+
+      await turnManager.transitionToPlayer(cleanState.currentPlayerSlot, cleanState);
+
+      // Update UI state
+      this.gameStateStore.update(state => state ? {
+        ...state,
+        currentPlayerSlot: cleanState.currentPlayerSlot,
+        turnNumber: cleanState.turnNumber
+      } : state);
+
+      audioSystem.playSound(SOUNDS.GAME_STARTED);
+
+      // Wait for banner to complete
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), GAME_CONSTANTS.BANNER_TIME + 100);
+      });
+
+      // Ensure the turn transition is complete and highlighting is enabled
+      turnManager.onBannerComplete();
+      turnManager.enableHighlighting();
+
+      // Update lastRawState to prevent infinite loop
+      this.lastRawState = cleanState;
+
+      // Apply state after banner
+      this.gameStateStore.set(cleanState);
+      this.regionsStore.set(cleanState.regions || []);
+      this.playersStore.set(cleanState.players || []);
+
+      // Notify that our turn is ready for interaction
+      if (this.onTurnReadyCallback) {
+        console.log('⏰ Turn is ready - notifying callback');
+        this.onTurnReadyCallback(cleanState);
+      }
+    } else if (isNewTurn) {
+      // Turn changed to another player (not triggered by other player move)
+      // This happens when the local player ends their turn
+      console.log('🔄 Turn transition to another player (slot:', cleanState.currentPlayerSlot, ')');
+      
       turnManager.updateGameState(cleanState);
 
-      // Only replay moves if it's another player's move (to avoid double animations)
-      // When it's our own move, BattleManager already animated it
-      if (isOtherPlayerMove) {
-        console.log('🔄 Replaying other player\'s move');
-        // DON'T update game state yet - keep old state for animations
+      // IMPORTANT: Update TurnManager's slot tracking so next transitionToPlayer works correctly
+      turnManager.updatePlayerSlotTracking(cleanState.currentPlayerSlot);
 
-        // Set flag to prevent animation states from contaminating game state
-        GameStateUpdater.isReplayingMoves = true;
+      // Update UI state
+      this.gameStateStore.update(state => state ? {
+        ...state,
+        currentPlayerSlot: cleanState.currentPlayerSlot,
+        turnNumber: cleanState.turnNumber
+      } : state);
 
-        // Detect and replay moves using state comparison
-        console.log('📼 Detecting and replaying moves from state diff');
-        await this.moveReplayer.replayMoves(updatedState, currentState);
+      // Update lastRawState to prevent infinite loop
+      this.lastRawState = cleanState;
 
-        // Clear flag before applying final state
-        GameStateUpdater.isReplayingMoves = false;
+      // Apply state
+      this.gameStateStore.set(cleanState);
+      this.regionsStore.set(cleanState.regions || []);
+      this.playersStore.set(cleanState.players || []);
 
-        console.log('✅ Animations complete, applying final clean state (same player slot)');
+      // Check if the new current player is AI
+      const currentPlayer = cleanState.players.find(p => p.slotIndex === cleanState.currentPlayerSlot);
+      const isAiPlayer = currentPlayer?.isAI;
 
-        // Update lastRawState to prevent infinite loop
-        this.lastRawState = cleanState;
-
-        // NOW apply the final state after animations complete
-        this.gameStateStore.set(cleanState);
-        this.regionsStore.set(cleanState.regions || []);
-        this.playersStore.set(cleanState.players || []);
-      } else {
-        console.log('✅ Applying update for our own move (already animated by BattleManager)');
-        // For our own moves, BattleManager already animated and GameController will update
-        // But we still need to apply this state update (it might be the GameController update)
-
-        // Update lastRawState to prevent infinite loop
-        this.lastRawState = cleanState;
-
-        this.gameStateStore.set(cleanState);
-        this.regionsStore.set(cleanState.regions || []);
-        this.playersStore.set(cleanState.players || []);
+      if (isAiPlayer && this.triggerAiProcessingCallback) {
+        console.log('🤖 Turn changed to AI player, triggering AI processing');
+        this.triggerAiProcessingCallback().catch(error => {
+          console.error('❌ Error triggering AI processing:', error);
+        });
       }
+    } else {
+      // Same player slot, our own move - BattleManager already animated it
+      console.log('✅ Applying update for our own move (already animated by BattleManager)');
+      turnManager.updateGameState(cleanState);
+
+      // Update lastRawState to prevent infinite loop
+      this.lastRawState = cleanState;
+
+      this.gameStateStore.set(cleanState);
+      this.regionsStore.set(cleanState.regions || []);
+      this.playersStore.set(cleanState.players || []);
     }
 
     const moveSystem = this.getMoveSystem();

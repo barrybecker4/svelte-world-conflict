@@ -44,6 +44,24 @@
 
   $: currentTurnPlayer = gameState?.players?.find(p => p.slotIndex === gameState.currentPlayerSlot) || null;
 
+  // Reactive set of movable region indices
+  // Explicitly reference all dependencies so Svelte knows to re-run when they change
+  $: movableRegionIndices = (() => {
+    // These references ensure Svelte tracks these as dependencies
+    const _deps = [showTurnHighlights, effectivePreviewMode, gameState, currentTurnPlayer, currentPlayer, regions];
+    void _deps;
+
+    if (!showTurnHighlights || effectivePreviewMode) {
+      return new Set<number>();
+    }
+
+    return new Set(
+      regions
+        .filter(region => canHighlightForTurn(region))
+        .map(region => region.index)
+    );
+  })();
+
   // Auto-detect preview mode
   $: detectedPreviewMode = !currentPlayer && gameState !== null;
   $: effectivePreviewMode = isPreviewMode || detectedPreviewMode || previewMode;
@@ -130,24 +148,19 @@
   function canHighlightForTurn(region: Region): boolean {
     if (!showTurnHighlights || effectivePreviewMode) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
-    if (!currentPlayer) return false;
+
+    // Use currentTurnPlayer derived from gameState for consistent highlighting
+    // This avoids timing issues with the currentPlayer prop
+    const playerToHighlight = currentTurnPlayer || currentPlayer;
+    if (!playerToHighlight) return false;
 
     // Don't allow highlighting if game has ended
-    if (gameState.endResult) {
-      // Debug log
-      if (region.index === 0) {
-        console.log('🚫 canHighlightForTurn blocked - game ended:', {
-          regionIndex: region.index,
-          endResult: gameState.endResult
-        });
-      }
-      return false;
-    }
+    if (gameState.endResult) return false;
 
-    // Only highlight if it's the current player's turn (not just any player's turn)
-    if (currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
+    // Only highlight if it's the current player's turn
+    if (playerToHighlight.slotIndex !== gameState.currentPlayerSlot) return false;
 
-    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === currentPlayer.slotIndex;
+    const isOwnedByCurrentPlayer = gameState.ownersByRegion?.[region.index] === gameState.currentPlayerSlot;
     const soldierCount = gameState.soldiersByRegion?.[region.index]?.length || 0;
     const hasMovableSoldiers = soldierCount > 0;
 
@@ -223,7 +236,7 @@
       {@const gameHasEnded = !!(gameState?.endResult)}
       {@const isSelected = gameHasEnded ? false : (selectedRegion ? selectedRegion.index === region.index : false)}
       {@const isValidTarget = gameHasEnded ? false : validTargetRegions.includes(region.index)}
-      {@const isMovable = gameHasEnded ? false : canHighlightForTurn(region)}
+      {@const isMovable = gameHasEnded ? false : movableRegionIndices.has(region.index)}
       {@const isWinner = isWinnerRegion(region)}
       {@const hasMovesRemaining = !!(gameState && gameState.movesRemaining > 0)}
       {@const isMyTurn = !!(currentPlayer && gameState && currentPlayer.slotIndex === gameState.currentPlayerSlot)}

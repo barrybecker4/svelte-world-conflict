@@ -31,7 +31,10 @@
     shouldHighlightRegions,
     completeBanner,
     eliminationBanners,
-    completeEliminationBanner
+    completeEliminationBanner,
+    shouldShowReplayBanner,
+    replayPlayer,
+    completeReplayBanner
   } = gameStore;
 
   const controller = new GameController(gameId, playerId, gameStore);
@@ -158,7 +161,12 @@
       />
     </div>
 
-    <!-- Turn Banner -->
+    <!-- Replay Banner - shows before replaying other players' moves -->
+    {#if $shouldShowReplayBanner && $replayPlayer}
+      <Banner player={$replayPlayer} onComplete={completeReplayBanner} />
+    {/if}
+
+    <!-- Turn Banner - shows when it's the local player's turn -->
     {#if $shouldShowBanner && $currentPlayerFromTurnManager}
       <Banner player={$currentPlayerFromTurnManager} onComplete={completeBanner} />
     {/if}

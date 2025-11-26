@@ -2,6 +2,7 @@
 import { writable, derived } from 'svelte/store';
 import type { Player, GameStateData } from '$lib/game/state/GameState';
 import { get } from 'svelte/store';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 interface TurnState {
   currentPlayerIndex: number;
@@ -25,6 +26,11 @@ class TurnManager {
   private gameState = writable<GameStateData | null>(null);
   private players = writable<Player[]>([]);
   private previousSlotIndex: number | null = null;
+
+  // Replay banner state - used to show banners before replaying other players' moves
+  private replayBannerPlayer = writable<Player | null>(null);
+  private lastReplayBannerSlot: number | null = null;
+  private onReplayBannerCompleteCallback: (() => void) | null = null;
 
   // Public stores for components to subscribe to
   public readonly state = { subscribe: this.turnState.subscribe };
@@ -52,6 +58,14 @@ class TurnManager {
     ([state, gameState]) => state.bannerComplete && !state.isTransitioning && !gameState?.endResult
   );
 
+  // Show banners before replaying other players' moves
+  public readonly shouldShowReplayBanner = derived(
+    this.replayBannerPlayer,
+    player => player !== null
+  );
+
+  public readonly replayPlayer = { subscribe: this.replayBannerPlayer.subscribe };
+
   /**
    * Initialize the turn manager with game data
    */
@@ -76,6 +90,45 @@ class TurnManager {
           bannerComplete: true,
           turnStartTime: Date.now()
       }));
+  }
+
+  /**
+   * Show the initial "your turn" banner when loading into a game where it's already
+   * the local player's turn. This is separate from turn transitions.
+   */
+  public async showInitialTurnBanner(localPlayerSlotIndex: number): Promise<void> {
+    const gameState = get(this.gameState);
+    if (!gameState) return;
+
+    // Only show if it's the local player's turn
+    if (gameState.currentPlayerSlot !== localPlayerSlotIndex) {
+      return;
+    }
+
+    const players = get(this.players);
+    const currentPlayer = players.find(p => p.slotIndex === localPlayerSlotIndex);
+    if (!currentPlayer) return;
+
+    return new Promise((resolve) => {
+      this.turnState.update(state => ({
+        ...state,
+        showBanner: true,
+        bannerComplete: false,
+        isTransitioning: true
+      }));
+
+      this.onBannerCompleteCallback = () => {
+        resolve();
+      };
+
+      // Auto-complete after BANNER_TIME
+      setTimeout(() => {
+        const state = get(this.turnState);
+        if (state.showBanner && !state.bannerComplete) {
+          this.onBannerComplete();
+        }
+      }, GAME_CONSTANTS.BANNER_TIME + 100);
+    });
   }
 
   /**
@@ -122,7 +175,19 @@ class TurnManager {
 
         // Wait a tick to ensure derived stores update
         await new Promise(r => setTimeout(r, 0));
-        
+
+        // If showing a banner, set up auto-complete as a fallback
+        // (in case the Banner component doesn't call onBannerComplete)
+        if (isNewTurn) {
+          setTimeout(() => {
+            const state = get(this.turnState);
+            if (state.isTransitioning || !state.bannerComplete) {
+              console.log('🎭 Auto-completing turn transition (fallback)');
+              this.onBannerComplete();
+            }
+          }, GAME_CONSTANTS.BANNER_TIME + 200);
+        }
+
         setTimeout(() => resolve(), 100);
       });
   }
@@ -163,6 +228,28 @@ class TurnManager {
    */
   public updateGameState(gameState: GameStateData): void {
     this.gameState.set(gameState);
+  }
+
+  /**
+   * Update the current player slot tracking without showing a banner.
+   * Call this when the turn changes to another player (not the local player)
+   * so that the next transitionToPlayer call will correctly detect a new turn.
+   */
+  public updatePlayerSlotTracking(newPlayerSlotIndex: number): void {
+    this.previousSlotIndex = newPlayerSlotIndex;
+  }
+
+  /**
+   * Force enable region highlighting by ensuring transition is complete.
+   * Call this after banner animations to make sure regions are highlighted.
+   */
+  public enableHighlighting(): void {
+    this.turnState.update(state => ({
+      ...state,
+      isTransitioning: false,
+      bannerComplete: true,
+      showBanner: false
+    }));
   }
 
   /**
@@ -278,6 +365,64 @@ class TurnManager {
 
     this.gameState.set(null);
     this.players.set([]);
+    this.clearReplayBannerTracking();
+  }
+
+  /**
+   * Show a replay banner for a specific player before replaying their moves.
+   * Only shows the banner if this player is different from the last replay banner shown.
+   * Returns a promise that resolves when the banner animation completes.
+   */
+  public async showReplayBannerForPlayer(playerSlotIndex: number): Promise<void> {
+    // Skip if we already showed a banner for this player
+    if (this.lastReplayBannerSlot === playerSlotIndex) {
+      console.log(`🎭 Skipping replay banner for slot ${playerSlotIndex} - already shown`);
+      return;
+    }
+
+    const players = get(this.players);
+    const player = players.find(p => p.slotIndex === playerSlotIndex);
+
+    if (!player) {
+      return;
+    }
+
+    console.log(`🎭 Showing replay banner for ${player.name} (slot ${playerSlotIndex})`);
+    this.lastReplayBannerSlot = playerSlotIndex;
+
+    return new Promise((resolve) => {
+      this.replayBannerPlayer.set(player);
+      this.onReplayBannerCompleteCallback = resolve;
+
+      // Auto-complete after BANNER_TIME (in case onReplayBannerComplete isn't called)
+      setTimeout(() => {
+        if (get(this.replayBannerPlayer) === player) {
+          this.onReplayBannerComplete();
+        }
+      }, GAME_CONSTANTS.BANNER_TIME + 100);
+    });
+  }
+
+  /**
+   * Called when the replay banner animation completes
+   */
+  public onReplayBannerComplete(): void {
+    this.replayBannerPlayer.set(null);
+
+    if (this.onReplayBannerCompleteCallback) {
+      this.onReplayBannerCompleteCallback();
+      this.onReplayBannerCompleteCallback = null;
+    }
+  }
+
+  /**
+   * Clear replay banner tracking - call when local player's turn starts
+   * so the next round of replay banners will show correctly
+   */
+  public clearReplayBannerTracking(): void {
+    this.lastReplayBannerSlot = null;
+    this.replayBannerPlayer.set(null);
+    this.onReplayBannerCompleteCallback = null;
   }
 }
 
