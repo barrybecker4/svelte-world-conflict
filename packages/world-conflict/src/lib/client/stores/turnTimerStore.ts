@@ -29,13 +29,11 @@ function createTurnTimerStore() {
 
             // Play warning sound on every second when time is less than WARNING_TIME
             if (newTimeRemaining > 0 && newTimeRemaining < GAME_CONSTANTS.TIMER_WARNING_SECONDS) {
-                console.log(`⏰ Timer warning: ${newTimeRemaining} seconds remaining`);
                 audioSystem.playSound(SOUNDS.ALMOST_OUT_OF_TIME);
             }
 
             // Handle timer expiration
             if (newTimeRemaining <= 0) {
-                console.log('⏰ Timer expired!');
                 audioSystem.playSound(SOUNDS.OUT_OF_TIME);
                 
                 // Clear the interval
@@ -50,7 +48,6 @@ function createTurnTimerStore() {
                 
                 // Call the expiration callback
                 if (callbackToExecute) {
-                    console.log('⏰ Calling onExpire callback');
                     callbackToExecute();
                 }
                 
@@ -76,8 +73,6 @@ function createTurnTimerStore() {
     }
 
     function startTimer(duration: number, onExpire: () => void) {
-        console.log(`⏰ Starting turn timer: ${duration} seconds`);
-        
         // Clear any existing timer
         if (intervalId !== null) {
             clearInterval(intervalId);
@@ -96,8 +91,6 @@ function createTurnTimerStore() {
     }
 
     function stopTimer() {
-        console.log('⏰ Stopping turn timer');
-        
         if (intervalId !== null) {
             clearInterval(intervalId);
             intervalId = null;

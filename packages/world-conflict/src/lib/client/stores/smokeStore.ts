@@ -48,7 +48,6 @@ function createSmokeStore() {
       }
 
       update(particles => [...particles, ...newParticles]);
-      console.log(`💨 Smoke store: Added ${numParticles} particles at (${x}, ${y}), total now: ${newParticles.length}`);
     },
 
     /**

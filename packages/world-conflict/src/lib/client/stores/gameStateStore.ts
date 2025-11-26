@@ -1,10 +1,13 @@
 import { writable, derived } from 'svelte/store';
 import { turnManager } from '$lib/game/mechanics/TurnManager';
 import { MoveSystem } from '$lib/game/mechanics/MoveSystem';
+import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import { MoveReplayer } from '$lib/client/feedback/MoveReplayer';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { GameStateUpdater } from './GameStateUpdater';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
+import type { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSystem';
+import { logger } from '$lib/client/utils/logger';
 
 /**
  * Svelte Store for managing game state loading, initialization, and updates.
@@ -50,21 +53,14 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
         throw new Error('Failed to load game state');
       }
 
-      const data = await response.json() as { worldConflictState: any };
+      const data = await response.json() as { worldConflictState: GameStateData };
       gameState.set(data.worldConflictState);
       regions.set(data.worldConflictState.regions || []);
       players.set(data.worldConflictState.players || []);
 
-      console.log('📊 Game state loaded:', {
-        playerSlotIndex: data.worldConflictState.playerSlotIndex,
-        movesRemaining: data.worldConflictState.movesRemaining,
-        regionsCount: data.worldConflictState.regions?.length,
-        playersCount: data.worldConflictState.players?.length
-      });
-
       return data.worldConflictState;
     } catch (err) {
-      console.error('Failed to load game state:', err);
+      logger.error('Failed to load game state:', err);
       throw err;
     }
   }
@@ -72,7 +68,10 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
   /**
    * Initialize game systems (move system, turn manager)
    */
-  async function initializeGame(handleMoveComplete: any, handleMoveStateChange: any) {
+  async function initializeGame(
+    handleMoveComplete: (from: number, to: number, soldiers: number) => Promise<void>,
+    handleMoveStateChange: (state: MoveState) => void
+  ) {
     try {
       const initialGameState = await loadGameState();
 
@@ -103,7 +102,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
       return { gameState: initialGameState, moveSystem };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to initialize game';
-      error.set(errorMessage as any);
+      error.set(errorMessage);
       loading.set(false);
       throw err;
     }
@@ -113,7 +112,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
    * Handle WebSocket game state updates
    * Delegates to GameStateUpdater for proper queuing and orchestration
    */
-  function handleGameStateUpdate(updatedState: any) {
+  function handleGameStateUpdate(updatedState: GameStateData) {
     gameStateUpdater.handleGameStateUpdate(updatedState);
   }
 
@@ -129,7 +128,6 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
    * Complete elimination banner for a specific player
    */
   function completeEliminationBanner(playerSlotIndex: number) {
-    console.log(`💀 Completing elimination banner for player ${playerSlotIndex}`);
     eliminationBanners.update(banners => banners.filter(p => p !== playerSlotIndex));
   }
 
@@ -147,10 +145,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     });
 
     if (!alreadyShown) {
-      console.log(`💀 Showing elimination banner for player ${playerSlotIndex}`);
       eliminationBanners.update(banners => [...banners, playerSlotIndex]);
-    } else {
-      console.log(`💀 Skipping duplicate elimination banner for player ${playerSlotIndex}`);
     }
   }
 
@@ -174,7 +169,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     const player = $players.find((p: Player) => p.slotIndex === $currentPlayerSlot);
 
     if (!player) {
-      console.warn(`⚠️ Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);
+      logger.warn(`Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);
       // Return the first player as fallback instead of throwing
       return $players[0] || null;
     }
@@ -191,7 +186,7 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
         if ($gameState.endResult) return false;
 
         // Find the player whose turn it is (by slot index)
-        const currentTurnPlayer = $players.find((p: any) => (p as any).slotIndex === ($gameState as any).currentPlayerSlot);
+        const currentTurnPlayer = $players.find((p: Player) => p.slotIndex === $gameState.currentPlayerSlot);
 
         const isMySlot = $gameState.currentPlayerSlot === playerSlotIndex;
         const isHumanPlayer = currentTurnPlayer && !currentTurnPlayer.personality;
@@ -265,11 +260,10 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     getMoveReplayer: () => moveReplayer,
 
     // Set battle animation system for move replayer
-    setBattleAnimationSystem: (system: any) => {
+    setBattleAnimationSystem: (system: BattleAnimationSystem) => {
       if (!battleAnimationSystemSet) {
         moveReplayer.setBattleAnimationSystem(system);
         battleAnimationSystemSet = true;
-        console.log('🎬 Battle animation system set for move replayer');
       }
     },
 

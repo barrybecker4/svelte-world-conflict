@@ -3,6 +3,7 @@ import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS, type SoundType } from '$lib/client/audio/sounds';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import type { Region } from '$lib/game/entities/gameTypes';
+import { logger } from '$lib/client/utils/logger';
 
 export interface FloatingTextEvent {
   regionIdx: number;
@@ -45,12 +46,11 @@ export class BattleAnimationSystem {
 
   setMapContainer(container: HTMLElement) {
     this.mapContainer = container;
-    console.log('🗺️ BattleAnimationSystem: Map container set:', container);
   }
 
   async playAttackSequence(
     attackSequence: AttackEvent[],
-    regions: any[],
+    regions: Region[],
     onStateUpdate?: StateUpdateCallback
   ): Promise<void> {
     // Check if we have a map container
@@ -85,7 +85,6 @@ export class BattleAnimationSystem {
 
     const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
     if (!region) {
-      console.warn('Region not found for floating text:', textEvent.regionIdx);
       return;
     }
 
@@ -129,17 +128,12 @@ export class BattleAnimationSystem {
     // Append to document body instead of map container for fixed positioning
     document.body.appendChild(textElement);
     this.activeAnimations.add(textElement);
-    console.log('Floating text element added to DOM at screen coords:', { 
-      x: textElement.style.left, 
-      y: textElement.style.top 
-    });
 
     // Remove after animation
     setTimeout(() => {
       if (textElement.parentNode) {
         textElement.parentNode.removeChild(textElement);
         this.activeAnimations.delete(textElement);
-        console.log('🗑Floating text element removed');
       }
     }, GAME_CONSTANTS.BANNER_TIME);
   }
@@ -166,21 +160,19 @@ export class BattleAnimationSystem {
 
   private isValid(textEvent: FloatingTextEvent, regions: Region[]) {
     if (!this.mapContainer) {
-      console.warn('No map container for floating text');
+      logger.warn('No map container for floating text');
       return false;
     }
 
     const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
     if (!region) {
-      console.warn('Region not found for floating text:', textEvent.regionIdx);
+      logger.warn('Region not found for floating text:', textEvent.regionIdx);
       return false;
     }
     return true;
   }
 
   async playSoundCue(soundCue: string): Promise<void> {
-      console.log('Playing sound cue:', soundCue);
-
       try {
           // Map sound cues to constants (handles both new and old GAS format)
           const soundMap: Record<string, SoundType> = {
@@ -218,10 +210,10 @@ export class BattleAnimationSystem {
           if (soundType) {
               await audioSystem.playSound(soundType);
           } else {
-              console.warn(`Unknown sound cue: ${soundCue}`);
+              logger.warn(`Unknown sound cue: ${soundCue}`);
           }
       } catch (error) {
-          console.warn(`Could not play sound cue "${soundCue}":`, error);
+          logger.warn(`Could not play sound cue "${soundCue}":`, error);
       }
   }
 
