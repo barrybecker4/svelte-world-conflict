@@ -35,7 +35,6 @@ export function useAudio() {
     }
   };
 
-  // Toggle audio on/off
   const toggleAudio = async (): Promise<boolean> => {
     try {
       const newState = await audioSystem.toggle();
@@ -47,7 +46,7 @@ export function useAudio() {
 
       // Play confirmation sound
       if (newState) {
-        setTimeout(() => playUISound(SOUNDS.CLICK), 100);
+        setTimeout(() => playSound(SOUNDS.CLICK), 100);
       }
 
       return newState;
@@ -67,44 +66,11 @@ export function useAudio() {
     }));
   };
 
-  const playGameSound = async (soundType: SoundType): Promise<void> => {
+  const playSound = async (soundType: SoundType): Promise<void> => {
     try {
       await audioSystem.playSound(soundType);
     } catch (error) {
-      console.warn(`Failed to play game sound ${soundType}:`, error);
-    }
-  };
-
-  // Play UI sounds (click, hover, etc.)
-  const playUISound = async (soundType: SoundType): Promise<void> => {
-      // Validate it's a UI sound
-      const uiSounds: SoundType[] = [SOUNDS.CLICK, SOUNDS.HOVER, SOUNDS.ERROR];
-      if (!uiSounds.includes(soundType)) {
-          console.warn(`${soundType} is not a UI sound`);
-          return;
-      }
-
-      try {
-          await audioSystem.playSound(soundType);
-      } catch (error) {
-          console.warn(`Failed to play UI sound ${soundType}:`, error);
-      }
-  };
-
-  // Play special sound sequences
-  const playVictoryFanfare = async (): Promise<void> => {
-    try {
-      await audioSystem.playVictoryFanfare();
-    } catch (error) {
-      console.warn('Failed to play victory fanfare:', error);
-    }
-  };
-
-  const playDefeatSound = async (): Promise<void> => {
-    try {
-      await audioSystem.playDefeatSound();
-    } catch (error) {
-      console.warn('Failed to play defeat sound:', error);
+      console.warn(`Failed to play sound ${soundType}:`, error);
     }
   };
 
@@ -134,12 +100,12 @@ export function useAudio() {
     setVolume,
 
     // Sound playback
-    playGameSound,
-    playUISound,
-    playVictoryFanfare,
-    playDefeatSound,
+    playSound,
     playAttackSequence,
     playTimeWarning,
+
+    // Sound types for convenience
+    SOUNDS,
 
     // Direct access to audio system
     audioSystem
