@@ -35,6 +35,13 @@ export class TutorialTips {
   private dismissedTooltips: Set<string> = new Set();
 
   /**
+   * Check if a tooltip should be shown (not already shown or dismissed)
+   */
+  private shouldShowTooltip(key: string): boolean {
+    return !hasInstructionBeenShown(key) && !this.dismissedTooltips.has(key);
+  }
+
+  /**
    * Get tooltips to display based on current game state
    */
   getTooltips(
@@ -55,14 +62,6 @@ export class TutorialTips {
       return [];
     }
 
-    console.log('📖 Tutorial check:', {
-      isMyTurn,
-      turnNumber: gameState.turnNumber,
-      movesRemaining: gameState.movesRemaining,
-      selectedRegionIndex,
-      conqueredRegions: gameState.conqueredRegions?.length || 0
-    });
-
     // Show tips based on selected region
     if (selectedRegionIndex !== null) {
       const selectedRegion = regions.find(r => r.index === selectedRegionIndex);
@@ -80,10 +79,6 @@ export class TutorialTips {
       this.addUIButtonTip(tooltips);
     }
 
-    if (tooltips.length > 0) {
-      console.log('📖 Showing tooltips:', tooltips.map(t => t.id));
-    }
-
     return tooltips;
   }
 
@@ -91,40 +86,19 @@ export class TutorialTips {
    * Add tips for moving armies
    */
   private addMoveTips(tooltips: TooltipData[], selectedRegion: Region, regions: Region[]): void {
-    const moveRegionShown = hasInstructionBeenShown(INSTRUCTION_KEYS.MOVE_REGION);
-    const moveToNeighborShown = hasInstructionBeenShown(INSTRUCTION_KEYS.MOVE_TO_NEIGHBOR);
-    const moveRegionDismissed = this.dismissedTooltips.has(INSTRUCTION_KEYS.MOVE_REGION);
-    const moveToNeighborDismissed = this.dismissedTooltips.has(INSTRUCTION_KEYS.MOVE_TO_NEIGHBOR);
-
-    console.log('📖 addMoveTips called', {
-      selectedRegionIndex: selectedRegion.index,
-      x: selectedRegion.x,
-      y: selectedRegion.y,
-      percentX: this.svgToPercentX(selectedRegion.x),
-      percentY: this.svgToPercentY(selectedRegion.y),
-      moveRegionShown,
-      moveToNeighborShown,
-      moveRegionDismissed,
-      moveToNeighborDismissed,
-      willShowMoveRegion: !moveRegionShown && !moveRegionDismissed,
-      willShowMoveToNeighbor: !moveToNeighborShown && !moveToNeighborDismissed
-    });
-
     // Tip 1: Click region again to change soldier count
-    if (!hasInstructionBeenShown(INSTRUCTION_KEYS.MOVE_REGION) && !this.dismissedTooltips.has(INSTRUCTION_KEYS.MOVE_REGION)) {
-      const tooltip = {
+    if (this.shouldShowTooltip(INSTRUCTION_KEYS.MOVE_REGION)) {
+      tooltips.push({
         id: INSTRUCTION_KEYS.MOVE_REGION,
         x: this.svgToPercentX(selectedRegion.x),
         y: this.svgToPercentY(selectedRegion.y),
         text: INSTRUCTIONS.MOVE_REGION,
         width: TIP_WIDTH
-      };
-      console.log('📖 Adding MOVE_REGION tooltip:', tooltip);
-      tooltips.push(tooltip);
+      });
     }
 
     // Tip 2: Click a neighboring region to move
-    if (!hasInstructionBeenShown(INSTRUCTION_KEYS.MOVE_TO_NEIGHBOR) && !this.dismissedTooltips.has(INSTRUCTION_KEYS.MOVE_TO_NEIGHBOR) && selectedRegion.neighbors.length > 0) {
+    if (this.shouldShowTooltip(INSTRUCTION_KEYS.MOVE_TO_NEIGHBOR) && selectedRegion.neighbors.length > 0) {
       // Find the furthest neighbor for better visibility
       let furthestNeighbor: Region | null = null;
       let maxDistance = 0;
@@ -145,15 +119,13 @@ export class TutorialTips {
       }
 
       if (furthestNeighbor) {
-        const tooltip = {
+        tooltips.push({
           id: INSTRUCTION_KEYS.MOVE_TO_NEIGHBOR,
           x: this.svgToPercentX(furthestNeighbor.x),
           y: this.svgToPercentY(furthestNeighbor.y),
           text: INSTRUCTIONS.MOVE_TO_NEIGHBOR,
           width: TIP_WIDTH
-        };
-        console.log('📖 Adding MOVE_TO_NEIGHBOR tooltip:', tooltip);
-        tooltips.push(tooltip);
+        });
       }
     }
   }
@@ -169,7 +141,7 @@ export class TutorialTips {
       const mostRecentRegionIdx = conqueredRegions[conqueredRegions.length - 1];
       const region = regions.find(r => r.index === mostRecentRegionIdx);
 
-      if (region && !hasInstructionBeenShown(INSTRUCTION_KEYS.CONQUEST_NO_MOVE) && !this.dismissedTooltips.has(INSTRUCTION_KEYS.CONQUEST_NO_MOVE)) {
+      if (region && this.shouldShowTooltip(INSTRUCTION_KEYS.CONQUEST_NO_MOVE)) {
         tooltips.push({
           id: INSTRUCTION_KEYS.CONQUEST_NO_MOVE,
           x: this.svgToPercentX(region.x),
@@ -178,48 +150,22 @@ export class TutorialTips {
           width: TIP_WIDTH
         });
       }
-
-      // Show end turn tip when there are conquered regions
-      // Note: This tip points to the END TURN button in the left panel, not on the map
-      // So we skip it for now since it needs different positioning logic
-      // TODO: Add support for UI element tooltips outside the map
-      /* if (!hasInstructionBeenShown(INSTRUCTIONS.END_TURN) && !this.dismissedTooltips.has(INSTRUCTIONS.END_TURN)) {
-        tooltips.push({
-          id: INSTRUCTIONS.END_TURN,
-          x: -2,
-          y: 80,
-          text: INSTRUCTIONS.END_TURN,
-          width: 10
-        });
-        this.scheduleMarkAsShown(INSTRUCTIONS.END_TURN);
-      } */
     }
   }
 
   /**
    * Add tip about UI buttons
+   * Note: Currently a no-op as UI button tips need different positioning logic
    */
-  private addUIButtonTip(tooltips: TooltipData[]): void {
-    // Note: This tip should point to UI buttons in the left panel, not on the map
-    // Skip for now since it needs different positioning logic
-    // TODO: Add support for UI element tooltips outside the map
-    /* if (!hasInstructionBeenShown(INSTRUCTIONS.UI_BUTTONS) && !this.dismissedTooltips.has(INSTRUCTIONS.UI_BUTTONS)) {
-      tooltips.push({
-        id: INSTRUCTIONS.UI_BUTTONS,
-        x: 90,
-        y: 93,
-        text: INSTRUCTIONS.UI_BUTTONS,
-        width: 15
-      });
-      this.scheduleMarkAsShown(INSTRUCTIONS.UI_BUTTONS);
-    } */
+  private addUIButtonTip(_tooltips: TooltipData[]): void {
+    // UI button tips would point to elements outside the map
+    // This requires a different positioning approach - skipped for now
   }
 
   /**
    * Dismiss a tooltip (prevents it from showing again this session and permanently)
    */
   dismissTooltip(tooltipId: string): void {
-    console.log('📖 Dismissing tooltip:', tooltipId);
     this.markTooltipAsShown(tooltipId);
   }
 

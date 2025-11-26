@@ -4,6 +4,7 @@ import { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSyst
 import type { DetectedMove } from './MoveDetector';
 import { FeedbackPlayer } from './FeedbackPlayer';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { delay, waitForNextFrame, dispatchGameEvent } from './utils';
 
 /**
  * Coordinates battle replay animations and sound effects
@@ -43,8 +44,8 @@ export class BattleReplayCoordinator {
   private async playFullBattleAnimation(move: DetectedMove, regions: any[]): Promise<void> {
     const sourceRegion = move.sourceRegion !== undefined ? move.sourceRegion : 0;
     const targetRegion = move.regionIndex;
-    const previousGameState = (move as any).previousGameState;
-    const finalGameState = (move as any).finalGameState;
+    const previousGameState = move.previousGameState;
+    const finalGameState = move.finalGameState;
 
     // Calculate how many soldiers actually attacked
     const finalTargetCount = finalGameState.soldiersByRegion?.[targetRegion]?.length || 0;
@@ -85,9 +86,7 @@ export class BattleReplayCoordinator {
 
     // Step 4: Final feedback
     this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
-    await new Promise<void>((resolve) =>
-      setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS)
-    );
+    await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
   }
 
   /**
@@ -115,12 +114,8 @@ export class BattleReplayCoordinator {
     this.dispatchBattleStateUpdate(animationState);
 
     // Wait for halfway animation to complete
-    await new Promise<void>((resolve) => 
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-    );
-    await new Promise((resolve) =>
-      setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS)
-    );
+    await waitForNextFrame();
+    await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
 
     return animationState;
   }
@@ -145,7 +140,7 @@ export class BattleReplayCoordinator {
     };
 
     await this.battleAnimationSystem!.playAttackSequence(attackSequence, regions, onCasualties);
-    await new Promise((resolve) => setTimeout(resolve, GAME_CONSTANTS.BATTLE_END_WAIT_MS));
+    await delay(GAME_CONSTANTS.BATTLE_END_WAIT_MS);
   }
 
   /**
@@ -192,9 +187,7 @@ export class BattleReplayCoordinator {
       
       this.clearBattlefield(finalGameState, sourceRegion, targetRegion);
       
-      await new Promise<void>((resolve) => 
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-      );
+      await waitForNextFrame();
       
       await this.animateConqueringMove(animationState, finalGameState, sourceRegion, targetRegion);
     }
@@ -206,13 +199,7 @@ export class BattleReplayCoordinator {
    * Helper to dispatch battle state updates
    */
   private dispatchBattleStateUpdate(gameState: any): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('battleStateUpdate', {
-          detail: { gameState }
-        })
-      );
-    }
+    dispatchGameEvent('battleStateUpdate', { gameState });
   }
 
   /**
@@ -236,12 +223,8 @@ export class BattleReplayCoordinator {
 
     this.dispatchBattleStateUpdate(newAnimationState);
 
-    await new Promise<void>((resolve) => 
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-    );
-    await new Promise((resolve) =>
-      setTimeout(resolve, GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS)
-    );
+    await waitForNextFrame();
+    await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
   }
 
   /**
@@ -303,16 +286,16 @@ export class BattleReplayCoordinator {
         soldierCount: (move.newCount || 1) - (move.oldCount || 0),
         sourceRegion: move.sourceRegion
       };
-      await this.feedbackPlayer.playMovement(movementMove, (move as any).previousGameState);
+      await this.feedbackPlayer.playMovement(movementMove, move.previousGameState);
     }
 
     audioSystem.playSound(SOUNDS.ATTACK);
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), 200));
+    await delay(200);
     audioSystem.playSound(SOUNDS.COMBAT);
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), GAME_CONSTANTS.QUICK_ANIMATION_MS));
+    await delay(GAME_CONSTANTS.QUICK_ANIMATION_MS);
     audioSystem.playSound(SOUNDS.REGION_CONQUERED);
 
     this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS));
+    await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
   }
 }

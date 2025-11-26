@@ -105,18 +105,18 @@ export class MoveReplayer {
       const conquestMove = moves.find(m => m.type === 'conquest');
       if (conquestMove) {
         conquestMove.attackSequence = attackSequence;
-        (conquestMove as any).regions = regions;
-        (conquestMove as any).previousGameState = previousState;
-        (conquestMove as any).finalGameState = newState;
+        conquestMove.regions = regions;
+        conquestMove.previousGameState = previousState;
+        conquestMove.finalGameState = newState;
       }
     }
 
     // Attach context to all conquest moves
     moves.forEach(move => {
       if (move.type === 'conquest') {
-        (move as any).previousGameState = previousState;
-        (move as any).finalGameState = newState;
-        (move as any).regions = regions;
+        move.previousGameState = previousState;
+        move.finalGameState = newState;
+        move.regions = regions;
       }
     });
 

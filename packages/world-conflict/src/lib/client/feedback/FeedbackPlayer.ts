@@ -2,6 +2,7 @@ import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import type { DetectedMove } from './MoveDetector';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { delay, waitForNextFrame, dispatchGameEvent } from './utils';
 
 /**
  * Plays simple audio and visual feedback for game moves
@@ -15,9 +16,7 @@ export class FeedbackPlayer {
     if (move.sourceRegion === undefined) {
       audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
       this.highlightRegion(move.regionIndex, 'movement');
-      await new Promise<void>((resolve) => {
-        setTimeout(() => resolve(), GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
-      });
+      await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
       return;
     }
 
@@ -39,22 +38,14 @@ export class FeedbackPlayer {
         sourceSoldiers[i].movingToRegion = targetRegion;
       }
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('battleStateUpdate', {
-          detail: { gameState: animationState }
-        }));
-      }
+      dispatchGameEvent('battleStateUpdate', { gameState: animationState });
     }
 
     audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
     this.highlightRegion(move.regionIndex, 'movement');
 
-    await new Promise<void>((resolve) => 
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-    );
-    await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
-    });
+    await waitForNextFrame();
+    await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
   }
 
   /**
@@ -63,9 +54,7 @@ export class FeedbackPlayer {
   async playRecruitment(move: DetectedMove): Promise<void> {
     audioSystem.playSound(SOUNDS.SOLDIERS_RECRUITED);
     this.highlightRegion(move.regionIndex, 'recruitment');
-    await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
-    });
+    await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
   }
 
   /**
@@ -74,20 +63,18 @@ export class FeedbackPlayer {
   async playUpgrade(move: DetectedMove): Promise<void> {
     audioSystem.playSound(SOUNDS.TEMPLE_UPGRADED);
     this.highlightRegion(move.regionIndex, 'upgrade');
-    await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
-    });
+    await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
   }
 
   /**
    * Highlight a region with visual feedback
    */
   highlightRegion(regionIndex: number, actionType: string): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('highlightRegion', {
-        detail: { regionIndex, actionType, duration: GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS }
-      }));
-    }
+    dispatchGameEvent('highlightRegion', {
+      regionIndex,
+      actionType,
+      duration: GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS
+    });
   }
 
 }
