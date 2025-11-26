@@ -39,6 +39,8 @@ export class GameController {
 
   // State
   private lastTurnNumber: number = -1;
+  private readonly playerSlotIndex: number;
+  private boundBattleStateHandler: ((event: Event) => void) | null = null;
 
   constructor(
     private gameId: string,
@@ -46,6 +48,7 @@ export class GameController {
     gameStore: any
   ) {
     this.gameStore = gameStore;
+    this.playerSlotIndex = parseInt(playerId);
 
     // Initialize managers
     this.modalManager = new ModalManager();
@@ -67,119 +70,108 @@ export class GameController {
     );
 
     this.websocket = useGameWebSocket(gameId, (gameData) => {
-      // Check if turn has changed - if so, reset undo manager and move queue
-      if (gameData.turnNumber !== undefined && gameData.turnNumber !== this.lastTurnNumber) {
-        console.log(`🔄 Turn changed from ${this.lastTurnNumber} to ${gameData.turnNumber} - resetting undo manager and move queue`);
-        this.lastTurnNumber = gameData.turnNumber;
-        this.undoManager.reset();
-        this.moveQueue.clear();
-      }
+      this.handleWebSocketUpdate(gameData);
+    }, playerId);
 
-      this.gameStore.handleGameStateUpdate(gameData);
-      // Update tooltips after game state changes from websocket
-      this.updateTooltips();
-    }, playerId); // Pass playerId for disconnect tracking
-
-    // Set callback to start timer when player's turn is ready
-    this.gameStore.setOnTurnReadyCallback((gameState: GameStateData) => {
+    gameStore.setOnTurnReadyCallback((gameState: GameStateData) => {
       this.turnTimerCoordinator.handleTurnChange(gameState);
     });
+  }
+
+  /**
+   * Handle incoming WebSocket game state updates
+   */
+  private handleWebSocketUpdate(gameData: any): void {
+    if (gameData.turnNumber !== undefined && gameData.turnNumber !== this.lastTurnNumber) {
+      this.lastTurnNumber = gameData.turnNumber;
+      this.undoManager.reset();
+      this.moveQueue.clear();
+    }
+    this.gameStore.handleGameStateUpdate(gameData);
+    this.updateTooltips();
   }
 
   /**
    * Initialize the game - call this from onMount
    */
   async initialize(mapContainer: HTMLElement | undefined): Promise<void> {
+    this.setupBattleAnimations(mapContainer);
+    const initialGameState = await this.initializeGameStore();
+    await this.initializeServices();
+    this.setupBattleStateListener();
+    this.startInitialTurn(initialGameState);
+  }
+
+  /**
+   * Set up battle animation system with the map container
+   */
+  private setupBattleAnimations(mapContainer: HTMLElement | undefined): void {
     if (mapContainer) {
       this.battleCoordinator.setMapContainer(mapContainer);
-
-      // Connect battle animation system to move replayer for AI/multiplayer battle animations
       const battleAnimationSystem = this.battleCoordinator.getBattleAnimationSystem();
       this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
-    } else {
-      console.warn('⚠️ GameController: Map container not provided, animations will be disabled');
     }
+  }
 
-    // Initialize game store with our callbacks
+  /**
+   * Initialize game store with callbacks
+   */
+  private async initializeGameStore(): Promise<GameStateData | null> {
     const { gameState: initialGameState } = await this.gameStore.initializeGame(
       (source: number, target: number, count: number) =>
         this.battleCoordinator.handleMoveComplete(source, target, count, () => this.updateTooltips()),
-      (newState) => this.moveUICoordinator.handleMoveStateChange(newState, () => this.updateTooltips())
+      (newState: any) => this.moveUICoordinator.handleMoveStateChange(newState, () => this.updateTooltips())
     );
 
-    // Register callback to check if battle is in progress
     this.gameStore.setIsBattleInProgressCallback(() => this.battleCoordinator.isBattleInProgress());
-
-    // Register callback to trigger AI processing when turn changes to AI player
     this.gameStore.setTriggerAiProcessingCallback(() => this.triggerAiProcessing());
 
+    return initialGameState;
+  }
+
+  /**
+   * Initialize WebSocket and audio services
+   */
+  private async initializeServices(): Promise<void> {
     await this.websocket.initialize();
     await audioSystem.enable();
+  }
 
-    // Start timer for initial turn if it's this player's turn
-    if (initialGameState) {
-      this.turnTimerCoordinator.handleTurnChange(initialGameState);
-      // Initialize turn tracking
-      this.lastTurnNumber = initialGameState.turnNumber || 0;
-      console.log(`🎮 Initial turn number: ${this.lastTurnNumber}`);
-    }
+  /**
+   * Set up battle state update listener for animations
+   */
+  private setupBattleStateListener(): void {
+    if (typeof window === 'undefined') return;
 
-    // Initialize tooltips after game state is loaded
-    console.log('📖 GameController: Initializing tooltips after game load');
+    this.boundBattleStateHandler = ((event: CustomEvent) => {
+      const animationState = event.detail.gameState;
+      this.gameStore.gameState.set(animationState);
+    }) as EventListener;
+
+    window.addEventListener('battleStateUpdate', this.boundBattleStateHandler);
+  }
+
+  /**
+   * Start the initial turn (timer, tooltips, AI processing)
+   */
+  private startInitialTurn(initialGameState: GameStateData | null): void {
+    if (!initialGameState) return;
+
+    this.turnTimerCoordinator.handleTurnChange(initialGameState);
+    this.lastTurnNumber = initialGameState.turnNumber || 0;
     this.updateTooltips();
 
-    // Listen for battle state updates (for soldier positioning animations)
-    if (typeof window !== 'undefined') {
-      window.addEventListener('battleStateUpdate', ((event: CustomEvent) => {
-        // Allow animation states to update the store during replay
-        // These temporary animation states (movingToRegion, attackedRegion) enable smooth transitions
-        // The final clean state will overwrite them after animations complete (see GameStateUpdater.ts)
-        const animationState = event.detail.gameState;
-
-        // Log soldier positions to debug animation issues
-        const regionsWithMarkers = new Map<number, string[]>();
-        Object.entries(animationState.soldiersByRegion || {}).forEach(([regionIndex, soldiers]) => {
-          const markers = (soldiers as any[])
-            .filter((s: any) => s.movingToRegion !== undefined || s.attackedRegion !== undefined)
-            .map((s: any) => {
-              if (s.movingToRegion !== undefined) return `${s.i}→${s.movingToRegion}`;
-              if (s.attackedRegion !== undefined) return `${s.i}⚔${s.attackedRegion}`;
-              return '';
-            })
-            .filter(Boolean);
-          if (markers.length > 0) {
-            regionsWithMarkers.set(parseInt(regionIndex), markers);
-          }
-        });
-
-        console.log('⚔️ Received battleStateUpdate event, updating game state for animation', {
-          regionsWithAnimations: Array.from(regionsWithMarkers.entries()).map(([region, markers]) => ({
-            region,
-            animations: markers
-          }))
-        });
-
-        // Update store directly to avoid queuing delays
-        this.gameStore.gameState.set(animationState);
-      }) as EventListener);
-    }
-
     // Trigger AI processing if current player is AI
-    // This is done after client is fully initialized and connected
-    if (initialGameState) {
-      const currentPlayer = initialGameState.players?.find(
-        (p: any) => p.slotIndex === initialGameState.currentPlayerSlot
-      );
-      if (currentPlayer?.isAI) {
-        console.log('🤖 Current player is AI, triggering AI processing after client ready');
-        this.triggerAiProcessing();
-      }
+    const currentPlayer = initialGameState.players?.find(
+      (p: any) => p.slotIndex === initialGameState.currentPlayerSlot
+    );
+    if (currentPlayer?.isAI) {
+      this.triggerAiProcessing();
     }
   }
 
   /**
    * Trigger AI turn processing on the server
-   * Called after client has loaded initial state and connected to WebSocket
    */
   private async triggerAiProcessing(): Promise<void> {
     try {
@@ -187,14 +179,11 @@ export class GameController {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-
       if (!response.ok) {
-        console.error('❌ Failed to trigger AI processing:', response.statusText);
-      } else {
-        console.log('✅ AI processing triggered successfully');
+        console.error('Failed to trigger AI processing:', response.statusText);
       }
     } catch (error) {
-      console.error('❌ Error triggering AI processing:', error);
+      console.error('Error triggering AI processing:', error);
     }
   }
 
@@ -202,10 +191,7 @@ export class GameController {
    * Set the map container for battle animations (can be called after initialization)
    */
   setMapContainer(container: HTMLElement): void {
-    console.log('🗺️ GameController: Setting map container');
     this.battleCoordinator.setMapContainer(container);
-
-    // Also connect battle animation system to move replayer
     const battleAnimationSystem = this.battleCoordinator.getBattleAnimationSystem();
     this.gameStore.setBattleAnimationSystem(battleAnimationSystem);
   }
@@ -218,53 +204,40 @@ export class GameController {
     this.battleCoordinator.destroy();
     this.websocket.cleanup();
     this.gameStore.resetTurnManager();
+
+    if (this.boundBattleStateHandler && typeof window !== 'undefined') {
+      window.removeEventListener('battleStateUpdate', this.boundBattleStateHandler);
+    }
   }
 
   /**
-   * Check for game end (delegates to GameEndCoordinator)
+   * Check for game end
    */
   checkGameEnd(gameState: GameStateData | null, players: Player[]): void {
     this.gameEndCoordinator.checkGameEnd(gameState, players);
   }
 
-  /**
-   * Handle region click from map (delegates to MoveUICoordinator)
-   */
+  // Move UI delegation methods
   handleRegionClick(region: any, isMyTurn: boolean): void {
     this.moveUICoordinator.handleRegionClick(region, isMyTurn);
   }
 
-  /**
-   * Handle temple click from map (delegates to MoveUICoordinator)
-   */
   handleTempleClick(regionIndex: number, isMyTurn: boolean): void {
     this.moveUICoordinator.handleTempleClick(regionIndex, isMyTurn);
   }
 
-  /**
-   * Handle soldier count change (delegates to MoveUICoordinator)
-   */
   handleSoldierCountChange(count: number): void {
     this.moveUICoordinator.handleSoldierCountChange(count);
   }
 
-  /**
-   * Confirm soldier selection (delegates to MoveUICoordinator)
-   */
   confirmSoldierSelection(count: number): void {
     this.moveUICoordinator.confirmSoldierSelection(count);
   }
 
-  /**
-   * Cancel soldier selection (delegates to MoveUICoordinator)
-   */
   cancelSoldierSelection(): void {
     this.moveUICoordinator.cancelSoldierSelection();
   }
 
-  /**
-   * Close temple upgrade panel (delegates to MoveUICoordinator)
-   */
   closeTempleUpgradePanel(): void {
     this.moveUICoordinator.closeTempleUpgradePanel();
   }
@@ -274,23 +247,15 @@ export class GameController {
    */
   async purchaseUpgrade(regionIndex: number, upgradeIndex: number): Promise<void> {
     const gameState = get(this.gameStore.gameState) as GameStateData | null;
-    const playerSlotIndex = parseInt(this.playerId);
-
-    if (!gameState) {
-      console.error('❌ No game state available');
-      return;
-    }
+    if (!gameState) return;
 
     try {
-      // Save state for undo
-      this.undoManager.saveState(gameState, playerSlotIndex);
+      this.undoManager.saveState(gameState, this.playerSlotIndex);
 
-      // Execute the BUILD command locally
       const gameStateObj = new GameState(gameState);
-      const player = gameStateObj.getPlayerBySlotIndex(playerSlotIndex);
-
+      const player = gameStateObj.getPlayerBySlotIndex(this.playerSlotIndex);
       if (!player) {
-        throw new Error(`Player not found: ${playerSlotIndex}`);
+        throw new Error(`Player not found: ${this.playerSlotIndex}`);
       }
 
       const command = new BuildCommand(gameStateObj, player, regionIndex, upgradeIndex);
@@ -301,51 +266,35 @@ export class GameController {
         throw new Error(result.error || 'Build command failed');
       }
 
-      // Update local game state
       const newGameStateData = result.newState!.toJSON();
       this.gameStore.handleGameStateUpdate(newGameStateData);
 
-      // Queue the move to be sent at turn end
       this.moveQueue.push({
         type: 'BUILD',
         regionIndex,
         upgradeIndex
       });
 
-      // Temple upgrades disable undo (like battles)
       this.undoManager.disableUndo();
-      console.log('🏛️ Temple upgrade purchased locally - undo disabled');
-
     } catch (error) {
-      console.error('❌ Purchase upgrade error:', error);
+      console.error('Purchase upgrade error:', error);
       alert('Error purchasing upgrade: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
   /**
-   * End turn - send all queued moves to server and transition to next player
+   * End turn - send all queued moves to server
    */
   async endTurn(): Promise<void> {
-    // Stop the timer when ending turn
     this.turnTimerCoordinator.stopTimer();
 
     try {
-      // Get all queued moves
       const queuedMoves = this.moveQueue.getAll();
-      console.log(`🔚 Ending turn with ${queuedMoves.length} queued moves`);
-
-      // Send end turn with all queued moves
-      console.log('🔚 Sending endTurn request to server with queued moves...');
-      const result = await this.apiClient.endTurn(this.playerId, queuedMoves);
-      console.log('🔚 EndTurn response received:', result);
-
-      // Clear the move queue after successful send
+      await this.apiClient.endTurn(this.playerId, queuedMoves);
       this.moveQueue.clear();
-
-      // Reset move state
       this.moveUICoordinator.resetMoveState();
     } catch (error) {
-      console.error('❌ End turn error:', error);
+      console.error('End turn error:', error);
       alert('Failed to end turn: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
@@ -355,46 +304,25 @@ export class GameController {
    */
   async undo(): Promise<void> {
     const gameState = get(this.gameStore.gameState) as GameStateData | null;
-    const playerSlotIndex = parseInt(this.playerId);
 
-    if (!this.undoManager.canUndo(gameState, playerSlotIndex)) {
-      console.warn('⚠️ Cannot undo - conditions not met');
+    if (!this.undoManager.canUndo(gameState, this.playerSlotIndex)) {
       return;
     }
 
-    console.log('↩️ GameController: Performing local undo');
-
-    // Get the previous state
     const previousState = this.undoManager.undo();
+    if (!previousState) return;
 
-    if (!previousState) {
-      console.warn('⚠️ No previous state available for undo');
-      return;
-    }
-
-    // Remove the last move from the queue (it was never sent to server)
-    const removedMove = this.moveQueue.pop();
-    console.log('↩️ Removed move from queue:', removedMove);
-
-    // Clear any active move UI state
+    this.moveQueue.pop();
     this.moveUICoordinator.resetMoveState(previousState.movesRemaining || 3);
-
-    // Close any open modals
     this.modalManager.hideSoldierSelection();
-
-    // Update the game state with the previous state
     this.gameStore.handleGameStateUpdate(previousState);
 
-    // Reset move system if available
     const moveSystem = this.gameStore.getMoveSystem();
     if (moveSystem) {
       moveSystem.reset();
     }
 
-    // Update tooltips
     this.updateTooltips();
-
-    console.log('✅ Undo complete (local only, moves sent at turn end)');
   }
 
   /**
@@ -402,8 +330,7 @@ export class GameController {
    */
   canUndo(): boolean {
     const gameState = get(this.gameStore.gameState) as GameStateData | null;
-    const playerSlotIndex = parseInt(this.playerId);
-    return this.undoManager.canUndo(gameState, playerSlotIndex);
+    return this.undoManager.canUndo(gameState, this.playerSlotIndex);
   }
 
   showInstructions(): void {
@@ -424,14 +351,11 @@ export class GameController {
 
     try {
       const result = await this.apiClient.resign(this.playerId);
-
-      // If game ended, show summary or redirect
       if (result.gameEnded) {
-        // Redirect to home page
         window.location.href = '/';
       }
     } catch (error) {
-      console.error('❌ Resign error:', error);
+      console.error('Resign error:', error);
       alert('Failed to resign from game: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
@@ -443,7 +367,6 @@ export class GameController {
     const gameState = get(this.gameStore.gameState) as GameStateData | null;
     const regions = get(this.gameStore.regions) as any[];
     const currentMoveState = get(this.moveUICoordinator.getMoveStateStore());
-
     this.tutorialCoordinator.updateTooltips(gameState, regions, currentMoveState as any);
   }
 
@@ -467,5 +390,3 @@ export class GameController {
     };
   }
 }
-
-

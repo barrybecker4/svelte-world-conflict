@@ -17,65 +17,18 @@ export function useGameWebSocket(
    * Initialize and connect to the WebSocket server
    */
   async function initialize(): Promise<void> {
-    console.log('[WS INIT] Starting WebSocket initialization');
-    console.log('[WS INIT] gameId:', gameId, 'type:', typeof gameId);
-    console.log('[WS INIT] playerId:', playerId || 'none (observer)');
-
-    // Validate gameId
     if (!gameId || gameId === 'null' || gameId === 'undefined' || gameId === '') {
-      const error = `Invalid gameId: "${gameId}"`;
-      console.error('[WS INIT]', error);
-      throw new Error(error);
+      throw new Error(`Invalid gameId: "${gameId}"`);
     }
 
-    console.log('[WS INIT] gameId is valid');
-
-    // Create WebSocket client with playerId for disconnect tracking
     wsClient = new GameWebSocketClient(playerId);
-    console.log('[WS INIT] GameWebSocketClient created');
-
-    // Sync the client's connected store with our local store
-    wsClient.connected.subscribe((isConnected) => {
-      connected.set(isConnected);
-    });
-
-    // Register callbacks BEFORE connecting
-    wsClient.onError((error) => {
-      console.error('[WS ERROR]', error);
-    });
-
-    wsClient.onGameUpdate((gameData) => {
-      console.log('📨 [WS UPDATE] Received game update', {
-        currentPlayerSlot: gameData?.currentPlayerSlot,
-        turnNumber: gameData?.turnNumber,
-        hasPlayers: !!gameData?.players
-      });
-      onGameUpdate(gameData);
-    });
-
-    wsClient.onConnected(() => {
-      console.log('[WS CONNECTED] Successfully connected to game WebSocket');
-    });
-
-    wsClient.onDisconnected(() => {
-      console.warn('[WS DISCONNECTED] Disconnected from game WebSocket');
-    });
-
-    console.log('[WS INIT] Callbacks registered, attempting connection...');
+    wsClient.connected.subscribe((isConnected) => connected.set(isConnected));
+    wsClient.onError((error) => console.error('[WS] Error:', error));
+    wsClient.onGameUpdate(onGameUpdate);
 
     try {
-      // Connect to the WebSocket
       await wsClient.connect(gameId);
-      console.log('[WS INIT] Connection established successfully');
     } catch (error) {
-      console.error('[WS INIT] Failed to initialize WebSocket:', error);
-      console.error('[WS INIT] Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        gameId: gameId
-      });
-
-      // FAIL FAST - throw error instead of silently continuing
       throw new Error(
         `WebSocket connection required but failed: ${
           error instanceof Error ? error.message : 'Unknown error'
@@ -88,22 +41,20 @@ export function useGameWebSocket(
    * Clean up WebSocket connection
    */
   function cleanup(): void {
-    if (wsClient) {
-      wsClient.disconnect();
-      wsClient = null;
-    }
+    wsClient?.disconnect();
+    wsClient = null;
     connected.set(false);
   }
 
   /**
    * Get the reactive connected store
    */
-  function getConnectedStore() {
+  function getConnectedStore(): Writable<boolean> {
     return connected;
   }
 
   /**
-   * Check if WebSocket is currently connected (for backwards compatibility)
+   * Check if WebSocket is currently connected
    */
   function isConnected(): boolean {
     return wsClient?.isConnected() ?? false;

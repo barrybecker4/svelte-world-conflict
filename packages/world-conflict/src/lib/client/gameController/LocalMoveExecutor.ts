@@ -19,23 +19,14 @@ export class LocalMoveExecutor {
     targetRegion: number,
     soldierCount: number
   ): BattleResult {
-    console.log('🏠 LocalMoveExecutor: Executing move locally', {
-      source: sourceRegion,
-      target: targetRegion,
-      soldiers: soldierCount
-    });
-
     try {
-      // Convert GameStateData to GameState class
       const gameState = new GameState(currentGameState);
-      
-      // Get the player
       const player = gameState.getPlayerBySlotIndex(playerSlotIndex);
+      
       if (!player) {
-        throw new Error(`Player not found: ${playerSlotIndex}`);
+        return { success: false, error: `Player not found: ${playerSlotIndex}` };
       }
 
-      // Create and execute the command
       const command = new ArmyMoveCommand(
         gameState,
         player,
@@ -48,32 +39,19 @@ export class LocalMoveExecutor {
       const result = processor.process(command);
 
       if (!result.success) {
-        console.error('❌ LocalMoveExecutor: Command failed:', result.error);
-        return {
-          success: false,
-          error: result.error || 'Move validation failed'
-        };
+        return { success: false, error: result.error || 'Move validation failed' };
       }
 
-      // Convert result back to GameStateData
-      const newGameStateData = result.newState!.toJSON();
-      
-      console.log('✅ LocalMoveExecutor: Move executed successfully');
-      
       return {
         success: true,
-        gameState: newGameStateData,
+        gameState: result.newState!.toJSON(),
         attackSequence: result.attackSequence
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('❌ LocalMoveExecutor: Execution failed:', errorMessage);
       return {
         success: false,
-        error: errorMessage
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
 }
-

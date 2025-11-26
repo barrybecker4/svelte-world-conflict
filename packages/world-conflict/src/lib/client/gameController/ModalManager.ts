@@ -36,13 +36,9 @@ export class ModalManager {
    * Show the soldier selection modal
    */
   showSoldierSelection(maxSoldiers: number, currentSelection: number): void {
-    console.log('✅ Opening soldier selection modal');
     this.modalState.update(s => ({
       ...s,
-      soldierSelectionData: {
-        maxSoldiers,
-        currentSelection
-      },
+      soldierSelectionData: { maxSoldiers, currentSelection },
       showSoldierSelection: true
     }));
   }
@@ -74,7 +70,6 @@ export class ModalManager {
 
   /**
    * Trigger game end flow with winner information
-   * Shows victory banner followed by summary panel in left nav
    */
   showGameSummary(winner: Player | 'DRAWN_GAME'): void {
     this.modalState.update(s => ({
@@ -84,5 +79,3 @@ export class ModalManager {
     }));
   }
 }
-
-

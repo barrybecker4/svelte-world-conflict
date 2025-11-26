@@ -1,7 +1,6 @@
 /**
  * Queues moves locally during a player's turn
  * Moves are only sent to the server when the turn ends
- * Similar to the old GAS implementation's localHumanMoves array
  */
 
 export interface QueuedMove {
@@ -21,18 +20,13 @@ export class MoveQueue {
    */
   push(move: QueuedMove): void {
     this.queue.push(move);
-    console.log(`📝 Queued move (${this.queue.length} total):`, move);
   }
 
   /**
    * Remove the last move from the queue (for undo)
    */
   pop(): QueuedMove | undefined {
-    const move = this.queue.pop();
-    if (move) {
-      console.log(`↩️ Removed move from queue (${this.queue.length} remaining):`, move);
-    }
-    return move;
+    return this.queue.pop();
   }
 
   /**
@@ -46,7 +40,6 @@ export class MoveQueue {
    * Clear all queued moves
    */
   clear(): void {
-    console.log(`🧹 Cleared ${this.queue.length} queued moves`);
     this.queue = [];
   }
 
@@ -64,4 +57,3 @@ export class MoveQueue {
     return this.queue.length;
   }
 }
-

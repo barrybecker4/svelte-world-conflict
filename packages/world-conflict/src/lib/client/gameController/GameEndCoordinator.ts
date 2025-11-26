@@ -7,12 +7,11 @@ import { TurnTimerCoordinator } from './TurnTimerCoordinator';
 
 /**
  * Coordinates game end detection and presentation
- * Extracted from GameController to isolate game-over logic
  */
 export class GameEndCoordinator {
   private modalManager: ModalManager;
   private turnTimerCoordinator: TurnTimerCoordinator;
-  private playerId: string;
+  private readonly playerSlotIndex: number;
   private gameEndChecked = false;
   private updateGameState: ((updater: (state: GameStateData) => GameStateData) => void) | null = null;
 
@@ -22,7 +21,7 @@ export class GameEndCoordinator {
     turnTimerCoordinator: TurnTimerCoordinator,
     updateGameState?: (updater: (state: GameStateData) => GameStateData) => void
   ) {
-    this.playerId = playerId;
+    this.playerSlotIndex = parseInt(playerId);
     this.modalManager = modalManager;
     this.turnTimerCoordinator = turnTimerCoordinator;
     this.updateGameState = updateGameState || null;
@@ -41,29 +40,20 @@ export class GameEndCoordinator {
     if (endResult.isGameEnded) {
       this.gameEndChecked = true;
 
-      // Set endResult on the game state so UI can react
       if (this.updateGameState && gameState) {
-        console.log('🏁 Setting endResult on game state:', endResult.winner);
         this.updateGameState((state) => {
           if (!state) return state;
-          return {
-            ...state,
-            endResult: endResult.winner
-          };
+          return { ...state, endResult: endResult.winner };
         });
       }
 
-      // Stop the timer when the game ends
       this.turnTimerCoordinator.stopTimer();
 
-      // Play sound based on whether this player won
       const isWinner =
         endResult.winner !== 'DRAWN_GAME' &&
-        endResult.winner?.slotIndex?.toString() === this.playerId;
+        endResult.winner?.slotIndex === this.playerSlotIndex;
 
       audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
-
-      // Trigger game summary display (will show victory banner then summary panel)
       this.modalManager.showGameSummary(endResult.winner!);
     }
   }
