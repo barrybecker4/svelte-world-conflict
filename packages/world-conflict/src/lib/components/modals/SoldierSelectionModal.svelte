@@ -1,6 +1,5 @@
 <script lang="ts">
   import Button from '$lib/components/ui/Button.svelte';
-  import IconButton from '$lib/components/ui/IconButton.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
 
   export let maxSoldiers: number;
@@ -25,10 +24,6 @@
 
   function handleClose() {
     handleCancel();
-  }
-
-  function adjustCount(delta: number) {
-    selectedCount = Math.max(1, Math.min(selectedCount + delta, maxSoldiers));
   }
 </script>
 
@@ -60,64 +55,7 @@
 
     <div class="selection-info">
       <p>Moving <strong>{selectedCount}</strong> of {maxSoldiers} soldiers</p>
-      <small>Click soldiers above or use buttons below</small>
-    </div>
-  </div>
-
-  <div class="controls">
-    <div class="count-controls">
-      <IconButton
-        variant="default"
-        size="md"
-        disabled={selectedCount <= 1}
-        title="Decrease count"
-        on:click={() => adjustCount(-1)}
-      >
-        −
-      </IconButton>
-
-      <input
-        type="number"
-        min="1"
-        max={maxSoldiers}
-        bind:value={selectedCount}
-        class="count-input"
-        aria-label="Number of soldiers"
-      />
-
-      <IconButton
-        variant="default"
-        size="md"
-        disabled={selectedCount >= maxSoldiers}
-        title="Increase count"
-        on:click={() => adjustCount(1)}
-      >
-        +
-      </IconButton>
-    </div>
-
-    <div class="quick-select-wrapper">
-      <Button
-        variant={selectedCount === 1 ? 'primary' : 'ghost'}
-        size="sm"
-        on:click={() => selectedCount = 1}
-      >
-        1
-      </Button>
-      <Button
-        variant={selectedCount === Math.floor(maxSoldiers / 2) ? 'primary' : 'ghost'}
-        size="sm"
-        on:click={() => selectedCount = Math.floor(maxSoldiers / 2)}
-      >
-        Half
-      </Button>
-      <Button
-        variant={selectedCount === maxSoldiers ? 'primary' : 'ghost'}
-        size="sm"
-        on:click={() => selectedCount = maxSoldiers}
-      >
-        All
-      </Button>
+      <small>Click soldiers that you want to move above</small>
     </div>
   </div>
 
@@ -231,41 +169,5 @@
     margin-top: 0.25rem;
     color: #94a3b8;
     font-size: 0.8rem;
-  }
-
-  .controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .count-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  .count-input {
-    width: 60px;
-    height: 40px;
-    text-align: center;
-    border: 2px solid #4a5568;
-    border-radius: 6px;
-    background: #1a202c;
-    color: white;
-    font-size: 1rem;
-    font-weight: bold;
-  }
-
-  .count-input:focus {
-    outline: none;
-    border-color: #60a5fa;
-  }
-
-  .quick-select-wrapper {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
   }
 </style>
