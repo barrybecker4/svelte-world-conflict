@@ -1,5 +1,6 @@
 import type { Region } from '$lib/game/entities/Region';
-import type { Player } from '$lib/game/state/GameState';
+import type { Player } from '$lib/game/entities/gameTypes';
+import { logger } from '$lib/client/utils/logger';
 
 export interface HomeBaseAssignment {
     playerSlotIndex: number;
@@ -15,13 +16,13 @@ export function assignHomeBaseRegions(
     players: Player[],
     regions: Region[]
 ): HomeBaseAssignment[] {
-    console.log('🏠 Assigning home base regions...');
+    logger.debug('🏠 Assigning home base regions...');
 
     // Find all temple regions (only these can be home bases)
     const templeRegions = regions.filter(region => region.hasTemple);
 
     if (templeRegions.length < players.length) {
-        console.warn(`⚠️ Not enough temple regions (${templeRegions.length}) for all players (${players.length})`);
+        logger.warn(`⚠️ Not enough temple regions (${templeRegions.length}) for all players (${players.length})`);
     }
 
     const assignments: HomeBaseAssignment[] = [];
@@ -29,7 +30,7 @@ export function assignHomeBaseRegions(
 
     players.forEach((player, arrayIndex) => {
         if (arrayIndex >= templeRegions.length) {
-            console.warn(`❌ No temple region available for player ${player.slotIndex} (${player.name})`);
+            logger.warn(`❌ No temple region available for player ${player.slotIndex} (${player.name})`);
             return;
         }
 
@@ -38,7 +39,7 @@ export function assignHomeBaseRegions(
         if (assignments.length === 0) {
             // First player gets any temple region
             homeRegion = templeRegions[0];
-            console.log(`🎯 First player ${player.slotIndex} gets temple region ${homeRegion.index}`);
+            logger.debug(`🎯 First player ${player.slotIndex} gets temple region ${homeRegion.index}`);
         } else {
             // Subsequent players get temple regions that are furthest from already assigned ones
             let maxDistance = 0;
@@ -71,7 +72,7 @@ export function assignHomeBaseRegions(
             homeRegion = bestRegion || templeRegions.find(r => !assignedRegionIndices.includes(r.index)) || null;
 
             if (homeRegion) {
-                console.log(`🎯 Player ${player.slotIndex} assigned region ${homeRegion.index} (distance: ${maxDistance.toFixed(1)})`);
+                logger.debug(`🎯 Player ${player.slotIndex} assigned region ${homeRegion.index} (distance: ${maxDistance.toFixed(1)})`);
             }
         }
 
@@ -83,11 +84,11 @@ export function assignHomeBaseRegions(
             });
             assignedRegionIndices.push(homeRegion.index);
         } else {
-            console.warn(`❌ Could not assign home region to player ${player.slotIndex} (${player.name})`);
+            logger.warn(`❌ Could not assign home region to player ${player.slotIndex} (${player.name})`);
         }
     });
 
-    console.log(`✅ Assigned ${assignments.length} home base regions`);
+    logger.debug(`✅ Assigned ${assignments.length} home base regions`);
     return assignments;
 }
 

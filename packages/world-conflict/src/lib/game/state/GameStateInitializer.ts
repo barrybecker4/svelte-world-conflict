@@ -3,6 +3,7 @@ import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
+import { logger } from '$lib/client/utils/logger';
 
 
 export class GameStateInitializer {
@@ -32,7 +33,7 @@ export class GameStateInitializer {
     }
 
     private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
-        console.log(`Creating preview state with ${regions.length} regions`);
+        logger.debug(`Creating preview state with ${regions.length} regions`);
 
         const stateData = this.createGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
         this.initializeStartingPositions(stateData);
@@ -51,11 +52,11 @@ export class GameStateInitializer {
         // Generate seed if not provided - use gameId and timestamp for uniqueness
         const rngSeed = seed || `${gameId}-${Date.now()}`;
 
-        console.log(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.slotIndex})`));
-        console.log(`Setting initial currentPlayerSlot to ${currentPlayerSlot}`);
-        console.log(`Setting moveTimeLimit to ${moveTimeLimit}`);
-        console.log(`Setting aiDifficulty to ${aiDifficulty}`);
-        console.log(`Setting RNG seed to ${rngSeed}`);
+        logger.debug(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.slotIndex})`));
+        logger.debug(`Setting initial currentPlayerSlot to ${currentPlayerSlot}`);
+        logger.debug(`Setting moveTimeLimit to ${moveTimeLimit}`);
+        logger.debug(`Setting aiDifficulty to ${aiDifficulty}`);
+        logger.debug(`Setting RNG seed to ${rngSeed}`);
 
         return {
             id: Date.now(),
@@ -82,17 +83,17 @@ export class GameStateInitializer {
      * Initialize starting positions, temples, and soldiers for a new game.
      */
     private initializeStartingPositions(stateData: GameStateData): void {
-        console.log('Assigning home base regions...');
+        logger.debug('Assigning home base regions...');
 
         try {
             const assignments = assignHomeBaseRegions(stateData.players, stateData.regions);
-            console.log(`Assigned ${assignments.length} home bases`);
+            logger.debug(`Assigned ${assignments.length} home bases`);
 
             this.setupPlayerHomes(stateData, assignments);
             this.setupNeutralTemples(stateData, assignments);
 
         } catch (error) {
-            console.error('Failed to assign home bases:', error);
+            logger.error('Failed to assign home bases:', error);
         }
     }
 

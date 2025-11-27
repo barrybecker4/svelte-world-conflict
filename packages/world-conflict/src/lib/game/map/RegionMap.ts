@@ -1,4 +1,4 @@
-import type { Region } from "$lib/game/state/GameState.ts";
+import type { Region } from "$lib/game/entities/gameTypes";
 import { GRID_WIDTH, GRID_HEIGHT } from "./mapConstants.ts";
 
 const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];

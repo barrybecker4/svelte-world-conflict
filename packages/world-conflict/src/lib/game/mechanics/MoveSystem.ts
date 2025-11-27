@@ -10,6 +10,7 @@ import {
   CONFIRM_MOVE,
   ENTER_BUILD_MODE
 } from './moveConstants';
+import { logger } from '$lib/client/utils/logger';
 
 export class MoveSystem {
   private state: MoveState;
@@ -42,7 +43,7 @@ export class MoveSystem {
    * Main entry point for handling region clicks
    */
   handleRegionClick(regionIndex: number): void {
-    console.log(`🖱️ MoveSystem.handleRegionClick: ${regionIndex}, current mode: ${this.state.mode}`);
+    logger.debug(`🖱️ MoveSystem.handleRegionClick: ${regionIndex}, current mode: ${this.state.mode}`);
 
     switch (this.state.mode) {
       case IDLE:
@@ -68,7 +69,7 @@ export class MoveSystem {
         break;
 
       default:
-        console.warn('Unknown mode:', this.state.mode);
+        logger.warn('Unknown mode:', this.state.mode);
     }
   }
 
@@ -76,7 +77,7 @@ export class MoveSystem {
    * Process an action (called from UI or internal state transitions)
    */
   processAction(action: MoveAction): void {
-    console.log(`🎬 MoveSystem.processAction:`, action);
+    logger.debug(`🎬 MoveSystem.processAction:`, action);
 
     switch (action.type) {
       case SELECT_SOURCE:
@@ -114,7 +115,7 @@ export class MoveSystem {
         break;
 
       default:
-        console.warn('Unknown action type:', (action as any).type);
+        logger.warn('Unknown action type:', (action as any).type);
     }
   }
 
@@ -122,27 +123,27 @@ export class MoveSystem {
    * Step 1: Select source region
    */
   private selectSourceRegion(regionIndex: number): void {
-    console.log(`🎯 MoveSystem.selectSourceRegion: ${regionIndex}`);
+    logger.debug(`🎯 MoveSystem.selectSourceRegion: ${regionIndex}`);
 
     const currentPlayerSlot = this.gameState.currentPlayerSlot;
     const owner = this.gameState.ownersByRegion[regionIndex];
 
     // Validate ownership
     if (owner !== currentPlayerSlot) {
-      console.log('Cannot select region - not owned by current player');
+      logger.debug('Cannot select region - not owned by current player');
       return;
     }
 
     // Check if region was conquered this turn
     if (this.gameState.conqueredRegions?.includes(regionIndex)) {
-      console.log('Cannot select region - conquered this turn');
+      logger.debug('Cannot select region - conquered this turn');
       return;
     }
 
     // Count soldiers
     const soldiers = this.gameState.soldiersByRegion[regionIndex] || [];
     if (soldiers.length === 0) {
-      console.log('Cannot select region - no soldiers to move');
+      logger.debug('Cannot select region - no soldiers to move');
       return;
     }
 
@@ -158,32 +159,32 @@ export class MoveSystem {
       availableMoves: this.state.availableMoves
     });
 
-    console.log('✅ Source region selected, transitioning to SELECT_TARGET');
+    logger.debug('✅ Source region selected, transitioning to SELECT_TARGET');
   }
 
   /**
    * Handle temple click - enters BUILD mode
    */
   handleTempleClick(regionIndex: number): void {
-    console.log(`🏛️ MoveSystem.handleTempleClick: ${regionIndex}`);
+    logger.debug(`🏛️ MoveSystem.handleTempleClick: ${regionIndex}`);
 
     const currentPlayerSlot = this.gameState.currentPlayerSlot;
     const owner = this.gameState.ownersByRegion[regionIndex];
 
     // Validate ownership
     if (owner !== currentPlayerSlot) {
-      console.log('Cannot select temple - not owned by current player');
+      logger.debug('Cannot select temple - not owned by current player');
       return;
     }
 
     // Check if this region has a temple
     const temple = this.gameState.templesByRegion[regionIndex];
     if (!temple) {
-      console.log('No temple at this region');
+      logger.debug('No temple at this region');
       return;
     }
 
-    console.log('🏛️ Temple click confirmed - entering BUILD mode');
+    logger.debug('🏛️ Temple click confirmed - entering BUILD mode');
     this.updateState({
       mode: BUILD,
       sourceRegion: null,
@@ -200,11 +201,11 @@ export class MoveSystem {
    * Step 2: Adjust soldier count
    */
   private adjustSoldierCount(count: number): void {
-    console.log(`👥 MoveSystem.adjustSoldierCount: ${count}`);
+    logger.debug(`👥 MoveSystem.adjustSoldierCount: ${count}`);
 
     // Validate
     if (count < 1 || count > this.state.maxSoldiers) {
-      console.warn('Invalid soldier count:', count);
+      logger.warn('Invalid soldier count:', count);
       return;
     }
 
@@ -215,7 +216,7 @@ export class MoveSystem {
       isMoving: true
     });
 
-    console.log('✅ Soldier count adjusted, executing move');
+    logger.debug('✅ Soldier count adjusted, executing move');
     this.executeMove();
   }
 
@@ -223,16 +224,16 @@ export class MoveSystem {
    * Step 3: Select target region
    */
   private selectTargetRegion(regionIndex: number): void {
-    console.log(`🎯 MoveSystem.selectTargetRegion: ${regionIndex}`);
+    logger.debug(`🎯 MoveSystem.selectTargetRegion: ${regionIndex}`);
 
     if (this.state.sourceRegion === null) {
-      console.error('No source region selected');
+      logger.error('No source region selected');
       return;
     }
 
     // Can't move to the same region
     if (regionIndex === this.state.sourceRegion) {
-      console.log('Cannot move to the same region');
+      logger.debug('Cannot move to the same region');
       this.cancelMove();
       return;
     }
@@ -240,12 +241,12 @@ export class MoveSystem {
     // Check if regions are adjacent - regions is now an array
     const sourceRegion = this.gameState.regions.find((r: any) => r.index === this.state.sourceRegion);
     if (!sourceRegion) {
-      console.error('Source region not found');
+      logger.error('Source region not found');
       return;
     }
 
     if (!sourceRegion.neighbors.includes(regionIndex)) {
-      console.log('Target region is not adjacent');
+      logger.debug('Target region is not adjacent');
       return;
     }
 
@@ -253,7 +254,7 @@ export class MoveSystem {
     // Check with minimum soldier count (1) to ensure move is valid
     const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion]?.length || 0;
     if (availableSoldiers < 1) {
-      console.log('Not enough soldiers to move (need at least 1)');
+      logger.debug('Not enough soldiers to move (need at least 1)');
       this.cancelMove();
       return;
     }
@@ -266,7 +267,7 @@ export class MoveSystem {
       isMoving: false
     });
 
-    console.log('✅ Target region selected, transitioning to ADJUST_SOLDIERS');
+    logger.debug('✅ Target region selected, transitioning to ADJUST_SOLDIERS');
   }
 
   /**
@@ -276,11 +277,11 @@ export class MoveSystem {
     const { sourceRegion, targetRegion, selectedSoldierCount } = this.state;
 
     if (sourceRegion === null || targetRegion === null) {
-      console.error('Cannot execute move - missing source or target');
+      logger.error('Cannot execute move - missing source or target');
       return;
     }
 
-    console.log(`🚀 Executing move: ${sourceRegion} -> ${targetRegion}, ${selectedSoldierCount} soldiers`);
+    logger.debug(`🚀 Executing move: ${sourceRegion} -> ${targetRegion}, ${selectedSoldierCount} soldiers`);
 
     try {
       // Call the callback
@@ -288,7 +289,7 @@ export class MoveSystem {
         await this.onMoveComplete(sourceRegion, targetRegion, selectedSoldierCount);
       }
 
-      console.log('✅ Move executed successfully');
+      logger.debug('✅ Move executed successfully');
 
       // Reset state
       this.updateState({
@@ -303,7 +304,7 @@ export class MoveSystem {
       });
 
     } catch (error) {
-      console.error('Move execution failed:', error);
+      logger.error('Move execution failed:', error);
       this.cancelMove();
     }
   }
@@ -312,7 +313,7 @@ export class MoveSystem {
    * Confirm the current move
    */
   private confirmMove(): void {
-    console.log('✅ MoveSystem.confirmMove');
+    logger.debug('✅ MoveSystem.confirmMove');
 
     if (this.state.mode === ADJUST_SOLDIERS && this.state.sourceRegion !== null && this.state.targetRegion !== null) {
       // Execute the move with the selected soldier count
@@ -328,7 +329,7 @@ export class MoveSystem {
    * Cancel the current move
    */
   private cancelMove(): void {
-    console.log('MoveSystem.cancelMove');
+    logger.debug('MoveSystem.cancelMove');
 
     this.updateState({
       mode: IDLE,
@@ -346,7 +347,7 @@ export class MoveSystem {
    * Reset the move system
    */
   reset(): void {
-    console.log('🔄 MoveSystem.reset');
+    logger.debug('🔄 MoveSystem.reset');
 
     this.updateState({
       mode: IDLE,
@@ -364,7 +365,7 @@ export class MoveSystem {
    * Enter build mode
    */
   private enterBuildMode(): void {
-    console.log('🏗️ MoveSystem.enterBuildMode');
+    logger.debug('🏗️ MoveSystem.enterBuildMode');
 
     this.updateState({
       mode: BUILD,

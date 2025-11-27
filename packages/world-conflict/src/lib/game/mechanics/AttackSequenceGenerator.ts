@@ -1,5 +1,7 @@
-import type { Player, GameState } from '$lib/game/state/GameState.ts';
+import type { Player } from '$lib/game/entities/gameTypes';
+import type { GameState } from '$lib/game/state/GameState';
 import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import { logger } from '$lib/client/utils/logger';
 
 export interface AttackEvent {
     attackerCasualties?: number;      // Casualties in this round only
@@ -168,7 +170,7 @@ export class AttackSequenceGenerator {
         if (!this.state) return;
 
         if (!this.isSimulation) {
-            console.log(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders`);
+            logger.debug(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders`);
         }
 
         // Conduct battle rounds until one side is eliminated
@@ -189,7 +191,7 @@ export class AttackSequenceGenerator {
             totalDefenderCasualties += battleResult.defenderCasualties;
 
             if (!this.isSimulation) {
-                console.log(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
+                logger.debug(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
             }
 
             // Emit a separate event for this round with running totals
@@ -216,7 +218,7 @@ export class AttackSequenceGenerator {
 
         const winner = defendersRemaining > 0 ? 'defender' : 'attacker';
         if (!this.isSimulation) {
-            console.log(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
+            logger.debug(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
         }
     }
 
@@ -231,7 +233,7 @@ export class AttackSequenceGenerator {
         // Risk-style dice rules:
         // - Attackers roll up to 3 dice (but need to have enough soldiers)
         // - Defenders roll up to 2 dice
-        // - Compare highest dice, then second highest if both sides have multiple
+        // - Compare the highest dice, then second highest if both sides have multiple
         // - Ties go to defender
 
         const attackerDice = Math.min(3, attackers);
@@ -241,8 +243,6 @@ export class AttackSequenceGenerator {
         const attackerRolls = this.rollDice(attackerDice).sort((a, b) => b - a); // Highest first
         const defenderRolls = this.rollDice(defenderDice).sort((a, b) => b - a); // Highest first
 
-        //console.log(`Dice - Attackers: [${attackerRolls.join(',')}] vs Defenders: [${defenderRolls.join(',')}]`);
-
         let attackerCasualties = 0;
         let defenderCasualties = 0;
 
@@ -250,20 +250,16 @@ export class AttackSequenceGenerator {
         // First comparison (highest dice)
         if (attackerRolls[0] > defenderRolls[0]) {
             defenderCasualties++;
-            //console.log(`   Round 1: Attacker ${attackerRolls[0]} > Defender ${defenderRolls[0]} - Defender loses 1`);
         } else {
             attackerCasualties++;
-            //console.log(`   Round 1: Attacker ${attackerRolls[0]} ≤ Defender ${defenderRolls[0]} - Attacker loses 1`);
         }
 
         // Second comparison (if both sides have multiple dice)
         if (attackerRolls.length > 1 && defenderRolls.length > 1) {
             if (attackerRolls[1] > defenderRolls[1]) {
                 defenderCasualties++;
-                //console.log(`   Round 2: Attacker ${attackerRolls[1]} > Defender ${defenderRolls[1]} - Defender loses 1`);
             } else {
                 attackerCasualties++;
-                //console.log(`   Round 2: Attacker ${attackerRolls[1]} ≤ Defender ${defenderRolls[1]} - Attacker loses 1`);
             }
         }
 

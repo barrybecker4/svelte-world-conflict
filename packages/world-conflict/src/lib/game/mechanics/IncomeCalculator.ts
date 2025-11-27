@@ -1,4 +1,5 @@
-import type { GameState, Player } from '$lib/game/state/GameState';
+import type { Player } from '$lib/game/entities/gameTypes';
+import type { GameState } from '$lib/game/state/GameState';
 import { Temple } from '$lib/game/entities/Temple';
 
 /**
@@ -18,7 +19,6 @@ export class IncomeCalculator {
      */
     static calculateIncome(state: GameState, player: Player): number {
         const regionCount = state.regionCount(player);
-        // console.log(`Player ${player.slotIndex} owns ${regionCount} regions`);
 
         // Calculate soldiers praying at temples (soldiers stationed at temple regions owned by player)
         const soldiersAtTemples = this.countSoldiersPrayingAtTemples(state, player);
@@ -29,9 +29,6 @@ export class IncomeCalculator {
         const waterBonusPercent = this.calculateWaterTempleBonus(state, player);
 
         const totalIncome = Math.floor(baseIncome * (1 + waterBonusPercent / 100));
-        // console.log(
-        //     `Player ${player.slotIndex} faith income: ${regionCount} regions + ${soldiersAtTemples} soldiers at temples = ${baseIncome} base faith, +${waterBonusPercent}% from Water temples = ${totalIncome} total faith`
-        // );
 
         return totalIncome;
     }
@@ -57,9 +54,6 @@ export class IncomeCalculator {
                 if (soldiers && soldiers.length > 0) {
                     // All soldiers at owned temple regions generate faith
                     soldiersAtTemples += soldiers.length;
-                    // console.log(
-                    //     `Player ${player.slotIndex} has ${soldiers.length} soldiers praying at temple region ${regionIdx}`
-                    // );
                 }
             }
         }
@@ -85,9 +79,6 @@ export class IncomeCalculator {
                 const incomeBonus = temple.getIncomeBonus();
                 if (incomeBonus > 0) {
                     waterBonusPercent += incomeBonus;
-                    // console.log(
-                    //     `Player ${player.slotIndex} has Water temple at region ${regionIdx} with ${incomeBonus}% bonus`
-                    // );
                 }
             }
         }

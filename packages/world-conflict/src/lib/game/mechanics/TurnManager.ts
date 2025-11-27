@@ -1,8 +1,9 @@
 // Manages turn transitions, banners, and highlighting
 import { writable, derived } from 'svelte/store';
-import type { Player, GameStateData } from '$lib/game/state/GameState';
+import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { get } from 'svelte/store';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { logger } from '$lib/client/utils/logger';
 
 interface TurnState {
   currentPlayerIndex: number;
@@ -150,7 +151,7 @@ class TurnManager {
         // slot-based turn detection
         const isNewTurn = this.previousSlotIndex !== newPlayerSlotIndex;
 
-        console.log('Turn transition:', {
+        logger.debug('Turn transition:', {
           previousSlot: this.previousSlotIndex,
           newSlot: newPlayerSlotIndex,
           newPlayerName: newPlayer?.name,
@@ -182,7 +183,7 @@ class TurnManager {
           setTimeout(() => {
             const state = get(this.turnState);
             if (state.isTransitioning || !state.bannerComplete) {
-              console.log('🎭 Auto-completing turn transition (fallback)');
+              logger.debug('🎭 Auto-completing turn transition (fallback)');
               this.onBannerComplete();
             }
           }, GAME_CONSTANTS.BANNER_TIME + 200);
@@ -376,7 +377,7 @@ class TurnManager {
   public async showReplayBannerForPlayer(playerSlotIndex: number): Promise<void> {
     // Skip if we already showed a banner for this player
     if (this.lastReplayBannerSlot === playerSlotIndex) {
-      console.log(`🎭 Skipping replay banner for slot ${playerSlotIndex} - already shown`);
+      logger.debug(`🎭 Skipping replay banner for slot ${playerSlotIndex} - already shown`);
       return;
     }
 
@@ -387,7 +388,7 @@ class TurnManager {
       return;
     }
 
-    console.log(`🎭 Showing replay banner for ${player.name} (slot ${playerSlotIndex})`);
+    logger.debug(`🎭 Showing replay banner for ${player.name} (slot ${playerSlotIndex})`);
     this.lastReplayBannerSlot = playerSlotIndex;
 
     return new Promise((resolve) => {

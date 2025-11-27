@@ -12,7 +12,10 @@ export class TempleValidator {
         regionIndex: number,
         operationType: 'build' | 'upgrade'
     ): MoveValidationResult {
-        const currentPlayer = gameData.players[gameData.currentPlayerSlot];
+        const currentPlayer = gameData.players.find(p => p.slotIndex === gameData.currentPlayerSlot);
+        if (!currentPlayer) {
+            return { isValid: false, error: "Current player not found" };
+        }
         const region = gameData.regions.find(r => r.index === regionIndex);
 
         if (!region) {

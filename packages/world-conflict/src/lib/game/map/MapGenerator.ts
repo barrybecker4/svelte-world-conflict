@@ -1,9 +1,10 @@
-import type { Region } from '$lib/game/state/GameState';
+import type { Region } from '$lib/game/entities/gameTypes';
 import { RegionMap } from '$lib/game/map/RegionMap';
 import { Bounds } from '$lib/game/map/Bounds.ts';
 import { PositionSet } from '$lib/game/map/PositionSet';
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { logger } from '$lib/client/utils/logger';
 
 export interface MapGenerationOptions {
     size: 'Small' | 'Medium' | 'Large';
@@ -22,10 +23,6 @@ const MIN_REGIONS_REQUIRED = GAME_CONSTANTS.MAX_PLAYERS + 1;
 
 // Maximum attempts to generate a valid map before giving up
 const MAX_GENERATION_ATTEMPTS = 5;
-
-// Perturb constant for consistent randomization
-let perturbConst: number | null = null;
-const PERTURB_SCALE = 0.4;
 
 type MapSize = 'Small' | 'Medium' | 'Large';
 
@@ -53,14 +50,14 @@ export class MapGenerator {
                 
                 // Success! Log if we needed multiple attempts
                 if (attempt > 1) {
-                    console.log(`✅ Map generation succeeded on attempt ${attempt}/${MAX_GENERATION_ATTEMPTS}`);
+                    logger.debug(`✅ Map generation succeeded on attempt ${attempt}/${MAX_GENERATION_ATTEMPTS}`);
                 }
                 
                 return regions;
             } catch (error) {
                 lastError = error as Error;
                 if (attempt < MAX_GENERATION_ATTEMPTS) {
-                    console.log(`⚠️ Map generation attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed, retrying...`);
+                    logger.debug(`⚠️ Map generation attempt ${attempt}/${MAX_GENERATION_ATTEMPTS} failed, retrying...`);
                 }
             }
         }
@@ -78,8 +75,8 @@ export class MapGenerator {
      * @throws Error if minimum region requirements are not met
      */
     private attemptMapGeneration(mapSize: MapSize, playerCount: number): Region[] {
-        // Reset perturbation constant for each attempt
-        perturbConst = null;
+        // Reset perturbation constant for each attempt (in Bounds.ts)
+        Bounds.resetPerturbation();
 
         const minRegionSize = MIN_REGION_SIZE_MAP[mapSize];
         const maxRegionSize = MAX_REGION_SIZE_MAP[mapSize] - playerCount;
@@ -141,7 +138,7 @@ export class MapGenerator {
         const neededTemples = playerCount;
         
         if (templeRegions.length < neededTemples) {
-            console.log(`⚠️ Only ${templeRegions.length} temple regions found, need ${neededTemples} for ${playerCount} players`);
+            logger.debug(`⚠️ Only ${templeRegions.length} temple regions found, need ${neededTemples} for ${playerCount} players`);
             
             // Get non-temple regions
             const nonTempleRegions = regions.filter(r => !r.hasTemple);
@@ -152,13 +149,13 @@ export class MapGenerator {
                 const region = nonTempleRegions[i];
                 // Modify the hasTemple property directly (it's a readonly property, but we're in the generation phase)
                 (region as any).hasTemple = true;
-                console.log(`✅ Converted region ${region.index} to temple region`);
+                logger.debug(`✅ Converted region ${region.index} to temple region`);
             }
             
             const finalTempleCount = regions.filter(r => r.hasTemple).length;
-            console.log(`🏛️ Final temple count: ${finalTempleCount} (need ${neededTemples})`);
+            logger.debug(`🏛️ Final temple count: ${finalTempleCount} (need ${neededTemples})`);
         } else {
-            console.log(`✅ Sufficient temples: ${templeRegions.length} temple regions for ${playerCount} players`);
+            logger.debug(`✅ Sufficient temples: ${templeRegions.length} temple regions for ${playerCount} players`);
         }
     }
 

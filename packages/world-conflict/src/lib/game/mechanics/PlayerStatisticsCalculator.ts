@@ -1,4 +1,4 @@
-import type { Player, GameStateData } from '$lib/game/state/GameState';
+import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 export interface PlayerStats {
@@ -56,12 +56,8 @@ export class PlayerStatisticsCalculator {
     };
   }
 
-  isPlayerEliminated(playerSlotIndex: number): boolean {
-    return this.scoreCalculator.getRegionCount(playerSlotIndex) === 0;
-  }
-
   getActivePlayers(players: Player[]): Player[] {
-    return players.filter(player => !this.isPlayerEliminated(player.slotIndex));
+    return players.filter(player => this.scoreCalculator.getRegionCount(player.slotIndex) > 0);
   }
 
   getLeadingPlayer(players: Player[]): Player | null {

@@ -1,4 +1,4 @@
-import type { GameStateData } from '$lib/game/state/GameState';
+import type { GameStateData } from '$lib/game/entities/gameTypes';
 
 export class ScoreCalculator {
 

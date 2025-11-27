@@ -1,4 +1,6 @@
 import type { GameStateData, Player } from '$lib/game/entities/gameTypes';
+import { logger } from '$lib/client/utils/logger';
+import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 /**
  * Shared service for player elimination detection
@@ -18,7 +20,7 @@ export class PlayerEliminationService {
     for (const player of players) {
       const regionCount = regionCounts.get(player.slotIndex) || 0;
       if (regionCount === 0) {
-        console.log(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
+        logger.debug(`💀 Player ${player.name} (slot ${player.slotIndex}) has been eliminated!`);
         eliminatedPlayers.push(player.slotIndex);
       }
     }
@@ -45,8 +47,8 @@ export class PlayerEliminationService {
    * Check if a specific player has been eliminated
    */
   static isPlayerEliminated(gameState: GameStateData, playerSlotIndex: number): boolean {
-    const regionCounts = this.getRegionCountByPlayer(gameState);
-    return (regionCounts.get(playerSlotIndex) || 0) === 0;
+    const scoreCalculator = new ScoreCalculator(gameState);
+    return scoreCalculator.getRegionCount(playerSlotIndex) === 0;
   }
 
   /**
@@ -62,7 +64,7 @@ export class PlayerEliminationService {
     }
     if (!gameState.eliminatedPlayers.includes(playerSlotIndex)) {
       gameState.eliminatedPlayers.push(playerSlotIndex);
-      console.log(`💀 Eliminating player ${playerSlotIndex} - adding to eliminatedPlayers array`);
+      logger.debug(`💀 Eliminating player ${playerSlotIndex} - adding to eliminatedPlayers array`);
     }
 
     // Remove ownership of all regions owned by this player
@@ -75,7 +77,7 @@ export class PlayerEliminationService {
       }
     }
 
-    console.log(`💀 Cleared ownership of ${regionsCleared.length} regions for player ${playerSlotIndex}:`, regionsCleared);
+    logger.debug(`💀 Cleared ownership of ${regionsCleared.length} regions for player ${playerSlotIndex}:`, regionsCleared);
   }
 }
 

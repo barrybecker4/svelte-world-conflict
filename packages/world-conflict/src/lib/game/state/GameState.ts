@@ -7,6 +7,7 @@ import type { ValidationResult, MoveValidationResult } from '$lib/game/validatio
 import { Regions } from '$lib/game/entities/Regions';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import { logger } from '$lib/client/utils/logger';
 
 // Re-export types for convenience
 export type { Player, Region, GameStateData, Soldier, Temple };
@@ -46,7 +47,7 @@ export class GameState {
      * Create initial game state - uses GameStateInitializer to prepare data
      */
     static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameState {
-        console.log(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}, seed: ${seed}`);
+        logger.debug(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}, seed: ${seed}`);
 
         let regions: Region[];
 
@@ -56,7 +57,7 @@ export class GameState {
             ? Regions.fromJSON(regionData).getAll()
             : Regions.createBasic(Math.max(players.length * 3, 12), seed).getAll();
 
-        console.log(`Using ${regions.length} regions for game initialization`);
+        logger.debug(`Using ${regions.length} regions for game initialization`);
 
         const initializer = new GameStateInitializer();
         const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);

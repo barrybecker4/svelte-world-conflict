@@ -1,5 +1,5 @@
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import type { GameStateData, Player } from '$lib/game/state/GameState';
+import type { GameStateData, Player } from '$lib/game/entities/gameTypes';
 import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 export interface GameEndResult {
