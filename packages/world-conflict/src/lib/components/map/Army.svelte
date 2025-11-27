@@ -34,23 +34,16 @@
     const soldiersAtRegion = state.soldiersByRegion[regionIndex] || [];
 
     // Deduplicate soldiers by ID to prevent Svelte keying errors
-    // FAIL FAST: Duplicate soldier IDs indicate a bug in state management
+    // This should not happen, but handle it gracefully if it does
     const seenIds = new Set<number>();
     const uniqueSoldiers = soldiersAtRegion.filter(soldier => {
       if (seenIds.has(soldier.i)) {
+        // Log error but don't crash - deduplicate and continue
         logger.error(`BUG: Duplicate soldier ID ${soldier.i} detected in region ${regionIndex}!`, {
           regionIndex,
           totalSoldiers: soldiersAtRegion.length,
-          uniqueIds: Array.from(seenIds).length,
-          allSoldierIds: soldiersAtRegion.map(s => s.i),
-          duplicateSoldier: soldier,
-          gameState: state
+          allSoldierIds: soldiersAtRegion.map(s => s.i)
         });
-        // This should never happen - it indicates animation state is being mixed with game state
-        // Throw an error in development to catch this bug early
-        if (import.meta.env.DEV) {
-          throw new Error(`Duplicate soldier ID ${soldier.i} in region ${regionIndex} - this is a bug in animation state management`);
-        }
         return false;
       }
       seenIds.add(soldier.i);

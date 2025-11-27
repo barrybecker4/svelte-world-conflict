@@ -158,7 +158,12 @@ export class BattleReplayCoordinator {
     clearedState.soldiersByRegion[targetRegion] = [];
     
     const soldiersAtSource = finalGameState.soldiersByRegion?.[sourceRegion] || [];
-    const allAtSource = [...soldiersAtSource, ...survivors].map((s: any) => ({
+    
+    // Deduplicate: survivors should NOT already be at source (they came FROM source originally)
+    const survivorIds = new Set(survivors.map((s: any) => s.i));
+    const sourceWithoutSurvivors = soldiersAtSource.filter((s: any) => !survivorIds.has(s.i));
+    
+    const allAtSource = [...sourceWithoutSurvivors, ...survivors].map((s: any) => ({
       ...s,
       attackedRegion: undefined,
       movingToRegion: undefined
@@ -258,11 +263,22 @@ export class BattleReplayCoordinator {
     const soldiersAtSource = finalGameState.soldiersByRegion?.[sourceRegion] || [];
     const survivorIds = new Set(survivors.map((s: any) => s.i));
     
-    const updatedSourceSoldiers = [...soldiersAtSource, ...survivors].map((s: any) => ({
-      ...s,
-      movingToRegion: survivorIds.has(s.i) ? targetRegion : undefined,
-      attackedRegion: undefined
-    }));
+    // Deduplicate: filter out survivors from source before adding them back
+    // This prevents duplicate soldier IDs when survivors were originally from source
+    const sourceWithoutSurvivors = soldiersAtSource.filter((s: any) => !survivorIds.has(s.i));
+    
+    const updatedSourceSoldiers = [
+      ...sourceWithoutSurvivors.map((s: any) => ({
+        ...s,
+        movingToRegion: undefined,
+        attackedRegion: undefined
+      })),
+      ...survivors.map((s: any) => ({
+        ...s,
+        movingToRegion: targetRegion,
+        attackedRegion: undefined
+      }))
+    ];
     
     newAnimationState.soldiersByRegion[sourceRegion] = updatedSourceSoldiers;
     newAnimationState.ownersByRegion = {
