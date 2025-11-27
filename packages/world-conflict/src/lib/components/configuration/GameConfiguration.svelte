@@ -11,6 +11,7 @@
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { AI_DIFFICULTY_OPTIONS, AiDifficulty } from '$lib/game/entities/aiPersonalities';
+  import type { PlayerSlot } from '$lib/game/entities/PlayerSlot';
 
   const dispatch = createEventDispatcher();
 
@@ -29,7 +30,7 @@
     mapSize: string;
   } = { ...defaultGameSettings };
   let playerName = '';
-  let playerSlots: any[] = [];
+  let playerSlots: PlayerSlot[] = [];
 
   let creating = false;
   let error: string | null = null;

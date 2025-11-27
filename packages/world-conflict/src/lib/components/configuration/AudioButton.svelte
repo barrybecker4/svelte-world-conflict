@@ -1,16 +1,14 @@
 <script lang="ts">
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
 
   let isEnabled = false;
-  let volume = 0.5;
   let isInitialized = false;
 
   onMount(async () => {
     isEnabled = audioSystem.isAudioEnabled();
-    volume = audioSystem.getVolume();
     isInitialized = true;
   });
 
@@ -26,18 +24,6 @@
       }
     } catch (error) {
       console.warn('Error toggling audio:', error);
-    }
-  }
-
-  function handleVolumeChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    volume = parseFloat(target.value);
-    audioSystem.setVolume(volume);
-  }
-
-  async function testSound() {
-    if (isEnabled) {
-      await audioSystem.playSound(SOUNDS.CLICK);
     }
   }
 </script>

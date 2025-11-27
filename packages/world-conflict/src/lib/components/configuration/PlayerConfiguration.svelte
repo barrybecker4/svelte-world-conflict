@@ -1,9 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import type { PlayerSlot } from '$lib/game/entities/PlayerSlot';
 
   const dispatch = createEventDispatcher();
 
-  export let playerSlot: any;
+  export let playerSlot: PlayerSlot;
   export let index: number;
   export let playerName: string = '';
 

@@ -1,32 +1,14 @@
 <script lang="ts">
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { AI_DIFFICULTY_OPTIONS } from '$lib/game/entities/aiPersonalities';
+  import type { GameConfiguration } from '$lib/client/stores/clientStorage';
 
-  export let gameSettings;
+  export let gameSettings: Omit<GameConfiguration, 'playerSlots'>;
 
   const difficultyOptions = AI_DIFFICULTY_OPTIONS;
   const mapSizeOptions = ['Small', 'Medium', 'Large'];
   const turnOptions = createTurnOptions();
   const timeLimitOptions = createTimeLimitOptions();
-
-  // Reactive updates to ensure parent component stays in sync
-  $: if (gameSettings) {
-    // Validate settings have valid values
-    if (!difficultyOptions.includes(gameSettings.aiDifficulty)) {
-      gameSettings.aiDifficulty = 'Nice';
-    }
-    if (!mapSizeOptions.includes(gameSettings.mapSize)) {
-      gameSettings.mapSize = 'Large';
-    }
-    // Check if maxTurns is valid (includes UNLIMITED_TURNS)
-    const validTurnValues = [...GAME_CONSTANTS.MAX_TURN_OPTIONS, GAME_CONSTANTS.UNLIMITED_TURNS];
-    if (!validTurnValues.includes(gameSettings.maxTurns)) {
-      gameSettings.maxTurns = GAME_CONSTANTS.MAX_TURN_OPTIONS[GAME_CONSTANTS.DEFAULT_TURN_COUNT_INDEX];
-    }
-    if (!GAME_CONSTANTS.TIME_LIMITS.includes(gameSettings.timeLimit)) {
-      gameSettings.timeLimit = GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
-    }
-  }
 
   // Turn options with labels and values
   function createTurnOptions() {

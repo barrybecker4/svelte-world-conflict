@@ -1,20 +1,27 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import PlayerConfiguration from './PlayerConfiguration.svelte';
   import Section from '$lib/components/ui/Section.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import type { PlayerSlot, PlayerSlotType } from '$lib/game/entities/PlayerSlot';
 
   const dispatch = createEventDispatcher();
 
   export let playerName: string;
-  export let slots: any[] = [];
+  export let slots: PlayerSlot[] = [];
 
-  // Initialize slots if not provided
-  if (slots.length === 0) {
-    slots = createInitialSlots();
-    initializeWithPlayer(playerName);
-  }
+  // Track if we've initialized to avoid re-running
+  let initialized = false;
+
+  onMount(() => {
+    // Initialize slots if not provided (run after props are received)
+    if (slots.length === 0 && !initialized) {
+      slots = createInitialSlots();
+      initializeWithPlayer(playerName);
+      initialized = true;
+    }
+  });
 
   // Reactive computations
   $: activeSlotCount = slots.filter(slot => slot.type !== 'Off').length;
@@ -27,27 +34,31 @@
     hasPlayerSet
   });
 
-  function createInitialSlots() {
-      return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(slotIndex => ({
-        ...getPlayerConfig(slotIndex),
-        slotIndex,
-        type: 'Off',
-        customName: ''
-      }));
+  function createSlotFromConfig(slotIndex: number, type: PlayerSlotType, customName: string = ''): PlayerSlot {
+    const config = getPlayerConfig(slotIndex);
+    return {
+      ...config,
+      slotIndex,
+      type,
+      customName,
+      color: config.colorStart  // Use colorStart as the primary color
+    };
   }
 
-  function initializeWithPlayer(playerName: string) {
+  function createInitialSlots(): PlayerSlot[] {
+    return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(slotIndex => 
+      createSlotFromConfig(slotIndex, 'Off')
+    );
+  }
+
+  function initializeWithPlayer(name: string) {
     // Set the first slot to the current player
-    slots[0] = {
-      ...getPlayerConfig(0),
-      type: 'Set',
-      customName: playerName
-    };
+    slots[0] = createSlotFromConfig(0, 'Set', name);
 
     // Add some default AI opponents
-    slots[1] = { ...getPlayerConfig(1), type: 'AI', customName: '' };
-    slots[2] = { ...getPlayerConfig(2), type: 'AI', customName: '' };
-    slots[3] = { ...getPlayerConfig(3), type: 'Off', customName: '' };
+    slots[1] = createSlotFromConfig(1, 'AI');
+    slots[2] = createSlotFromConfig(2, 'AI');
+    slots[3] = createSlotFromConfig(3, 'Off');
   }
 
   // Handle individual slot updates
@@ -66,7 +77,7 @@
     slots = [...slots];
   }
 
-  function switchPlayerToSlot(targetIndex: number, targetSlot: any) {
+  function switchPlayerToSlot(targetIndex: number, targetSlot: PlayerSlot) {
     // Find current "Set" slot and turn it off
     const currentSetIndex = slots.findIndex(s => s.type === 'Set');
     if (currentSetIndex !== -1 && currentSetIndex !== targetIndex) {
