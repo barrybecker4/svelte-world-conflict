@@ -5,7 +5,7 @@
   import Section from '$lib/components/ui/Section.svelte';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { SYMBOLS } from '$lib/game/constants/symbols';
-  import { PlayerStatisticsCalculator } from '$lib/components/modals/gameSummary/PlayerStatisticsCalculator';
+  import { PlayerStatisticsCalculator } from '$lib/game/mechanics/PlayerStatisticsCalculator';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
   export let gameState: GameStateData;

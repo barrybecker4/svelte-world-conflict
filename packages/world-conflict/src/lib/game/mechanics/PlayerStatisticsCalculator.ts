@@ -69,3 +69,4 @@ export class PlayerStatisticsCalculator {
     return stats.length > 0 ? stats[0].player : null;
   }
 }
+

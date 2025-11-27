@@ -1,35 +1,53 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';
+  import { logger } from '$lib/client/utils/logger';
 
-  const dispatch = createEventDispatcher();
+  interface Props {
+    isOpen?: boolean;
+    onclose?: () => void;
+  }
 
-  export let isOpen = true;
+  let { isOpen = true, onclose }: Props = $props();
 
-  // Define all available sounds with friendly names
-  const soundList = [
-    { key: 'GAME_CREATED', name: 'Game Created', icon: '🎮' },
-    { key: 'GAME_STARTED', name: 'Game Started', icon: '🚀' },
-    { key: 'GAME_WON', name: 'Victory', icon: '🏆' },
-    { key: 'GAME_LOST', name: 'Defeat', icon: '💀' },
-    { key: 'SOLDIERS_MOVE', name: 'Soldiers Move', icon: '👣' },
-    { key: 'SOLDIERS_RECRUITED', name: 'Soldiers Recruited', icon: '🪖' },
-    { key: 'ATTACK', name: 'Attack', icon: '⚔️' },
-    { key: 'COMBAT', name: 'Combat', icon: '⚡' },
-    { key: 'REGION_CONQUERED', name: 'Region Conquered', icon: '🏴' },
-    { key: 'TEMPLE_UPGRADED', name: 'Temple Upgraded', icon: '✨' },
-    { key: 'INCOME', name: 'Income', icon: '💰' },
-    { key: 'OUT_OF_TIME', name: 'Out of Time', icon: '⏰' },
-    { key: 'ALMOST_OUT_OF_TIME', name: 'Almost Out of Time', icon: '⏱️' },
-    { key: 'CLICK', name: 'Click', icon: '👆' },
-    { key: 'HOVER', name: 'Hover', icon: '🔘' },
-    { key: 'ERROR', name: 'Error', icon: '❌' },
-  ];
+  // Icon mapping for each sound key
+  const SOUND_ICONS: Record<string, string> = {
+    GAME_CREATED: '🎮',
+    GAME_STARTED: '🚀',
+    GAME_WON: '🏆',
+    GAME_LOST: '💀',
+    SOLDIERS_MOVE: '👣',
+    SOLDIERS_RECRUITED: '🪖',
+    ATTACK: '⚔️',
+    COMBAT: '⚡',
+    REGION_CONQUERED: '🏴',
+    TEMPLE_UPGRADED: '✨',
+    INCOME: '💰',
+    OUT_OF_TIME: '⏰',
+    ALMOST_OUT_OF_TIME: '⏱️',
+    CLICK: '👆',
+    HOVER: '🔘',
+    ERROR: '❌'
+  };
 
-  let playingSound: string | null = null;
+  // Convert SNAKE_CASE to Title Case
+  function formatSoundName(key: string): string {
+    return key
+      .split('_')
+      .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  // Generate sound list from SOUNDS constant
+  const soundList = Object.keys(SOUNDS).map(key => ({
+    key,
+    name: formatSoundName(key),
+    icon: SOUND_ICONS[key] || '🔊'
+  }));
+
+  let playingSound = $state<string | null>(null);
 
   async function playSound(soundKey: string) {
     try {
@@ -43,14 +61,13 @@
         }
       }, 500);
     } catch (error) {
-      console.error(`Failed to play sound ${soundKey}:`, error);
+      logger.error(`Failed to play sound ${soundKey}:`, error);
       playingSound = null;
     }
   }
 
   function handleClose() {
-    dispatch('close');
-    isOpen = false;
+    onclose?.();
   }
 </script>
 

@@ -123,5 +123,5 @@
 </LoadingState>
 
 {#if showSoundTestModal}
-  <SoundTestModal isOpen={showSoundTestModal} on:close={closeSoundTestModal} />
+  <SoundTestModal isOpen={showSoundTestModal} onclose={closeSoundTestModal} />
 {/if}

@@ -2,18 +2,27 @@
   import Button from '$lib/components/ui/Button.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
 
-  export let maxSoldiers: number;
-  export let currentSelection: number;
-  export let onConfirm: (count: number) => void;
-  export let onCancel: () => void;
+  interface Props {
+    maxSoldiers: number;
+    currentSelection: number;
+    onConfirm: (count: number) => void;
+    onCancel: () => void;
+  }
 
-  let selectedCount = currentSelection;
-  let isOpen = true;
+  let { maxSoldiers, currentSelection, onConfirm, onCancel }: Props = $props();
 
-  $: selectedCount = Math.max(1, Math.min(selectedCount, maxSoldiers));
+  let selectedCount = $state(currentSelection);
+  let isOpen = $state(true);
+
+  // Clamp selection to valid range
+  const clampedSelection = $derived(Math.max(1, Math.min(selectedCount, maxSoldiers)));
+
+  function selectSoldiers(count: number) {
+    selectedCount = Math.max(1, Math.min(count, maxSoldiers));
+  }
 
   function handleConfirm() {
-    onConfirm(selectedCount);
+    onConfirm(clampedSelection);
     isOpen = false;
   }
 
@@ -37,9 +46,10 @@
       {#each Array(maxSoldiers) as _, index}
         <div
           class="soldier-icon"
-          class:selected={index < selectedCount}
-          class:available={index >= selectedCount}
-          on:click={() => selectedCount = index + 1}
+          class:selected={index < clampedSelection}
+          class:available={index >= clampedSelection}
+          onclick={() => selectSoldiers(index + 1)}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && selectSoldiers(index + 1)}
           role="button"
           tabindex="0"
           aria-label="Select {index + 1} soldiers"
@@ -54,7 +64,7 @@
     </div>
 
     <div class="selection-info">
-      <p>Moving <strong>{selectedCount}</strong> of {maxSoldiers} soldiers</p>
+      <p>Moving <strong>{clampedSelection}</strong> of {maxSoldiers} soldiers</p>
       <small>Click soldiers that you want to move above</small>
     </div>
   </div>
@@ -64,7 +74,7 @@
       Cancel
     </Button>
     <Button variant="success" on:click={handleConfirm}>
-      Move {selectedCount} Soldier{selectedCount === 1 ? '' : 's'}
+      Move {clampedSelection} Soldier{clampedSelection === 1 ? '' : 's'}
     </Button>
   </div>
 </Modal>
