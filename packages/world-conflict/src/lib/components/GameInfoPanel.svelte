@@ -20,6 +20,7 @@
   export let moveMode: string = IDLE;
   export let playerSlotIndex: number;
   export let canUndo: boolean = false;
+  export let battleInProgress: boolean = false;
 
   // Reactive statements - these will update whenever gameState changes
   $: currentPlayerSlot = gameState?.currentPlayerSlot ?? 0;
@@ -145,7 +146,7 @@
       ↩️ Undo
     </Button>
 
-    <Button variant="danger" size="lg" uppercase disabled={!isMyTurn} on:click={onEndTurn} data-testid="end-turn-btn">
+    <Button variant="danger" size="lg" uppercase disabled={!isMyTurn || battleInProgress} on:click={onEndTurn} data-testid="end-turn-btn">
       END TURN
     </Button>
   </Section>

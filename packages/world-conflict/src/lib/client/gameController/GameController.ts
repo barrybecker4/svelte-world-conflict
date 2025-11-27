@@ -386,7 +386,8 @@ export class GameController {
       modalState: this.modalManager.getModalState(),
       moveState: this.moveUICoordinator.getMoveStateStore(),
       isConnected: this.websocket.getConnectedStore(),
-      tutorialTips: this.tutorialCoordinator.getTutorialTipsStore()
+      tutorialTips: this.tutorialCoordinator.getTutorialTipsStore(),
+      battleInProgress: this.battleCoordinator.getBattleInProgressStore()
     };
   }
 }

@@ -1,4 +1,4 @@
-import { get } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store';
 import { BattleManager } from '$lib/client/rendering/BattleManager';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { UndoManager } from './UndoManager';
@@ -14,7 +14,7 @@ export class BattleCoordinator {
   private moveQueue: MoveQueue;
   private gameStore: any;
   private readonly playerSlotIndex: number;
-  private battleInProgress = false;
+  private battleInProgressStore: Writable<boolean> = writable(false);
 
   constructor(
     playerId: string,
@@ -34,7 +34,11 @@ export class BattleCoordinator {
   }
 
   isBattleInProgress(): boolean {
-    return this.battleInProgress;
+    return get(this.battleInProgressStore);
+  }
+
+  getBattleInProgressStore(): Writable<boolean> {
+    return this.battleInProgressStore;
   }
 
   /**
@@ -59,12 +63,12 @@ export class BattleCoordinator {
       gameState: currentState
     };
 
-    this.battleInProgress = true;
+    this.battleInProgressStore.set(true);
 
     const result = await this.battleManager.executeMove(battleMove, currentRegions);
 
     if (!result.success) {
-      this.battleInProgress = false;
+      this.battleInProgressStore.set(false);
       throw new Error(result.error || 'Move failed');
     }
 
@@ -102,7 +106,7 @@ export class BattleCoordinator {
       this.undoManager.disableUndo();
     }
 
-    this.battleInProgress = false;
+    this.battleInProgressStore.set(false);
   }
 
   setMapContainer(container: HTMLElement): void {

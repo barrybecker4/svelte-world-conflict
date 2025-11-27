@@ -39,7 +39,7 @@
   } = gameStore;
 
   const controller = new GameController(gameId, playerId, gameStore);
-  const { modalState, moveState, isConnected, tutorialTips } = controller.getStores();
+  const { modalState, moveState, isConnected, tutorialTips, battleInProgress } = controller.getStores();
 
   let mapContainer: HTMLElement;
   let showVictoryBanner = false;
@@ -135,6 +135,7 @@
         onEndTurn={() => controller.endTurn()}
         onUndo={() => controller.undo()}
         canUndo={canUndo}
+        battleInProgress={$battleInProgress}
         onShowInstructions={() => controller.showInstructions()}
         onResign={() => controller.resign()}
       />
