@@ -1,7 +1,5 @@
-import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import {
     type Player,
-    type Soldier,
     GameState
 } from "$lib/game/state/GameState.ts";
 

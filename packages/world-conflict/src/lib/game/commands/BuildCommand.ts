@@ -1,6 +1,7 @@
 import { Command, type CommandValidationResult } from "./Command";
 import type { GameState, Player } from "$lib/game/state/GameState";
-import { TEMPLE_UPGRADES_BY_NAME } from "$lib/game/constants/templeUpgradeDefinitions";
+import { TEMPLE_UPGRADES_BY_NAME, type TempleUpgradeDefinition } from "$lib/game/constants/templeUpgradeDefinitions";
+import { logger } from '$lib/client/utils/logger';
 
 export class BuildCommand extends Command {
     public regionIndex: number;
@@ -36,13 +37,20 @@ export class BuildCommand extends Command {
         }
 
         if (errors.length > 0) {
-            console.error('❌ BuildCommand validation failed:', errors);
+            logger.debug('❌ BuildCommand validation failed:', errors);
         }
 
         return {
             valid: errors.length === 0,
             errors
         };
+    }
+
+    /**
+     * Get the upgrade definition for the current upgrade index
+     */
+    private getUpgradeDefinition(): TempleUpgradeDefinition | undefined {
+        return Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
     }
 
     /**
@@ -65,22 +73,19 @@ export class BuildCommand extends Command {
         }
 
         // For temple upgrades (WATER, FIRE, AIR, EARTH)
+        const upgrade = this.getUpgradeDefinition();
+        if (!upgrade?.cost) {
+            return 0;
+        }
+
         // Cost depends on whether we're upgrading same type or switching
         if (temple?.upgradeIndex === this.upgradeIndex) {
             // Upgrading to next level of same type
-            const upgrade = Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
-            if (upgrade && upgrade.cost) {
-                return upgrade.cost[temple.level + 1] || 0;
-            }
+            return upgrade.cost[temple.level + 1] || 0;
         } else {
             // New temple type - cost for level 0
-            const upgrade = Object.values(TEMPLE_UPGRADES_BY_NAME).find(u => u.index === this.upgradeIndex);
-            if (upgrade && upgrade.cost) {
-                return upgrade.cost[0] || 0;
-            }
+            return upgrade.cost[0] || 0;
         }
-
-        return 0;
     }
 
     execute(): GameState {
@@ -127,7 +132,7 @@ export class BuildCommand extends Command {
                     newUpgradeIndex = this.upgradeIndex;
                 }
 
-                console.log(`🏛️ BuildCommand: Upgrading temple at region ${this.regionIndex}`, {
+                logger.debug(`🏛️ BuildCommand: Upgrading temple at region ${this.regionIndex}`, {
                     oldLevel: temple.level,
                     oldUpgradeIndex: temple.upgradeIndex,
                     newLevel,
@@ -148,8 +153,8 @@ export class BuildCommand extends Command {
                     [this.regionIndex]: updatedTemple
                 };
 
-                console.log(`🏛️ BuildCommand: Updated temple object`, updatedTemple);
-                console.log(`🏛️ BuildCommand: Verification - temple in newState:`, newState.state.templesByRegion[this.regionIndex]);
+                logger.debug(`🏛️ BuildCommand: Updated temple object`, updatedTemple);
+                logger.debug(`🏛️ BuildCommand: Verification - temple in newState:`, newState.state.templesByRegion[this.regionIndex]);
 
                 // Air upgrade gives immediate extra move
                 if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.AIR.index) {

@@ -99,15 +99,11 @@ export class Regions {
         if (this.regions.length === 0) return undefined;
 
         let closest = this.regions[0];
-        let minDistance = closest.getDistanceTo(new Region({
-            index: -1, name: 'temp', neighbors: [], x, y, points: undefined
-        }));
+        let minDistance = Regions.distanceToPoint(closest, x, y);
 
         for (let i = 1; i < this.regions.length; i++) {
             const region = this.regions[i];
-            const distance = region.getDistanceTo(new Region({
-                index: -1, name: 'temp', neighbors: [], x, y, points: undefined
-            }));
+            const distance = Regions.distanceToPoint(region, x, y);
             if (distance < minDistance) {
                 minDistance = distance;
                 closest = region;
@@ -115,6 +111,15 @@ export class Regions {
         }
 
         return closest;
+    }
+
+    /**
+     * Calculate Euclidean distance from a region to a point
+     */
+    private static distanceToPoint(region: Region, x: number, y: number): number {
+        const dx = region.x - x;
+        const dy = region.y - y;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     getNeighborsOf(regionIndex: number): Region[] {
@@ -208,26 +213,27 @@ export class Regions {
      */
     [index: number]: Region | undefined;
 
-    private setupArrayAccess(): void {
-        // Create numeric properties for array-like access
-        this.regions.forEach((region, i) => {
-            if (region.index === i) {
-                (this as any)[i] = region;
-            }
-        });
-    }
-
     /**
-     * Validate that regions are proper Region instances
+     * Validate region data structure
+     * Accepts both Region instances and plain RegionData objects
      */
     private static validate(regionData: any[]): boolean {
         if (!Array.isArray(regionData) || regionData.length === 0) {
             return false;
         }
 
-        return regionData.every(region =>
-            region instanceof Region &&
-            typeof region.getDistanceTo === 'function'
-        );
+        return regionData.every(region => {
+            // Accept Region instances
+            if (region instanceof Region) {
+                return true;
+            }
+            // Accept plain objects with required fields
+            return (
+                typeof region === 'object' &&
+                region !== null &&
+                typeof region.index === 'number' &&
+                Array.isArray(region.neighbors)
+            );
+        });
     }
 }

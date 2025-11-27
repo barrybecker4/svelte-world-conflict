@@ -2,6 +2,7 @@ import { Command, type CommandValidationResult } from './Command';
 import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import type { GameState, Player, Region, Soldier } from '$lib/game/state/GameState';
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
+import { logger } from '$lib/client/utils/logger';
 
 export class ArmyMoveCommand extends Command {
     public source: number;
@@ -71,7 +72,7 @@ export class ArmyMoveCommand extends Command {
         this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
 
         if (!this.isSimulation) {
-          console.log('⚔️ Generated attack sequence:', {
+          logger.debug('⚔️ Generated attack sequence:', {
             hasSequence: !!this.attackSequence,
             sequenceLength: this.attackSequence?.length || 0
           });
@@ -136,7 +137,7 @@ export class ArmyMoveCommand extends Command {
         if (PlayerEliminationService.isPlayerEliminated(gameStateData, playerSlotIndex)) {
             // Player has been eliminated!
             if (!this.isSimulation) {
-                console.log(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
+                logger.debug(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
             }
             
             // Initialize eliminatedPlayers array if it doesn't exist
@@ -160,7 +161,7 @@ export class ArmyMoveCommand extends Command {
         
         if (temple && temple.upgradeIndex !== undefined) {
             if (!this.isSimulation) {
-                console.log(`🏛️ ArmyMoveCommand: Removing temple upgrade at conquered region ${regionIndex}`);
+                logger.debug(`🏛️ ArmyMoveCommand: Removing temple upgrade at conquered region ${regionIndex}`);
             }
             
             // Reset temple to basic (no upgrade)
@@ -181,7 +182,7 @@ export class ArmyMoveCommand extends Command {
     // Apply attack sequence results
     private handleCombatResult(state: GameState, fromList: Soldier[], toList: Soldier[]): void {
         if (!this.isSimulation) {
-            console.log('🔍 handleCombatResult - before combat:', {
+            logger.debug('🔍 handleCombatResult - before combat:', {
                 attackers: fromList.length,
                 defenders: toList.length,
                 hasAttackSequence: !!this.attackSequence
@@ -206,7 +207,7 @@ export class ArmyMoveCommand extends Command {
         }
 
         if (!this.isSimulation) {
-            console.log('🔍 handleCombatResult - after combat:', {
+            logger.debug('🔍 handleCombatResult - after combat:', {
                 attackers: fromList.length,
                 defenders: toList.length,
                 defendersEliminated: toList.length === 0
