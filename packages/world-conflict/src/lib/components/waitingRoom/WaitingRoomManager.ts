@@ -1,15 +1,15 @@
 import { writable, type Writable } from 'svelte/store';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { logger } from '$lib/client/utils/logger';
+import { getSlotInfoFromGame, type BaseSlotInfo } from '$lib/client/slots/slotUtils';
+import type { PendingGameData } from '$lib/game/entities/gameTypes';
 
-export interface WaitingRoomSlotInfo {
-  type: 'open' | 'creator' | 'taken' | 'ai' | 'disabled';
-  name: string;
+export interface WaitingRoomSlotInfo extends BaseSlotInfo {
   color: string;
-  isCurrentPlayer?: boolean;
 }
 
 export class WaitingRoomManager {
-  public game: Writable<any> = writable(null);
+  public game: Writable<PendingGameData | null> = writable(null);
   public loading: Writable<boolean> = writable(true);
   public error: Writable<string | null> = writable(null);
   public wsConnected: Writable<boolean> = writable(false);
@@ -26,7 +26,15 @@ export class WaitingRoomManager {
     this.currentPlayerId = currentPlayerId;
   }
 
-  async initialize(initialGame: any = null, onGameStarted?: () => void) {
+  /**
+   * Sets an error message that automatically clears after timeout
+   */
+  private setTemporaryError(message: string) {
+    this.error.set(message);
+    setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+  }
+
+  async initialize(initialGame: PendingGameData | null = null, onGameStarted?: () => void) {
     this.onGameStarted = onGameStarted || null;
 
     if (initialGame) {
@@ -50,20 +58,66 @@ export class WaitingRoomManager {
 
       const gameData = await response.json() as any;
       if (gameData.status === 'ACTIVE') {
-        console.log('🎮 Game is now ACTIVE - triggering gameStarted');
+        logger.debug('Game is now ACTIVE - triggering gameStarted');
         this.onGameStarted?.();
       }
 
       this.game.set(gameData);
       this.error.set(null);
     } catch (err) {
-      console.error('❌ Error loading game state:', err);
-      this.error.set('Network error loading game');
-      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+      logger.error('Error loading game state:', err);
+      this.setTemporaryError('Network error loading game');
     } finally {
       this.loading.set(false);
     }
   }
+
+  // WebSocket callback handlers
+  private handleGameStarted = (data: any) => {
+    logger.debug('[WaitingRoom] Received gameStarted WebSocket message', data);
+    // Don't disconnect here - the game screen will establish its own connection
+    // This waiting room connection will be cleaned up when the component unmounts
+    // The server ignores disconnects within a few seconds of game start to prevent false eliminations
+    logger.debug('[WaitingRoom] Triggering onGameStarted callback');
+    this.onGameStarted?.();
+  };
+
+  private handlePlayerJoined = (data: any) => {
+    logger.debug(`[WaitingRoom] Received playerJoined WebSocket message:`, data);
+    // Reload game state to show updated player list
+    this.loadGameState();
+  };
+
+  private handleGameUpdate = (data: any) => {
+    logger.debug(`[WaitingRoom] Received gameUpdate WebSocket message:`, data);
+    // Check if game has started (transitioned from PENDING to ACTIVE)
+    if (data.status === 'ACTIVE') {
+      logger.debug('[WaitingRoom] Game transitioned to ACTIVE via gameUpdate (keeping WebSocket connected)');
+      this.onGameStarted?.();
+    } else {
+      // Just update the game state (e.g. player list changes)
+      this.loadGameState();
+    }
+  };
+
+  private handleSubscribed = (message: any) => {
+    const subscribedGameId = message.gameId || message;
+    logger.debug(`[WaitingRoom] Successfully subscribed to game ${subscribedGameId}`);
+    if (subscribedGameId !== this.gameId) {
+      logger.error(`[WaitingRoom] Subscription game ID mismatch! Expected ${this.gameId}, got ${subscribedGameId}`);
+      this.error.set(`Subscription error: wrong game ID`);
+    }
+  };
+
+  private handleDisconnected = () => {
+    logger.error(`[WaitingRoom] WebSocket DISCONNECTED from game ${this.gameId} - this means we won't receive gameStarted notifications!`);
+    this.error.set('Connection lost. Please refresh the page.');
+  };
+
+  private handleError = (error: string) => {
+    logger.error(`[WaitingRoom] WebSocket error for game ${this.gameId}:`, error);
+    this.error.set(`Connection error: ${error}`);
+  };
 
   private async setupRealtimeUpdates() {
     if (typeof window === 'undefined') return;
@@ -75,132 +129,59 @@ export class WaitingRoomManager {
       // Create WebSocket client instance with playerId for disconnect tracking
       const playerIdStr = this.currentPlayerId !== null ? this.currentPlayerId.toString() : undefined;
       this.wsClient = new GameWebSocketClient(playerIdStr);
-      console.log(`🔌 Setting up WebSocket connection for game ${this.gameId} (playerId: ${playerIdStr || 'none'})`);
+      logger.debug(`Setting up WebSocket connection for game ${this.gameId} (playerId: ${playerIdStr || 'none'})`);
 
       // Monitor connection state
       this.wsStateUnsubscribe = this.wsClient.connected.subscribe((isConnected: boolean) => {
         this.wsConnected.set(isConnected);
-        console.log(`🔌 WebSocket connection state: ${isConnected ? 'connected' : 'disconnected'}`);
+        logger.debug(`WebSocket connection state: ${isConnected ? 'connected' : 'disconnected'}`);
       });
 
       // Register callbacks for WebSocket events
-      this.wsClient.onGameStarted((data: any) => {
-        console.log('🚀 [WaitingRoom] Received gameStarted WebSocket message', data);
-        // Don't disconnect here - the game screen will establish its own connection
-        // This waiting room connection will be cleaned up when the component unmounts
-        // The server ignores disconnects within a few seconds of game start to prevent false eliminations
-        console.log('🚀 [WaitingRoom] Triggering onGameStarted callback');
-        this.onGameStarted?.();
-      });
-
-      this.wsClient.onPlayerJoined((data: any) => {
-        console.log(`📨 [WaitingRoom] Received playerJoined WebSocket message:`, data);
-        // Reload game state to show updated player list
-        this.loadGameState();
-      });
-
-      this.wsClient.onGameUpdate((data: any) => {
-        console.log(`📨 [WaitingRoom] Received gameUpdate WebSocket message:`, data);
-        // Check if game has started (transitioned from PENDING to ACTIVE)
-        if (data.status === 'ACTIVE') {
-          console.log('🎮 [WaitingRoom] Game transitioned to ACTIVE via gameUpdate (keeping WebSocket connected)');
-          this.onGameStarted?.();
-        } else {
-          // Just update the game state (e.g. player list changes)
-          this.loadGameState();
-        }
-      });
-
-      // Track if we've been subscribed
-      let hasSubscribed = false;
-
+      this.wsClient.onGameStarted(this.handleGameStarted);
+      this.wsClient.onPlayerJoined(this.handlePlayerJoined);
+      this.wsClient.onGameUpdate(this.handleGameUpdate);
       this.wsClient.onConnected(() => {
-        console.log(`✅ [WaitingRoom] WebSocket connected for game ${this.gameId}, waiting for subscription confirmation...`);
+        logger.debug(`[WaitingRoom] WebSocket connected for game ${this.gameId}, waiting for subscription confirmation...`);
       });
-
-      // Listen for subscription confirmation
-      this.wsClient.on('subscribed', (message: any) => {
-        hasSubscribed = true;
-        const subscribedGameId = message.gameId || message;
-        console.log(`✅ [WaitingRoom] Successfully subscribed to game ${subscribedGameId}`);
-        if (subscribedGameId !== this.gameId) {
-          console.error(`❌ [WaitingRoom] Subscription game ID mismatch! Expected ${this.gameId}, got ${subscribedGameId}`);
-          this.error.set(`Subscription error: wrong game ID`);
-        }
-      });
-
-      this.wsClient.onDisconnected(() => {
-        console.error(`❌ [WaitingRoom] WebSocket DISCONNECTED from game ${this.gameId} - this means we won't receive gameStarted notifications!`);
-        this.error.set('Connection lost. Please refresh the page.');
-      });
-
-      this.wsClient.onError((error: string) => {
-        console.error(`❌ [WaitingRoom] WebSocket error for game ${this.gameId}:`, error);
-        this.error.set(`Connection error: ${error}`);
-      });
+      this.wsClient.on('subscribed', this.handleSubscribed);
+      this.wsClient.onDisconnected(this.handleDisconnected);
+      this.wsClient.onError(this.handleError);
 
       // Connect to the WebSocket for this game
-      console.log(`🔌 [WaitingRoom] Attempting to connect WebSocket for game ${this.gameId}...`);
+      logger.debug(`[WaitingRoom] Attempting to connect WebSocket for game ${this.gameId}...`);
       await this.wsClient.connect(this.gameId);
-      console.log(`🔌 [WaitingRoom] WebSocket connect() call completed for game ${this.gameId}`);
+      logger.debug(`[WaitingRoom] WebSocket connect() call completed for game ${this.gameId}`);
     } catch (error: any) {
-      console.error('❌ Error setting up real-time updates:', error);
+      logger.error('Error setting up real-time updates:', error);
       this.wsConnected.set(false);
     }
   }
 
-  getSlotInfo(game: any, slotIndex: number, getPlayerConfig: (index: number) => any): WaitingRoomSlotInfo {
-    if (game?.pendingConfiguration?.playerSlots) {
-      const slot = game.pendingConfiguration.playerSlots[slotIndex];
+  getSlotInfo(game: PendingGameData | null, slotIndex: number, getPlayerConfig: (index: number) => { color: string }): WaitingRoomSlotInfo {
+    const slotInfo = getSlotInfoFromGame(game, slotIndex, {
+      currentPlayerId: this.currentPlayerId,
+      getPlayerColor: (idx) => getPlayerConfig(idx).color
+    });
 
-      if (!slot || slot.type === 'Off') {
-        return { type: 'disabled', name: 'Disabled', color: '#6b7280' };
-      }
-
-      if (slot.type === 'Set') {
-        return { type: 'creator', name: slot.name, color: '#3b82f6' };
-      }
-
-      if (slot.type === 'AI') {
-        return { type: 'ai', name: slot.name, color: '#8b5cf6' };
-      }
-
-      if (slot.type === 'Open') {
-        const player = game.players?.find(p => p.slotIndex === slotIndex);
-        if (player) {
-          return {
-            type: 'taken',
-            name: player.name,
-            color: getPlayerConfig(slotIndex).color,
-            isCurrentPlayer: this.currentPlayerId === slotIndex
-          };
-        }
-        return { type: 'open', name: 'Waiting...', color: '#10b981' };
-      }
+    // Customize display name for waiting room context
+    if (slotInfo.type === 'open') {
+      slotInfo.name = 'Waiting...';
     }
 
-    const player = game?.players?.find(p => p.slotIndex === slotIndex);
-    if (player) {
-      return {
-        type: 'taken',
-        name: player.name,
-        color: getPlayerConfig(slotIndex).color,
-        isCurrentPlayer: this.currentPlayerId === slotIndex
-      };
-    }
-    return { type: 'open', name: 'Waiting...', color: '#10b981' };
+    return slotInfo as WaitingRoomSlotInfo;
   }
 
   async startGame(onSuccess: () => void) {
     try {
-      console.log('🚀 Starting game...');
+      logger.debug('Starting game...');
       const response = await fetch(`/api/game/${this.gameId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
-        console.log('✅ Game started successfully');
+        logger.debug('Game started successfully');
 
         const { audioSystem } = await import('$lib/client/audio/AudioSystem');
         const { SOUNDS } = await import('$lib/client/audio/sounds');
@@ -209,18 +190,16 @@ export class WaitingRoomManager {
         onSuccess();
       } else {
         const errorData = await response.json() as { error?: string };
-        this.error.set(errorData.error || 'Failed to start game');
-        setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+        this.setTemporaryError(errorData.error || 'Failed to start game');
       }
     } catch (err) {
-      this.error.set('Network error starting game');
-      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+      this.setTemporaryError('Network error starting game');
     }
   }
 
   async leaveGame(onSuccess: () => void) {
     try {
-      console.log('🚪 Leaving game...');
+      logger.debug('Leaving game...');
       const response = await fetch(`/api/game/${this.gameId}/quit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -232,26 +211,24 @@ export class WaitingRoomManager {
       if (response.ok) {
         const { removeGameCreator } = await import('$lib/client/stores/clientStorage');
         removeGameCreator(this.gameId);
-        console.log('✅ Successfully left game');
+        logger.debug('Successfully left game');
         onSuccess();
       } else {
         const errorData = await response.json() as { error?: string };
-        this.error.set(errorData.error || 'Failed to leave game');
-        setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+        this.setTemporaryError(errorData.error || 'Failed to leave game');
       }
     } catch (err) {
-      console.error('❌ Error leaving game:', err);
-      this.error.set('Network error leaving game');
-      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+      logger.error('Error leaving game:', err);
+      this.setTemporaryError('Network error leaving game');
     }
   }
 
   destroy() {
-    console.log('🧹 Cleaning up WaitingRoomManager');
+    logger.debug('Cleaning up WaitingRoomManager');
 
     // Disconnect WebSocket client
     if (this.wsClient) {
-      console.log('🔌 Disconnecting WebSocket client');
+      logger.debug('Disconnecting WebSocket client');
       this.wsClient.disconnect();
       this.wsClient = null;
     }

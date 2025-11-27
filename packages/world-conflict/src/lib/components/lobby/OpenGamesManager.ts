@@ -1,6 +1,7 @@
 import { writable, type Writable } from 'svelte/store';
 import {
   getDefaultPlayerName,
+  getSlotInfoFromGame,
   type BaseSlotInfo
 } from '$lib/client/slots/slotUtils';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
@@ -37,6 +38,14 @@ export class OpenGamesManager {
   private refreshInterval: number | null = null;
   private wsUnsubscribe: (() => void) | null = null;
   private isDestroyed = false;
+
+  /**
+   * Sets an error message that automatically clears after timeout
+   */
+  private setTemporaryError(message: string) {
+    this.error.set(message);
+    setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+  }
 
   async initialize() {
     await this.loadOpenGames();
@@ -152,43 +161,25 @@ export class OpenGamesManager {
         const errorData = await response.json() as { error?: string };
         const errorMsg = errorData.error || 'Failed to join game';
         logger.error('Join game failed:', errorData);
-        this.error.set(errorMsg);
-        setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+        this.setTemporaryError(errorMsg);
       }
     } catch (err: any) {
       const errorMsg = 'Network error: ' + err.message;
       logger.error('Network error joining game:', err);
-      this.error.set(errorMsg);
-      setTimeout(() => this.error.set(null), GAME_CONSTANTS.ERROR_MESSAGE_TIMEOUT_MS);
+      this.setTemporaryError(errorMsg);
     }
   }
 
   getSlotInfo(game: OpenGame, slotIndex: number): GameSlotInfo {
-    if (game.pendingConfiguration?.playerSlots) {
-      const slot = game.pendingConfiguration.playerSlots[slotIndex];
-      if (!slot || slot.type === 'Off') {
-        return { type: 'disabled', name: 'Disabled', canJoin: false };
-      }
-      if (slot.type === 'Set') {
-        return { type: 'creator', name: slot.name || slot.defaultName, canJoin: false };
-      }
-      if (slot.type === 'AI') {
-        return { type: 'ai', name: slot.name || slot.defaultName, canJoin: false };
-      }
-      if (slot.type === 'Open') {
-        const player = game.players?.find(p => p.slotIndex === slotIndex);
-        if (player) {
-          return { type: 'taken', name: player.name, canJoin: false };
-        }
-        return { type: 'open', name: 'Open', canJoin: true };
-      }
-    }
+    const slotInfo = getSlotInfoFromGame(game, slotIndex, {
+      maxPlayers: game.maxPlayers
+    });
 
-    const player = game.players?.find(p => p.slotIndex === slotIndex);
-    if (player) {
-      return { type: 'taken', name: player.name, canJoin: false };
-    }
-    return { type: 'open', name: 'Open', canJoin: slotIndex < game.maxPlayers };
+    return {
+      type: slotInfo.type,
+      name: slotInfo.name,
+      canJoin: slotInfo.canJoin ?? false
+    };
   }
 
   destroy() {

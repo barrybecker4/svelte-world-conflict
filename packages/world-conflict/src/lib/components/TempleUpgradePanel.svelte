@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import type { GameStateData, Player } from '$lib/game/state/GameState';
   import Button from '$lib/components/ui/Button.svelte';
   import Panel from '$lib/components/ui/Panel.svelte';
@@ -14,14 +13,6 @@
   export let currentPlayer: Player | null = null;
   export let onPurchase: (upgradeIndex: number) => Promise<void>;
   export let onDone: () => void;
-
-  onMount(() => {
-    console.log('🏛️ TempleUpgradePanel mounted for region', regionIndex);
-  });
-
-  onDestroy(() => {
-    console.log('🏛️ TempleUpgradePanel destroyed');
-  });
 
   $: templeData = gameState?.templesByRegion?.[regionIndex];
   $: temple = templeData ? Temple.deserialize(templeData) : null;
@@ -63,11 +54,11 @@
       if (currentUpgrade && temple.canUpgrade()) {
         const nextLevel = temple.level + 1;
         const nextLevelCost = currentUpgrade.cost[nextLevel];
-        
+
         // Level 0 = "Temple of X", Level 1 = "Cathedral of X"
         const levelPrefix = nextLevel === 0 ? 'Temple' : 'Cathedral';
         const upgradeName = currentUpgrade.name.charAt(0) + currentUpgrade.name.slice(1).toLowerCase();
-        
+
         options.push({
           upgrade: currentUpgrade,
           cost: nextLevelCost,
@@ -97,7 +88,7 @@
       for (const upgrade of templeUpgrades) {
         const cost = upgrade.cost[0];
         const upgradeName = upgrade.name.charAt(0) + upgrade.name.slice(1).toLowerCase();
-        
+
         options.push({
           upgrade,
           cost,
@@ -112,19 +103,17 @@
   }
 
   async function handlePurchase(upgradeIndex: number) {
-    console.log('🏛️ TempleUpgradePanel: Purchase button clicked for upgrade', upgradeIndex);
     await onPurchase(upgradeIndex);
   }
 
   function handleDone() {
-    console.log('🏛️ TempleUpgradePanel: Done button clicked');
     onDone();
   }
 </script>
 
 <div style="--side-panel-width: {GAME_CONSTANTS.SIDE_PANEL_WIDTH}px; --player-name-max-width: {GAME_CONSTANTS.PLAYER_NAME_MAX_WIDTH}px;">
 <Panel variant="glass" padding={false} customClass="game-info-panel">
-  
+
   <!-- Temple Header -->
   <Section title="" customClass="temple-section">
     <div class="temple-header">
@@ -183,17 +172,7 @@
 </div>
 
 <style>
-  /* Main container */
-  :global(.game-info-panel) {
-    width: var(--side-panel-width);
-    height: 100vh;
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
-    border: 1px solid var(--border-light, #374151);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  /* Note: Main .game-info-panel styles are in $lib/styles/sidePanel.css */
 
   /* Temple Header Section */
   :global(.temple-section) {
@@ -323,12 +302,6 @@
     font-size: var(--text-xs, 0.75rem);
     color: var(--text-secondary, #cbd5e1);
     line-height: 1.3;
-  }
-
-  /* Flex section override */
-  :global(.flex-1) {
-    flex: 1;
-    overflow-y: auto;
   }
 </style>
 

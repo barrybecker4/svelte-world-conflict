@@ -5,6 +5,34 @@ import type { Regions } from '$lib/game/entities/Regions';
 // Re-export types that are used throughout the application
 export type { Region, Regions, PlayerSlot };
 
+/**
+ * Configuration for pending games in the waiting room/lobby
+ */
+export interface PendingGameConfiguration {
+  playerSlots: PlayerSlot[];
+  settings?: {
+    mapSize?: 'Small' | 'Medium' | 'Large';
+    aiDifficulty?: string;
+    maxTurns?: number;
+    timeLimit?: number;
+  };
+}
+
+/**
+ * Game data returned by API for pending/waiting games
+ */
+export interface PendingGameData {
+  gameId: string;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
+  creator?: string;
+  playerCount?: number;
+  maxPlayers?: number;
+  createdAt?: number;
+  gameType?: string;
+  players: Array<{ slotIndex: number; name: string }>;
+  pendingConfiguration?: PendingGameConfiguration;
+}
+
 export interface GameSettings {
     mapSize: 'Small' | 'Medium' | 'Large';
     moveTimeLimit: number;

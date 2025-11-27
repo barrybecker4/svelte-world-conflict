@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '$lib/styles/sidePanel.css';
 
 /* Global CSS for World Conflict */
 

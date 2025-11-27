@@ -12,6 +12,7 @@
   import { GameController } from '$lib/client/gameController/GameController';
   import type { Player } from '$lib/game/state/GameState';
   import { BUILD } from '$lib/game/mechanics/moveConstants';
+  import { logger } from '$lib/client/utils/logger';
 
   export let gameId: string;
   export let playerId: string;
@@ -73,14 +74,14 @@
   $: canUndo = $gameState ? controller.canUndo() : false;
 
   onMount(async () => {
-    console.log('🎮 WorldConflictGame mounted');
+    logger.debug('WorldConflictGame mounted');
     // Initialize without waiting for map container - it will be set later
     await controller.initialize(undefined);
   });
 
   // Set map container when it becomes available
   $: if (mapContainer) {
-    console.log('🗺️ Map container available, setting in battle manager');
+    logger.debug('Map container available, setting in battle manager');
     controller.setMapContainer(mapContainer);
   }
 
@@ -94,7 +95,7 @@
   }
 
   function handleVictoryBannerComplete() {
-    console.log('🎉 Victory banner completed, showing summary panel');
+    logger.debug('Victory banner completed, showing summary panel');
     showVictoryBanner = false;
     showGameSummary = true;
   }
@@ -150,11 +151,11 @@
         showTurnHighlights={($shouldHighlightRegions ?? true) && !$gameState?.endResult}
         tutorialTips={$tutorialTips}
         onRegionClick={(region) => {
-          console.log('🗺️ GameMap click received in component:', { region, isMyTurn: $isMyTurn });
+          logger.debug('GameMap click received in component:', { region, isMyTurn: $isMyTurn });
           controller.handleRegionClick(region, $isMyTurn ?? false);
         }}
         onTempleClick={(regionIndex) => {
-          console.log('🏛️ Temple click received in component:', { regionIndex, isMyTurn: $isMyTurn });
+          logger.debug('Temple click received in component:', { regionIndex, isMyTurn: $isMyTurn });
           controller.handleTempleClick(regionIndex, $isMyTurn ?? false);
         }}
         onDismissTooltip={(tooltipId) => controller.dismissTooltip(tooltipId)}

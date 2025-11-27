@@ -104,12 +104,12 @@
               #{stat.rank}
             {/if}
           </div>
-          
-          <div 
-            class="ranking-player-color" 
+
+          <div
+            class="ranking-player-color"
             style="background: linear-gradient(135deg, {getPlayerColorStart(stat.player.slotIndex)}, {getPlayerColorEnd(stat.player.slotIndex)});"
           ></div>
-          
+
           <div class="ranking-player-details">
             <div class="ranking-player-name">{stat.player.name}</div>
           </div>
@@ -144,17 +144,6 @@
 </div>
 
 <style>
-  /* Main container */
-  :global(.game-summary-panel) {
-    width: var(--side-panel-width);
-    height: 100vh;
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
-    border: 1px solid var(--border-light, #374151);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
 
   /* Header Section */
   :global(.summary-header-section) {
@@ -331,13 +320,6 @@
   .stat-symbol {
     color: var(--color-gray-400, #9ca3af);
     font-size: 0.7rem;
-  }
-
-  /* Flex section override */
-  :global(.flex-1) {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
   }
 </style>
 

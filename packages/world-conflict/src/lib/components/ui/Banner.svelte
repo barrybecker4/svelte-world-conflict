@@ -22,13 +22,6 @@
 
   // Reset animation state when player or type changes
   $: if (player || type || winner) {
-    console.log(`🎭 Banner component rendering:`, {
-      playerName: player?.name,
-      playerSlotIndex: player?.slotIndex,
-      type,
-      winner,
-      isVisible
-    });
     animationComplete = false;
     animating = false;
     fadingOut = false;

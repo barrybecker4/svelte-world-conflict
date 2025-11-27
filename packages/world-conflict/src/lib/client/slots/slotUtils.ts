@@ -11,6 +11,76 @@ export interface BaseSlotInfo {
   isCurrentPlayer?: boolean;
 }
 
+export interface SlotInfoOptions {
+  currentPlayerId?: number | null;
+  getPlayerColor?: (slotIndex: number) => string;
+  maxPlayers?: number;
+}
+
+/**
+ * Gets slot info from a game object - shared logic used by both Lobby and WaitingRoom
+ */
+export function getSlotInfoFromGame(
+  game: any,
+  slotIndex: number,
+  options: SlotInfoOptions = {}
+): BaseSlotInfo {
+  const { currentPlayerId, getPlayerColor, maxPlayers = 4 } = options;
+
+  if (game?.pendingConfiguration?.playerSlots) {
+    const slot = game.pendingConfiguration.playerSlots[slotIndex];
+
+    if (!slot || slot.type === 'Off') {
+      return { type: 'disabled', name: 'Disabled', canJoin: false, color: '#6b7280' };
+    }
+
+    if (slot.type === 'Set') {
+      return { 
+        type: 'creator', 
+        name: slot.name || slot.defaultName, 
+        canJoin: false, 
+        color: '#3b82f6' 
+      };
+    }
+
+    if (slot.type === 'AI') {
+      return { 
+        type: 'ai', 
+        name: slot.name || slot.defaultName, 
+        canJoin: false, 
+        color: '#8b5cf6' 
+      };
+    }
+
+    if (slot.type === 'Open') {
+      const player = game.players?.find((p: any) => p.slotIndex === slotIndex);
+      if (player) {
+        return {
+          type: 'taken',
+          name: player.name,
+          canJoin: false,
+          color: getPlayerColor?.(slotIndex) || '#94a3b8',
+          isCurrentPlayer: currentPlayerId === slotIndex
+        };
+      }
+      return { type: 'open', name: 'Open', canJoin: true, color: '#10b981' };
+    }
+  }
+
+  // Fallback for games without pendingConfiguration
+  const player = game?.players?.find((p: any) => p.slotIndex === slotIndex);
+  if (player) {
+    return {
+      type: 'taken',
+      name: player.name,
+      canJoin: false,
+      color: getPlayerColor?.(slotIndex) || '#94a3b8',
+      isCurrentPlayer: currentPlayerId === slotIndex
+    };
+  }
+  return { type: 'open', name: 'Open', canJoin: slotIndex < maxPlayers, color: '#10b981' };
+}
+
 /**
  * Determines if a slot is joinable in the lobby context
  */

@@ -11,12 +11,9 @@
   let visible = false;
   
   onMount(() => {
-    console.log('💬 Tooltip mounted:', { id, x, y, text, width });
-    console.log('💬 Tooltip position:', { left: x - (width + 1) * 0.5, bottom: 100 - y });
     // Fade in after mount
     setTimeout(() => {
       visible = true;
-      console.log('💬 Tooltip visible:', id);
     }, 10);
   });
   

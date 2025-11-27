@@ -1,8 +1,9 @@
 <script lang="ts">
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
+  import type { PendingGameData } from '$lib/game/entities/gameTypes';
 
-  export let game: any;
+  export let game: PendingGameData;
 
   function formatTimeLimit(timeLimit: number): string {
     if (timeLimit === GAME_CONSTANTS.UNLIMITED_TIME) {

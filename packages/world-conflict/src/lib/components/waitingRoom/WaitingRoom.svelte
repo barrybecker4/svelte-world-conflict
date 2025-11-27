@@ -10,14 +10,15 @@
   import { loadGameCreator } from '$lib/client/stores/clientStorage';
   import { countOpenSlots, countActivePlayers, countTotalActiveSlots } from '$lib/client/slots/slotUtils';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import type { PendingGameData } from '$lib/game/entities/gameTypes';
 
   const dispatch = createEventDispatcher();
 
   export let gameId: string;
-  export let initialGame: any = null;
+  export let initialGame: PendingGameData | null = null;
 
   let manager: WaitingRoomManager;
-  let game: any = null;
+  let game: PendingGameData | null = null;
   let loading = true;
   let error: string | null = null;
   let wsConnected = false;
