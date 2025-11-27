@@ -4,13 +4,14 @@
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
   import OpenGameRow from './OpenGameRow.svelte';
-  import { OpenGamesManager } from './OpenGamesManager';
+  import { OpenGamesManager, type OpenGame } from './OpenGamesManager';
+  import { logger } from '$lib/client/utils/logger';
 
   const dispatch = createEventDispatcher();
 
   let gamesManager: OpenGamesManager;
   let shouldRender = true;
-  let games: any[] = [];
+  let games: OpenGame[] = [];
   let loading = true;
   let error: string | null = null;
   let wsConnected = false;
@@ -21,7 +22,7 @@
   let unsubWsConnected: () => void;
 
   onMount(() => {
-    console.log('🎬 Lobby component mounted');
+    logger.debug('Lobby component mounted');
     gamesManager = new OpenGamesManager();
     gamesManager.initialize();
 
@@ -31,7 +32,7 @@
 
       // After loading completes, if no games, skip to configuration
       if (!loading && games.length === 0) {
-        console.log('📝 No open games after loading, switching to configuration');
+        logger.debug('No open games after loading, switching to configuration');
         shouldRender = false;
         dispatch('close');
       }
@@ -41,7 +42,7 @@
   });
 
   onDestroy(() => {
-    console.log('🧹 Lobby component being destroyed, cleaning up...');
+    logger.debug('Lobby component being destroyed, cleaning up...');
     unsubGames?.();
     unsubLoading?.();
     unsubError?.();

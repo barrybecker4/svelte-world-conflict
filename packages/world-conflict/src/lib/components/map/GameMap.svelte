@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
   import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
   import { getPlayerMapColor, getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import type { TooltipData } from '$lib/client/feedback/TutorialTips';
@@ -8,6 +7,7 @@
   import Army from './Army.svelte';
   import SmokeLayer from './SmokeLayer.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
+  import { logger } from '$lib/client/utils/logger';
 
   export let regions: Region[] = [];
   export let gameState: GameStateData | null = null;
@@ -25,17 +25,13 @@
 
   // Debug tooltips
   $: if (tutorialTips.length > 0) {
-    console.log('🗺️ GameMap received tooltips:', tutorialTips);
+    logger.debug('GameMap received tooltips:', tutorialTips);
   }
 
   const NEUTRAL_COLOR = '#c2b5a3';
 
   let mapContainerElement: HTMLDivElement;
   let battlesInProgress = new Set<number>();
-
-  onDestroy(() => {
-    // Cleanup if needed
-  });
 
   // Bind the internal element to the exported prop
   $: if (mapContainerElement && !mapContainer) {
@@ -68,7 +64,7 @@
 
   // Log game end state
   $: if (gameState?.endResult && gameState.endResult !== 'DRAWN_GAME') {
-    console.log('🏁 Game ended. Winner:', gameState.endResult.name, 'slot:', gameState.endResult.slotIndex);
+    logger.debug('Game ended. Winner:', gameState.endResult.name, 'slot:', gameState.endResult.slotIndex);
   }
 
   // Update battles in progress
@@ -180,45 +176,21 @@
     return ownerIndex === winner.slotIndex;
   }
 
+  function canInteract(): boolean {
+    if (effectivePreviewMode) return false;
+    if (gameState?.endResult) return false;
+    if (!gameState || gameState.movesRemaining <= 0) return false;
+    if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
+    return true;
+  }
+
   function handleRegionClick(region: Region): void {
-    if (effectivePreviewMode) return;
-
-    // Don't allow clicks if game has ended
-    if (gameState?.endResult) {
-      return;
-    }
-
-    // Don't allow clicks if no moves remaining
-    if (!gameState || gameState.movesRemaining <= 0) {
-      return;
-    }
-
-    // Don't allow clicks if not current player's turn
-    if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) {
-      return;
-    }
-
+    if (!canInteract()) return;
     onRegionClick(region);
   }
 
   function handleTempleClick(regionIndex: number): void {
-    if (effectivePreviewMode) return;
-
-    // Don't allow temple clicks if game has ended
-    if (gameState?.endResult) {
-      return;
-    }
-
-    // Don't allow temple clicks if no moves remaining
-    if (!gameState || gameState.movesRemaining <= 0) {
-      return;
-    }
-
-    // Don't allow clicks if not current player's turn
-    if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) {
-      return;
-    }
-
+    if (!canInteract()) return;
     onTempleClick(regionIndex);
   }
 </script>
@@ -290,11 +262,6 @@
   </svg>
 
   <!-- Tutorial Tooltips -->
-  {#if tutorialTips.length > 0}
-    <div style="position: absolute; top: 10px; left: 10px; background: orange; color: black; padding: 4px; z-index: 1000; font-size: 10px;">
-      DEBUG: {tutorialTips.length} tooltip(s)
-    </div>
-  {/if}
   {#each tutorialTips as tooltip (tooltip.id)}
     <Tooltip
       id={tooltip.id}

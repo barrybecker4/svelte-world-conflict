@@ -9,6 +9,9 @@ export interface SmokeParticle {
   x: number;
   y: number;
   timestamp: number;
+  // Pre-computed random offsets for smooth animation
+  driftX: number;  // Horizontal drift offset
+  driftY: number;  // Vertical drift offset
 }
 
 function createSmokeStore() {
@@ -36,7 +39,10 @@ function createSmokeStore() {
           id: nextId++,
           x: particleX,
           y: particleY,
-          timestamp
+          timestamp,
+          // Pre-compute random offsets for smooth animation
+          driftX: Math.random() * 20,  // Horizontal drift (0-20 pixels)
+          driftY: Math.random()        // Vertical wobble (0-1 pixels)
         };
 
         newParticles.push(particle);

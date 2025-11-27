@@ -1,8 +1,9 @@
 <script lang="ts">
   import Button from '$lib/components/ui/Button.svelte';
-  import type { OpenGamesManager, GameSlotInfo } from './OpenGamesManager';
+  import type { OpenGamesManager, GameSlotInfo, OpenGame } from './OpenGamesManager';
+  import { getSlotButtonVariant, formatTimeAgo } from '$lib/client/slots/slotUtils';
 
-  export let game: any;
+  export let game: OpenGame;
   export let gamesManager: OpenGamesManager;
 
   function handleSlotClick(slotIndex: number, slotInfo: GameSlotInfo) {
@@ -23,7 +24,7 @@
       </span>
       <span class="separator">•</span>
       <span class="game-age">
-        {gamesManager.formatTimeAgo(game.createdAt)}
+        {formatTimeAgo(game.createdAt)}
       </span>
     </div>
   </div>
@@ -34,7 +35,7 @@
       <div class="player-slot">
         <div class="slot-label">Player {slotIndex + 1}</div>
         <Button
-          variant={gamesManager.getSlotButtonVariant(slotInfo)}
+          variant={getSlotButtonVariant(slotInfo)}
           size="sm"
           disabled={!slotInfo.canJoin}
           on:click={() => handleSlotClick(slotIndex, slotInfo)}

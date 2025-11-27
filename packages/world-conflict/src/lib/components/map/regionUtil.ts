@@ -1,5 +1,4 @@
-import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
-import { getPlayerMapColor } from '$lib/game/constants/playerConfigs';
+import type { Region } from '$lib/game/entities/gameTypes';
 
 /**
  * utility functions for GameMap component grouped into a single object
@@ -24,24 +23,6 @@ const regionUtil = {
   createFallbackCircle(region: Region): string {
     const radius = 35;
     return `M ${region.x + radius},${region.y} A ${radius},${radius} 0 1,1 ${region.x + radius - 0.1},${region.y} Z`;
-  },
-
-  /**
-   * Generate active player gradients SVG
-   */
-  generateActivePlayerGradients(gameState: GameStateData | null, showTurnHighlights: boolean): string {
-    if (!gameState || !showTurnHighlights) return '';
-
-    return Array.from({length: 6}, (_, i) => {
-      const color = getPlayerMapColor(i);
-      return `
-        <radialGradient id="activePlayerGradient${i}" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" style="stop-color:${color};stop-opacity:0.9"/>
-          <stop offset="70%" style="stop-color:${color};stop-opacity:0.7"/>
-          <stop offset="100%" style="stop-color:${color};stop-opacity:0.6"/>
-        </radialGradient>
-      `;
-    }).join('');
   }
 };
 

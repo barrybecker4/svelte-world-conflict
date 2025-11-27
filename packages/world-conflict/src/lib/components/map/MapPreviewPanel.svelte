@@ -7,6 +7,7 @@
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/entities/Region';
   import type { GameStateData, Player, PlayerSlot } from '$lib/game/entities/gameTypes';
+  import { logger } from '$lib/client/utils/logger';
 
   export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
   export let playerCount = 4;
@@ -46,7 +47,7 @@
     mapKey++; // Force re-render
 
     try {
-      console.log(`Generating ${mapSize} map for ${playerCount} players...`);
+      logger.debug(`Generating ${mapSize} map for ${playerCount} players...`);
 
       // Generate new regions
       previewRegions = mapGenerator.generateMap({
@@ -58,7 +59,7 @@
       createPreviewGameState();
 
     } catch (err) {
-      console.error('Error generating preview map:', err);
+      logger.error('Error generating preview map:', err);
       error = err instanceof Error ? err.message : 'Failed to generate map';
       previewGameState = null;
     } finally {
@@ -92,9 +93,9 @@
       // Use GameStateInitializer to create properly initialized preview state
       previewGameState = gameStateInitializer.createPreviewStateData(activePlayers, previewRegions);
 
-      console.log('Preview state created using GameStateInitializer');
+      logger.debug('Preview state created using GameStateInitializer');
     } catch (err) {
-      console.error('Failed to create preview state:', err);
+      logger.error('Failed to create preview state:', err);
       previewGameState = null;
     }
   }

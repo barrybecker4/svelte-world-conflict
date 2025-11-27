@@ -3,6 +3,7 @@
   import type { Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
   import { smokeStore } from '$lib/client/stores/smokeStore';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+  import { logger } from '$lib/client/utils/logger';
 
   export let x: number;
   export let y: number;
@@ -37,7 +38,7 @@
     const seenIds = new Set<number>();
     const uniqueSoldiers = soldiersAtRegion.filter(soldier => {
       if (seenIds.has(soldier.i)) {
-        console.error(`❌ BUG: Duplicate soldier ID ${soldier.i} detected in region ${regionIndex}!`, {
+        logger.error(`BUG: Duplicate soldier ID ${soldier.i} detected in region ${regionIndex}!`, {
           regionIndex,
           totalSoldiers: soldiersAtRegion.length,
           uniqueIds: Array.from(seenIds).length,
@@ -91,7 +92,7 @@
     const soldiersStayingHere: Soldier[] = [];
 
     soldiersList.forEach(s => {
-      const dest = (s as any).movingToRegion;
+      const dest = s.movingToRegion;
       if (dest !== undefined && dest !== regionData.index) {
         if (!soldiersMovingToTarget.has(dest)) {
           soldiersMovingToTarget.set(dest, []);
@@ -104,7 +105,7 @@
 
     soldiersList.forEach((soldier, index) => {
       // Check if soldier is moving to a different region
-      const movingTo = (soldier as any).movingToRegion;
+      const movingTo = soldier.movingToRegion;
       if (movingTo !== undefined && movingTo !== regionData.index) {
         // Soldier is moving - position it at the target region
         const targetRegion = allRegions.find(r => r.index === movingTo);
@@ -121,7 +122,7 @@
           const targetHasTemple = targetRegion.hasTemple;
           const targetPos = calculateSoldierBasePosition(finalIndex, finalTotal, targetRegion, targetHasTemple);
 
-          console.log(`🎯 Region ${regionData.index} soldier ${soldier.i} moving to ${movingTo}: positioned at ${finalIndex}/${finalTotal} at (${targetPos.x}, ${targetPos.y})`);
+          logger.debug(`Region ${regionData.index} soldier ${soldier.i} moving to ${movingTo}: positioned at ${finalIndex}/${finalTotal} at (${targetPos.x}, ${targetPos.y})`);
 
           positions.push({
             soldier,
@@ -138,7 +139,7 @@
       const basePos = calculateSoldierBasePosition(index, totalSoldiers, regionData);
 
       if (soldiersMovingToTarget.size > 0) {
-        console.log(`🏠 Region ${regionData.index} soldier ${soldier.i} staying: positioned at ${index}/${totalSoldiers} at (${basePos.x}, ${basePos.y})`);
+        logger.debug(`Region ${regionData.index} soldier ${soldier.i} staying: positioned at ${index}/${totalSoldiers} at (${basePos.x}, ${basePos.y})`);
       }
 
       // If soldier has attackedRegion property, position halfway to target (battle)
@@ -186,7 +187,7 @@
   }
 
   function spawnSmokeAt(x: number, y: number, isAttacker: boolean = false) {
-    console.log(`💨 Region ${region.index}: Spawning smoke at (${x}, ${y}), isAttacker: ${isAttacker}`);
+    logger.debug(`Region ${region.index}: Spawning smoke at (${x}, ${y}), isAttacker: ${isAttacker}`);
     smokeStore.spawnAt(x, y);
   }
 
@@ -197,7 +198,7 @@
     // ONLY log if this region is actually involved in the battle
     const isInvolvedInBattle = sourceRegion === region.index || targetRegion === region.index;
     if (isInvolvedInBattle) {
-      console.log(`💨 Region ${region.index}: Received battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
+      logger.debug(`Region ${region.index}: Received battleCasualties event - source=${sourceRegion}, target=${targetRegion}, A=${attackerCasualties}, D=${defenderCasualties}`);
     }
 
     // Early return if this region is not involved in the battle at all
@@ -226,13 +227,13 @@
       // This prevents hiding soldiers that stayed behind at the source region
       const attackingSoldiers = soldierPositions.filter(p =>
         !hiddenSoldierIds.has(p.soldier.i) &&
-        (p.soldier as any).attackedRegion === targetRegion
+        p.soldier.attackedRegion === targetRegion
       );
 
       for (let i = 0; i < attackerCasualties && i < attackingSoldiers.length; i++) {
         // Server uses pop() which removes from END, so we remove from END of attacking soldiers
         const casualty = attackingSoldiers[attackingSoldiers.length - 1 - i];
-        console.log(`⚔️ Region ${region.index}: Hiding attacker soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
+        logger.debug(`Region ${region.index}: Hiding attacker soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
         // Hide soldier and spawn smoke simultaneously
         hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
         spawnSmokeAt(casualty.x, casualty.y, true);
@@ -242,7 +243,7 @@
     // Handle defender casualties ONLY if this is the EXACT target region
     if (targetRegion === region.index && defenderCasualties > 0) {
       const visibleSoldiers = soldierPositions.filter(p => !hiddenSoldierIds.has(p.soldier.i));
-      console.log(`🛡️ Region ${region.index} (DEFENDER): Hiding ${defenderCasualties} soldiers from ${visibleSoldiers.length} visible`, {
+      logger.debug(`Region ${region.index} (DEFENDER): Hiding ${defenderCasualties} soldiers from ${visibleSoldiers.length} visible`, {
         targetRegion,
         regionIndex: region.index,
         soldiersInRegion: allSoldiers.length,
@@ -251,7 +252,7 @@
 
       for (let i = 0; i < defenderCasualties && i < visibleSoldiers.length; i++) {
         const casualty = visibleSoldiers[visibleSoldiers.length - 1 - i];
-        console.log(`🛡️ Region ${region.index}: Hiding defender soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
+        logger.debug(`Region ${region.index}: Hiding defender soldier ${casualty.soldier.i} at (${casualty.x}, ${casualty.y})`);
         // Hide soldier and spawn smoke simultaneously
         hiddenSoldierIds = new Set([...hiddenSoldierIds, casualty.soldier.i]);
         spawnSmokeAt(casualty.x, casualty.y);
@@ -282,7 +283,7 @@
   // Clear hidden soldiers when battle ends and state updates
   // Only clear when we receive a fresh game state update (actual soldiers are gone from data)
   $: if (gameState && hiddenSoldierIds.size > 0 && !isBattleInProgress) {
-    const soldiersWithAttackedRegion = allSoldiers.filter(s => (s as any).attackedRegion !== undefined);
+    const soldiersWithAttackedRegion = allSoldiers.filter(s => s.attackedRegion !== undefined);
 
     // Check if any hidden soldiers still exist in the current game state
     const hiddenStillExist = Array.from(hiddenSoldierIds).some(hiddenId =>
