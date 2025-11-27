@@ -4,6 +4,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { handleApiError } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Trigger AI turn processing for a game
@@ -36,7 +37,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             });
         }
 
-        console.log(`🤖 Processing AI turns for game ${gameId}, starting with ${currentPlayer.name}`);
+        logger.debug(`Processing AI turns for game ${gameId}, starting with ${currentPlayer.name}`);
 
         // Process AI turns until we reach a human player
         const processedGameState = await processAiTurns(gameState, gameStorage, gameId, platform);

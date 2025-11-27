@@ -8,6 +8,7 @@ import { handleApiError } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { flushPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
+import { logger } from '$lib/game/utils/logger';
 
 interface PendingMove {
     type: 'ARMY_MOVE' | 'BUILD';
@@ -36,7 +37,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Player ID is required' }, { status: 400 });
         }
 
-        console.log(`🔚 End turn request for game ${gameId} from player ${playerId} with ${moves.length} pending moves`);
+        logger.debug(`End turn request for game ${gameId} from player ${playerId} with ${moves.length} pending moves`);
 
         const gameStorage = GameStorage.create(platform!);
 
@@ -62,7 +63,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             return json({ error: 'Not your turn' }, { status: 400 });
         }
         else {
-          console.log(`currentTurnPlayer.slotIndex = ${currentTurnPlayer.slotIndex}, game.currentPlayerSlot = ${game.currentPlayerSlot}`);
+          logger.debug(`currentTurnPlayer.slotIndex = ${currentTurnPlayer.slotIndex}, game.currentPlayerSlot = ${game.currentPlayerSlot}`);
         }
 
         // Verify the player exists in the game
@@ -77,12 +78,12 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         
         for (let i = 0; i < moves.length; i++) {
             const move = moves[i];
-            console.log(`📝 Processing pending move ${i + 1}/${moves.length}:`, move);
+            logger.debug(`Processing pending move ${i + 1}/${moves.length}:`, move);
 
             let command;
             if (move.type === 'ARMY_MOVE') {
                 if (move.source === undefined || move.destination === undefined || move.count === undefined) {
-                    console.error('Invalid ARMY_MOVE - missing parameters:', move);
+                    logger.error('Invalid ARMY_MOVE - missing parameters:', move);
                     return json({ error: `Invalid move ${i + 1}: missing parameters` }, { status: 400 });
                 }
                 command = new ArmyMoveCommand(
@@ -94,7 +95,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 );
             } else if (move.type === 'BUILD') {
                 if (move.regionIndex === undefined || move.upgradeIndex === undefined) {
-                    console.error('Invalid BUILD - missing parameters:', move);
+                    logger.error('Invalid BUILD - missing parameters:', move);
                     return json({ error: `Invalid move ${i + 1}: missing parameters` }, { status: 400 });
                 }
                 command = new BuildCommand(
@@ -104,14 +105,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     move.upgradeIndex
                 );
             } else {
-                console.error('Unknown move type:', move.type);
+                logger.error('Unknown move type:', move.type);
                 return json({ error: `Invalid move ${i + 1}: unknown type` }, { status: 400 });
             }
 
             // Process the command
             const moveResult = commandProcessor.process(command);
             if (!moveResult.success) {
-                console.error(`Move ${i + 1} failed:`, moveResult.error);
+                logger.error(`Move ${i + 1} failed:`, moveResult.error);
                 return json({ error: `Move ${i + 1} failed: ${moveResult.error}` }, { status: 400 });
             }
 
@@ -121,10 +122,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             // Capture attack sequence if this move generated one
             if (moveResult.attackSequence) {
                 lastAttackSequence = moveResult.attackSequence;
-                console.log(`💥 Move ${i + 1} generated attack sequence with ${moveResult.attackSequence.length} events`);
+                logger.debug(`Move ${i + 1} generated attack sequence with ${moveResult.attackSequence.length} events`);
             }
             
-            console.log(`✅ Move ${i + 1} processed successfully`);
+            logger.debug(`Move ${i + 1} processed successfully`);
         }
 
         // Now execute the end turn command
@@ -141,7 +142,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const nextPlayer = finalGameState.getCurrentPlayer();
         const isNextPlayerAi = nextPlayer?.isAI;
 
-        console.log(`🔄 Turn ended - Next player is ${nextPlayer?.name} (AI: ${isNextPlayerAi}, movesRemaining: ${finalGameState.movesRemaining})`);
+        logger.debug(`Turn ended - Next player is ${nextPlayer?.name} (AI: ${isNextPlayerAi}, movesRemaining: ${finalGameState.movesRemaining})`);
 
         // If next player is AI, process their turns immediately on the server
         if (isNextPlayerAi) {
@@ -159,7 +160,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         };
         
         if (lastAttackSequence) {
-            console.log(`📡 Sending WebSocket update with attack sequence (${lastAttackSequence.length} events)`);
+            logger.debug(`Sending WebSocket update with attack sequence (${lastAttackSequence.length} events)`);
         }
         
         await WebSocketNotifications.gameUpdate(updatedGameWithSequence);
@@ -171,7 +172,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         };
         await gameStorage.saveGame(updatedGame);
 
-        console.log(`📊 Turn processing complete, final player slot: ${finalGameState.currentPlayerSlot}`);
+        logger.debug(`Turn processing complete, final player slot: ${finalGameState.currentPlayerSlot}`);
 
         return json({
             success: true,

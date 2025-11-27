@@ -8,6 +8,7 @@ import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
 import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Start a pending multiplayer game
@@ -35,7 +36,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         const updatedPlayers = fillRemainingSlotsWithAI(game, aiDifficulty);
 
-        console.log(`Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`);
+        logger.info(`Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`);
         const regions = reconstructRegions(game.worldConflictState?.regions);
 
         // Get time limit from pending configuration or use default
@@ -43,7 +44,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
                               game.worldConflictState?.moveTimeLimit ||
                               GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
 
-        console.log(`🤖 Starting game with AI difficulty: ${aiDifficulty}`);
+        logger.debug(`Starting game with AI difficulty: ${aiDifficulty}`);
 
         // Initialize World Conflict game state with properly constructed regions
         const gameState = GameState.createInitialState(
@@ -114,7 +115,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
     const players = [...game.players];
     const availablePersonalities = getPersonalitiesForDifficulty(aiDifficulty);
 
-    console.log(`🤖 Filling AI slots with ${aiDifficulty} difficulty personalities:`,
+    logger.debug(`Filling AI slots with ${aiDifficulty} difficulty personalities:`,
         availablePersonalities.map(p => p.name).join(', '));
 
     if (game.pendingConfiguration?.playerSlots) {
@@ -133,13 +134,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
                 const playerConfig = getPlayerConfigForSlot(slotIndex);
                 const aiName = playerConfig.defaultName;
 
-                console.log(`Adding AI player to open slot ${slotIndex}:`, {
-                    index: slotIndex,
-                    name: aiName,
-                    type: 'AI',
-                    personality: personality.name,
-                    difficulty: aiDifficulty
-                });
+                logger.debug(`Adding AI player to open slot ${slotIndex}: ${aiName} (${personality.name})`);
 
                 players.push({
                     id: `ai_${slotIndex}`,
@@ -173,11 +168,11 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
 
 function reconstructRegions(regionData: any): Region[] {
     if (!regionData?.length) {
-        console.log('No region data provided, creating basic regions');
+        logger.debug('No region data provided, creating basic regions');
         return [];
     }
 
-    console.log(`Reconstructed ${regionData.length} regions as Region instances`);
+    logger.debug(`Reconstructed ${regionData.length} regions as Region instances`);
     return regionData.map((data: any) => new Region(data));
 }
 

@@ -48,7 +48,6 @@
         throw new Error('Failed to load game');
       }
     } catch (err) {
-      console.error('❌ Error loading game:', err);
       error = err instanceof Error ? err.message : String(err);
       gameState = 'error';
     } finally {
@@ -65,13 +64,11 @@
   }
 
   function handleGameStarted(event: CustomEvent) {
-    console.log('🚀 Game started event received:', event.detail);
     // Refresh game data to get the latest state
     loadGameData();
   }
 
   function handleGameLeft() {
-    console.log('🚪 Player left game');
     goto('/');
   }
 

@@ -6,6 +6,7 @@ import { ArmyMoveCommand, BuildCommand, CommandProcessor } from '$lib/game/comma
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { handleApiError } from '$lib/server/api-utils';
 import { getPendingUpdate, setPendingUpdate, clearPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
+import { logger } from '$lib/game/utils/logger';
 
 interface MoveRequest {
     playerId: string;
@@ -37,25 +38,25 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const { gameId } = params;
         const moveData = await request.json() as MoveRequest;
 
-        console.log(`🎮 Move request for game ${gameId}:`, moveData.moveType);
+        logger.debug(`Move request for game ${gameId}:`, moveData.moveType);
 
         const gameStorage = GameStorage.create(platform!);
 
         // Get the most recent game state (from pending updates if available, otherwise from KV)
         let game = getPendingUpdate(gameId);
         if (!game) {
-            console.log(`📥 No pending update, fetching from KV...`);
+            logger.debug(`No pending update, fetching from KV...`);
             game = await gameStorage.getGame(gameId) || undefined;
         } else {
-            console.log(`📥 Using pending update from memory`);
+            logger.debug(`Using pending update from memory`);
         }
         
         if (!game) {
-            console.error(`❌ Game ${gameId} not found`);
+            logger.debug(`Game ${gameId} not found`);
             return json({ error: 'Game not found' }, { status: 404 });
         }
 
-        console.log(`📖 Retrieved game state (currentPlayerSlot: ${game.currentPlayerSlot})`);
+        logger.debug(`Retrieved game state (currentPlayerSlot: ${game.currentPlayerSlot})`);
 
         // Reconstruct World Conflict game state
         const worldConflictState = new GameState(game.worldConflictState);
@@ -118,7 +119,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         if (moveData.moveType === 'ARMY_MOVE' && moveData.destination !== undefined) {
             const oldOwner = game.worldConflictState.ownersByRegion?.[moveData.destination];
             const newOwner = newStateJSON.ownersByRegion?.[moveData.destination];
-            console.log(`🗺️ Region ${moveData.destination} ownership: ${oldOwner} → ${newOwner}`);
+            logger.debug(`Region ${moveData.destination} ownership: ${oldOwner} → ${newOwner}`);
         }
 
         // Update game record
@@ -152,8 +153,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         });
 
     } catch (error) {
-        console.error('❌ Fatal error in move endpoint:', error);
-        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        logger.error('Fatal error in move endpoint:', error);
         return handleApiError(error, 'processing move');
     }
 };

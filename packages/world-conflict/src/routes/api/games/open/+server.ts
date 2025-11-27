@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
-import { GameStorage } from '$lib/server/storage/GameStorage';
+import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
+import { logger } from '$lib/game/utils/logger';
 
 const TWENTY_MINUTES = 30 * 60 * 1000;
 const OLD_GAMES_THRESHOLD = TWENTY_MINUTES;
@@ -27,12 +28,12 @@ export const GET: RequestHandler = async ({ platform }) => {
         return json(openGames);
 
     } catch (error) {
-        console.error('Failed to get open games:', error);
+        logger.error('Failed to get open games:', error);
         return json({ error: 'Failed to load games' }, { status: 500 });
     }
 };
 
-function getOpenGames(validGames, now: number) {
+function getOpenGames(validGames: GameRecord[], now: number) {
   return validGames.map(game => ({
        gameId: game.gameId,
        creator: game.players[0]?.name || 'Unknown',
@@ -47,15 +48,15 @@ function getOpenGames(validGames, now: number) {
 }
 
 // Clean up expired games from storage (helps keep storage clean)
-async function cleanupOldGames(expiredGames, gameStorage: GameStorage) {
+async function cleanupOldGames(expiredGames: GameRecord[], gameStorage: GameStorage) {
     if (expiredGames.length > 0) {
-        console.log(`Cleaning up ${expiredGames.length} expired games from storage`);
+        logger.debug(`Cleaning up ${expiredGames.length} expired games from storage`);
         for (const expiredGame of expiredGames) {
             try {
                 await gameStorage.deleteGame(expiredGame.gameId);
-                console.log(`Deleted expired game: ${expiredGame.gameId}`);
+                logger.debug(`Deleted expired game: ${expiredGame.gameId}`);
             } catch (error) {
-                console.error(`Failed to delete expired game ${expiredGame.gameId}:`, error);
+                logger.error(`Failed to delete expired game ${expiredGame.gameId}:`, error);
             }
         }
     }

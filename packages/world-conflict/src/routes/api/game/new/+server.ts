@@ -6,6 +6,7 @@ import { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/entities/gameTypes';
 import { generateGameId, createPlayer, handleApiError } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Create a new game
@@ -16,7 +17,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         const { playerName } = body;
 
         const gameRecord = createGameRecord(body, platform!);
-        console.log("gameRecord gameId = ", gameRecord.gameId);
+        logger.debug("gameRecord gameId = ", gameRecord.gameId);
         await save(gameRecord, platform!);
 
         // Find the creator player by matching the playerName from the request
@@ -120,13 +121,13 @@ function calculateRegions(selectedMapRegions: any, settings: any): Region[] {
   let regions: Region[];
 
   if (selectedMapRegions && selectedMapRegions.length > 0) {
-    console.log('Using selected map from configuration with', selectedMapRegions.length, 'regions');
+    logger.debug('Using selected map from configuration with', selectedMapRegions.length, 'regions');
     // Reconstruct Region objects from the serialized data
     regions = selectedMapRegions.map((regionData: any) => {
       return new Region(regionData);
     });
   } else {
-    console.log('No selected map found, generating new map');
+    logger.debug('No selected map found, generating new map');
     // Fallback to generating a new map if none provided
     const mapSize = settings?.mapSize || 'Medium';
     const mapGenerator = new MapGenerator(800, 600);
@@ -156,8 +157,8 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
         } else {
             // Configured game from GameConfiguration component
             const activeSlots = playerSlots.filter((slot: any) => slot.type !== 'Off');
-            console.log("activeSlots = ", activeSlots);
-            console.log("First slot properties:", Object.keys(activeSlots[0]));
+            logger.debug("activeSlots = ", activeSlots);
+            logger.debug("First slot properties:", Object.keys(activeSlots[0]));
 
             if (activeSlots.length < 2) {
                 throw new Error('At least 2 players are required');
@@ -183,7 +184,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
                     const playerNameForSlot = !creatorAdded ? playerName.trim() : (slot.customName || slot.name);
                     players.push(createPlayer(playerNameForSlot, slot.slotIndex, false));
                     if (!creatorAdded) {
-                        console.log(`✅ Added creator "${playerName}" to slot ${slot.slotIndex}`);
+                        logger.debug(`Added creator "${playerName}" to slot ${slot.slotIndex}`);
                         creatorAdded = true;
                     }
                 } else if (slot.type === 'Open') {
@@ -197,7 +198,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
             
             // Ensure the creator is added even if no "Set" slots were found
             if (!creatorAdded) {
-                console.warn(`⚠️ Creator "${playerName}" not added during slot processing, adding to first active slot`);
+                logger.warn(`Creator "${playerName}" not added during slot processing, adding to first active slot`);
                 const firstSlot = activeSlots[0];
                 players.push(createPlayer(playerName.trim(), firstSlot.slotIndex, false));
             }
@@ -216,7 +217,7 @@ function determineGameAttributes(gameType: string, playerSlots: any[], playerNam
 
 async function save(gameRecord: GameRecord, platform: App.Platform): Promise<void> {
     const gameStorage = GameStorage.create(platform!);
-    console.log("saveGame after new. gameId: " + gameRecord.gameId);
+    logger.debug("saveGame after new. gameId: " + gameRecord.gameId);
     await gameStorage.saveGame(gameRecord);
-    console.log(`Created and saved game: ${gameRecord.status} gameId: ${gameRecord.gameId} with ${gameRecord.players.length} players`);
+    logger.info(`Created game: ${gameRecord.status} gameId: ${gameRecord.gameId} with ${gameRecord.players.length} players`);
 }

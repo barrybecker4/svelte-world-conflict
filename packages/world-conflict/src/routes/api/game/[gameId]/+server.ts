@@ -4,6 +4,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import type { Player } from '$lib/game/state/GameState';
 import { handleApiError } from '$lib/server/api-utils';
+import { logger } from '$lib/game/utils/logger';
 
 interface QuitGameRequest {
     playerId: string;
@@ -100,11 +101,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     lastMoveAt: Date.now()
                 };
 
-                 console.log("saveGame after removing player. gameId: " + updatedGame.gameId);
+                 logger.debug("saveGame after removing player. gameId: " + updatedGame.gameId);
                 await gameStorage.saveGame(updatedGame);
                 await WebSocketNotifications.gameUpdate(updatedGame);
 
-                console.log(`Player ${player.name} left pending game ${gameId}`);
+                logger.info(`Player ${player.name} left pending game ${gameId}`);
 
                 return json({
                     success: true,
@@ -122,11 +123,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 endedBy: player.slotIndex
             };
 
-            console.log("saveGame after resign. gameId: " + updatedGame.gameId);
+            logger.debug("saveGame after resign. gameId: " + updatedGame.gameId);
             await gameStorage.saveGame(updatedGame);
             await WebSocketNotifications.gameUpdate(updatedGame);
 
-            console.log(`Player ${player.name} ${reason.toLowerCase()} from active game ${gameId}`);
+            logger.info(`Player ${player.name} ${reason.toLowerCase()} from active game ${gameId}`);
 
             return json({
                 success: true,
