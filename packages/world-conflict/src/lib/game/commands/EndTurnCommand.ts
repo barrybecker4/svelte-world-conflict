@@ -4,7 +4,7 @@ import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import { IncomeCalculator } from '$lib/game/mechanics/IncomeCalculator';
 import type { GameState, Player } from '$lib/game/state/GameState';
 import { Temple } from '$lib/game/entities/Temple';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export class EndTurnCommand extends Command {
     private income: number = 0;

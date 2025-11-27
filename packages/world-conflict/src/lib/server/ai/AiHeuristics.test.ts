@@ -315,10 +315,11 @@ describe('AiHeuristics', () => {
         });
 
         it('should return positive value when can attack weak neighbor', () => {
+            // Region 0 (player1) has 10 soldiers, adjacent to enemy region 1 with only 1 soldier
             const gameState = createGameStateWithSoldierCounts(
-                [{ index: 0, soldiers: 10 }, { index: 1, soldiers: 1 }],
-                [{ index: 2, soldiers: 5 }],
-                { 0: [1], 1: [0], 2: [] }
+                [{ index: 0, soldiers: 10 }],
+                [{ index: 1, soldiers: 1 }],
+                { 0: [1], 1: [0] }
             );
             
             const opportunity = regionOpportunity(gameState, player1, 0, AI_LEVELS.RUDE);
@@ -338,18 +339,20 @@ describe('AiHeuristics', () => {
         });
 
         it('should handle multiple neighbors', () => {
+            // Region 0 (player1) has 10 soldiers, adjacent to two weak enemy regions
             const gameState = createGameStateWithSoldierCounts(
-                [{ index: 0, soldiers: 10 }, { index: 1, soldiers: 1 }, { index: 2, soldiers: 2 }],
-                [{ index: 3, soldiers: 5 }],
-                { 0: [1, 2], 1: [0], 2: [0], 3: [] }
+                [{ index: 0, soldiers: 10 }],
+                [{ index: 1, soldiers: 1 }, { index: 2, soldiers: 2 }],
+                { 0: [1, 2], 1: [0], 2: [0] }
             );
             
             const opportunity = regionOpportunity(gameState, player1, 0, AI_LEVELS.RUDE);
-            // Should sum opportunities from both neighbors
+            // Should sum opportunities from both enemy neighbors
             expect(opportunity).toBeGreaterThan(0);
         });
 
-        it('should return 0 when all neighbors are enemy-owned', () => {
+        it('should return positive when all neighbors are enemy-owned and attackable', () => {
+            // Region 0 (player1) has 10 soldiers, all neighbors are weaker enemy regions
             const gameState = createGameStateWithSoldierCounts(
                 [{ index: 0, soldiers: 10 }],
                 [{ index: 1, soldiers: 5 }, { index: 2, soldiers: 3 }],
@@ -357,8 +360,8 @@ describe('AiHeuristics', () => {
             );
             
             const opportunity = regionOpportunity(gameState, player1, 0, AI_LEVELS.RUDE);
-            // Opportunity only counts for attacking own weaker regions (consolidation)
-            expect(opportunity).toBe(0);
+            // Opportunity counts for attacking enemy regions
+            expect(opportunity).toBeGreaterThan(0);
         });
     });
 
@@ -413,10 +416,11 @@ describe('AiHeuristics', () => {
         });
 
         it('should be high for aggressive position (high opportunity)', () => {
+            // Region 0 (with temple) has 10 soldiers, adjacent to weak enemy region 1
             const gameState = createGameStateWithSoldierCounts(
-                [{ index: 0, soldiers: 10 }, { index: 1, soldiers: 1 }],
-                [{ index: 2, soldiers: 5 }],
-                { 0: [1], 1: [0], 2: [] }
+                [{ index: 0, soldiers: 10 }],
+                [{ index: 1, soldiers: 1 }],
+                { 0: [1], 1: [0] }
             );
             
             gameState.state.templesByRegion[0] = createMockTemple({ regionIndex: 0 });
@@ -427,7 +431,7 @@ describe('AiHeuristics', () => {
                 AI_LEVELS.RUDE
             );
             
-            // High opportunity to attack weak neighbor
+            // High opportunity to attack weak enemy neighbor
             expect(dangerousness).toBeGreaterThan(0);
         });
 

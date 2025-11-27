@@ -3,9 +3,7 @@
  * This maintains backward compatibility with existing code
  */
 import { KVStorageAdapter, type StorageAdapter } from '@svelte-mp/framework/server';
-
-// Track KV writes for monitoring
-let kvWriteCount = 0;
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * KVStorage for World Conflict
@@ -20,13 +18,12 @@ export class KVStorage implements StorageAdapter {
         });
     }
 
-    async get<T = any>(key: string): Promise<T | null> {
+    async get<T = unknown>(key: string): Promise<T | null> {
         return this.adapter.get<T>(key);
     }
 
-    async put(key: string, value: any): Promise<void> {
-        kvWriteCount++;
-        console.log(`📊 KV WRITE #${kvWriteCount}: ${key}`);
+    async put(key: string, value: unknown): Promise<void> {
+        logger.debug(`KV write: ${key}`);
         return this.adapter.put(key, value);
     }
 

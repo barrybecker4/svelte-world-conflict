@@ -5,7 +5,7 @@
   import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
   import OpenGameRow from './OpenGameRow.svelte';
   import { OpenGamesManager, type OpenGame } from './OpenGamesManager';
-  import { logger } from '$lib/client/utils/logger';
+  import { logger } from '$lib/game/utils/logger';
 
   const dispatch = createEventDispatcher();
 

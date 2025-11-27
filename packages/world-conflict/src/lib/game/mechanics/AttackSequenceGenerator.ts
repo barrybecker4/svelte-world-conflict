@@ -1,7 +1,7 @@
 import type { Player } from '$lib/game/entities/gameTypes';
 import type { GameState } from '$lib/game/state/GameState';
 import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export interface AttackEvent {
     attackerCasualties?: number;      // Casualties in this round only

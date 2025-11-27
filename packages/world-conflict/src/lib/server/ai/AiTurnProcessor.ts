@@ -5,8 +5,10 @@
  * This module provides reusable functions for processing AI turns
  * that can be used both during game creation and during normal gameplay.
  */
+import type { Player } from '$lib/game/state/GameState';
 import { GameState } from '$lib/game/state/GameState';
-import { GameStorage } from '$lib/server/storage/GameStorage';
+import type { GameStorage, GameRecord } from '$lib/server/storage/GameStorage';
+import type { Command } from '$lib/game/commands/Command';
 import { CommandProcessor, EndTurnCommand } from '$lib/game/commands';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
@@ -14,11 +16,28 @@ import { pickAiMove } from './AiDecisionMaker';
 import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
 import { BuildCommand } from '$lib/game/commands/BuildCommand';
 import { TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
+import { logger } from '$lib/game/utils/logger';
+
+/** Metadata about a move for client animation */
+interface MoveMetadata {
+    type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn';
+    sourceRegion?: number;
+    targetRegion?: number;
+    soldierCount?: number;
+}
+
+/** Result from executing an AI move */
+interface AiMoveResult {
+    success: boolean;
+    newState: GameState;
+    attackSequence?: unknown[];
+    moveMetadata?: MoveMetadata;
+}
 
 /**
  * Extract move metadata from AI command for animation purposes
  */
-function extractMoveMetadata(command: any): { type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn', sourceRegion?: number, targetRegion?: number, soldierCount?: number } | undefined {
+function extractMoveMetadata(command: Command): MoveMetadata | undefined {
     if (command instanceof ArmyMoveCommand) {
         return {
             type: 'army_move',
@@ -27,24 +46,113 @@ function extractMoveMetadata(command: any): { type: 'army_move' | 'recruit' | 'u
             soldierCount: command.count
         };
     } else if (command instanceof BuildCommand) {
-        // Check if it's a soldier recruit or temple upgrade
         if (command.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.SOLDIER.index) {
-            return {
-                type: 'recruit',
-                targetRegion: command.regionIndex
-            };
+            return { type: 'recruit', targetRegion: command.regionIndex };
         } else {
-            return {
-                type: 'upgrade',
-                targetRegion: command.regionIndex
-            };
+            return { type: 'upgrade', targetRegion: command.regionIndex };
         }
     } else if (command instanceof EndTurnCommand) {
-        return {
-            type: 'end_turn'
-        };
+        return { type: 'end_turn' };
     }
     return undefined;
+}
+
+/**
+ * Execute a single AI move and process the result
+ */
+async function executeAiMove(
+    currentState: GameState,
+    currentPlayer: Player
+): Promise<AiMoveResult> {
+    const aiMove = await pickAiMove(currentPlayer, currentState);
+    
+    if (!aiMove) {
+        return { success: false, newState: currentState };
+    }
+
+    const commandProcessor = new CommandProcessor();
+    const result = commandProcessor.process(aiMove);
+
+    if (result.success && result.newState) {
+        return {
+            success: true,
+            newState: result.newState,
+            attackSequence: result.attackSequence,
+            moveMetadata: extractMoveMetadata(aiMove)
+        };
+    }
+
+    logger.debug(`AI move failed: ${result.error}`);
+    return { success: false, newState: currentState };
+}
+
+/**
+ * End the current player's turn
+ */
+function endPlayerTurn(
+    currentState: GameState,
+    currentPlayer: Player
+): AiMoveResult {
+    const endTurnCommand = new EndTurnCommand(currentState, currentPlayer);
+    const commandProcessor = new CommandProcessor();
+    const result = commandProcessor.process(endTurnCommand);
+
+    if (result.success && result.newState) {
+        return {
+            success: true,
+            newState: result.newState,
+            attackSequence: undefined,
+            moveMetadata: extractMoveMetadata(endTurnCommand)
+        };
+    }
+
+    logger.error('Failed to end AI turn:', result.error);
+    return { success: false, newState: currentState };
+}
+
+/**
+ * Send WebSocket notification for a game update
+ */
+async function notifyGameUpdate(
+    gameStorage: GameStorage,
+    gameId: string,
+    currentState: GameState,
+    moveMetadata: MoveMetadata | undefined,
+    attackSequence: unknown[] | undefined
+): Promise<void> {
+    const game = await gameStorage.getGame(gameId);
+    if (!game) return;
+
+    game.worldConflictState = currentState.toJSON();
+    game.currentPlayerSlot = currentState.currentPlayerSlot;
+    game.lastMoveAt = Date.now();
+    game.lastAttackSequence = attackSequence;
+    game.lastMove = moveMetadata;
+
+    await WebSocketNotifications.gameUpdate(game);
+}
+
+/**
+ * Save final game state after all AI turns complete
+ */
+async function saveFinalGameState(
+    gameStorage: GameStorage,
+    gameId: string,
+    currentState: GameState,
+    lastMoveMetadata: MoveMetadata | undefined,
+    lastAttackSequence: unknown[] | undefined
+): Promise<void> {
+    const finalGame = await gameStorage.getGame(gameId);
+    if (!finalGame) return;
+
+    finalGame.worldConflictState = currentState.toJSON();
+    finalGame.currentPlayerSlot = currentState.currentPlayerSlot;
+    finalGame.lastMoveAt = Date.now();
+    finalGame.lastAttackSequence = lastAttackSequence;
+    finalGame.lastMove = lastMoveMetadata;
+
+    await gameStorage.saveGame(finalGame);
+    logger.debug(`AI turns complete - saved to KV`);
 }
 
 /**
@@ -55,132 +163,85 @@ function extractMoveMetadata(command: any): { type: 'army_move' | 'recruit' | 'u
  * @param gameState - Current game state
  * @param gameStorage - Game storage instance for persistence
  * @param gameId - Game identifier for updates
- * @param platform - Platform context for WebSocket notifications
+ * @param _platform - Platform context (unused, kept for API compatibility)
  * @returns Promise<GameState> - Updated game state after all AI turns
  */
-export async function processAiTurns(gameState: GameState, gameStorage: GameStorage, gameId: string, platform: any): Promise<GameState> {
+export async function processAiTurns(
+    gameState: GameState,
+    gameStorage: GameStorage,
+    gameId: string,
+    _platform?: App.Platform
+): Promise<GameState> {
     let currentState = gameState;
     let currentPlayer = currentState.getCurrentPlayer();
     let turnCount = 0;
-    const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS; // Safety limit to prevent infinite loops
-    let lastAttackSequence: any[] | undefined = undefined;
-    let lastMoveMetadata: any = undefined;
+    const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS;
+    let lastAttackSequence: unknown[] | undefined = undefined;
+    let lastMoveMetadata: MoveMetadata | undefined = undefined;
 
-    console.log(`🤖 Processing AI turns for game ${gameId}, starting with ${currentPlayer?.name}`);
-    console.log(`Starting AI turn processing - current player: ${currentPlayer?.name} (isAI: ${currentPlayer?.isAI})`);
+    logger.debug(`Processing AI turns for game ${gameId}, starting with ${currentPlayer?.name}`);
 
-    // Continue processing AI turns until we reach a human player or game ends
     while (currentPlayer?.isAI && !currentState.isGameComplete() && turnCount < maxTurns) {
         turnCount++;
-        console.log(`Processing AI turn ${turnCount} for player ${currentPlayer.slotIndex} (${currentPlayer.name})`);
 
         try {
-            // Generate AI move decision using sophisticated minimax AI
-            const aiMove = await pickAiMove(currentPlayer, currentState);
-            let moveMade = false;
+            const moveResult = await executeAiMove(currentState, currentPlayer);
 
-            if (aiMove) {
-                const commandProcessor = new CommandProcessor();
-                const result = commandProcessor.process(aiMove);
+            if (moveResult.success) {
+                currentState = moveResult.newState;
+                lastAttackSequence = moveResult.attackSequence;
+                lastMoveMetadata = moveResult.moveMetadata;
 
-                if (result.success && result.newState) {
-                    currentState = result.newState;
-                    moveMade = true;
+                await notifyGameUpdate(
+                    gameStorage,
+                    gameId,
+                    currentState,
+                    moveResult.moveMetadata,
+                    moveResult.attackSequence
+                );
 
-                    // Store attack sequence for WebSocket notification
-                    if (result.attackSequence) {
-                        lastAttackSequence = result.attackSequence;
-                        console.log(`💨 Stored attack sequence with ${result.attackSequence.length} events for battle replay`);
-                    } else {
-                        lastAttackSequence = undefined;
-                    }
-
-                    // Extract move metadata for client animation
-                    const moveMetadata = extractMoveMetadata(aiMove);
-                    lastMoveMetadata = moveMetadata;
-
-                    // Send WebSocket notification immediately for this move (but don't save to KV yet)
-                    const updatedGame = await gameStorage.getGame(gameId);
-                    if (updatedGame) {
-                        updatedGame.worldConflictState = currentState.toJSON();
-                        updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
-                        updatedGame.lastMoveAt = Date.now();
-                        updatedGame.lastAttackSequence = lastAttackSequence;
-                        updatedGame.lastMove = moveMetadata;
-
-                        await WebSocketNotifications.gameUpdate(updatedGame);
-                        console.log(`✅ AI move by ${currentPlayer.name} (${aiMove.constructor.name}) - WebSocket sent (KV save deferred)`);
-                    }
-
-                    // Small delay between AI actions for better UX
-                    await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.AI_ACTION_DELAY_MS));
-                } else {
-                    // Move failed - will end turn below
-                    console.log(`AI move failed: ${result.error}. Will end turn.`);
-                }
-            }
-
-            // If no move was made (either no move generated or move failed), end turn
-            if (!moveMade) {
-                console.log(`AI player ${currentPlayer.name} ending turn`);
-                const endTurnCommand = new EndTurnCommand(currentState, currentPlayer);
-                const commandProcessor = new CommandProcessor();
-                const result = commandProcessor.process(endTurnCommand);
-
-                if (result.success && result.newState) {
-                    currentState = result.newState;
-                    lastAttackSequence = undefined; // Clear attack sequence for turn end
-
-                    // Extract move metadata for end turn
-                    const moveMetadata = extractMoveMetadata(endTurnCommand);
-                    lastMoveMetadata = moveMetadata;
-
-                    // Send WebSocket notification for turn end (but don't save to KV yet)
-                    const updatedGame = await gameStorage.getGame(gameId);
-                    if (updatedGame) {
-                        updatedGame.worldConflictState = currentState.toJSON();
-                        updatedGame.currentPlayerSlot = currentState.currentPlayerSlot;
-                        updatedGame.lastMoveAt = Date.now();
-                        updatedGame.lastAttackSequence = undefined;
-                        updatedGame.lastMove = moveMetadata;
-
-                        await WebSocketNotifications.gameUpdate(updatedGame);
-                        console.log(`✅ AI ${currentPlayer.name} ended turn - WebSocket sent (KV save deferred)`);
-                    }
-                } else {
-                    console.error('Failed to end AI turn:', result.error);
+                // Small delay between AI actions for better UX
+                await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.AI_ACTION_DELAY_MS));
+            } else {
+                // Move failed or no move available - end turn
+                const endResult = endPlayerTurn(currentState, currentPlayer);
+                
+                if (!endResult.success) {
                     break;
                 }
+
+                currentState = endResult.newState;
+                lastAttackSequence = undefined;
+                lastMoveMetadata = endResult.moveMetadata;
+
+                await notifyGameUpdate(
+                    gameStorage,
+                    gameId,
+                    currentState,
+                    endResult.moveMetadata,
+                    undefined
+                );
             }
 
             currentPlayer = currentState.getCurrentPlayer();
 
         } catch (error) {
-            console.error('Error processing AI turn:', error);
+            logger.error('Error processing AI turn:', error);
             break;
         }
     }
 
     if (turnCount >= maxTurns) {
-        console.warn(`AI processing stopped after ${maxTurns} turns to prevent infinite loop`);
+        logger.warn(`AI processing stopped after ${maxTurns} turns to prevent infinite loop`);
     }
 
-    const finalPlayer = currentState.getCurrentPlayer();
-    console.log(`AI processing complete after ${turnCount} turns - current player: ${finalPlayer?.name} (isAI: ${finalPlayer?.isAI})`);
-
-    // Save ONCE after all AI turns are complete
-    const finalGame = await gameStorage.getGame(gameId);
-    if (finalGame) {
-        finalGame.worldConflictState = currentState.toJSON();
-        finalGame.currentPlayerSlot = currentState.currentPlayerSlot;
-        finalGame.lastMoveAt = Date.now();
-        finalGame.lastAttackSequence = lastAttackSequence;
-        finalGame.lastMove = lastMoveMetadata;
-
-        await gameStorage.saveGame(finalGame);
-        console.log(`💾 All AI turns complete - saved to KV (1 write for ${turnCount} AI actions)`);
-    }
+    await saveFinalGameState(
+        gameStorage,
+        gameId,
+        currentState,
+        lastMoveMetadata,
+        lastAttackSequence
+    );
 
     return currentState;
 }
-

@@ -7,7 +7,7 @@ import type { ValidationResult, MoveValidationResult } from '$lib/game/validatio
 import { Regions } from '$lib/game/entities/Regions';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 // Re-export types for convenience
 export type { Player, Region, GameStateData, Soldier, Temple };

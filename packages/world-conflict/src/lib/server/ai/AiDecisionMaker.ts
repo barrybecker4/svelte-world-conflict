@@ -4,6 +4,7 @@
  */
 import type { GameState, Player } from '$lib/game/state/GameState';
 import type { Command } from '$lib/game/commands/Command';
+import type { AiPersonalityData } from '$lib/game/entities/AiPersonality';
 import { BuildCommand } from '$lib/game/commands/BuildCommand';
 import { EndTurnCommand } from '$lib/game/commands/EndTurnCommand';
 import { miniMaxSearch } from './MiniMaxSearch';
@@ -149,7 +150,11 @@ function upgradeToBuild(player: Player, state: GameState, aiLevel: AiLevel): Com
 /**
  * Find the next upgrade the AI desires based on personality preferences
  */
-function findDesiredUpgrade(preferredUpgrades: number[], player: Player, state: GameState): TempleUpgradeDefinition | null {
+function findDesiredUpgrade(
+    preferredUpgrades: readonly number[],
+    player: Player,
+    state: GameState
+): TempleUpgradeDefinition | null {
     const playerTemples = state.templesForPlayer(player);
 
     // Find the first preferred upgrade for which we do not have the desired max level
@@ -180,7 +185,11 @@ function findDesiredUpgrade(preferredUpgrades: number[], player: Player, state: 
  * Get the effective soldier eagerness for a personality
  * Returns 1.0 if no more upgrades are desired
  */
-function getEffectiveSoldierEagerness(personality: any, player: Player, state: GameState): number {
+function getEffectiveSoldierEagerness(
+    personality: AiPersonalityData,
+    player: Player,
+    state: GameState
+): number {
     const desiredUpgrade = findDesiredUpgrade(personality.upgradePreference, player, state);
 
     // If we don't want more upgrades, focus entirely on soldiers
@@ -194,7 +203,7 @@ function getEffectiveSoldierEagerness(personality: any, player: Player, state: G
 /**
  * Get the AI personality for a player
  */
-function getPlayerPersonality(player: Player): any | null {
+function getPlayerPersonality(player: Player): AiPersonalityData | null {
     if (!player.personality) {
         return null;
     }
@@ -203,4 +212,3 @@ function getPlayerPersonality(player: Player): any | null {
     const personality = AI_PERSONALITIES.find(p => p.name === player.personality);
     return personality || null;
 }
-

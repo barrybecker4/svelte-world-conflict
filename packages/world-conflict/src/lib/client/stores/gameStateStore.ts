@@ -7,7 +7,7 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { GameStateUpdater } from './GameStateUpdater';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 import type { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSystem';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Svelte Store for managing game state loading, initialization, and updates.

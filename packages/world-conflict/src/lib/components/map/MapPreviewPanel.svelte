@@ -7,7 +7,7 @@
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import type { Region } from '$lib/game/entities/Region';
   import type { GameStateData, Player, PlayerSlot } from '$lib/game/entities/gameTypes';
-  import { logger } from '$lib/client/utils/logger';
+  import { logger } from '$lib/game/utils/logger';
 
   export let mapSize: 'Small' | 'Medium' | 'Large' = 'Medium';
   export let playerCount = 4;

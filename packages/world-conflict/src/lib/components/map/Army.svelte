@@ -3,7 +3,7 @@
   import type { Region, GameStateData, Soldier } from '$lib/game/entities/gameTypes';
   import { smokeStore } from '$lib/client/stores/smokeStore';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-  import { logger } from '$lib/client/utils/logger';
+  import { logger } from '$lib/game/utils/logger';
 
   export let x: number;
   export let y: number;

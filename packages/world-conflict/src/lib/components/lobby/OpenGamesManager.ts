@@ -8,7 +8,7 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { loadPlayerName, saveGameCreator } from '$lib/client/stores/clientStorage';
 import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 import { goto } from '$app/navigation';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 import type { PlayerSlot } from '$lib/game/entities/PlayerSlot';
 
 export interface OpenGame {

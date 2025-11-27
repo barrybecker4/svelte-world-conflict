@@ -1,5 +1,5 @@
 import type { GameStateData, Player } from '$lib/game/entities/gameTypes';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 /**

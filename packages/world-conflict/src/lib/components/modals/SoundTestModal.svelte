@@ -3,7 +3,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';
-  import { logger } from '$lib/client/utils/logger';
+  import { logger } from '$lib/game/utils/logger';
 
   interface Props {
     isOpen?: boolean;

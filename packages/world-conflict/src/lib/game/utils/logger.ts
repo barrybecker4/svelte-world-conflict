@@ -1,11 +1,24 @@
 /**
  * Simple logger utility that can be toggled for production
  * Debug logs are only shown in development mode
+ * 
+ * Can be used by both client and server code
  */
 
-const DEBUG = typeof import.meta !== 'undefined' 
-  ? import.meta.env?.DEV ?? false 
-  : false;
+// Detect development mode - works in both browser (Vite) and server (Node) contexts
+const isDev = (): boolean => {
+  // Browser context with Vite
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV !== undefined) {
+    return import.meta.env.DEV;
+  }
+  // Node/server context
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV !== undefined) {
+    return process.env.NODE_ENV === 'development';
+  }
+  return false;
+};
+
+const DEBUG = isDev();
 
 export const logger = {
   /** Debug logs - only shown in development */

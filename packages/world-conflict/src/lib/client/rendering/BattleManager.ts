@@ -7,7 +7,7 @@ import type { Region, GameStateData } from '$lib/game/entities/gameTypes';
 import type { AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import { clearBattleState, isExpectedValidationError } from '$lib/game/utils/GameStateUtils';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 // Re-export types for backward compatibility
 export type { BattleMove, BattleResult };

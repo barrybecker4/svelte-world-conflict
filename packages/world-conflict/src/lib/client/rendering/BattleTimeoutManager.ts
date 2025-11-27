@@ -1,5 +1,5 @@
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Manages battle timeouts to prevent stuck battles

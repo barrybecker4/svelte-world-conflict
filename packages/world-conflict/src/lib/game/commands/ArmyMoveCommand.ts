@@ -2,7 +2,7 @@ import { Command, type CommandValidationResult } from './Command';
 import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import type { GameState, Player, Region, Soldier } from '$lib/game/state/GameState';
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export class ArmyMoveCommand extends Command {
     public source: number;

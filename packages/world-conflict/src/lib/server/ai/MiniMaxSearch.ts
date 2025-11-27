@@ -170,7 +170,8 @@ function possibleMoves(state: GameState): Command[] {
     const player = state.activePlayer();
 
     if (!player) {
-        return [new EndTurnCommand(state, player!)];
+        // No active player - return empty array (can't generate moves without a player)
+        return [];
     }
 
     // Ending turn is always an option

@@ -1,5 +1,6 @@
-import type { GameRecord } from './GameStorage';
+import type { GameRecord } from './types';
 import type { GameStorage } from './GameStorage';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * In-memory cache for pending game updates (server-side KV write batching)
@@ -21,7 +22,7 @@ export function getPendingUpdate(gameId: string): GameRecord | undefined {
  */
 export function setPendingUpdate(gameId: string, game: GameRecord): void {
     pendingUpdates.set(gameId, game);
-    console.log(`📝 Stored pending update for game ${gameId} (pending: ${pendingUpdates.size} games)`);
+    logger.debug(`Stored pending update for game ${gameId}`);
 }
 
 /**
@@ -40,7 +41,6 @@ export async function flushPendingUpdate(gameId: string, gameStorage: GameStorag
     if (pendingUpdate) {
         await gameStorage.saveGame(pendingUpdate);
         pendingUpdates.delete(gameId);
-        console.log(`💾 Flushed pending update for game ${gameId}`);
+        logger.debug(`Flushed pending update for game ${gameId}`);
     }
 }
-

@@ -1,6 +1,6 @@
 import type { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/entities/gameTypes';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export interface HomeBaseAssignment {
     playerSlotIndex: number;

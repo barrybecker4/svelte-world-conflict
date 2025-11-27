@@ -10,7 +10,7 @@ import {
   CONFIRM_MOVE,
   ENTER_BUILD_MODE
 } from './moveConstants';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export class MoveSystem {
   private state: MoveState;

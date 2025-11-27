@@ -1,7 +1,7 @@
 import { Command, type CommandValidationResult } from "./Command";
 import type { GameState, Player } from "$lib/game/state/GameState";
 import { TEMPLE_UPGRADES_BY_NAME, type TempleUpgradeDefinition } from "$lib/game/constants/templeUpgradeDefinitions";
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export class BuildCommand extends Command {
     public regionIndex: number;

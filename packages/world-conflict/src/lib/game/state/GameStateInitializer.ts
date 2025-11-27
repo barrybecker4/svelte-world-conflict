@@ -3,7 +3,7 @@ import type { Player, Region, GameStateData } from '$lib/game/entities/gameTypes
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 
 export class GameStateInitializer {

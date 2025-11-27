@@ -1,8 +1,10 @@
 import type { Player } from '$lib/game/state/GameState';
+import type { AiPersonalityData } from '$lib/game/entities/AiPersonality';
 import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 import { json } from '@sveltejs/kit';
 import { AI_PERSONALITIES } from '$lib/game/entities/aiPersonalities';
 import { getAiLevelFromDifficulty } from '$lib/server/ai/AiHeuristics';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Helper function to safely get error message from unknown error type
@@ -18,7 +20,7 @@ export function getErrorMessage(error: unknown): string {
  * Generate a unique game ID
  */
 export function generateGameId(): string {
-    return `wc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `wc_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -32,28 +34,21 @@ export function generateGameId(): string {
  */
 export function handleApiError(error: unknown, context: string, status: number = 500) {
     const errorMessage = getErrorMessage(error);
-    console.error(`Error ${context}:`, error);
+    logger.error(`Error ${context}:`, error);
     return json({ error: errorMessage }, { status });
 }
 
 /**
- * Generate a unique player ID (though WC uses index, this can be useful for tracking)
- */
-// export function generatePlayerId(): string {
-//     return `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-// }
-
-/**
  * Helper to get AI personalities matching a difficulty level
  */
-function getPersonalitiesForDifficulty(difficulty?: string): any[] {
+function getPersonalitiesForDifficulty(difficulty?: string): readonly AiPersonalityData[] {
     if (!difficulty) {
-        return [...AI_PERSONALITIES];
+        return AI_PERSONALITIES;
     }
 
     const targetLevel = getAiLevelFromDifficulty(difficulty);
     const matchingPersonalities = AI_PERSONALITIES.filter(p => p.level === targetLevel);
-    return matchingPersonalities.length > 0 ? matchingPersonalities : [...AI_PERSONALITIES];
+    return matchingPersonalities.length > 0 ? matchingPersonalities : AI_PERSONALITIES;
 }
 
 /**
@@ -65,7 +60,13 @@ function getPersonalitiesForDifficulty(difficulty?: string): any[] {
  * @param aiDifficulty - AI difficulty level (used to select appropriate personality)
  * @param personality - Explicit personality name (overrides difficulty-based selection)
  */
-export function createPlayer(name: string, slotIndex: number, isAI: boolean = false, aiDifficulty?: string, personality?: string): Player {
+export function createPlayer(
+    name: string,
+    slotIndex: number,
+    isAI: boolean = false,
+    aiDifficulty?: string,
+    personality?: string
+): Player {
     if (slotIndex < 0 || slotIndex > 3) {
         throw new Error(`Invalid player slot index: ${slotIndex}. Must be 0-3.`);
     }

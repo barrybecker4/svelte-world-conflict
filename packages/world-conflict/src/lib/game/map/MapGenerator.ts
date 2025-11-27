@@ -4,7 +4,7 @@ import { Bounds } from '$lib/game/map/Bounds.ts';
 import { PositionSet } from '$lib/game/map/PositionSet';
 import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 export interface MapGenerationOptions {
     size: 'Small' | 'Medium' | 'Large';

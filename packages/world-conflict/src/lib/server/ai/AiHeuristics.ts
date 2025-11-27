@@ -166,7 +166,8 @@ export function regionOpportunity(state: GameState, player: Player, regionIndex:
     }
 
     return sumBy(region.neighbors, (neighborIdx: number) => {
-        if (state.isOwnedBy(neighborIdx, player)) {
+        // Only count opportunity against ENEMY regions (regions we don't own)
+        if (!state.isOwnedBy(neighborIdx, player)) {
             const defendingSoldiers = state.soldierCount(neighborIdx);
             const opp = (attackingSoldiers / (defendingSoldiers + 0.01) - 0.9) * 0.5;
             return clamp(opp, 0, 0.5) * regionFullValue(state, neighborIdx);

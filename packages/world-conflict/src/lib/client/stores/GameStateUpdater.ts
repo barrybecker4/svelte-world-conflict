@@ -9,7 +9,7 @@ import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 import { clearBattleState } from '$lib/game/utils/GameStateUtils';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
-import { logger } from '$lib/client/utils/logger';
+import { logger } from '$lib/game/utils/logger';
 
 /**
  * Manages WebSocket game state updates with proper queuing and orchestration.
