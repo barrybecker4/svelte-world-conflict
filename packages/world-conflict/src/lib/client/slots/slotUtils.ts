@@ -35,20 +35,20 @@ export function getSlotInfoFromGame(
     }
 
     if (slot.type === 'Set') {
-      return { 
-        type: 'creator', 
-        name: slot.name || slot.defaultName, 
-        canJoin: false, 
-        color: '#3b82f6' 
+      return {
+        type: 'creator',
+        name: slot.name || slot.defaultName,
+        canJoin: false,
+        color: '#3b82f6'
       };
     }
 
     if (slot.type === 'AI') {
-      return { 
-        type: 'ai', 
-        name: slot.name || slot.defaultName, 
-        canJoin: false, 
-        color: '#8b5cf6' 
+      return {
+        type: 'ai',
+        name: slot.name || slot.defaultName,
+        canJoin: false,
+        color: '#8b5cf6'
       };
     }
 
@@ -108,10 +108,13 @@ export function getSlotButtonVariant(slotInfo: BaseSlotInfo): string {
 export function formatTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
-  const minutes = Math.floor(diff / (1000 * 60));
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
 
-  if (minutes < 1) return 'Just now';
-  if (minutes === 1) return '1 minute ago';
+  if (seconds < 5) return 'Just now';
+  if (seconds < 15) return '10 seconds ago';
+  if (seconds < 40) return '30 seconds ago';
+  if (seconds < 90) return `1 minute ago`;
   if (minutes < 60) return `${minutes} minutes ago`;
 
   const hours = Math.floor(minutes / 60);

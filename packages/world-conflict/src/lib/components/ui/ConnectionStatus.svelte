@@ -8,10 +8,6 @@
   <span class="connection-status connected size-{size}">
     ● Live
   </span>
-{:else}
-  <span class="connection-status disconnected size-{size}">
-    ○ Updating
-  </span>
 {/if}
 
 <style>
