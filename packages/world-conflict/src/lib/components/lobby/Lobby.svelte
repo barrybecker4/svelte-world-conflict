@@ -3,8 +3,10 @@
   import Button from '$lib/components/ui/Button.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
+  import PlayerNameInput from '$lib/components/configuration/PlayerNameInput.svelte';
   import OpenGameRow from './OpenGameRow.svelte';
   import { OpenGamesManager, type OpenGame } from './OpenGamesManager';
+  import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
   import { logger } from '$lib/game/utils/logger';
 
   const dispatch = createEventDispatcher();
@@ -15,6 +17,8 @@
   let loading = true;
   let error: string | null = null;
   let wsConnected = false;
+  let showNameInput = true;
+  let playerName = '';
 
   let unsubGames: () => void;
   let unsubLoading: () => void;
@@ -23,6 +27,18 @@
 
   onMount(() => {
     logger.debug('Lobby component mounted');
+    
+    // Check if player has a name saved
+    const storedName = loadPlayerName();
+    if (storedName) {
+      playerName = storedName;
+      showNameInput = false;
+      initializeGamesManager();
+    }
+    // Otherwise, wait for name input before initializing games manager
+  });
+
+  function initializeGamesManager() {
     gamesManager = new OpenGamesManager();
     gamesManager.initialize();
 
@@ -39,7 +55,15 @@
     });
     unsubError = gamesManager.error.subscribe(value => error = value);
     unsubWsConnected = gamesManager.wsConnected.subscribe(value => wsConnected = value);
-  });
+  }
+
+  function handleNameSubmitted(event: CustomEvent) {
+    const { name } = event.detail;
+    playerName = name;
+    savePlayerName(name);
+    showNameInput = false;
+    initializeGamesManager();
+  }
 
   onDestroy(() => {
     logger.debug('Lobby component being destroyed, cleaning up...');
@@ -61,50 +85,59 @@
 
 {#if shouldRender}
 <div class="lobby-overlay">
-  <div class="lobby-container">
-    <div class="lobby-header">
-      <h1>Select Game
-        <br />
-        <span class="title-subheader">
-          Click on an open player slot to join a game
-          <ConnectionStatus isConnected={wsConnected} />
-        </span>
-      </h1>
+  {#if showNameInput}
+    <div class="name-input-container">
+      <PlayerNameInput
+        initialName={playerName}
+        on:nameSubmitted={handleNameSubmitted}
+      />
     </div>
+  {:else}
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <h1>Select Game
+          <br />
+          <span class="title-subheader">
+            Click on an open player slot to join a game
+            <ConnectionStatus isConnected={wsConnected} />
+          </span>
+        </h1>
+      </div>
 
-    <div class="lobby-content">
-      {#if error}
-        <div class="error-message">
-          ⚠️ {error}
-        </div>
-      {/if}
-
-      <LoadingState
-        {loading}
-        loadingText="Loading available games..."
-        showRetry={true}
-        on:retry={handleRetry}
-      >
-        {#if games.length > 0}
-          <div class="games-list">
-            <h3>Available Games ({games.length})</h3>
-            {#each games as game (game.gameId)}
-              <OpenGameRow {game} {gamesManager} />
-            {/each}
+      <div class="lobby-content">
+        {#if error}
+          <div class="error-message">
+            ⚠️ {error}
           </div>
         {/if}
-      </LoadingState>
-    </div>
 
-    <div class="bottom-box">
-      <Button variant="primary" size="lg" on:click={close} data-testid="new-game-btn">
-        New Game
-      </Button>
-      <Button variant="ghost" size="lg" on:click={close} data-testid="lobby-back-btn">
-        Back
-      </Button>
+        <LoadingState
+          {loading}
+          loadingText="Loading available games..."
+          showRetry={true}
+          on:retry={handleRetry}
+        >
+          {#if games.length > 0}
+            <div class="games-list">
+              <h3>Available Games ({games.length})</h3>
+              {#each games as game (game.gameId)}
+                <OpenGameRow {game} {gamesManager} />
+              {/each}
+            </div>
+          {/if}
+        </LoadingState>
+      </div>
+
+      <div class="bottom-box">
+        <Button variant="primary" size="lg" on:click={close} data-testid="new-game-btn">
+          New Game
+        </Button>
+        <Button variant="ghost" size="lg" on:click={close} data-testid="lobby-back-btn">
+          Back
+        </Button>
+      </div>
     </div>
-  </div>
+  {/if}
 </div>
 {/if}
 
@@ -130,6 +163,12 @@
     max-height: 80vh;
     display: flex;
     flex-direction: column;
+  }
+
+  .name-input-container {
+    max-width: 400px;
+    width: 90%;
+    padding: 2rem;
   }
 
   .lobby-header {
