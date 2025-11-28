@@ -140,7 +140,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
                     id: `ai_${slotIndex}`,
                     slotIndex: slotIndex,
                     name: aiName,
-                    color: getPlayerColor(slotIndex),
+                    color: getPlayerConfig(slotIndex).colorStart,
                     isAI: true,
                     personality: personality.name
                 });
@@ -156,7 +156,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
                 id: `ai_${aiIndex}`,
                 slotIndex: aiIndex,
                 name: `AI Player ${aiIndex + 1}`,
-                color: getPlayerColor(aiIndex),
+                color: getPlayerConfig(aiIndex).colorStart,
                 isAI: true,
                 personality: personality.name
             });
@@ -174,11 +174,6 @@ function reconstructRegions(regionData: any): Region[] {
 
     logger.debug(`Reconstructed ${regionData.length} regions as Region instances`);
     return regionData.map((data: any) => new Region(data));
-}
-
-function getPlayerColor(index: number): string {
-    const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
-    return colors[index % colors.length];
 }
 
 function getPlayerConfigForSlot(slotIndex: number) {
