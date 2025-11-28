@@ -345,10 +345,9 @@ export class GameState {
             if (this.state.ownersByRegion[regionIdx] === playerSlotIndex && temple) {
                 // Check if temple has the upgrade
                 if (temple.upgradeIndex !== undefined) {
-                    const upgradeKeys = Object.keys(TEMPLE_UPGRADES);
-                    const upgrade = upgradeKeys[temple.upgradeIndex];
+                    const upgrade = TEMPLE_UPGRADES[temple.upgradeIndex];
 
-                    if (upgrade === targetUpgradeName && temple.level) {
+                    if (upgrade && upgrade.name === targetUpgradeName && temple.level) {
                         maxLevel = Math.max(maxLevel, temple.level);
                     }
                 }
