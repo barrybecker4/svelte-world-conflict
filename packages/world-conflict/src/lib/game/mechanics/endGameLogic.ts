@@ -88,15 +88,13 @@ function checkElimination(gameState: GameStateData, players: Player[]): GameEndR
 }
 
 /**
- * Determine winner based on score (regions + soldiers)
- * Uses same logic as the original game: 1000 * regions + soldiers
+ * Determine winner based on score
  */
 function determineWinnerByScore(gameState: GameStateData, players: Player[]): Player | 'DRAWN_GAME' {
   const scoreCalculator = new ScoreCalculator(gameState);
   const playerScores = players.map(player => ({
     player,
     score: scoreCalculator.calculatePlayerScore(player.slotIndex),
-    regions: scoreCalculator.getRegionCount(player.slotIndex),
   }));
 
   // Sort by score descending

@@ -11,7 +11,12 @@ export class ScoreCalculator {
   calculatePlayerScore(playerSlotIndex: number): number {
     const regionCount = this.getRegionCount(playerSlotIndex);
     const soldierCount = this.getTotalSoldiers(playerSlotIndex);
-    return (1000 * regionCount) + soldierCount;
+    const faith = this.getFaith(playerSlotIndex);
+    return (1000 * regionCount) + (10 * soldierCount) + faith;
+  }
+
+  getFaith(playerSlotIndex: number): number {
+    return this.gameState.faithByPlayer?.[playerSlotIndex] || 0;
   }
 
   getRegionCount(playerSlotIndex: number): number {
