@@ -41,6 +41,8 @@ export class GameController {
   private lastTurnNumber: number = -1;
   private readonly playerSlotIndex: number;
   private boundBattleStateHandler: ((event: Event) => void) | null = null;
+  private pendingEndTurn: boolean = false;
+  private battleProgressUnsubscribe: (() => void) | null = null;
 
   constructor(
     private gameId: string,
@@ -205,6 +207,13 @@ export class GameController {
     this.websocket.cleanup();
     this.gameStore.resetTurnManager();
 
+    // Clean up battle progress subscription
+    if (this.battleProgressUnsubscribe) {
+      this.battleProgressUnsubscribe();
+      this.battleProgressUnsubscribe = null;
+    }
+    this.pendingEndTurn = false;
+
     if (this.boundBattleStateHandler && typeof window !== 'undefined') {
       window.removeEventListener('battleStateUpdate', this.boundBattleStateHandler);
     }
@@ -284,8 +293,49 @@ export class GameController {
 
   /**
    * End turn - send all queued moves to server
+   * If a battle is in progress, defer until it completes
    */
   async endTurn(): Promise<void> {
+    // If battle in progress, defer until it completes
+    if (this.battleCoordinator.isBattleInProgress()) {
+      this.pendingEndTurn = true;
+      this.subscribeToWaitForBattleCompletion();
+      return;
+    }
+
+    await this.executeEndTurn();
+  }
+
+  /**
+   * Subscribe to battle progress store and execute end turn when battle completes
+   */
+  private subscribeToWaitForBattleCompletion(): void {
+    // Clean up any existing subscription
+    if (this.battleProgressUnsubscribe) {
+      this.battleProgressUnsubscribe();
+    }
+
+    const battleInProgressStore = this.battleCoordinator.getBattleInProgressStore();
+    this.battleProgressUnsubscribe = battleInProgressStore.subscribe((inProgress) => {
+      if (!inProgress && this.pendingEndTurn) {
+        this.pendingEndTurn = false;
+        
+        // Clean up subscription
+        if (this.battleProgressUnsubscribe) {
+          this.battleProgressUnsubscribe();
+          this.battleProgressUnsubscribe = null;
+        }
+        
+        // Execute the deferred end turn
+        this.executeEndTurn();
+      }
+    });
+  }
+
+  /**
+   * Execute the actual end turn logic
+   */
+  private async executeEndTurn(): Promise<void> {
     this.turnTimerCoordinator.stopTimer();
 
     try {
