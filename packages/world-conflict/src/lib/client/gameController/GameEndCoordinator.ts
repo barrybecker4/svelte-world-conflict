@@ -4,6 +4,7 @@ import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { ModalManager } from './ModalManager';
 import { TurnTimerCoordinator } from './TurnTimerCoordinator';
+import { removeGameCreator } from '$lib/client/stores/clientStorage';
 
 /**
  * Coordinates game end detection and presentation
@@ -12,15 +13,18 @@ export class GameEndCoordinator {
   private modalManager: ModalManager;
   private turnTimerCoordinator: TurnTimerCoordinator;
   private readonly playerSlotIndex: number;
+  private readonly gameId: string;
   private gameEndChecked = false;
   private updateGameState: ((updater: (state: GameStateData) => GameStateData) => void) | null = null;
 
   constructor(
+    gameId: string,
     playerId: string,
     modalManager: ModalManager,
     turnTimerCoordinator: TurnTimerCoordinator,
     updateGameState?: (updater: (state: GameStateData) => GameStateData) => void
   ) {
+    this.gameId = gameId;
     this.playerSlotIndex = parseInt(playerId);
     this.modalManager = modalManager;
     this.turnTimerCoordinator = turnTimerCoordinator;
@@ -48,6 +52,9 @@ export class GameEndCoordinator {
       }
 
       this.turnTimerCoordinator.stopTimer();
+
+      // Clean up localStorage entry for this game since it's completed
+      removeGameCreator(this.gameId);
 
       const isWinner =
         endResult.winner !== 'DRAWN_GAME' &&

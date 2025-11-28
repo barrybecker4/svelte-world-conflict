@@ -65,6 +65,7 @@ export class GameController {
     this.battleCoordinator = new BattleCoordinator(playerId, gameStore, this.undoManager, this.moveQueue);
     this.moveUICoordinator = new MoveUICoordinator(gameStore, this.modalManager);
     this.gameEndCoordinator = new GameEndCoordinator(
+      gameId,
       playerId,
       this.modalManager,
       this.turnTimerCoordinator,
