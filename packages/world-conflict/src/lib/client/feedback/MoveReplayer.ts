@@ -4,6 +4,7 @@ import type { DetectedMove } from './MoveDetector';
 import { FeedbackPlayer } from './FeedbackPlayer';
 import { BattleReplayCoordinator } from './BattleReplayCoordinator';
 import { animationQueue } from './TaskQueue';
+import { dispatchGameEvent, waitForNextFrame } from './utils';
 
 /** Server-provided move metadata */
 interface MoveMetadata {
@@ -189,7 +190,22 @@ export class MoveReplayer {
         await this.playMoveWithFeedback(move, regions, stateForThisMove);
       });
 
+      // Update animation state to reflect this move (soldiers + ownership)
       currentAnimationState = this.applyMoveToState(currentAnimationState, move);
+
+      // Dispatch updated state to show region ownership changes immediately
+      const players = currentAnimationState.players as unknown[] | undefined;
+      console.log('[MoveReplayer] Dispatching ownership update:', {
+        targetRegion: move.regionIndex,
+        newOwner: move.newOwner,
+        ownersByRegion: currentAnimationState.ownersByRegion,
+        hasPlayers: !!players,
+        playersCount: players?.length
+      });
+      dispatchGameEvent('battleStateUpdate', { gameState: currentAnimationState });
+      
+      // Allow UI to render the ownership change before next move
+      await waitForNextFrame();
     }
   }
 

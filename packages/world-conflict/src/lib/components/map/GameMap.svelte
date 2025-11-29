@@ -75,18 +75,28 @@
     }
   }
 
-  function getRegionColor(region: Region): string {
+  // Reactive map of region colors - forces re-render when gameState.ownersByRegion changes
+  // This is needed because Svelte's keyed {#each} doesn't automatically re-evaluate
+  // expressions when dependencies outside the loop key change
+  $: regionColorMap = (() => {
+    const colors: Record<number, string> = {};
     if (!gameState?.ownersByRegion) {
-        return NEUTRAL_COLOR;
+      return colors;
     }
-
-    const ownerIndex = gameState.ownersByRegion[region.index];
-    if (ownerIndex === undefined || ownerIndex === -1) {
-        return NEUTRAL_COLOR;
+    for (const region of regions) {
+      const ownerIndex = gameState.ownersByRegion[region.index];
+      if (ownerIndex === undefined || ownerIndex === -1) {
+        colors[region.index] = NEUTRAL_COLOR;
+      } else {
+        const owner = gameState.players?.find(p => p.slotIndex === ownerIndex);
+        colors[region.index] = owner ? getPlayerMapColor(owner.slotIndex) : NEUTRAL_COLOR;
+      }
     }
+    return colors;
+  })();
 
-    const owner = gameState.players?.find(p => p.slotIndex === ownerIndex);
-    return owner ? getPlayerMapColor(owner.slotIndex) : NEUTRAL_COLOR;
+  function getRegionColor(region: Region): string {
+    return regionColorMap[region.index] ?? NEUTRAL_COLOR;
   }
 
   function getBorderColor(region: Region): string {
@@ -206,7 +216,7 @@
 
     <!-- Regions layer (bottom) -->
     <g filter="url(#regionShadow)">
-    {#each regions as region (region.index)}
+    {#each regions as region (`${region.index}-${gameState?.ownersByRegion?.[region.index] ?? 'n'}`)}
       {@const gameHasEnded = !!(gameState?.endResult)}
       {@const isSelected = gameHasEnded ? false : (selectedRegion ? selectedRegion.index === region.index : false)}
       {@const isValidTarget = gameHasEnded ? false : validTargetRegions.includes(region.index)}
@@ -218,6 +228,7 @@
       {@const innerBorderOpacity = isWinner ? 0.85 : (isSelected ? 0.75 : (isValidTarget ? 0.65 : (isMovable ? 0.55 : 0)))}
       {@const soldierCount = gameState?.soldiersByRegion?.[region.index]?.length || 0}
       {@const canHighlightProp = isMovable || isWinner}
+      {@const regionFillColor = regionColorMap[region.index] ?? '#c2b5a3'}
       <RegionRenderer
         {region}
         {gameState}
@@ -227,7 +238,7 @@
         isPreviewMode={effectivePreviewMode}
         canHighlight={isMovable || isWinner}
         isBattleInProgress={battlesInProgress.has(region.index)}
-        fillColor={getRegionColor(region)}
+        fillColor={regionFillColor}
         borderColor={getBorderColor(region)}
         borderWidth={getBorderWidth(region)}
         innerBorderColor={isSelected || isMovable || isValidTarget || isWinner ? getInnerBorderColor(region, isSelected, isValidTarget, isWinner) : ''}

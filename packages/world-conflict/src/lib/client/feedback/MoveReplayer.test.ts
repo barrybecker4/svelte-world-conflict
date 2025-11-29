@@ -6,6 +6,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MoveReplayer } from './MoveReplayer';
 
+// Mock requestAnimationFrame for Node environment
+global.requestAnimationFrame = vi.fn((cb) => {
+  setTimeout(cb, 0);
+  return 0;
+});
+
 // Mock dependencies to isolate unit tests
 vi.mock('./MoveDetector', () => ({
   MoveDetector: vi.fn().mockImplementation(() => ({
