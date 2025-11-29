@@ -8,6 +8,7 @@ import { logger } from '$lib/game/utils/logger';
 interface GameUpdatePayload extends GameStateData {
     attackSequence?: unknown[];
     lastMove?: GameRecord['lastMove'];
+    turnMoves?: GameRecord['turnMoves'];
 }
 
 /** Payload for player events */
@@ -37,7 +38,8 @@ class WebSocketNotifier {
         const payload: GameUpdatePayload = {
             ...game.worldConflictState,
             attackSequence: game.lastAttackSequence,
-            lastMove: game.lastMove
+            lastMove: game.lastMove,
+            turnMoves: game.turnMoves
         };
         await this.send(game.gameId, 'gameUpdate', payload);
     }

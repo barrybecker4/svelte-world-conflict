@@ -22,6 +22,7 @@
   export let mapContainer: HTMLElement | undefined = undefined;
   export let tutorialTips: TooltipData[] = [];
   export let onDismissTooltip: (tooltipId: string) => void = () => {};
+  export let battleInProgress: boolean = false;
 
   // Debug tooltips
   $: if (tutorialTips.length > 0) {
@@ -179,6 +180,7 @@
   function canInteract(): boolean {
     if (effectivePreviewMode) return false;
     if (gameState?.endResult) return false;
+    if (battleInProgress) return false;
     if (!gameState || gameState.movesRemaining <= 0) return false;
     if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
     return true;

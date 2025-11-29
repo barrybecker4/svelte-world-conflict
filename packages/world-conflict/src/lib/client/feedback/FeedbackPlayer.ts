@@ -29,6 +29,7 @@ export class FeedbackPlayer {
       const sourceSoldiers = animationState.soldiersByRegion?.[sourceRegion] || [];
 
       if (sourceSoldiers.length < soldierCount) {
+        console.warn('[FeedbackPlayer] Not enough soldiers at source! Skipping animation.');
         return;
       }
 

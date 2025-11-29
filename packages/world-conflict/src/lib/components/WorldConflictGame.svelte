@@ -151,6 +151,7 @@
         gameState={$gameState}
         showTurnHighlights={($shouldHighlightRegions ?? true) && !$gameState?.endResult}
         tutorialTips={$tutorialTips}
+        battleInProgress={$battleInProgress}
         onRegionClick={(region) => {
           logger.debug('GameMap click received in component:', { region, isMyTurn: $isMyTurn });
           controller.handleRegionClick(region, $isMyTurn ?? false);

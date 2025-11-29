@@ -10,6 +10,8 @@ export interface MoveMetadata {
     sourceRegion?: number;
     targetRegion?: number;
     soldierCount?: number;
+    /** Attack sequence for this specific move (for battles) */
+    attackSequence?: unknown[];
 }
 
 /** Game record stored in KV storage */
@@ -26,6 +28,8 @@ export interface GameRecord {
     lastAttackSequence?: unknown[];
     /** Metadata about the last move for animation */
     lastMove?: MoveMetadata;
+    /** All moves executed in the turn for sequential replay */
+    turnMoves?: MoveMetadata[];
 
     /** Optional configuration for PENDING games that need to be completed */
     pendingConfiguration?: {

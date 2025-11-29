@@ -45,12 +45,13 @@ export class MoveReplayer {
       const previousOwner = previousState.ownersByRegion?.[targetRegion];
       const newOwner = newState.ownersByRegion?.[targetRegion];
       const wasConquest = previousOwner !== newOwner;
-      
+
       if (wasConquest) {
         return {
           type: 'conquest',
           regionIndex: targetRegion,
           sourceRegion: lastMove.sourceRegion,
+          soldierCount: lastMove.soldierCount || 0, // Include soldier count for conquests too!
           oldOwner: previousOwner,
           newOwner: newOwner
         };
@@ -89,45 +90,134 @@ export class MoveReplayer {
 
     const attackSequence = newState.attackSequence;
     const lastMove = newState.lastMove;
+    const turnMoves = newState.turnMoves;
     const regions = newState.regions || [];
 
     // Prefer server-provided move metadata over client-side detection
     let moves: DetectedMove[] = [];
-    
-    if (lastMove && lastMove.type !== 'end_turn') {
+
+    if (turnMoves && turnMoves.length > 0) {
+      // Use the array of moves from server for accurate sequential replay
+      moves = turnMoves.map((move: any, index: number) => {
+        const constructed = this.constructMoveFromMetadata(move, newState, previousState);
+        console.log(`[MoveReplayer] Constructed move ${index}:`, {
+          original: move,
+          constructed: constructed
+        });
+        return constructed;
+      });
+
+      // Attach attack sequences from individual moves
+      turnMoves.forEach((turnMove: any, index: number) => {
+        if (turnMove.attackSequence && moves[index]) {
+          moves[index].attackSequence = turnMove.attackSequence;
+          moves[index].regions = regions;
+        }
+      });
+    } else if (lastMove && lastMove.type !== 'end_turn') {
       moves = [this.constructMoveFromMetadata(lastMove, newState, previousState)];
+
+      // Attach attack sequence for single move
+      if (attackSequence && moves.length > 0) {
+        const conquestMove = moves.find(m => m.type === 'conquest');
+        if (conquestMove) {
+          conquestMove.attackSequence = attackSequence;
+          conquestMove.regions = regions;
+        }
+      }
     } else {
+      console.log('[MoveReplayer] FALLBACK: Using MoveDetector (no turnMoves or lastMove)');
       moves = this.moveDetector.detectMoves(newState, previousState);
-    }
+      console.log('[MoveReplayer] MoveDetector detected:', moves);
 
-    // Attach attack sequence and context to conquest moves
-    if (attackSequence && moves.length > 0) {
-      const conquestMove = moves.find(m => m.type === 'conquest');
-      if (conquestMove) {
-        conquestMove.attackSequence = attackSequence;
-        conquestMove.regions = regions;
-        conquestMove.previousGameState = previousState;
-        conquestMove.finalGameState = newState;
+      // Attach attack sequence for detected moves (legacy fallback)
+      if (attackSequence && moves.length > 0) {
+        const conquestMove = moves.find(m => m.type === 'conquest');
+        if (conquestMove) {
+          conquestMove.attackSequence = attackSequence;
+          conquestMove.regions = regions;
+        }
       }
     }
-
-    // Attach context to all conquest moves
-    moves.forEach(move => {
-      if (move.type === 'conquest') {
-        move.previousGameState = previousState;
-        move.finalGameState = newState;
-        move.regions = regions;
-      }
-    });
 
     if (moves.length === 0) return;
 
-    // Queue moves sequentially
-    for (const move of moves) {
+    // Track animation state as we replay moves sequentially
+    // Each move updates this state so the next move animates from the correct position
+    let currentAnimationState = JSON.parse(JSON.stringify(previousState));
+
+    // Queue moves sequentially, updating state after each
+    for (let i = 0; i < moves.length; i++) {
+      const move = moves[i];
+      // Capture current state for this move's animation
+      const stateForThisMove = JSON.parse(JSON.stringify(currentAnimationState));
+
+      console.log(`[MoveReplayer] Playing move ${i}:`, {
+        type: move.type,
+        sourceRegion: move.sourceRegion,
+        targetRegion: move.regionIndex,
+        soldierCount: move.soldierCount,
+        soldiersAtSource: stateForThisMove.soldiersByRegion?.[move.sourceRegion!]?.length,
+        soldiersAtTarget: stateForThisMove.soldiersByRegion?.[move.regionIndex]?.length
+      });
+
+      // Attach context to conquest moves
+      if (move.type === 'conquest') {
+        move.previousGameState = stateForThisMove;
+        move.finalGameState = newState;
+        move.regions = regions;
+      }
+
       await animationQueue.enqueue(0, async () => {
-        await this.playMoveWithFeedback(move, regions, previousState);
+        await this.playMoveWithFeedback(move, regions, stateForThisMove);
+      });
+
+      // Update animation state to reflect this move for next iteration
+      currentAnimationState = this.applyMoveToState(currentAnimationState, move);
+
+      console.log(`[MoveReplayer] After applying move ${i}:`, {
+        soldiersAtSource: currentAnimationState.soldiersByRegion?.[move.sourceRegion!]?.length,
+        soldiersAtTarget: currentAnimationState.soldiersByRegion?.[move.regionIndex]?.length
       });
     }
+  }
+
+  /**
+   * Apply a move to the animation state to prepare for the next move's animation
+   * This simulates what the move did so subsequent animations start from correct positions
+   */
+  private applyMoveToState(state: any, move: DetectedMove): any {
+    const newState = JSON.parse(JSON.stringify(state));
+
+    if (move.type === 'movement' || move.type === 'conquest') {
+      const sourceRegion = move.sourceRegion;
+      const targetRegion = move.regionIndex;
+      const soldierCount = move.soldierCount || 0;
+
+      if (sourceRegion !== undefined && newState.soldiersByRegion) {
+        const sourceSoldiers = newState.soldiersByRegion[sourceRegion] || [];
+        const targetSoldiers = newState.soldiersByRegion[targetRegion] || [];
+
+        // Move soldiers from source to target (server uses pop() from end)
+        const soldiersToMove = sourceSoldiers.splice(-soldierCount, soldierCount);
+
+        // Clear movement flags before adding to target
+        soldiersToMove.forEach((s: any) => {
+          s.movingToRegion = undefined;
+          s.attackedRegion = undefined;
+        });
+
+        targetSoldiers.push(...soldiersToMove);
+        newState.soldiersByRegion[targetRegion] = targetSoldiers;
+      }
+
+      // Update ownership for conquests
+      if (move.type === 'conquest' && move.newOwner !== undefined) {
+        newState.ownersByRegion[targetRegion] = move.newOwner;
+      }
+    }
+
+    return newState;
   }
 
   /**

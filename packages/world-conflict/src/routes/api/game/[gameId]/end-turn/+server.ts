@@ -9,6 +9,7 @@ import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { flushPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
 import { logger } from '$lib/game/utils/logger';
+import type { MoveMetadata } from '$lib/server/storage/types';
 
 interface PendingMove {
     type: 'ARMY_MOVE' | 'BUILD';
@@ -75,12 +76,15 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Process all pending moves first (if any)
         const commandProcessor = new CommandProcessor();
         let lastAttackSequence: any[] | undefined = undefined;
+        const turnMoves: MoveMetadata[] = [];
         
         for (let i = 0; i < moves.length; i++) {
             const move = moves[i];
             logger.debug(`Processing pending move ${i + 1}/${moves.length}:`, move);
 
             let command;
+            let moveMetadata: MoveMetadata | undefined;
+            
             if (move.type === 'ARMY_MOVE') {
                 if (move.source === undefined || move.destination === undefined || move.count === undefined) {
                     logger.error('Invalid ARMY_MOVE - missing parameters:', move);
@@ -93,6 +97,12 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     move.destination,
                     move.count
                 );
+                moveMetadata = {
+                    type: 'army_move',
+                    sourceRegion: move.source,
+                    targetRegion: move.destination,
+                    soldierCount: move.count
+                };
             } else if (move.type === 'BUILD') {
                 if (move.regionIndex === undefined || move.upgradeIndex === undefined) {
                     logger.error('Invalid BUILD - missing parameters:', move);
@@ -104,6 +114,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     move.regionIndex,
                     move.upgradeIndex
                 );
+                moveMetadata = {
+                    type: 'upgrade',
+                    targetRegion: move.regionIndex
+                };
             } else {
                 logger.error('Unknown move type:', move.type);
                 return json({ error: `Invalid move ${i + 1}: unknown type` }, { status: 400 });
@@ -122,7 +136,15 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             // Capture attack sequence if this move generated one
             if (moveResult.attackSequence) {
                 lastAttackSequence = moveResult.attackSequence;
+                if (moveMetadata) {
+                    moveMetadata.attackSequence = moveResult.attackSequence;
+                }
                 logger.debug(`Move ${i + 1} generated attack sequence with ${moveResult.attackSequence.length} events`);
+            }
+            
+            // Add to turn moves for replay
+            if (moveMetadata) {
+                turnMoves.push(moveMetadata);
             }
             
             logger.debug(`Move ${i + 1} processed successfully`);
@@ -149,26 +171,31 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             finalGameState = await processAiTurns(finalGameState, gameStorage, gameId, platform);
         }
 
-        // Send WebSocket notification with attack sequence from the last move
-        // This allows other players to see the battle animation
+        // Send WebSocket notification with move metadata for replay
+        // This allows other players to see the correct animations
         const updatedGameWithSequence = {
             ...game,
             worldConflictState: finalGameState.toJSON(),
             currentPlayerSlot: finalGameState.currentPlayerSlot,
             lastMoveAt: Date.now(),
-            lastAttackSequence // Include attack sequence from the last move that generated one
+            lastAttackSequence, // Include attack sequence from the last move that generated one
+            turnMoves: turnMoves.length > 0 ? turnMoves : undefined // Include all moves for sequential replay
         };
         
+        if (turnMoves.length > 0) {
+            logger.debug(`Sending WebSocket update with ${turnMoves.length} moves for replay`);
+        }
         if (lastAttackSequence) {
             logger.debug(`Sending WebSocket update with attack sequence (${lastAttackSequence.length} events)`);
         }
         
         await WebSocketNotifications.gameUpdate(updatedGameWithSequence);
 
-        // Now save to storage with attack sequence cleared (no need to persist it)
+        // Now save to storage with replay data cleared (no need to persist it)
         const updatedGame = {
             ...updatedGameWithSequence,
-            lastAttackSequence: undefined // Clear for storage
+            lastAttackSequence: undefined, // Clear for storage
+            turnMoves: undefined // Clear for storage
         };
         await gameStorage.saveGame(updatedGame);
 

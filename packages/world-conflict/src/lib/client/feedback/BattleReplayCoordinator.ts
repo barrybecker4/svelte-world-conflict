@@ -144,37 +144,8 @@ export class BattleReplayCoordinator {
   }
 
   /**
-   * Clear the battlefield before conquest animation
-   * Removes dead defenders and positions survivors at source for animation
-   */
-  private clearBattlefield(
-    finalGameState: any,
-    sourceRegion: number,
-    targetRegion: number
-  ): void {
-    const clearedState = JSON.parse(JSON.stringify(finalGameState));
-    const survivors = finalGameState.soldiersByRegion?.[targetRegion] || [];
-    
-    clearedState.soldiersByRegion[targetRegion] = [];
-    
-    const soldiersAtSource = finalGameState.soldiersByRegion?.[sourceRegion] || [];
-    
-    // Deduplicate: survivors should NOT already be at source (they came FROM source originally)
-    const survivorIds = new Set(survivors.map((s: any) => s.i));
-    const sourceWithoutSurvivors = soldiersAtSource.filter((s: any) => !survivorIds.has(s.i));
-    
-    const allAtSource = [...sourceWithoutSurvivors, ...survivors].map((s: any) => ({
-      ...s,
-      attackedRegion: undefined,
-      movingToRegion: undefined
-    }));
-    
-    clearedState.soldiersByRegion[sourceRegion] = allAtSource;
-    this.dispatchBattleStateUpdate(clearedState);
-  }
-
-  /**
-   * Complete the conquest by animating survivors and playing sound
+   * Complete the conquest by animating survivors from halfway to target
+   * Survivors continue from their halfway position (attackedRegion) to the target (movingToRegion)
    */
   private async completeConquest(
     animationState: any,
@@ -190,14 +161,59 @@ export class BattleReplayCoordinator {
         return;
       }
       
-      this.clearBattlefield(finalGameState, sourceRegion, targetRegion);
-      
-      await waitForNextFrame();
-      
-      await this.animateConqueringMove(animationState, finalGameState, sourceRegion, targetRegion);
+      // Animate survivors from halfway (attackedRegion) to target (movingToRegion)
+      // No clearBattlefield needed - soldiers continue from their current halfway position
+      await this.animateSurvivorsToTarget(animationState, finalGameState, sourceRegion, targetRegion);
     }
 
     audioSystem.playSound(SOUNDS.REGION_CONQUERED);
+  }
+
+  /**
+   * Animate surviving attackers from their halfway position to the target
+   * Changes attackedRegion to movingToRegion to continue the animation
+   */
+  private async animateSurvivorsToTarget(
+    animationState: any,
+    finalGameState: any,
+    sourceRegion: number,
+    targetRegion: number
+  ): Promise<void> {
+    const survivors = finalGameState.soldiersByRegion?.[targetRegion] || [];
+    const survivorIds = new Set(survivors.map((s: any) => s.i));
+
+    // Build state where survivors continue from halfway (change attackedRegion to movingToRegion)
+    const continueState = JSON.parse(JSON.stringify(animationState));
+    const sourceSoldiers = continueState.soldiersByRegion[sourceRegion] || [];
+
+    // Update soldiers: survivors get movingToRegion, dead attackers are removed
+    continueState.soldiersByRegion[sourceRegion] = sourceSoldiers
+      .filter((s: any) => {
+        // Keep soldiers not attacking OR survivors
+        return !s.attackedRegion || survivorIds.has(s.i);
+      })
+      .map((s: any) => {
+        if (s.attackedRegion === targetRegion && survivorIds.has(s.i)) {
+          // Survivor: change from attackedRegion (halfway) to movingToRegion (continue to target)
+          return { ...s, attackedRegion: undefined, movingToRegion: targetRegion };
+        }
+        // Non-attacking soldier stays as is
+        return { ...s, attackedRegion: undefined, movingToRegion: undefined };
+      });
+
+    // Clear target - survivors are animating there from source
+    continueState.soldiersByRegion[targetRegion] = [];
+
+    // Update ownership to show conquest
+    continueState.ownersByRegion = {
+      ...continueState.ownersByRegion,
+      [targetRegion]: finalGameState.ownersByRegion[targetRegion]
+    };
+
+    this.dispatchBattleStateUpdate(continueState);
+
+    await waitForNextFrame();
+    await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
   }
 
   /**
@@ -205,31 +221,6 @@ export class BattleReplayCoordinator {
    */
   private dispatchBattleStateUpdate(gameState: any): void {
     dispatchGameEvent('battleStateUpdate', { gameState });
-  }
-
-  /**
-   * Animate conquering soldiers moving into the conquered region
-   */
-  private async animateConqueringMove(
-    previousGameState: any,
-    finalGameState: any,
-    sourceRegion: number,
-    targetRegion: number
-  ): Promise<void> {
-    const targetSoldiersInFinal = finalGameState.soldiersByRegion?.[targetRegion] || [];
-
-    const newAnimationState = this.buildConquestAnimationState(
-      previousGameState,
-      finalGameState,
-      sourceRegion,
-      targetRegion,
-      targetSoldiersInFinal
-    );
-
-    this.dispatchBattleStateUpdate(newAnimationState);
-
-    await waitForNextFrame();
-    await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
   }
 
   /**
@@ -246,60 +237,18 @@ export class BattleReplayCoordinator {
   }
 
   /**
-   * Build animation state for conquest movement
-   */
-  private buildConquestAnimationState(
-    previousGameState: any,
-    finalGameState: any,
-    sourceRegion: number,
-    targetRegion: number,
-    targetSoldiersInFinal: any[]
-  ): any {
-    const newAnimationState = JSON.parse(JSON.stringify(finalGameState));
-    const survivors = targetSoldiersInFinal;
-
-    newAnimationState.soldiersByRegion[targetRegion] = [];
-
-    const soldiersAtSource = finalGameState.soldiersByRegion?.[sourceRegion] || [];
-    const survivorIds = new Set(survivors.map((s: any) => s.i));
-    
-    // Deduplicate: filter out survivors from source before adding them back
-    // This prevents duplicate soldier IDs when survivors were originally from source
-    const sourceWithoutSurvivors = soldiersAtSource.filter((s: any) => !survivorIds.has(s.i));
-    
-    const updatedSourceSoldiers = [
-      ...sourceWithoutSurvivors.map((s: any) => ({
-        ...s,
-        movingToRegion: undefined,
-        attackedRegion: undefined
-      })),
-      ...survivors.map((s: any) => ({
-        ...s,
-        movingToRegion: targetRegion,
-        attackedRegion: undefined
-      }))
-    ];
-    
-    newAnimationState.soldiersByRegion[sourceRegion] = updatedSourceSoldiers;
-    newAnimationState.ownersByRegion = {
-      ...newAnimationState.ownersByRegion,
-      [targetRegion]: finalGameState.ownersByRegion[targetRegion]
-    };
-
-    return newAnimationState;
-  }
-
-  /**
    * Simple conquest feedback without blow-by-blow animation
    */
   private async playSimpleConquestFeedback(move: DetectedMove): Promise<void> {
     if (move.sourceRegion !== undefined) {
+      // Use the soldier count from the move metadata if available
+      const soldierCount = move.soldierCount || (move.newCount || 1) - (move.oldCount || 0);
       const movementMove = {
         type: 'movement' as const,
         regionIndex: move.regionIndex,
         oldCount: move.oldCount || 0,
-        newCount: move.newCount || 1,
-        soldierCount: (move.newCount || 1) - (move.oldCount || 0),
+        newCount: move.newCount || soldierCount,
+        soldierCount: soldierCount,
         sourceRegion: move.sourceRegion
       };
       await this.feedbackPlayer.playMovement(movementMove, move.previousGameState);
