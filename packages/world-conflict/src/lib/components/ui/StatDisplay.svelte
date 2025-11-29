@@ -1,15 +1,17 @@
+<script context="module" lang="ts">
+  export interface StatItem {
+    value: number | string;
+    label: string;
+    symbol?: string; // HTML string for symbol (e.g., from SYMBOLS)
+    tooltip?: string;
+  }
+</script>
+
 <script lang="ts">
   /**
    * Reusable stat display component for showing game statistics
    * Used in GameInfoPanel, TempleUpgradePanel, etc.
    */
-
-  export interface StatItem {
-    value: number | string;
-    label: string;
-    symbol?: string;  // HTML string for symbol (e.g., from SYMBOLS)
-    tooltip?: string;
-  }
 
   export let items: StatItem[] = [];
   export let columns: number = 2;
@@ -100,4 +102,3 @@
     display: none;
   }
 </style>
-

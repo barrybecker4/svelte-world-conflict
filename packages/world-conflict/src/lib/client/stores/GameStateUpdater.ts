@@ -39,7 +39,7 @@ export class GameStateUpdater {
     private getMoveSystem: () => MoveSystem | null,
     private moveReplayer: MoveReplayer,
     private showEliminationBanner: (playerSlotIndex: number) => void
-  ) {}
+  ) { }
 
   /**
    * Initialize with the initial game state (call after loading from server)
@@ -243,6 +243,13 @@ export class GameStateUpdater {
 
     this.isProcessingUpdate = true;
     const updatedState = this.updateQueue.shift();
+
+    // Guard against undefined state
+    if (!updatedState) {
+      this.isProcessingUpdate = false;
+      this.processNextUpdate();
+      return;
+    }
 
     // Use lastRawState for comparison (not the display state which might have overrides)
     const currentState = this.lastRawState;
