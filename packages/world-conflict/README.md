@@ -67,6 +67,47 @@ npm run check            # Type-check with svelte-check
 npm run deploy           # Deploy to Cloudflare Pages
 ```
 
+## 🔧 Admin Tools
+
+### Game Statistics
+
+Daily game statistics are automatically tracked and stored in KV with keys like `wc_stats:2025-11-30`. Statistics include:
+- Games started, completed, and abandoned
+- Player counts (human vs AI)
+- Turn statistics (min, max, average)
+- Win/loss breakdowns (human vs AI vs drawn)
+- Error tracking
+
+### Automatic Cleanup
+
+When a game completes, old game entries (14+ days old) are automatically cleaned up from KV storage. This keeps the storage tidy without manual intervention.
+
+### Manual Cleanup API
+
+An admin endpoint is also available to manually clean up old game entries.
+
+**Get game entry statistics:**
+```bash
+curl https://svelte-world-conflict.pages.dev/api/admin/cleanup
+```
+
+**Dry run (see what would be deleted):**
+```bash
+curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup?dryRun=true"
+```
+
+**Delete games older than 1 day:**
+```bash
+curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup"
+```
+
+**Delete games older than N days:**
+```bash
+curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup?maxAgeDays=7"
+```
+
+> **Note:** When running locally, the cleanup operates on in-memory storage, not production KV. To clean up production, run against the deployed URL or use `wrangler kv:key` commands with the namespace ID from `wrangler.toml`. 
+
 
 ## 🎮 How to Play
 

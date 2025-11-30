@@ -1,7 +1,10 @@
 import { KVStorage } from './KVStorage';
 import { GameStatsService } from './GameStatsService';
+import { cleanupOldGames } from './GameCleanup';
 import type { Player } from '$lib/game/state/GameState';
 import { logger } from '$lib/game/utils/logger';
+
+const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
 // Re-export types for backward compatibility
 export type { GameRecord, OpenGamesList, OpenGameInfo, MoveMetadata } from './types';
@@ -62,11 +65,18 @@ export class GameStorage {
                     await this.addToOpenGamesList(game);
                 }
 
-                // Record game completion statistics
+                // Record game completion statistics and run cleanup
                 if (game.status === 'COMPLETED') {
                     const statsService = this.getStatsService();
                     if (statsService) {
                         await statsService.recordGameCompleted(game);
+                    }
+
+                    // Fire-and-forget cleanup of old games (14+ days old)
+                    if (this.platform) {
+                        cleanupOldGames(this.platform, FOURTEEN_DAYS_MS, false).catch(error => {
+                            logger.error('Background cleanup failed:', error);
+                        });
                     }
                 }
             }
