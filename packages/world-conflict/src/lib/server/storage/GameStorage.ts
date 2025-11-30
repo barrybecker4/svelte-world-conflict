@@ -49,6 +49,13 @@ export class GameStorage {
 
     async saveGame(game: GameRecord): Promise<void> {
         try {
+            // SAFETY CHECK: If game has endResult but status is not COMPLETED, fix it
+            const hasEndResult = game.worldConflictState?.endResult != null;
+            if (hasEndResult && game.status !== 'COMPLETED') {
+                logger.warn(`Game ${game.gameId} has endResult but status is ${game.status}. Auto-fixing to COMPLETED.`);
+                game.status = 'COMPLETED';
+            }
+            
             logger.debug(`Saving game ${game.gameId} with status: ${game.status}`);
 
             // Get previous game state to check if status changed

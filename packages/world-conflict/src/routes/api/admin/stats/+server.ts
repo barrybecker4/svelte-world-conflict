@@ -6,7 +6,7 @@ import { logger } from '$lib/game/utils/logger';
 import { VERSION } from '$lib/version';
 
 // Stats fix version - increment this when making stats-related fixes
-const STATS_FIX_VERSION = '2025-11-30-v2';
+const STATS_FIX_VERSION = '2025-11-30-v3';
 
 /**
  * GET: Get daily stats for today or a specific date
@@ -99,12 +99,12 @@ export const POST: RequestHandler = async ({ url, platform }) => {
             const games: any[] = [];
             
             // This is a diagnostic to see what games exist and their statuses
-            // Note: This requires listing keys which may be slow
             try {
                 const kv = (platform as any)?.env?.WORLD_CONFLICT_KV;
                 if (kv) {
                     const list = await kv.list({ prefix: 'wc_game:' });
-                    for (const key of list.keys.slice(0, 10)) { // Limit to 10
+                    // Get all games (up to 50)
+                    for (const key of list.keys.slice(0, 50)) {
                         const game = await gameStorage.getGame(key.name.replace('wc_game:', ''));
                         if (game) {
                             games.push({
@@ -113,16 +113,27 @@ export const POST: RequestHandler = async ({ url, platform }) => {
                                 hasEndResult: !!game.worldConflictState?.endResult,
                                 endResult: game.worldConflictState?.endResult,
                                 turnNumber: game.worldConflictState?.turnNumber,
-                                createdAt: new Date(game.createdAt).toISOString()
+                                createdAt: game.createdAt
                             });
                         }
                     }
+                    // Sort by createdAt descending (newest first)
+                    games.sort((a, b) => b.createdAt - a.createdAt);
+                    // Convert timestamps to ISO strings and limit to 15
+                    const recentGames = games.slice(0, 15).map(g => ({
+                        ...g,
+                        createdAt: new Date(g.createdAt).toISOString()
+                    }));
+                    return json({ 
+                        totalGames: games.length,
+                        recentGames 
+                    });
                 }
             } catch (e) {
                 logger.error('Error listing games:', e);
             }
             
-            return json({ games });
+            return json({ games: [], error: 'Could not list games' });
         }
         
         return json({ error: 'Unknown action. Use ?action=test-completion or ?action=check-games' }, { status: 400 });
