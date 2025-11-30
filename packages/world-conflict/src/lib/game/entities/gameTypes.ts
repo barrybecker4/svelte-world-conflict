@@ -73,6 +73,14 @@ export interface PendingMove {
     soldierCount: number;
 }
 
+export interface MoveMetadata {
+    type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn';
+    sourceRegion?: number;
+    targetRegion?: number;
+    soldierCount?: number;
+    attackSequence?: unknown[];
+}
+
 export interface GameStateData {
     id: number;
     gameId: string;
@@ -99,8 +107,13 @@ export interface GameStateData {
     moveTimeLimit?: number;
     maxTurns?: number;
     aiDifficulty?: string;
-    
+
     // Random number generator state for deterministic gameplay
     rngSeed?: string;
     rngState?: any; // seedrandom state object
+
+    // Replay-specific optional properties
+    attackSequence?: unknown[];
+    lastMove?: MoveMetadata;
+    turnMoves?: MoveMetadata[];
 }

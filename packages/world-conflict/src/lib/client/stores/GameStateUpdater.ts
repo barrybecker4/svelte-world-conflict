@@ -216,7 +216,7 @@ export class GameStateUpdater {
 
   /**
    * Process queued updates one at a time
-   * 
+   *
    * Banner sequencing for multiplayer:
    * 1. When receiving another player's moves, show THEIR banner first
    * 2. Replay their moves
@@ -265,8 +265,7 @@ export class GameStateUpdater {
     // Detect if this was another player's move by checking who had the turn BEFORE (in currentState)
     // If the previous player was someone else, we should animate their move
     const previousPlayerSlot = currentState?.currentPlayerSlot;
-    const wasPreviousPlayerSomeoneElse = previousPlayerSlot !== undefined && previousPlayerSlot !== this.playerSlotIndex;
-    const isOtherPlayerMove = wasPreviousPlayerSomeoneElse;
+    const isOtherPlayerMove = previousPlayerSlot !== undefined && previousPlayerSlot !== this.playerSlotIndex;
 
     // Check if the turn is now transitioning to the local player
     const isNowMyTurn = cleanState.currentPlayerSlot === this.playerSlotIndex;

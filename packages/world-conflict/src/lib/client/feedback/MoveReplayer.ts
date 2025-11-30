@@ -5,26 +5,7 @@ import { FeedbackPlayer } from './FeedbackPlayer';
 import { BattleReplayCoordinator } from './BattleReplayCoordinator';
 import { animationQueue } from './TaskQueue';
 import { dispatchGameEvent, waitForNextFrame } from './utils';
-
-/** Server-provided move metadata */
-interface MoveMetadata {
-  type: 'army_move' | 'recruit' | 'upgrade' | 'end_turn';
-  sourceRegion?: number;
-  targetRegion?: number;
-  soldierCount?: number;
-  attackSequence?: unknown[];
-}
-
-/** Game state with optional replay data */
-interface GameStateWithReplayData {
-  attackSequence?: unknown[];
-  lastMove?: MoveMetadata;
-  turnMoves?: MoveMetadata[];
-  regions?: unknown[];
-  ownersByRegion?: Record<number, number>;
-  soldiersByRegion?: Record<number, unknown[]>;
-  [key: string]: unknown;
-}
+import type { GameStateData, MoveMetadata } from '$lib/game/entities/gameTypes';
 
 /**
  * Orchestrates replay of other players' moves with audio and visual feedback
@@ -58,7 +39,7 @@ export class MoveReplayer {
    * Main entry point: Play sound effects and show visual feedback for other player moves
    * Uses TaskQueue to ensure moves play sequentially without overlap
    */
-  async replayMoves(newState: GameStateWithReplayData, previousState: GameStateWithReplayData | null): Promise<void> {
+  async replayMoves(newState: GameStateData, previousState: GameStateData | null): Promise<void> {
     if (!previousState) return;
 
     const regions = (newState.regions || []) as unknown[];
@@ -74,8 +55,8 @@ export class MoveReplayer {
    * Prefers server-provided metadata over client-side detection
    */
   private extractMoves(
-    newState: GameStateWithReplayData,
-    previousState: GameStateWithReplayData,
+    newState: GameStateData,
+    previousState: GameStateData,
     regions: unknown[]
   ): DetectedMove[] {
     const { turnMoves, lastMove, attackSequence } = newState;
@@ -99,8 +80,8 @@ export class MoveReplayer {
    */
   private extractFromTurnMoves(
     turnMoves: MoveMetadata[],
-    newState: GameStateWithReplayData,
-    previousState: GameStateWithReplayData,
+    newState: GameStateData,
+    previousState: GameStateData,
     regions: unknown[]
   ): DetectedMove[] {
     const moves = turnMoves.map(move =>
@@ -123,8 +104,8 @@ export class MoveReplayer {
    */
   private extractFromLastMove(
     lastMove: MoveMetadata,
-    newState: GameStateWithReplayData,
-    previousState: GameStateWithReplayData,
+    newState: GameStateData,
+    previousState: GameStateData,
     attackSequence: unknown[] | undefined,
     regions: unknown[]
   ): DetectedMove[] {
@@ -141,8 +122,8 @@ export class MoveReplayer {
    * Extract moves by detecting state differences (legacy fallback)
    */
   private extractFromStateDiff(
-    newState: GameStateWithReplayData,
-    previousState: GameStateWithReplayData,
+    newState: GameStateData,
+    previousState: GameStateData,
     attackSequence: unknown[] | undefined,
     regions: unknown[]
   ): DetectedMove[] {
@@ -176,8 +157,8 @@ export class MoveReplayer {
   private async playMovesSequentially(
     moves: DetectedMove[],
     regions: unknown[],
-    previousState: GameStateWithReplayData,
-    finalState: GameStateWithReplayData
+    previousState: GameStateData,
+    finalState: GameStateData
   ): Promise<void> {
     let currentAnimationState = this.cloneState(previousState);
 
@@ -203,7 +184,7 @@ export class MoveReplayer {
         playersCount: players?.length
       });
       dispatchGameEvent('battleStateUpdate', { gameState: currentAnimationState });
-      
+
       // Allow UI to render the ownership change before next move
       await waitForNextFrame();
     }
@@ -214,8 +195,8 @@ export class MoveReplayer {
    */
   private attachConquestContext(
     move: DetectedMove,
-    previousGameState: GameStateWithReplayData,
-    finalGameState: GameStateWithReplayData,
+    previousGameState: GameStateData,
+    finalGameState: GameStateData,
     regions: unknown[]
   ): void {
     if (move.type === 'conquest') {
@@ -230,8 +211,8 @@ export class MoveReplayer {
    */
   constructMoveFromMetadata(
     moveData: MoveMetadata,
-    newState: GameStateWithReplayData,
-    previousState: GameStateWithReplayData
+    newState: GameStateData,
+    previousState: GameStateData
   ): DetectedMove {
     switch (moveData.type) {
       case 'army_move':
@@ -250,8 +231,8 @@ export class MoveReplayer {
    */
   private constructArmyMove(
     moveData: MoveMetadata,
-    newState: GameStateWithReplayData,
-    previousState: GameStateWithReplayData
+    newState: GameStateData,
+    previousState: GameStateData
   ): DetectedMove {
     const targetRegion = moveData.targetRegion!;
     const previousOwner = previousState.ownersByRegion?.[targetRegion];
@@ -280,7 +261,7 @@ export class MoveReplayer {
    * Apply a move to the animation state to prepare for the next move's animation
    * This simulates what the move did so subsequent animations start from correct positions
    */
-  applyMoveToState(state: GameStateWithReplayData, move: DetectedMove): GameStateWithReplayData {
+  applyMoveToState(state: GameStateData, move: DetectedMove): GameStateData {
     const newState = this.cloneState(state);
 
     if (move.type !== 'movement' && move.type !== 'conquest') {
@@ -304,13 +285,13 @@ export class MoveReplayer {
    * Transfer soldiers between regions in the animation state
    */
   private transferSoldiers(
-    state: GameStateWithReplayData,
+    state: GameStateData,
     sourceRegion: number,
     targetRegion: number,
     count: number
   ): void {
-    const sourceSoldiers = [...(state.soldiersByRegion![sourceRegion] || [])] as Record<string, unknown>[];
-    const targetSoldiers = [...(state.soldiersByRegion![targetRegion] || [])] as Record<string, unknown>[];
+    const sourceSoldiers = [...(state.soldiersByRegion![sourceRegion] || [])];
+    const targetSoldiers = [...(state.soldiersByRegion![targetRegion] || [])];
 
     // Move soldiers from source to target (server uses pop() from end)
     const soldiersToMove = sourceSoldiers.splice(-count, count);
@@ -323,14 +304,12 @@ export class MoveReplayer {
 
     targetSoldiers.push(...soldiersToMove);
 
-    state.soldiersByRegion = {
-      ...state.soldiersByRegion,
-      [sourceRegion]: sourceSoldiers,
-      [targetRegion]: targetSoldiers
-    };
+    // Update the state directly
+    state.soldiersByRegion[sourceRegion] = sourceSoldiers;
+    state.soldiersByRegion[targetRegion] = targetSoldiers;
   }
 
-  private cloneState(state: GameStateWithReplayData): GameStateWithReplayData {
+  private cloneState(state: GameStateData): GameStateData {
     return JSON.parse(JSON.stringify(state));
   }
 
@@ -340,7 +319,7 @@ export class MoveReplayer {
   private async playMoveWithFeedback(
     move: DetectedMove,
     regions: unknown[],
-    previousState: GameStateWithReplayData
+    previousState: GameStateData
   ): Promise<void> {
     switch (move.type) {
       case 'conquest':
