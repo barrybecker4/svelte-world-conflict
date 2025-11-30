@@ -77,6 +77,59 @@ describe('endGameLogic', () => {
             expect(result.reason).toBe('TURN_LIMIT');
             expect(result.winner).not.toBe('DRAWN_GAME');
         });
+
+        it('should end game at exactly maxTurns (edge case with >= comparison)', () => {
+            // This tests the fix: turnNumber = maxTurns - 1 means currentTurn = maxTurns
+            // With >= comparison, game should end
+            const gameState = createGameState({
+                turnNumber: 2, // currentTurn = 3, maxTurns = 3, 3 >= 3 = true
+                maxTurns: 3,
+                ownersByRegion: { 0: 0, 1: 1 },
+                soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] }
+            });
+
+            const result = checkGameEnd(gameState, gameState.players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.reason).toBe('TURN_LIMIT');
+        });
+
+        it('should NOT end game one turn before limit', () => {
+            // turnNumber = 1 means currentTurn = 2, maxTurns = 3, 2 >= 3 = false
+            const gameState = createGameState({
+                turnNumber: 1,
+                maxTurns: 3,
+                ownersByRegion: { 0: 0, 1: 1 }
+            });
+
+            const result = checkGameEnd(gameState, gameState.players);
+
+            expect(result.isGameEnded).toBe(false);
+        });
+
+        it('should not end game with unlimited turns', () => {
+            const gameState = createGameState({
+                turnNumber: 100,
+                maxTurns: 999, // UNLIMITED_TURNS
+                ownersByRegion: { 0: 0, 1: 1 }
+            });
+
+            const result = checkGameEnd(gameState, gameState.players);
+
+            expect(result.isGameEnded).toBe(false);
+        });
+
+        it('should not end game when maxTurns is 0 (unlimited)', () => {
+            const gameState = createGameState({
+                turnNumber: 50,
+                maxTurns: 0,
+                ownersByRegion: { 0: 0, 1: 1 }
+            });
+
+            const result = checkGameEnd(gameState, gameState.players);
+
+            expect(result.isGameEnded).toBe(false);
+        });
     });
 
     describe('checkGameEnd - elimination', () => {
@@ -104,6 +157,75 @@ describe('endGameLogic', () => {
             const result = checkGameEnd(gameState, gameState.players);
 
             expect(result.isGameEnded).toBe(false);
+        });
+
+        it('should declare DRAWN_GAME when all players eliminated (edge case)', () => {
+            // This shouldn't happen in practice, but test the edge case
+            const gameState = createGameState({
+                turnNumber: 5,
+                maxTurns: 10,
+                ownersByRegion: {} // No regions owned by anyone
+            });
+
+            const result = checkGameEnd(gameState, gameState.players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.reason).toBe('ELIMINATION');
+            expect(result.winner).toBe('DRAWN_GAME');
+        });
+
+        it('should handle 3-player game with one eliminated', () => {
+            const players = [
+                createPlayer(0, 'Player 1'),
+                createPlayer(1, 'Player 2'),
+                createPlayer(2, 'Player 3')
+            ];
+            const gameState = createGameState({
+                turnNumber: 5,
+                maxTurns: 10,
+                players,
+                ownersByRegion: { 0: 0, 1: 1 } // Player 2 eliminated
+            });
+
+            const result = checkGameEnd(gameState, players);
+
+            // Game should continue - still 2 active players
+            expect(result.isGameEnded).toBe(false);
+        });
+
+        it('should end 3-player game when only one player remains', () => {
+            const players = [
+                createPlayer(0, 'Player 1'),
+                createPlayer(1, 'Player 2'),
+                createPlayer(2, 'Player 3')
+            ];
+            const gameState = createGameState({
+                turnNumber: 5,
+                maxTurns: 10,
+                players,
+                ownersByRegion: { 0: 2, 1: 2, 2: 2 } // Only Player 3 (slot 2) has regions
+            });
+
+            const result = checkGameEnd(gameState, players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.reason).toBe('ELIMINATION');
+            expect(result.winner).toEqual(players[2]);
+        });
+
+        it('should prioritize turn limit over elimination check', () => {
+            // Turn limit is checked first, so if both conditions are met,
+            // turn limit should be the reason
+            const gameState = createGameState({
+                turnNumber: 9, // currentTurn = 10 >= maxTurns = 10
+                maxTurns: 10,
+                ownersByRegion: { 0: 0 } // Also would trigger elimination
+            });
+
+            const result = checkGameEnd(gameState, gameState.players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.reason).toBe('TURN_LIMIT'); // Not ELIMINATION
         });
     });
 
@@ -200,6 +322,89 @@ describe('endGameLogic', () => {
 
             expect(result.isGameEnded).toBe(true);
             expect(result.winner).toBe('DRAWN_GAME');
+        });
+
+        it('should declare draw in 3-way tie', () => {
+            const players = [
+                createPlayer(0, 'Player 1'),
+                createPlayer(1, 'Player 2'),
+                createPlayer(2, 'Player 3')
+            ];
+
+            const gameState = createGameState({
+                turnNumber: 10,
+                maxTurns: 10,
+                players,
+                ownersByRegion: { 0: 0, 1: 1, 2: 2 }, // Each has 1 region
+                soldiersByRegion: {
+                    0: [{ i: 1 }], // Each has 1 soldier
+                    1: [{ i: 2 }],
+                    2: [{ i: 3 }]
+                },
+                faithByPlayer: {
+                    0: 50,
+                    1: 50,
+                    2: 50
+                }
+            });
+
+            const result = checkGameEnd(gameState, players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.winner).toBe('DRAWN_GAME');
+        });
+
+        it('should not declare draw when only 2 of 3 players are tied', () => {
+            const players = [
+                createPlayer(0, 'Player 1'),
+                createPlayer(1, 'Player 2'),
+                createPlayer(2, 'Player 3')
+            ];
+
+            const gameState = createGameState({
+                turnNumber: 10,
+                maxTurns: 10,
+                players,
+                ownersByRegion: { 0: 0, 1: 1, 2: 2, 3: 2 }, // Player 3 has 2 regions
+                soldiersByRegion: {
+                    0: [{ i: 1 }],
+                    1: [{ i: 2 }],
+                    2: [{ i: 3 }],
+                    3: [{ i: 4 }]
+                },
+                faithByPlayer: {
+                    0: 50,
+                    1: 50,
+                    2: 50
+                }
+            });
+
+            const result = checkGameEnd(gameState, players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.winner).toEqual(players[2]); // Player 3 wins with 2 regions
+        });
+
+        it('should handle AI player winning', () => {
+            const players = [
+                { slotIndex: 0, name: 'Human', color: '#000', isAI: false },
+                { slotIndex: 1, name: 'AI Bot', color: '#111', isAI: true }
+            ];
+
+            const gameState = createGameState({
+                turnNumber: 10,
+                maxTurns: 10,
+                players,
+                ownersByRegion: { 0: 1, 1: 1, 2: 1 }, // AI owns all regions
+                soldiersByRegion: {}
+            });
+
+            const result = checkGameEnd(gameState, players);
+
+            expect(result.isGameEnded).toBe(true);
+            expect(result.reason).toBe('TURN_LIMIT');
+            expect((result.winner as Player).isAI).toBe(true);
+            expect((result.winner as Player).name).toBe('AI Bot');
         });
 
         it('should handle the exact scenario from bug report', () => {
