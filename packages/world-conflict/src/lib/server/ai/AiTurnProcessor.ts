@@ -154,10 +154,13 @@ async function saveFinalGameState(
     // Update status if game ended during AI turns
     if (currentState.endResult) {
         finalGame.status = 'COMPLETED';
+        logger.info(`saveFinalGameState: Game ${gameId} ended during AI turns. endResult=${JSON.stringify(currentState.endResult)}, setting status=COMPLETED`);
+    } else {
+        logger.debug(`saveFinalGameState: Game ${gameId} continues. No endResult, status=${finalGame.status}`);
     }
 
     await gameStorage.saveGame(finalGame);
-    logger.debug(`AI turns complete - saved to KV`);
+    logger.debug(`AI turns complete - saved to KV with status=${finalGame.status}`);
 }
 
 /**

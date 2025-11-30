@@ -3,6 +3,10 @@ import type { RequestHandler } from './$types';
 import { GameStatsService } from '$lib/server/storage/GameStatsService';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { logger } from '$lib/game/utils/logger';
+import { VERSION } from '$lib/version';
+
+// Stats fix version - increment this when making stats-related fixes
+const STATS_FIX_VERSION = '2025-11-30-v2';
 
 /**
  * GET: Get daily stats for today or a specific date
@@ -24,7 +28,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
         const stats = await statsService.getDailyStats(date);
         
-        return json(stats || { error: 'No stats found for this date', date });
+        return json({
+            version: VERSION,
+            statsFixVersion: STATS_FIX_VERSION,
+            ...(stats || { error: 'No stats found for this date', date })
+        });
     } catch (error) {
         logger.error('Error getting stats:', error);
         return json({ error: 'Failed to get stats' }, { status: 500 });

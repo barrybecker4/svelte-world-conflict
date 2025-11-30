@@ -217,7 +217,10 @@ function buildUpdatedGame(
     lastAttackSequence: unknown[] | undefined,
     turnMoves: MoveMetadata[]
 ): GameRecord {
-    const gameStatus: 'ACTIVE' | 'COMPLETED' = finalGameState.endResult ? 'COMPLETED' : 'ACTIVE';
+    const endResult = finalGameState.endResult;
+    const gameStatus: 'ACTIVE' | 'COMPLETED' = endResult ? 'COMPLETED' : 'ACTIVE';
+    
+    logger.info(`buildUpdatedGame: gameId=${game.gameId}, endResult=${JSON.stringify(endResult)}, gameStatus=${gameStatus}`);
 
     return {
         ...game,
