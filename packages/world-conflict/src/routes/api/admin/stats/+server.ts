@@ -6,7 +6,7 @@ import { logger } from '$lib/game/utils/logger';
 import { VERSION } from '$lib/version';
 
 // Stats fix version - increment this when making stats-related fixes
-const STATS_FIX_VERSION = '2025-11-30-v3';
+const STATS_FIX_VERSION = '2025-11-30-v4';
 
 /**
  * GET: Get daily stats for today or a specific date
@@ -113,6 +113,8 @@ export const POST: RequestHandler = async ({ url, platform }) => {
                                 hasEndResult: !!game.worldConflictState?.endResult,
                                 endResult: game.worldConflictState?.endResult,
                                 turnNumber: game.worldConflictState?.turnNumber,
+                                maxTurns: game.worldConflictState?.maxTurns,
+                                playerCount: game.players?.length,
                                 createdAt: game.createdAt
                             });
                         }
