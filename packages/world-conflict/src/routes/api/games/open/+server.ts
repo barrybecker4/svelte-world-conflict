@@ -33,10 +33,19 @@ export const GET: RequestHandler = async ({ platform }) => {
     }
 };
 
+/**
+ * Find the creator (first human player) of a game
+ */
+function getCreatorName(game: GameRecord): string {
+    // The creator is the first human player (non-AI) in the game
+    const humanPlayer = game.players.find(p => !p.isAI);
+    return humanPlayer?.name || game.players[0]?.name || 'Unknown';
+}
+
 function getOpenGames(validGames: GameRecord[], now: number) {
   return validGames.map(game => ({
        gameId: game.gameId,
-       creator: game.players[0]?.name || 'Unknown',
+       creator: getCreatorName(game),
        playerCount: game.players.length,
        maxPlayers: GAME_CONSTANTS.MAX_PLAYERS,
        createdAt: game.createdAt,
