@@ -7,7 +7,7 @@ import { VERSION } from '$lib/version';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 
 // Stats fix version - increment this when making stats-related fixes
-const STATS_FIX_VERSION = '2025-11-30-v6';
+const STATS_FIX_VERSION = '2025-11-30-v8';
 
 /**
  * GET: Get daily stats for today or a specific date

@@ -42,10 +42,13 @@ export class EndTurnCommand extends Command {
 
         // Check if game should end due to turn limit or elimination
         const gameEndResult = checkGameEnd(newState.toJSON(), newState.players);
+        const currentTurn = newState.turnNumber + 1;
+        logger.info(`EndTurnCommand: checkGameEnd called. turnNumber=${newState.turnNumber}, currentTurn=${currentTurn}, maxTurns=${newState.maxTurns}, isGameEnded=${gameEndResult.isGameEnded}, reason=${gameEndResult.reason}`);
+        
         if (gameEndResult.isGameEnded) {
             newState.endResult = gameEndResult.winner;
             // Don't advance turn when game ends - keep current player as the one who ended the game
-            logger.debug('🏁 Game ended, not advancing turn. Winner:', gameEndResult.winner);
+            logger.info(`🏁 Game ENDED! reason=${gameEndResult.reason}, winner=${JSON.stringify(gameEndResult.winner)}, endResult set on newState`);
             newState.movesRemaining = 0; // No more moves
             newState.conqueredRegions = [];
             newState.state.eliminatedPlayers = [];

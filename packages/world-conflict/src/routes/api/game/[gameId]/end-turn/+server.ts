@@ -322,8 +322,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
         const finalGameState = endTurnResult.finalState!;
 
+        // Log the state before building/saving
+        logger.info(`end-turn: finalGameState.endResult=${JSON.stringify(finalGameState.endResult)}, turnNumber=${finalGameState.turnNumber}, currentPlayerSlot=${finalGameState.currentPlayerSlot}`);
+
         // Build updated game and broadcast/save
         const updatedGame = buildUpdatedGame(game, finalGameState, lastAttackSequence, turnMoves);
+        
+        logger.info(`end-turn: updatedGame.status=${updatedGame.status}, hasEndResult=${!!updatedGame.worldConflictState.endResult}`);
+        
         await broadcastAndSave(updatedGame, gameStorage);
 
         logger.debug(`Turn processing complete, final player slot: ${finalGameState.currentPlayerSlot}`);
