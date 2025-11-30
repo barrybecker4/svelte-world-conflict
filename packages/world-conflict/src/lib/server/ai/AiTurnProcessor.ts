@@ -150,6 +150,11 @@ async function saveFinalGameState(
     finalGame.lastMoveAt = Date.now();
     finalGame.lastAttackSequence = lastAttackSequence;
     finalGame.lastMove = lastMoveMetadata;
+    
+    // Update status if game ended during AI turns
+    if (currentState.endResult) {
+        finalGame.status = 'COMPLETED';
+    }
 
     await gameStorage.saveGame(finalGame);
     logger.debug(`AI turns complete - saved to KV`);
