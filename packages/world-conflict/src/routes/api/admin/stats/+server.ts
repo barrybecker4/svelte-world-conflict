@@ -4,9 +4,10 @@ import { GameStatsService } from '$lib/server/storage/GameStatsService';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { logger } from '$lib/game/utils/logger';
 import { VERSION } from '$lib/version';
+import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 
 // Stats fix version - increment this when making stats-related fixes
-const STATS_FIX_VERSION = '2025-11-30-v5';
+const STATS_FIX_VERSION = '2025-11-30-v6';
 
 /**
  * GET: Get daily stats for today or a specific date
@@ -90,6 +91,47 @@ export const POST: RequestHandler = async ({ url, platform }) => {
                 success: true,
                 message: 'Test completion recorded',
                 stats
+            });
+        }
+        
+        if (action === 'diagnose-game') {
+            // Diagnose why a specific game didn't end
+            const gameId = url.searchParams.get('gameId');
+            if (!gameId) {
+                return json({ error: 'gameId required' }, { status: 400 });
+            }
+            
+            const gameStorage = GameStorage.create(platform!);
+            const game = await gameStorage.getGame(gameId);
+            if (!game) {
+                return json({ error: 'Game not found' }, { status: 404 });
+            }
+            
+            const gameState = game.worldConflictState;
+            const players = game.players;
+            
+            // Test checkGameEnd with the current state
+            const gameEndResult = checkGameEnd(gameState, players);
+            
+            // Calculate what the turn limit check sees
+            const turnNumber = gameState.turnNumber;
+            const maxTurns = gameState.maxTurns ?? 0;
+            const currentTurn = turnNumber + 1;
+            
+            return json({
+                gameId,
+                status: game.status,
+                turnNumber,
+                maxTurns,
+                currentTurn,
+                comparison: `${currentTurn} >= ${maxTurns} = ${currentTurn >= maxTurns}`,
+                storedEndResult: gameState.endResult,
+                checkGameEndResult: gameEndResult,
+                playerCount: players.length,
+                activePlayers: players.filter(p => {
+                    const regions = Object.values(gameState.ownersByRegion).filter(o => o === p.slotIndex);
+                    return regions.length > 0;
+                }).map(p => ({ name: p.name, slotIndex: p.slotIndex }))
             });
         }
         
