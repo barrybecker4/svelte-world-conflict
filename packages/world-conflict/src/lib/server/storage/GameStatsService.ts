@@ -55,6 +55,72 @@ function getDateKeyNDaysAgo(daysAgo: number): string {
 }
 
 /**
+ * Update player counts in stats
+ */
+function updatePlayerCounts(stats: DailyGameStats, game: GameRecord): void {
+    const humanPlayers = game.players.filter(p => !p.isAI);
+    const aiPlayers = game.players.filter(p => p.isAI);
+
+    stats.totalHumanPlayers += humanPlayers.length;
+    stats.totalAiPlayers += aiPlayers.length;
+
+    if (humanPlayers.length >= 2) {
+        stats.gamesWithMultipleHumans++;
+    }
+
+    // Add unique player names (using Set for deduplication)
+    const namesSet = new Set(stats.uniquePlayerNames);
+    for (const player of humanPlayers) {
+        namesSet.add(player.name);
+    }
+    stats.uniquePlayerNames = Array.from(namesSet);
+}
+
+/**
+ * Update turn statistics in stats
+ */
+function updateTurnStats(stats: DailyGameStats, turnNumber: number): void {
+    stats.totalTurns += turnNumber;
+    stats.minTurns = Math.min(stats.minTurns === Infinity ? turnNumber : stats.minTurns, turnNumber);
+    stats.maxTurns = Math.max(stats.maxTurns, turnNumber);
+}
+
+/**
+ * Update end reason counts in stats
+ */
+function updateEndReason(stats: DailyGameStats, reason: 'ELIMINATION' | 'TURN_LIMIT' | 'RESIGNATION' | null): void {
+    if (!reason) return;
+    
+    switch (reason) {
+        case 'ELIMINATION':
+            stats.endReasons.elimination++;
+            break;
+        case 'TURN_LIMIT':
+            stats.endReasons.turnLimit++;
+            break;
+        case 'RESIGNATION':
+            stats.endReasons.resignation++;
+            break;
+    }
+}
+
+/**
+ * Update winner counts in stats based on game end result
+ */
+function updateWinnerStats(stats: DailyGameStats, endResult: unknown): void {
+    if (endResult === 'DRAWN_GAME') {
+        stats.winners.drawn++;
+    } else if (endResult && typeof endResult === 'object' && 'isAI' in endResult) {
+        // endResult is a Player object
+        if ((endResult as { isAI: boolean }).isAI) {
+            stats.winners.ai++;
+        } else {
+            stats.winners.human++;
+        }
+    }
+}
+
+/**
  * Service for tracking daily game statistics
  */
 export class GameStatsService {
@@ -115,63 +181,22 @@ export class GameStatsService {
     async recordGameCompleted(game: GameRecord): Promise<void> {
         try {
             const date = getTodayDateKey();
+            logger.info(`Recording game completion for ${game.gameId} on ${date}`);
+            
             const stats = await this.getOrCreateStats(date);
 
-            // Increment completed games
             stats.completedGames++;
+            logger.debug(`completedGames now: ${stats.completedGames}`);
 
-            // Count human and AI players
-            const humanPlayers = game.players.filter(p => !p.isAI);
-            const aiPlayers = game.players.filter(p => p.isAI);
-
-            stats.totalHumanPlayers += humanPlayers.length;
-            stats.totalAiPlayers += aiPlayers.length;
-
-            // Track games with multiple humans
-            if (humanPlayers.length >= 2) {
-                stats.gamesWithMultipleHumans++;
-            }
-
-            // Add unique player names (using Set for deduplication)
-            const namesSet = new Set(stats.uniquePlayerNames);
-            for (const player of humanPlayers) {
-                namesSet.add(player.name);
-            }
-            stats.uniquePlayerNames = Array.from(namesSet);
-
-            // Track turn counts
-            const turnNumber = game.worldConflictState.turnNumber;
-            stats.totalTurns += turnNumber;
-            stats.minTurns = Math.min(stats.minTurns === Infinity ? turnNumber : stats.minTurns, turnNumber);
-            stats.maxTurns = Math.max(stats.maxTurns, turnNumber);
-
-            // Determine end reason and winner
-            const endResult = checkGameEnd(game.worldConflictState, game.players);
-
-            if (endResult.reason) {
-                switch (endResult.reason) {
-                    case 'ELIMINATION':
-                        stats.endReasons.elimination++;
-                        break;
-                    case 'TURN_LIMIT':
-                        stats.endReasons.turnLimit++;
-                        break;
-                    case 'RESIGNATION':
-                        stats.endReasons.resignation++;
-                        break;
-                }
-            }
-
-            // Track winner type
-            if (endResult.winner === 'DRAWN_GAME') {
-                stats.winners.drawn++;
-            } else if (endResult.winner) {
-                if (endResult.winner.isAI) {
-                    stats.winners.ai++;
-                } else {
-                    stats.winners.human++;
-                }
-            }
+            updatePlayerCounts(stats, game);
+            updateTurnStats(stats, game.worldConflictState.turnNumber);
+            
+            // Determine end reason by checking game state
+            const endCheck = checkGameEnd(game.worldConflictState, game.players);
+            updateEndReason(stats, endCheck.reason);
+            
+            // Use the stored endResult for winner tracking
+            updateWinnerStats(stats, game.worldConflictState.endResult);
 
             await this.saveStats(stats);
             logger.debug(`Recorded game completion stats for ${date}`);

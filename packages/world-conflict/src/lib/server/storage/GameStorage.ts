@@ -54,6 +54,10 @@ export class GameStorage {
             // Get previous game state to check if status changed
             const previousGame = await this.getGame(game.gameId);
             const statusChanged = !previousGame || previousGame.status !== game.status;
+            
+            if (game.status === 'COMPLETED') {
+                logger.info(`Saving COMPLETED game ${game.gameId}. statusChanged=${statusChanged}, previousStatus=${previousGame?.status}`);
+            }
 
             await this.kv.put(`wc_game:${game.gameId}`, game);
 
@@ -67,9 +71,12 @@ export class GameStorage {
 
                 // Record game completion statistics and run cleanup
                 if (game.status === 'COMPLETED') {
+                    logger.info(`Game ${game.gameId} completed - recording stats. endResult: ${JSON.stringify(game.worldConflictState.endResult)}`);
                     const statsService = this.getStatsService();
                     if (statsService) {
                         await statsService.recordGameCompleted(game);
+                    } else {
+                        logger.warn(`No stats service available for game ${game.gameId}`);
                     }
 
                     // Fire-and-forget cleanup of old games (14+ days old)
