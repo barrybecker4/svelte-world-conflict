@@ -154,7 +154,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
     } catch (error) {
         logger.error('Fatal error in move endpoint:', error);
-        return handleApiError(error, 'processing move');
+        return handleApiError(error, `processing move for game ${params.gameId}`, {
+            platform,
+            gameId: params.gameId
+        });
     }
 };
 

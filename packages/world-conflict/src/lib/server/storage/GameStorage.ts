@@ -1,4 +1,5 @@
 import { KVStorage } from './KVStorage';
+import { GameStatsService } from './GameStatsService';
 import type { Player } from '$lib/game/state/GameState';
 import { logger } from '$lib/game/utils/logger';
 
@@ -8,9 +9,11 @@ import type { GameRecord, OpenGamesList, OpenGameInfo } from './types';
 
 export class GameStorage {
     private kv: KVStorage;
+    private platform: App.Platform | null = null;
 
-    constructor(kv: KVStorage) {
+    constructor(kv: KVStorage, platform?: App.Platform) {
         this.kv = kv;
+        this.platform = platform || null;
     }
 
     /**
@@ -18,7 +21,18 @@ export class GameStorage {
      */
     static create(platform: App.Platform): GameStorage {
         const kv = new KVStorage(platform);
-        return new GameStorage(kv);
+        return new GameStorage(kv, platform);
+    }
+
+    /**
+     * Get the stats service for recording game statistics
+     */
+    private getStatsService(): GameStatsService | null {
+        if (!this.platform) {
+            logger.warn('No platform available for GameStatsService');
+            return null;
+        }
+        return GameStatsService.create(this.platform);
     }
 
     async getGame(gameId: string): Promise<GameRecord | null> {
@@ -46,6 +60,14 @@ export class GameStorage {
                     await this.removeFromOpenGamesList(game.gameId);
                 } else if (game.status === 'PENDING') {
                     await this.addToOpenGamesList(game);
+                }
+
+                // Record game completion statistics
+                if (game.status === 'COMPLETED') {
+                    const statsService = this.getStatsService();
+                    if (statsService) {
+                        await statsService.recordGameCompleted(game);
+                    }
                 }
             }
         } catch (error) {
@@ -158,6 +180,14 @@ export class GameStorage {
         try {
             const game = await this.getGame(gameId);
             if (!game) return;
+
+            // Record as abandoned if game was not completed
+            if (game.status !== 'COMPLETED') {
+                const statsService = this.getStatsService();
+                if (statsService) {
+                    await statsService.recordGameAbandoned(gameId);
+                }
+            }
 
             await this.kv.delete(`wc_game:${gameId}`);
             await this.removeFromOpenGamesList(gameId);

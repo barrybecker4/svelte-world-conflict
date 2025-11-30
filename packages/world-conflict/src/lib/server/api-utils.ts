@@ -4,6 +4,7 @@ import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 import { json } from '@sveltejs/kit';
 import { AI_PERSONALITIES } from '$lib/game/entities/aiPersonalities';
 import { getAiLevelFromDifficulty } from '$lib/server/ai/AiHeuristics';
+import { GameStatsService } from '$lib/server/storage/GameStatsService';
 import { logger } from '$lib/game/utils/logger';
 
 /**
@@ -24,17 +25,47 @@ export function generateGameId(): string {
 }
 
 /**
+ * Options for handleApiError
+ */
+export interface HandleApiErrorOptions {
+    status?: number;
+    platform?: App.Platform;
+    gameId?: string;
+}
+
+/**
  * Standardized API error handler
  * Consolidates error logging and response formatting across all API endpoints
  *
  * @param error - The error that occurred
  * @param context - Description of what was being attempted (e.g., "loading game", "processing move")
- * @param status - HTTP status code (default: 500)
+ * @param statusOrOptions - HTTP status code (default: 500) or options object
  * @returns JSON error response
  */
-export function handleApiError(error: unknown, context: string, status: number = 500) {
+export function handleApiError(
+    error: unknown, 
+    context: string, 
+    statusOrOptions: number | HandleApiErrorOptions = 500
+) {
+    const options: HandleApiErrorOptions = typeof statusOrOptions === 'number' 
+        ? { status: statusOrOptions } 
+        : statusOrOptions;
+    
+    const { status = 500, platform, gameId } = options;
+    
     const errorMessage = getErrorMessage(error);
     logger.error(`Error ${context}:`, error);
+    
+    // Record error in daily statistics if platform is available
+    if (platform) {
+        const statsService = GameStatsService.create(platform);
+        const errorObj = error instanceof Error ? error : new Error(errorMessage);
+        // Fire and forget - don't block the error response
+        statsService.recordError(errorObj, gameId).catch(recordError => {
+            logger.error('Failed to record error in stats:', recordError);
+        });
+    }
+    
     return json({ error: errorMessage }, { status });
 }
 

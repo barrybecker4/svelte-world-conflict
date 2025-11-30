@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
+import { GameStatsService } from '$lib/server/storage/GameStatsService';
 import { GameState } from '$lib/game/state/GameState';
 import { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/entities/gameTypes';
@@ -41,7 +42,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         });
 
     } catch (error) {
-        return handleApiError(error, 'creating game');
+        return handleApiError(error, 'creating game', { platform });
     }
 };
 function createGameRecord(body: any, platform: App.Platform): GameRecord {
@@ -220,4 +221,8 @@ async function save(gameRecord: GameRecord, platform: App.Platform): Promise<voi
     logger.debug("saveGame after new. gameId: " + gameRecord.gameId);
     await gameStorage.saveGame(gameRecord);
     logger.info(`Created game: ${gameRecord.status} gameId: ${gameRecord.gameId} with ${gameRecord.players.length} players`);
+
+    // Record game started in statistics
+    const statsService = GameStatsService.create(platform!);
+    await statsService.recordGameStarted();
 }

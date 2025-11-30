@@ -209,6 +209,9 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         });
 
     } catch (error) {
-        return handleApiError(error, `ending turn in game ${params.gameId}`);
+        return handleApiError(error, `ending turn in game ${params.gameId}`, {
+            platform,
+            gameId: params.gameId
+        });
     }
 };
