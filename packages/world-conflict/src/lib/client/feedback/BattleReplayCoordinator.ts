@@ -263,4 +263,131 @@ export class BattleReplayCoordinator {
     this.feedbackPlayer.highlightRegion(move.regionIndex, 'conquest');
     await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
   }
+
+  /**
+   * Play failed attack (retreat) animation
+   * Shows attackers moving halfway, battle with casualties, then survivors retreating back to source
+   */
+  async playFailedAttack(move: DetectedMove, regions: any[]): Promise<void> {
+    if (move.attackSequence && move.attackSequence.length > 0 && this.battleAnimationSystem) {
+      await this.playFullRetreatAnimation(move, regions);
+    } else {
+      await this.playSimpleRetreatFeedback(move);
+    }
+  }
+
+  /**
+   * Play full blow-by-blow retreat animation with casualties
+   */
+  private async playFullRetreatAnimation(move: DetectedMove, regions: any[]): Promise<void> {
+    const sourceRegion = move.sourceRegion !== undefined ? move.sourceRegion : move.regionIndex;
+    const targetRegion = move.targetRegion !== undefined ? move.targetRegion : 0;
+    const previousGameState = move.previousGameState;
+    const finalGameState = move.finalGameState;
+
+    // Calculate how many soldiers actually attacked
+    let attackingSoldierCount = 0;
+    
+    if (move.attackSequence && move.attackSequence.length > 0) {
+      // Sum attacker casualties to estimate initial count
+      let totalAttackerCasualties = 0;
+      for (const event of move.attackSequence) {
+        totalAttackerCasualties += event.attackerCasualties || 0;
+      }
+      // Survivors are those still at source after retreat
+      const finalSourceCount = finalGameState?.soldiersByRegion?.[sourceRegion]?.length || 0;
+      const previousSourceCount = previousGameState?.soldiersByRegion?.[sourceRegion]?.length || 0;
+      // Attacking soldiers = those that left source (some died, some returned)
+      attackingSoldierCount = Math.max(0, previousSourceCount - finalSourceCount + totalAttackerCasualties);
+      // Or simpler: use the casualties as a lower bound
+      if (attackingSoldierCount === 0) {
+        attackingSoldierCount = totalAttackerCasualties + 1; // At least the casualties plus survivors
+      }
+    } else {
+      // Fallback: use soldier count from move
+      attackingSoldierCount = move.soldierCount || 1;
+    }
+
+    // Step 1: Set up halfway positioning for attacking soldiers
+    const animationState = await this.prepareAttackAnimation(
+      previousGameState,
+      sourceRegion,
+      targetRegion,
+      attackingSoldierCount
+    );
+
+    // Step 2: Play battle sequence with casualty effects
+    await this.playBattleSequenceWithEffects(
+      move.attackSequence!,
+      regions,
+      sourceRegion,
+      targetRegion
+    );
+
+    // Step 3: Animate survivors retreating back to source
+    await this.animateSurvivorsRetreat(animationState, finalGameState, sourceRegion, targetRegion);
+
+    // Step 4: Final feedback - highlight the defended region
+    this.feedbackPlayer.highlightRegion(targetRegion, 'defended');
+    await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
+  }
+
+  /**
+   * Animate surviving attackers retreating from their halfway position back to source
+   * Clears attackedRegion to trigger CSS transition back to source position
+   */
+  private async animateSurvivorsRetreat(
+    animationState: any,
+    finalGameState: any,
+    sourceRegion: number,
+    targetRegion: number
+  ): Promise<void> {
+    if (!animationState || !finalGameState) return;
+
+    // Get survivors (soldiers still at source in final state)
+    const survivors = finalGameState.soldiersByRegion?.[sourceRegion] || [];
+    const survivorIds = new Set(survivors.map((s: any) => s.i));
+
+    // Build state where survivors return from halfway (clear attackedRegion)
+    const retreatState = JSON.parse(JSON.stringify(animationState));
+    const sourceSoldiers = retreatState.soldiersByRegion[sourceRegion] || [];
+
+    // Update soldiers: survivors clear attackedRegion (animate back), dead attackers are removed
+    retreatState.soldiersByRegion[sourceRegion] = sourceSoldiers
+      .filter((s: any) => {
+        // Keep soldiers not attacking OR survivors who will retreat
+        return !s.attackedRegion || survivorIds.has(s.i);
+      })
+      .map((s: any) => {
+        // Clear attackedRegion for all - survivors animate back, non-attackers stay put
+        return { ...s, attackedRegion: undefined, movingToRegion: undefined };
+      });
+
+    // Ownership unchanged - defenders keep the region
+    // Don't modify ownersByRegion
+
+    this.dispatchBattleStateUpdate(retreatState);
+
+    // Play retreat sound
+    audioSystem.playSound(SOUNDS.SOLDIERS_MOVE);
+
+    await waitForNextFrame();
+    await delay(GAME_CONSTANTS.SOLDIER_MOVE_ANIMATION_MS);
+  }
+
+  /**
+   * Simple retreat feedback without blow-by-blow animation
+   */
+  private async playSimpleRetreatFeedback(move: DetectedMove): Promise<void> {
+    const targetRegion = move.targetRegion !== undefined ? move.targetRegion : 0;
+
+    audioSystem.playSound(SOUNDS.ATTACK);
+    await delay(200);
+    audioSystem.playSound(SOUNDS.COMBAT);
+    await delay(GAME_CONSTANTS.QUICK_ANIMATION_MS);
+    audioSystem.playSound(SOUNDS.SOLDIERS_MOVE); // Retreat sound
+
+    this.feedbackPlayer.highlightRegion(targetRegion, 'defended');
+    await delay(GAME_CONSTANTS.FEEDBACK_HIGHLIGHT_MS);
+  }
 }

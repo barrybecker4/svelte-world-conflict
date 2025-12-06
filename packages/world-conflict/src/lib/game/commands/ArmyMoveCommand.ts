@@ -99,6 +99,19 @@ export class ArmyMoveCommand extends Command {
             this.transferSoldiers(state, fromList, toList, this.count);
         }
 
+        // Check if attackers retreated (attack sequence has isRetreat flag)
+        const didRetreat = this.didAttackersRetreat();
+        
+        if (didRetreat) {
+            // Attackers retreated - defenders keep the region, survivors stay at source
+            if (!this.isSimulation) {
+                logger.debug(`🏃 Attack resulted in retreat! ${fromList.length} survivors remain at source region ${this.source}`);
+            }
+            // No ownership change, no soldier transfer - survivors already at source
+            state.movesRemaining = Math.max(0, state.movesRemaining - 1);
+            return;
+        }
+
         // Check if we conquered the region (defenders eliminated or neutral)
         const conqueredRegion = (wasEnemyRegion && toList.length === 0) || wasNeutralRegion;
 
@@ -127,6 +140,17 @@ export class ArmyMoveCommand extends Command {
         }
 
         state.movesRemaining = Math.max(0, state.movesRemaining - 1);
+    }
+
+    /**
+     * Check if the attack sequence indicates a retreat
+     */
+    private didAttackersRetreat(): boolean {
+        if (!this.attackSequence || this.attackSequence.length === 0) {
+            return false;
+        }
+        // Check if any event in the sequence has isRetreat flag
+        return this.attackSequence.some(event => event.isRetreat === true);
     }
 
     /**

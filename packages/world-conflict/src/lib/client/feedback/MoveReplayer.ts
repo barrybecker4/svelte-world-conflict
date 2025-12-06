@@ -137,17 +137,18 @@ export class MoveReplayer {
   }
 
   /**
-   * Attach attack sequence to the first conquest move found
+   * Attach attack sequence to the first conquest or failed_attack move found
    */
   private attachAttackSequenceToConquest(
     moves: DetectedMove[],
     attackSequence: unknown[],
     regions: unknown[]
   ): void {
-    const conquestMove = moves.find(m => m.type === 'conquest');
-    if (conquestMove) {
-      conquestMove.attackSequence = attackSequence;
-      conquestMove.regions = regions;
+    // Try conquest first, then failed_attack
+    const battleMove = moves.find(m => m.type === 'conquest') || moves.find(m => m.type === 'failed_attack');
+    if (battleMove) {
+      battleMove.attackSequence = attackSequence;
+      battleMove.regions = regions;
     }
   }
 
@@ -191,7 +192,7 @@ export class MoveReplayer {
   }
 
   /**
-   * Attach context needed for conquest animations
+   * Attach context needed for conquest and failed_attack animations
    */
   private attachConquestContext(
     move: DetectedMove,
@@ -199,7 +200,7 @@ export class MoveReplayer {
     finalGameState: GameStateData,
     regions: unknown[]
   ): void {
-    if (move.type === 'conquest') {
+    if (move.type === 'conquest' || move.type === 'failed_attack') {
       move.previousGameState = previousGameState;
       move.finalGameState = finalGameState;
       move.regions = regions;
@@ -254,6 +255,18 @@ export class MoveReplayer {
       };
     }
 
+    // Check if this was a failed attack (retreat) by looking at the attack sequence
+    const attackSequence = moveData.attackSequence as { isRetreat?: boolean }[] | undefined;
+    if (attackSequence && attackSequence.some(event => event.isRetreat === true)) {
+      return {
+        ...baseMove,
+        type: 'failed_attack',
+        targetRegion: targetRegion,
+        oldOwner: previousOwner,
+        attackSequence: attackSequence
+      };
+    }
+
     return { ...baseMove, type: 'movement' };
   }
 
@@ -263,6 +276,13 @@ export class MoveReplayer {
    */
   applyMoveToState(state: GameStateData, move: DetectedMove): GameStateData {
     const newState = this.cloneState(state);
+
+    // For failed_attack, survivors stay at source - no transfer needed
+    if (move.type === 'failed_attack') {
+      // Note: casualties have already been removed by battle logic
+      // Ownership unchanged, soldiers remain at source
+      return newState;
+    }
 
     if (move.type !== 'movement' && move.type !== 'conquest') {
       return newState;
@@ -324,6 +344,9 @@ export class MoveReplayer {
     switch (move.type) {
       case 'conquest':
         await this.battleCoordinator.playConquest(move, regions);
+        break;
+      case 'failed_attack':
+        await this.battleCoordinator.playFailedAttack(move, regions);
         break;
       case 'movement':
         await this.feedbackPlayer.playMovement(move, previousState);

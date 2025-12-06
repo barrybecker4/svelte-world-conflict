@@ -2,7 +2,7 @@
  * Represents a detected move from comparing game states
  */
 export interface DetectedMove {
-  type: 'conquest' | 'movement' | 'recruitment' | 'upgrade';
+  type: 'conquest' | 'movement' | 'recruitment' | 'upgrade' | 'failed_attack';
   regionIndex: number;
   newOwner?: number;
   oldOwner?: number;
@@ -15,6 +15,8 @@ export interface DetectedMove {
   previousGameState?: any;
   finalGameState?: any;
   regions?: any[];
+  // For failed_attack: target region that was defended
+  targetRegion?: number;
 }
 
 /** Region that lost soldiers (potential movement source) */
@@ -52,6 +54,9 @@ export class MoveDetector {
 
     // Check for region ownership changes (conquests)
     this.detectConquests(newState, previousState, moves, movementPairs);
+
+    // Check for failed attacks (retreat scenarios) - must check before soldier changes
+    this.detectFailedAttacks(newState, previousState, moves);
 
     // Check for soldier count changes (recruitment or movement)
     this.detectSoldierChanges(newState, previousState, moves, movementPairs);
@@ -323,6 +328,99 @@ export class MoveDetector {
           type: 'upgrade',
           regionIndex: parseInt(regionIndex)
         });
+      }
+    });
+  }
+
+  /**
+   * Detect failed attacks (retreats) - when attackers lose >50% and retreat
+   * Characterized by:
+   * - Source region lost soldiers but ownership unchanged (attacker's region)
+   * - Target region lost soldiers but ownership unchanged AND still has defenders
+   * - Source and target are adjacent
+   */
+  private detectFailedAttacks(newState: any, previousState: any, moves: DetectedMove[]): void {
+    const newSoldiers = newState.soldiersByRegion || {};
+    const oldSoldiers = previousState.soldiersByRegion || {};
+    const newOwners = newState.ownersByRegion || {};
+    const oldOwners = previousState.ownersByRegion || {};
+    const regions = newState.regions || [];
+
+    // Build set of regions already detected as conquests
+    const conqueredRegions = new Set<number>();
+    moves.forEach(move => {
+      if (move.type === 'conquest') {
+        conqueredRegions.add(move.regionIndex);
+      }
+    });
+
+    // Find potential source regions (lost soldiers, same owner)
+    const potentialSources: Array<{ regionIndex: number; loss: number; owner: number }> = [];
+    Object.keys(oldSoldiers).forEach(regionIndex => {
+      const idx = parseInt(regionIndex);
+      const oldCount = (oldSoldiers[regionIndex] || []).length;
+      const newCount = (newSoldiers[regionIndex] || []).length;
+      const owner = newOwners[regionIndex];
+      const oldOwner = oldOwners[regionIndex];
+
+      // Source region: lost soldiers, ownership unchanged
+      if (oldCount > newCount && owner !== undefined && owner === oldOwner) {
+        potentialSources.push({
+          regionIndex: idx,
+          loss: oldCount - newCount,
+          owner
+        });
+      }
+    });
+
+    // Find potential target regions (lost soldiers, same owner, still has defenders)
+    Object.keys(oldSoldiers).forEach(regionIndex => {
+      const idx = parseInt(regionIndex);
+      
+      // Skip if already detected as conquest
+      if (conqueredRegions.has(idx)) return;
+
+      const oldCount = (oldSoldiers[regionIndex] || []).length;
+      const newCount = (newSoldiers[regionIndex] || []).length;
+      const owner = newOwners[regionIndex];
+      const oldOwner = oldOwners[regionIndex];
+
+      // Target region: lost soldiers, ownership unchanged, still has defenders
+      if (oldCount > newCount && owner === oldOwner && newCount > 0) {
+        const targetRegion = regions.find((r: any) => r.index === idx);
+        if (!targetRegion) return;
+
+        // Find adjacent source that lost soldiers (different owner)
+        for (const source of potentialSources) {
+          // Source must have different owner than target (was an attack)
+          if (source.owner === owner) continue;
+
+          const sourceRegion = regions.find((r: any) => r.index === source.regionIndex);
+          if (!sourceRegion) continue;
+
+          // Check if source and target are adjacent
+          const areNeighbors = sourceRegion.neighbors?.includes(idx);
+          if (!areNeighbors) continue;
+
+          // Found a failed attack!
+          moves.push({
+            type: 'failed_attack',
+            regionIndex: source.regionIndex, // Source region (where survivors retreated to)
+            sourceRegion: source.regionIndex,
+            targetRegion: idx, // Target region that was defended
+            oldOwner: owner, // Defender's owner (unchanged)
+            soldierCount: source.loss, // Number of attackers that were sent
+            oldCount: oldCount, // Old defender count
+            newCount: newCount // New defender count
+          });
+
+          // Remove this source from potential sources to avoid double-counting
+          const sourceIdx = potentialSources.indexOf(source);
+          if (sourceIdx > -1) {
+            potentialSources.splice(sourceIdx, 1);
+          }
+          break;
+        }
       }
     });
   }

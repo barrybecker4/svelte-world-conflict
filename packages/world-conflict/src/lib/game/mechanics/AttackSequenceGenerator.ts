@@ -16,6 +16,7 @@ export interface AttackEvent {
         color: string;
         width: number;
     }>;
+    isRetreat?: boolean;              // Signals that attackers are retreating (lost >50% of initial force)
 }
 
 export interface ArmyMoveData {
@@ -38,7 +39,9 @@ export class AttackSequenceGenerator {
     private static readonly WIN_THRESHOLD = 120;
     private static readonly CONQUERED_TEXT = 'Conquered!';
     private static readonly DEFENDED_TEXT = 'Defended!';
+    private static readonly RETREAT_TEXT = 'Retreat!';
     private static readonly CONQUERED_COLOR = '#ffee11'; // Gold/yellow color
+    private static readonly RETREAT_COLOR = '#ff6b6b'; // Red color for retreat
 
     constructor(armyMove: ArmyMoveData, rng: RandomNumberGenerator, isSimulation: boolean = false) {
         this.fromRegion = armyMove.source;
@@ -88,10 +91,22 @@ export class AttackSequenceGenerator {
 
         // Main combat if both sides still have forces
         if (defendingSoldiers > 0 && this.incomingSoldiers > 0) {
-            this.recordFight(defendingSoldiers, attackSequence, fromList, toList, preemptiveCasualties);
+            const didRetreat = this.recordFight(defendingSoldiers, attackSequence, fromList, toList, preemptiveCasualties);
 
-            // Check if defenders won
-            if (toList.length > 0) {
+            if (didRetreat) {
+                // Attackers retreated - show "Retreat!" text for attackers
+                attackSequence.push({
+                    ...this.createFloatingText(this.fromRegion, AttackSequenceGenerator.RETREAT_COLOR, AttackSequenceGenerator.RETREAT_TEXT),
+                    isRetreat: true
+                });
+                // Show "Defended!" text for defenders
+                const toOwnerPlayer = this.toOwner !== undefined ? players.find(p => p.slotIndex === this.toOwner) : undefined;
+                const color = toOwnerPlayer?.color || '#fff';
+                attackSequence.push(
+                    this.createFloatingText(this.toRegion, color, AttackSequenceGenerator.DEFENDED_TEXT)
+                );
+            } else if (toList.length > 0) {
+                // Defenders won (attackers eliminated)
                 const toOwnerPlayer = this.toOwner !== undefined ? players.find(p => p.slotIndex === this.toOwner) : undefined;
                 const color = toOwnerPlayer?.color || '#fff';
                 attackSequence.push(
@@ -160,27 +175,44 @@ export class AttackSequenceGenerator {
         });
     }
 
+    /**
+     * Record the fight between attackers and defenders
+     * Returns true if attackers retreated (lost >50% of initial force)
+     */
     private recordFight(
         defendingSoldiers: number,
         attackSequence: AttackEvent[],
         fromList: { i: number }[],
         toList: { i: number }[],
         preemptiveCasualties: number = 0
-    ): void {
-        if (!this.state) return;
+    ): boolean {
+        if (!this.state) return false;
+
+        // Track initial attacker count for retreat calculation
+        const initialAttackers = this.incomingSoldiers;
+        const retreatThreshold = Math.floor(initialAttackers / 2);
 
         if (!this.isSimulation) {
-            logger.debug(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders`);
+            logger.debug(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders (retreat if >${retreatThreshold} casualties)`);
         }
 
-        // Conduct battle rounds until one side is eliminated
+        // Conduct battle rounds until one side is eliminated or attackers retreat
         let attackersRemaining = this.incomingSoldiers;
         let defendersRemaining = defendingSoldiers;
         // Start with preemptive casualties if any
         let totalAttackerCasualties = preemptiveCasualties;
         let totalDefenderCasualties = 0;
 
-        // Continue battle until one side has no soldiers
+        // Check if preemptive damage already triggered retreat
+        if (totalAttackerCasualties > retreatThreshold && attackersRemaining > 0 && defendersRemaining > 0) {
+            if (!this.isSimulation) {
+                logger.debug(`🏃 Retreat triggered by preemptive damage! Casualties: ${totalAttackerCasualties}/${initialAttackers}`);
+            }
+            this.incomingSoldiers = attackersRemaining;
+            return true;
+        }
+
+        // Continue battle until one side has no soldiers or attackers retreat
         // Emit a separate event for each round
         while (attackersRemaining > 0 && defendersRemaining > 0) {
             const battleResult = this.resolveBattleRound(attackersRemaining, defendersRemaining);
@@ -212,6 +244,15 @@ export class AttackSequenceGenerator {
             for (let i = 0; i < battleResult.defenderCasualties && toList.length > 0; i++) {
                 toList.pop();
             }
+
+            // Check for retreat: if attackers lost more than half of initial force, retreat
+            if (totalAttackerCasualties > retreatThreshold && attackersRemaining > 0 && defendersRemaining > 0) {
+                if (!this.isSimulation) {
+                    logger.debug(`🏃 Retreat! Attackers lost ${totalAttackerCasualties}/${initialAttackers} (>${retreatThreshold}). ${attackersRemaining} survivors retreating.`);
+                }
+                this.incomingSoldiers = attackersRemaining;
+                return true;
+            }
         }
 
         this.incomingSoldiers = attackersRemaining;
@@ -220,6 +261,7 @@ export class AttackSequenceGenerator {
         if (!this.isSimulation) {
             logger.debug(`Battle result: ${winner} wins! Final: A${attackersRemaining} D${defendersRemaining}`);
         }
+        return false;
     }
 
     /**
