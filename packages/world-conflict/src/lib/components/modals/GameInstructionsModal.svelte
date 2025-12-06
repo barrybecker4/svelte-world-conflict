@@ -98,18 +98,26 @@
       </IconButton>
     </div>
 
-    <div class="tutorial-content">
+    <div class="tutorial-content" class:has-image={currentTutorial.image}>
       <div class="tutorial-card">
         <div class="card-header">
           <h2>{currentTutorial.title}</h2>
           <div class="icon">{currentTutorial.icon}</div>
         </div>
 
-        <ul class="card-content">
-          {#each currentTutorial.content as item}
-            <li>{@html item}</li>
-          {/each}
-        </ul>
+        <div class="card-body">
+          <ul class="card-content">
+            {#each currentTutorial.content as item}
+              <li>{@html item}</li>
+            {/each}
+          </ul>
+
+          {#if currentTutorial.image}
+            <div class="card-image">
+              <img src={currentTutorial.image} alt="Gameplay preview" />
+            </div>
+          {/if}
+        </div>
       </div>
     </div>
 
@@ -183,8 +191,9 @@
     border: 2px solid #475569;
     border-radius: 12px;
     padding: 1.25rem;
-    min-height: 220px;
+    height: 280px;
     backdrop-filter: blur(10px);
+    overflow: hidden;
   }
 
   .tutorial-card {
@@ -229,6 +238,31 @@
     position: absolute;
     left: 0;
     font-weight: bold;
+  }
+
+  .card-body {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  .has-image .card-content {
+    flex: 0 0 55%;
+  }
+
+  .card-image {
+    flex: 0 0 40%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 2px solid #475569;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .close-button-wrapper {
