@@ -91,7 +91,8 @@ export class AttackSequenceGenerator {
 
         // Main combat if both sides still have forces
         if (defendingSoldiers > 0 && this.incomingSoldiers > 0) {
-            const didRetreat = this.recordFight(defendingSoldiers, attackSequence, fromList, toList, preemptiveCasualties);
+            // Pass original soldier count (before preemptive damage) for retreat calculation
+            const didRetreat = this.recordFight(defendingSoldiers, attackSequence, fromList, toList, preemptiveCasualties, this.soldiers);
 
             if (didRetreat) {
                 // Attackers retreated - show "Retreat!" text for attackers
@@ -178,18 +179,20 @@ export class AttackSequenceGenerator {
     /**
      * Record the fight between attackers and defenders
      * Returns true if attackers retreated (lost >50% of initial force)
+     * @param originalAttackerCount - The original number of attackers before preemptive damage
      */
     private recordFight(
         defendingSoldiers: number,
         attackSequence: AttackEvent[],
         fromList: { i: number }[],
         toList: { i: number }[],
-        preemptiveCasualties: number = 0
+        preemptiveCasualties: number = 0,
+        originalAttackerCount: number = this.incomingSoldiers
     ): boolean {
         if (!this.state) return false;
 
-        // Track initial attacker count for retreat calculation
-        const initialAttackers = this.incomingSoldiers;
+        // Track initial attacker count for retreat calculation (before preemptive damage)
+        const initialAttackers = originalAttackerCount;
         const retreatThreshold = Math.floor(initialAttackers / 2);
 
         if (!this.isSimulation) {
