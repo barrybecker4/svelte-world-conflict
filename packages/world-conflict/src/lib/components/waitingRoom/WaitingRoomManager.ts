@@ -2,6 +2,7 @@ import { writable, type Writable } from 'svelte/store';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from '$lib/game/utils/logger';
 import { getSlotInfoFromGame, type BaseSlotInfo } from '$lib/client/slots/slotUtils';
+import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 import type { PendingGameData } from '$lib/game/entities/gameTypes';
 
 export interface WaitingRoomSlotInfo extends BaseSlotInfo {
@@ -15,6 +16,7 @@ export class WaitingRoomManager {
   public wsConnected: Writable<boolean> = writable(false);
 
   private gameId: string;
+  private apiClient: GameApiClient;
   private currentPlayerId: number | null = null;
   private wsClient: any = null;
   private wsUnsubscribe: (() => void) | null = null;
@@ -23,6 +25,7 @@ export class WaitingRoomManager {
 
   constructor(gameId: string, currentPlayerId: number | null) {
     this.gameId = gameId;
+    this.apiClient = new GameApiClient(gameId);
     this.currentPlayerId = currentPlayerId;
   }
 
@@ -50,19 +53,14 @@ export class WaitingRoomManager {
   async loadGameState() {
     try {
       this.loading.set(true);
-      const response = await fetch(`/api/game/${this.gameId}`);
+      const gameData = await this.apiClient.getGameState();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const gameData = await response.json() as any;
       if (gameData.status === 'ACTIVE') {
         logger.debug('Game is now ACTIVE - triggering gameStarted');
         this.onGameStarted?.();
       }
 
-      this.game.set(gameData);
+      this.game.set(gameData as PendingGameData);
       this.error.set(null);
     } catch (err) {
       logger.error('Error loading game state:', err);
@@ -175,51 +173,34 @@ export class WaitingRoomManager {
   async startGame(onSuccess: () => void) {
     try {
       logger.debug('Starting game...');
-      const response = await fetch(`/api/game/${this.gameId}/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
+      await this.apiClient.startGame();
+      
+      logger.debug('Game started successfully');
 
-      if (response.ok) {
-        logger.debug('Game started successfully');
+      const { audioSystem } = await import('$lib/client/audio/AudioSystem');
+      const { SOUNDS } = await import('$lib/client/audio/sounds');
+      await audioSystem.playSound(SOUNDS.GAME_STARTED);
 
-        const { audioSystem } = await import('$lib/client/audio/AudioSystem');
-        const { SOUNDS } = await import('$lib/client/audio/sounds');
-        await audioSystem.playSound(SOUNDS.GAME_STARTED);
-
-        onSuccess();
-      } else {
-        const errorData = await response.json() as { error?: string };
-        this.setTemporaryError(errorData.error || 'Failed to start game');
-      }
+      onSuccess();
     } catch (err) {
-      this.setTemporaryError('Network error starting game');
+      const errorMessage = err instanceof Error ? err.message : 'Network error starting game';
+      this.setTemporaryError(errorMessage);
     }
   }
 
   async leaveGame(onSuccess: () => void) {
     try {
       logger.debug('Leaving game...');
-      const response = await fetch(`/api/game/${this.gameId}/quit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: this.currentPlayerId?.toString()
-        })
-      });
-
-      if (response.ok) {
-        const { removeGameCreator } = await import('$lib/client/stores/clientStorage');
-        removeGameCreator(this.gameId);
-        logger.debug('Successfully left game');
-        onSuccess();
-      } else {
-        const errorData = await response.json() as { error?: string };
-        this.setTemporaryError(errorData.error || 'Failed to leave game');
-      }
+      await this.apiClient.leaveGame(this.currentPlayerId?.toString() || '');
+      
+      const { removeGameCreator } = await import('$lib/client/stores/clientStorage');
+      removeGameCreator(this.gameId);
+      logger.debug('Successfully left game');
+      onSuccess();
     } catch (err) {
       logger.error('Error leaving game:', err);
-      this.setTemporaryError('Network error leaving game');
+      const errorMessage = err instanceof Error ? err.message : 'Network error leaving game';
+      this.setTemporaryError(errorMessage);
     }
   }
 

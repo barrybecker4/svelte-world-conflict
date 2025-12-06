@@ -8,6 +8,7 @@
   import Button from '$lib/components/ui/Button.svelte';
   import SoundTestModal from '$lib/components/modals/SoundTestModal.svelte';
   import { loadGameCreator } from '$lib/client/stores/clientStorage';
+  import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 
   let gameState = 'loading'; // 'loading', 'waiting', 'playing', 'error'
   let game: any = null;
@@ -33,19 +34,15 @@
       }
 
       // Load game state
-      const response = await fetch(`/api/game/${gameId}`);
-      if (response.ok) {
-        game = await response.json();
+      const apiClient = new GameApiClient(gameId);
+      game = await apiClient.getGameState();
 
-        if (game.status === 'PENDING') {
-          gameState = 'waiting';
-        } else if (game.status === 'ACTIVE') {
-          gameState = 'playing';
-        } else {
-          throw new Error(`Unexpected game status: ${game.status}`);
-        }
+      if (game.status === 'PENDING') {
+        gameState = 'waiting';
+      } else if (game.status === 'ACTIVE') {
+        gameState = 'playing';
       } else {
-        throw new Error('Failed to load game');
+        throw new Error(`Unexpected game status: ${game.status}`);
       }
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);

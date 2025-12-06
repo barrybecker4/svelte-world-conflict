@@ -178,13 +178,7 @@ export class GameController {
    */
   private async triggerAiProcessing(): Promise<void> {
     try {
-      const response = await fetch(`/api/game/${this.gameId}/process-ai`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!response.ok) {
-        console.error('Failed to trigger AI processing:', response.statusText);
-      }
+      await this.apiClient.triggerAiProcessing();
     } catch (error) {
       console.error('Error triggering AI processing:', error);
     }

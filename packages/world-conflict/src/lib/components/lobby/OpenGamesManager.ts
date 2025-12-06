@@ -9,21 +9,10 @@ import { loadPlayerName, saveGameCreator } from '$lib/client/stores/clientStorag
 import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 import { goto } from '$app/navigation';
 import { logger } from '$lib/game/utils/logger';
-import type { PlayerSlot } from '$lib/game/entities/PlayerSlot';
+import { GameApiClient, type OpenGame } from '$lib/client/gameController/GameApiClient';
 
-export interface OpenGame {
-  gameId: string;
-  creator: string;
-  playerCount: number;
-  maxPlayers: number;
-  createdAt: number;
-  gameType: string;
-  timeRemaining: number;
-  pendingConfiguration?: {
-    playerSlots: PlayerSlot[];
-  };
-  players: Array<{ slotIndex: number; name: string }>;
-}
+// Re-export OpenGame type for consumers that import from this file
+export type { OpenGame };
 
 export interface GameSlotInfo extends BaseSlotInfo {
   canJoin: boolean;
@@ -64,26 +53,23 @@ export class OpenGamesManager {
       this.error.set(null);
 
       logger.debug('Loading open games...');
-      const response = await fetch('/api/games/open');
+      const games = await GameApiClient.listOpenGames();
 
       // Check again after async operation
       if (this.isDestroyed) {
         return 0;
       }
 
-      if (response.ok) {
-        const games = await response.json() as OpenGame[];
-        logger.debug(`Received ${games.length} games:`, games);
-        this.games.set(games.sort((a, b) => b.createdAt - a.createdAt));
-        return games.length;
-      } else {
-        logger.error('Failed to fetch open games:', response.status);
-        this.error.set(`Failed to load games: ${response.status}`);
+      logger.debug(`Received ${games.length} games:`, games);
+      this.games.set(games.sort((a, b) => b.createdAt - a.createdAt));
+      return games.length;
+    } catch (err) {
+      if (this.isDestroyed) {
         return 0;
       }
-    } catch (err) {
       logger.error('Error loading games:', err);
-      this.error.set('Failed to connect to server');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to connect to server';
+      this.error.set(errorMessage);
       return 0;
     } finally {
       if (!this.isDestroyed) {
@@ -125,47 +111,35 @@ export class OpenGamesManager {
 
       logger.debug(`Attempting to join game ${gameId} in slot ${slotIndex} as "${playerName}"`);
 
-      const response = await fetch(`/api/game/${gameId}/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName, preferredSlot: slotIndex })
+      const apiClient = new GameApiClient(gameId);
+      const result = await apiClient.joinGame(playerName, slotIndex);
+      const player = result.player;
+
+      logger.debug(`Join response received:`, {
+        requestedSlot: slotIndex,
+        returnedPlayer: {
+          name: player.name,
+          slotIndex: player.slotIndex,
+          isAI: player.isAI
+        }
       });
 
-      if (response.ok) {
-        const result = await response.json() as { player: { name: string; slotIndex: number; isAI: boolean } };
-        const player = result.player;
+      saveGameCreator(gameId, {
+        playerId: player.slotIndex.toString(),
+        playerSlotIndex: player.slotIndex,
+        playerName: player.name
+      });
 
-        logger.debug(`Join response received:`, {
-          requestedSlot: slotIndex,
-          returnedPlayer: {
-            name: player.name,
-            slotIndex: player.slotIndex,
-            isAI: player.isAI
-          }
-        });
+      logger.debug(`Saved to localStorage - playerSlotIndex: ${player.slotIndex}, playerName: ${player.name}`);
 
-        saveGameCreator(gameId, {
-          playerId: player.slotIndex.toString(),
-          playerSlotIndex: player.slotIndex,
-          playerName: player.name
-        });
+      // Cleanup BEFORE navigation to ensure polling stops immediately
+      logger.debug('Joining game - cleaning up lobby resources before navigation');
+      this.destroy();
 
-        logger.debug(`Saved to localStorage - playerSlotIndex: ${player.slotIndex}, playerName: ${player.name}`);
-
-        // Cleanup BEFORE navigation to ensure polling stops immediately
-        logger.debug('Joining game - cleaning up lobby resources before navigation');
-        this.destroy();
-
-        await goto(`/game/${gameId}`);
-      } else {
-        const errorData = await response.json() as { error?: string };
-        const errorMsg = errorData.error || 'Failed to join game';
-        logger.error('Join game failed:', errorData);
-        this.setTemporaryError(errorMsg);
-      }
+      await goto(`/game/${gameId}`);
     } catch (err: any) {
-      const errorMsg = 'Network error: ' + err.message;
-      logger.error('Network error joining game:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Network error joining game';
+      logger.error('Error joining game:', err);
       this.setTemporaryError(errorMsg);
     }
   }

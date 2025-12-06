@@ -8,6 +8,7 @@
   import { audioSystem } from '$lib/client/audio/AudioSystem';
   import { SOUNDS } from '$lib/client/audio/sounds';
   import { saveGameCreator } from '$lib/client/stores/clientStorage';
+  import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 
   let showInstructions = true; // Auto-show on load
   let showLobby = false;
@@ -28,48 +29,31 @@
     const gameConfig = event.detail;
     const humanPlayer = extractHumanPlayer(gameConfig);
 
-    const response = await createNewGame(gameConfig, humanPlayer);
-
-    if (response.ok) {
-      const result = await response.json() as { gameId: string; player?: { slotIndex: number; name: string } };
-      const player = result.player || { slotIndex: 0, name: humanPlayer.name };
-
-      await audioSystem.playSound(SOUNDS.GAME_CREATED);
-
-      saveGameCreator(result.gameId, {
-        playerId: player.slotIndex.toString(),  // Use player slot index as string
-        playerSlotIndex: player.slotIndex,
-        playerName: player.name
-      });
-
-      // Navigate to game - will show WaitingRoom for PENDING games, WorldConflictGame for ACTIVE games
-      await goto(`/game/${result.gameId}`);
-
-    } else {
-      const errorData = await response.json().catch(() => ({})) as { error?: string };
-      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-    }
-  }
-
-  async function createNewGame(gameConfig: any, humanPlayer: any) {
-    return await fetch('/api/game/new', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        playerName: humanPlayer.name,
-        gameType: 'MULTIPLAYER', // Always create as multiplayer
-        mapSize: gameConfig.settings.mapSize,
-        aiDifficulty: gameConfig.settings.aiDifficulty,
-        maxTurns: gameConfig.settings.maxTurns,
-        timeLimit: gameConfig.settings.timeLimit,
-        playerSlots: gameConfig.playerSlots,
-        selectedMapRegions: gameConfig.selectedMapRegions,
-        selectedMapState: gameConfig.selectedMapState,
-        settings: gameConfig.settings
-      })
+    const result = await GameApiClient.createGame({
+      playerName: humanPlayer.name,
+      gameType: 'MULTIPLAYER',
+      mapSize: gameConfig.settings.mapSize,
+      aiDifficulty: gameConfig.settings.aiDifficulty,
+      maxTurns: gameConfig.settings.maxTurns,
+      timeLimit: gameConfig.settings.timeLimit,
+      playerSlots: gameConfig.playerSlots,
+      selectedMapRegions: gameConfig.selectedMapRegions,
+      selectedMapState: gameConfig.selectedMapState,
+      settings: gameConfig.settings
     });
+
+    const player = result.player || { slotIndex: 0, name: humanPlayer.name };
+
+    await audioSystem.playSound(SOUNDS.GAME_CREATED);
+
+    saveGameCreator(result.gameId, {
+      playerId: player.slotIndex.toString(),
+      playerSlotIndex: player.slotIndex,
+      playerName: player.name
+    });
+
+    // Navigate to game - will show WaitingRoom for PENDING games, WorldConflictGame for ACTIVE games
+    await goto(`/game/${result.gameId}`);
   }
 
   function extractHumanPlayer(gameConfig: any) {

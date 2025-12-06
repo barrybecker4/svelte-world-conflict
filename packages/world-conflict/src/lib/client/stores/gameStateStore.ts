@@ -5,6 +5,7 @@ import type { MoveState } from '$lib/game/mechanics/moveTypes';
 import { MoveReplayer } from '$lib/client/feedback/MoveReplayer';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { GameStateUpdater } from './GameStateUpdater';
+import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 import type { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSystem';
 import { logger } from '$lib/game/utils/logger';
@@ -43,17 +44,19 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
     (playerSlotIndex: number) => showEliminationBanner(playerSlotIndex)
   );
 
+  const apiClient = new GameApiClient(gameId);
+
   /**
    * Load initial game state from the server
    */
   async function loadGameState() {
     try {
-      const response = await fetch(`/api/game/${gameId}`);
-      if (!response.ok) {
+      const data = await apiClient.getGameState();
+      
+      if (!data.worldConflictState) {
         throw new Error('Failed to load game state');
       }
 
-      const data = await response.json() as { worldConflictState: GameStateData };
       gameState.set(data.worldConflictState);
       regions.set(data.worldConflictState.regions || []);
       players.set(data.worldConflictState.players || []);
