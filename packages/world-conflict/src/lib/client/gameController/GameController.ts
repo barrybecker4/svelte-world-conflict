@@ -394,11 +394,14 @@ export class GameController {
       return;
     }
 
+    // Stop the timer immediately - resigned player becomes a spectator
+    this.turnTimerCoordinator.stopTimer();
+
     try {
-      const result = await this.apiClient.resign(this.playerId);
-      if (result.gameEnded) {
-        window.location.href = '/';
-      }
+      await this.apiClient.resign(this.playerId);
+      // Don't redirect - stay on the page to spectate or see game summary
+      // The WebSocket update will trigger checkGameEnd() which will show
+      // the game summary modal if the game has ended
     } catch (error) {
       console.error('Resign error:', error);
       alert('Failed to resign from game: ' + (error instanceof Error ? error.message : 'Unknown error'));

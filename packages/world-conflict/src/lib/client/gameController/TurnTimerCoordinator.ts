@@ -25,6 +25,10 @@ export class TurnTimerCoordinator {
     const endResult = checkGameEnd(gameState, gameState.players);
     if (endResult.isGameEnded) return;
 
+    // Don't start timer if player has been eliminated (e.g., resigned and is now spectating)
+    const eliminatedPlayers = gameState.eliminatedPlayers || [];
+    if (eliminatedPlayers.includes(this.playerSlotIndex)) return;
+
     const isMyTurn = gameState.currentPlayerSlot === this.playerSlotIndex;
     const isHumanPlayer = gameState.players.some(p =>
       p.slotIndex === this.playerSlotIndex && !p.isAI
