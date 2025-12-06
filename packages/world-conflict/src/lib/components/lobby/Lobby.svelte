@@ -5,6 +5,7 @@
   import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
   import PlayerNameInput from '$lib/components/configuration/PlayerNameInput.svelte';
   import OpenGameRow from './OpenGameRow.svelte';
+  import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
   import { OpenGamesManager, type OpenGame } from './OpenGamesManager';
   import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
   import { logger } from '$lib/game/utils/logger';
@@ -19,6 +20,7 @@
   let wsConnected = false;
   let showNameInput = true;
   let playerName = '';
+  let showStats = false;
 
   let unsubGames: () => void;
   let unsubLoading: () => void;
@@ -126,6 +128,12 @@
             </div>
           {/if}
         </LoadingState>
+
+        <div class="stats-button-container">
+          <Button variant="ghost" size="sm" on:click={() => showStats = true}>
+            📊 Historical Statistics
+          </Button>
+        </div>
       </div>
 
       <div class="bottom-box">
@@ -140,6 +148,8 @@
   {/if}
 </div>
 {/if}
+
+<HistoricalStatsModal bind:isOpen={showStats} />
 
 <style>
   .lobby-overlay {
@@ -219,6 +229,14 @@
     margin-bottom: 1.5rem;
     color: var(--text-primary, #f8fafc);
     font-size: 1.3rem;
+  }
+
+  .stats-button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(71, 85, 105, 0.3);
   }
 
   .bottom-box {

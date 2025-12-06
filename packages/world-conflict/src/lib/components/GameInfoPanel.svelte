@@ -17,6 +17,7 @@
   export let onUndo: () => void = () => {};
   export let onShowInstructions: () => void = () => {};
   export let onResign: () => void = () => {};
+  export let onOpenSoundTest: () => void = () => {};
   export let moveMode: string = IDLE;
   export let playerSlotIndex: number;
   export let canUndo: boolean = false;
@@ -157,6 +158,9 @@
       <AudioButton/>
       <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
       <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
+      {#if import.meta.env.DEV}
+        <IconButton title="Test Sounds" on:click={onOpenSoundTest}>🎵</IconButton>
+      {/if}
     </div>
 
   </Section>

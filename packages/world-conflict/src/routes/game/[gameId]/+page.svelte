@@ -6,7 +6,6 @@
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
   import LoadingState from '$lib/components/ui/LoadingState.svelte';
   import Button from '$lib/components/ui/Button.svelte';
-  import SoundTestModal from '$lib/components/modals/SoundTestModal.svelte';
   import { loadGameCreator } from '$lib/client/stores/clientStorage';
   import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 
@@ -15,7 +14,6 @@
   let currentPlayer: any = null;
   let error: string | null = null;
   let loading = true;
-  let showSoundTestModal = false;
 
   onMount(async () => {
     await loadGameData();
@@ -68,14 +66,6 @@
   function handleGameLeft() {
     goto('/');
   }
-
-  function openSoundTestModal() {
-    showSoundTestModal = true;
-  }
-
-  function closeSoundTestModal() {
-    showSoundTestModal = false;
-  }
 </script>
 
 <LoadingState
@@ -106,16 +96,4 @@
       playerSlotIndex={currentPlayer.playerSlotIndex}
     />
   {/if}
-  {#if import.meta.env.DEV}
-    <button
-      on:click={openSoundTestModal}
-      style="position: fixed; top: 10px; right: 10px; z-index: 1000; background: orange; color: white; padding: 8px; border: none; border-radius: 4px;"
-    >
-      🎵 Test Sounds
-    </button>
-  {/if}
 </LoadingState>
-
-{#if showSoundTestModal}
-  <SoundTestModal isOpen={showSoundTestModal} onclose={closeSoundTestModal} />
-{/if}

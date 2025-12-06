@@ -6,6 +6,7 @@
   import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
   import GameInstructions from './modals/GameInstructionsModal.svelte';
+  import SoundTestModal from './modals/SoundTestModal.svelte';
   import LoadingState from './ui/LoadingState.svelte';
   import Banner from './ui/Banner.svelte';
   import { createGameStateStore } from '$lib/client/stores/gameStateStore';
@@ -45,6 +46,7 @@
   let showVictoryBanner = false;
   let showGameSummary = false;
   let gameWinner: Player | 'DRAWN_GAME' | null = null;
+  let showSoundTestModal = false;
 
   $: selectedRegion = $moveState.sourceRegion !== null
     ? $regions.find(r => r.index === $moveState.sourceRegion) || null
@@ -138,6 +140,7 @@
         battleInProgress={$battleInProgress}
         onShowInstructions={() => controller.showInstructions()}
         onResign={() => controller.resign()}
+        onOpenSoundTest={() => showSoundTestModal = true}
       />
     {/if}
 
@@ -216,6 +219,10 @@
       <div class="debug-info">
         WS: {$isConnected ? 'Connected' : 'Disconnected'} | Mode: {$moveState.mode}
       </div>
+    {/if}
+
+    {#if showSoundTestModal}
+      <SoundTestModal isOpen={showSoundTestModal} onclose={() => showSoundTestModal = false} />
     {/if}
   </div>
 {/if}
