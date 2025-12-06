@@ -3,12 +3,16 @@ import type { GameState } from '$lib/game/state/GameState';
 import { Temple } from '$lib/game/entities/Temple';
 
 /**
- * Calculates faith income for a player based on their controlled regions and temples.
+ * Calculates end-of-turn faith income for a player based on their controlled regions and temples.
  *
- * Faith income rules:
+ * End-of-turn faith income rules:
  * 1. One faith for each region owned
  * 2. One faith for each soldier stationed at owned temples (soldiers praying)
  * 3. Water temples provide percentage bonus to total income
+ *
+ * Note: Combat faith is awarded separately in ArmyMoveCommand:
+ * - Attacker earns 1 faith per defending soldier killed
+ * - Defender earns 1 faith per soldier lost defending their region
  */
 export class IncomeCalculator {
     /**

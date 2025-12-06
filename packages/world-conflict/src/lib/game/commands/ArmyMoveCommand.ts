@@ -3,6 +3,7 @@ import { AttackSequenceGenerator, type AttackEvent } from '$lib/game/mechanics/A
 import type { GameState, Player, Region, Soldier } from '$lib/game/state/GameState';
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 import { logger } from '$lib/game/utils/logger';
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export class ArmyMoveCommand extends Command {
     public source: number;
@@ -92,7 +93,7 @@ export class ArmyMoveCommand extends Command {
         const previousOwner = wasEnemyRegion ? state.owner(this.destination) : undefined;
 
         if (this.attackSequence && this.attackSequence.length > 0) {
-            this.handleCombatResult(state, fromList, toList);
+            this.handleCombatResult(state, fromList, toList, previousOwner);
         } else {
             // No combat needed - just move soldiers
             this.transferSoldiers(state, fromList, toList, this.count);
@@ -179,8 +180,8 @@ export class ArmyMoveCommand extends Command {
         }
     }
 
-    // Apply attack sequence results
-    private handleCombatResult(state: GameState, fromList: Soldier[], toList: Soldier[]): void {
+    // Apply attack sequence results and award combat faith
+    private handleCombatResult(state: GameState, fromList: Soldier[], toList: Soldier[], defenderSlotIndex: number | undefined): void {
         if (!this.isSimulation) {
             logger.debug('🔍 handleCombatResult - before combat:', {
                 attackers: fromList.length,
@@ -191,6 +192,9 @@ export class ArmyMoveCommand extends Command {
 
         if (!this.attackSequence) return;
 
+        // Track total defender casualties for faith rewards
+        let totalDefenderCasualties = 0;
+
         // Apply combat results from attack sequence
         for (const event of this.attackSequence) {
             if (event.attackerCasualties && event.attackerCasualties > 0) {
@@ -200,9 +204,36 @@ export class ArmyMoveCommand extends Command {
             }
 
             if (event.defenderCasualties && event.defenderCasualties > 0) {
+                totalDefenderCasualties += event.defenderCasualties;
                 for (let i = 0; i < event.defenderCasualties && toList.length > 0; i++) {
                     toList.pop();
                 }
+            }
+        }
+
+        // Award combat faith based on defender casualties
+        if (totalDefenderCasualties > 0) {
+            const attackerFaith = totalDefenderCasualties * GAME_CONSTANTS.FAITH_PER_DEFENDER_KILLED;
+            const defenderFaith = totalDefenderCasualties * GAME_CONSTANTS.FAITH_PER_DEFENDER_DEATH;
+
+            // Attacker earns faith for each defender killed
+            const currentAttackerFaith = state.getPlayerFaith(this.player.slotIndex);
+            state.setPlayerFaith(this.player.slotIndex, currentAttackerFaith + attackerFaith);
+
+            // Defender earns faith for each soldier lost defending (only if owned by a player, not neutral)
+            if (defenderSlotIndex !== undefined) {
+                const currentDefenderFaith = state.getPlayerFaith(defenderSlotIndex);
+                state.setPlayerFaith(defenderSlotIndex, currentDefenderFaith + defenderFaith);
+            }
+
+            if (!this.isSimulation) {
+                logger.debug('⛪ Combat faith awarded:', {
+                    defenderCasualties: totalDefenderCasualties,
+                    attackerFaithGained: attackerFaith,
+                    defenderFaithGained: defenderSlotIndex !== undefined ? defenderFaith : 0,
+                    attackerSlot: this.player.slotIndex,
+                    defenderSlot: defenderSlotIndex
+                });
             }
         }
 

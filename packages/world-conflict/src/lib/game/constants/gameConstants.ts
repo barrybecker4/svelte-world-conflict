@@ -69,6 +69,8 @@ export const GAME_CONSTANTS = {
 
     // Combat
     COMBAT_DICE_SIDES: 6,
+    FAITH_PER_DEFENDER_DEATH: 1,  // Faith to defender per soldier lost defending
+    FAITH_PER_DEFENDER_KILLED: 1, // Faith to attacker per defender killed
 
     // Starting resources
     STARTING_FAITH: 0,
