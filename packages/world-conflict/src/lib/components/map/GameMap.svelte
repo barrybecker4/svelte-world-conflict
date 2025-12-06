@@ -187,13 +187,34 @@
     return ownerIndex === winner.slotIndex;
   }
 
-  function canInteract(): boolean {
+  /**
+   * Base interaction check - validates the player can interact at all.
+   * Checks: preview mode, game end, battle in progress, game state exists, current player's turn.
+   */
+  function canInteractBase(): boolean {
     if (effectivePreviewMode) return false;
     if (gameState?.endResult) return false;
     if (battleInProgress) return false;
-    if (!gameState || gameState.movesRemaining <= 0) return false;
+    if (!gameState) return false;
     if (!currentPlayer || currentPlayer.slotIndex !== gameState.currentPlayerSlot) return false;
     return true;
+  }
+
+  /**
+   * Check if the player can interact with regions (for army movements).
+   * Requires moves remaining.
+   */
+  function canInteract(): boolean {
+    return canInteractBase() && gameState!.movesRemaining > 0;
+  }
+
+  /**
+   * Check if the player can interact with temples.
+   * Temple upgrades don't consume moves (they only cost faith),
+   * so we allow temple interactions even when movesRemaining is 0.
+   */
+  function canInteractWithTemple(): boolean {
+    return canInteractBase();
   }
 
   function handleRegionClick(region: Region): void {
@@ -202,7 +223,7 @@
   }
 
   function handleTempleClick(regionIndex: number): void {
-    if (!canInteract()) return;
+    if (!canInteractWithTemple()) return;
     onTempleClick(regionIndex);
   }
 </script>
