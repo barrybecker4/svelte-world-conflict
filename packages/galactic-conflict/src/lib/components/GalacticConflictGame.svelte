@@ -30,6 +30,21 @@
     let wsClient = getWebSocketClient();
 
     let connectionError: string | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    // Poll server to process events and get updates (armada arrivals, battles)
+    async function pollGameState() {
+        try {
+            const response = await GameApiClient.getGame(gameId);
+            if (response.gameState) {
+                console.log('[GalacticConflictGame] Poll received state with replays:', 
+                    response.gameState.recentBattleReplays?.length ?? 0);
+                updateGameState(response.gameState);
+            }
+        } catch (error) {
+            logger.warn('Poll failed:', error);
+        }
+    }
 
     onMount(async () => {
         // Initialize state
@@ -49,10 +64,17 @@
             logger.error(errorMsg, error);
             connectionError = errorMsg;
         }
+
+        // Poll every 1 second to process server-side events (armada arrivals, battles)
+        // This ensures the game loop runs even without player actions
+        pollInterval = setInterval(pollGameState, 1000);
     });
 
     onDestroy(() => {
         wsClient.disconnect();
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
     });
 
     function handlePlanetClick(planet: Planet) {

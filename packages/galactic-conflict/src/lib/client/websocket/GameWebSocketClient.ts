@@ -27,7 +27,11 @@ export class GameWebSocketClient {
     private setupEventHandlers(): void {
         // Game state updates
         this.client.onGameUpdate((data: any) => {
-            logger.debug('Received game update');
+            console.log('[WebSocketClient] Received game update:', {
+                hasGameState: !!data.gameState,
+                recentBattleReplays: data.gameState?.recentBattleReplays?.length ?? 0,
+                armadas: data.gameState?.armadas?.length ?? 0,
+            });
             if (data.gameState) {
                 updateGameState(data.gameState as GalacticGameStateData);
             }

@@ -122,6 +122,8 @@ export const GALACTIC_CONSTANTS = {
     OPEN_LABEL: '< open >' as const,
     /** Marker for neutral/unowned */
     NEUTRAL_OWNER: null as null,
+    /** Player ID used for neutral planet defenders in battles */
+    NEUTRAL_PLAYER_ID: -1,
 } as const;
 
 /**

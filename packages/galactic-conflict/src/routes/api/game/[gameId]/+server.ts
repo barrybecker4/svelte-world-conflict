@@ -8,6 +8,8 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from '$lib/server/GameLoop';
 import { handleApiError } from '$lib/server/api-utils';
+import { getWorkerHttpUrl } from '$lib/websocket-config';
+import { isLocalDevelopment } from '@svelte-mp/framework/shared';
 import { logger } from '$lib/game/utils/logger';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -35,12 +37,22 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         if (gameRecord.status === 'ACTIVE' && gameRecord.gameState) {
             const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
             
-            // Process any pending events
+            // Track if we had battle replays before processing
+            const replaysBefore = gameState.recentBattleReplays.length;
+            
+            // Process any pending events (this may create battle replays)
             processGameState(gameState);
 
             // Save updated state
             gameRecord.gameState = gameState.toJSON();
             await gameStorage.saveGame(gameRecord);
+            
+            // If new battle replays were created, broadcast to all clients
+            const replaysAfter = gameRecord.gameState.recentBattleReplays?.length ?? 0;
+            if (replaysAfter > replaysBefore) {
+                console.log(`[GET /game] Broadcasting ${replaysAfter - replaysBefore} new battle replays`);
+                await notifyGameUpdate(gameId, gameRecord.gameState);
+            }
 
             return json({
                 gameId: gameRecord.gameId,
@@ -60,4 +72,26 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         return handleApiError(error, 'getting game', { platform });
     }
 };
+
+async function notifyGameUpdate(gameId: string, gameState: any): Promise<void> {
+    try {
+        const isLocal = isLocalDevelopment();
+        const workerUrl = getWorkerHttpUrl(isLocal);
+
+        await fetch(`${workerUrl}/notify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                gameId,
+                message: {
+                    type: 'gameUpdate',
+                    gameId,
+                    gameState,
+                },
+            }),
+        });
+    } catch (error) {
+        logger.warn('Failed to notify game update:', error);
+    }
+}
 

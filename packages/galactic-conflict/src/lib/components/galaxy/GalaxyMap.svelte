@@ -1,9 +1,15 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-    import type { GalacticGameStateData, Planet as PlanetType, Armada as ArmadaType } from '$lib/game/entities/gameTypes';
+    import type { GalacticGameStateData, Planet as PlanetType } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import Planet from './Planet.svelte';
     import Armada from './Armada.svelte';
+    import BattleAnimationOverlay from './BattleAnimationOverlay.svelte';
+    import {
+        battleAnimations,
+        processNewBattleReplays,
+        clearAllBattleAnimations,
+    } from '$lib/client/stores/battleAnimationStore';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
@@ -33,12 +39,20 @@
 
     onMount(() => {
         updateTime();
+        
+        // Process any existing battle replays when component mounts
+        if (gameState.recentBattleReplays?.length > 0) {
+            console.log(`[GalaxyMap] Mount: ${gameState.recentBattleReplays.length} battle replays to play`);
+            processNewBattleReplays(gameState.recentBattleReplays);
+        }
     });
 
     onDestroy(() => {
         if (animationFrame) {
             cancelAnimationFrame(animationFrame);
         }
+        // Clean up battle animations
+        clearAllBattleAnimations();
     });
 
     function handlePlanetClick(planet: PlanetType) {
@@ -123,8 +137,23 @@
         return gameState.planets.find(p => p.id === id);
     }
 
-    function hasBattleAtPlanet(planetId: number): boolean {
-        return gameState.activeBattles.some(b => b.planetId === planetId && b.status === 'active');
+    // Check if there's an active animation at a planet
+    function hasAnimationAtPlanet(planetId: number): boolean {
+        for (const anim of $battleAnimations.values()) {
+            if (anim.replay.planetId === planetId) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Process battle replays whenever they change
+    $: {
+        const replays = gameState.recentBattleReplays ?? [];
+        console.log(`[GalaxyMap] Checking battle replays: ${replays.length}`, replays.map(r => r.planetName));
+        if (replays.length > 0) {
+            processNewBattleReplays(replays);
+        }
     }
 
     $: width = GALACTIC_CONSTANTS.GALAXY_WIDTH;
@@ -195,11 +224,22 @@
                 isSelected={selectedPlanetId === planet.id}
                 {isOwned}
                 canMove={canMovePlanet}
-                hasBattle={hasBattleAtPlanet(planet.id)}
+                hasBattle={hasAnimationAtPlanet(planet.id)}
                 on:click={() => handlePlanetClick(planet)}
                 on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
                 on:dblclick={() => handlePlanetDoubleClick(planet)}
             />
+        {/each}
+
+        <!-- Battle Animations -->
+        {#each [...$battleAnimations.values()] as animationState (animationState.replay.id)}
+            {@const battlePlanet = gameState.planets.find(p => p.id === animationState.replay.planetId)}
+            {#if battlePlanet}
+                <BattleAnimationOverlay
+                    {animationState}
+                    planet={battlePlanet}
+                />
+            {/if}
         {/each}
 
         <!-- Drag line visualization -->
@@ -242,4 +282,3 @@
         user-select: none;
     }
 </style>
-

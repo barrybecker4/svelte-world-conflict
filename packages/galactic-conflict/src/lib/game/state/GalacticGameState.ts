@@ -8,6 +8,7 @@ import type {
     Player,
     Armada,
     Battle,
+    BattleReplay,
     GameEvent,
     PlayerSlot,
     GameSettings,
@@ -34,6 +35,7 @@ export class GalacticGameState {
         if (!this.state.activeBattles) this.state.activeBattles = [];
         if (!this.state.eventQueue) this.state.eventQueue = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
+        if (!this.state.recentBattleReplays) this.state.recentBattleReplays = [];
 
         // Initialize or restore RNG
         if (this.state.rngSeed && this.state.rngState) {
@@ -87,6 +89,7 @@ export class GalacticGameState {
             armadas: [],
             activeBattles: [],
             eventQueue: [],
+            recentBattleReplays: [],
             eliminatedPlayers: [],
             rngSeed: seed || `galactic-${gameId}`,
             lastUpdateTime: now,
@@ -144,6 +147,7 @@ export class GalacticGameState {
     get activeBattles(): Battle[] { return [...this.state.activeBattles]; }
     get eventQueue(): GameEvent[] { return [...this.state.eventQueue]; }
     get eliminatedPlayers(): number[] { return [...this.state.eliminatedPlayers]; }
+    get recentBattleReplays(): BattleReplay[] { return [...this.state.recentBattleReplays]; }
 
     get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
@@ -276,15 +280,9 @@ export class GalacticGameState {
     // ==================== BATTLE MANAGEMENT ====================
 
     addBattle(battle: Battle): void {
+        // Note: Battles are now resolved immediately by BattleManager
+        // This method is kept for compatibility but battles are no longer scheduled
         this.state.activeBattles.push(battle);
-
-        // Schedule first battle round
-        this.scheduleEvent({
-            id: uuidv4(),
-            type: 'battle_round',
-            scheduledTime: Date.now() + GALACTIC_CONSTANTS.BATTLE_ROUND_INTERVAL_MS,
-            payload: { battleId: battle.id },
-        });
     }
 
     getBattle(battleId: string): Battle | undefined {
@@ -301,6 +299,31 @@ export class GalacticGameState {
             return this.state.activeBattles.splice(index, 1)[0];
         }
         return undefined;
+    }
+
+    // ==================== BATTLE REPLAYS ====================
+
+    /**
+     * Add a battle replay for client animation
+     */
+    addBattleReplay(replay: BattleReplay): void {
+        this.state.recentBattleReplays.push(replay);
+        console.log(`[GalacticGameState] Added battle replay ${replay.id} for planet ${replay.planetName}, total replays: ${this.state.recentBattleReplays.length}`);
+    }
+
+    /**
+     * Clear replays that have been sent to clients
+     * Called after state broadcast
+     */
+    clearBattleReplays(): void {
+        this.state.recentBattleReplays = [];
+    }
+
+    /**
+     * Get pending battle replays
+     */
+    getPendingReplays(): BattleReplay[] {
+        return [...this.state.recentBattleReplays];
     }
 
     // ==================== EVENT QUEUE ====================
@@ -433,6 +456,10 @@ export class GalacticGameState {
                 rounds: b.rounds.map(r => ({ ...r })),
             })),
             eventQueue: this.state.eventQueue.map(e => ({ ...e })),
+            recentBattleReplays: this.state.recentBattleReplays.map(r => ({
+                ...r,
+                rounds: r.rounds.map(round => ({ ...round })),
+            })),
             eliminatedPlayers: [...this.state.eliminatedPlayers],
             rngSeed: rngState.seed,
             rngState: rngState.state,

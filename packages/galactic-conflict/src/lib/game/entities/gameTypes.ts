@@ -92,6 +92,51 @@ export interface Battle {
     winnerId?: number | null; // null if planet becomes neutral
 }
 
+// ==================== BATTLE REPLAY (for client animation) ====================
+
+/**
+ * A completed battle with full replay data for client animation
+ */
+export interface BattleReplay {
+    id: string;
+    planetId: number;
+    planetName: string;
+    
+    /** Initial state before battle */
+    attackerPlayerId: number;
+    attackerName: string;
+    attackerColor: string;
+    attackerInitialShips: number;
+    
+    defenderPlayerId: number; // -1 for neutral
+    defenderName: string;
+    defenderColor: string;
+    defenderInitialShips: number;
+    
+    /** Sequence of rounds for replay */
+    rounds: BattleReplayRound[];
+    
+    /** Final outcome */
+    winnerId: number | null; // null if mutual destruction
+    winnerShipsRemaining: number;
+    
+    /** Timestamps */
+    timestamp: number;
+    
+    /** Has this replay been played on the client? */
+    played?: boolean;
+}
+
+export interface BattleReplayRound {
+    roundNumber: number;
+    attackerDice: number[];
+    defenderDice: number[];
+    attackerLosses: number;
+    defenderLosses: number;
+    attackerShipsAfter: number;
+    defenderShipsAfter: number;
+}
+
 // ==================== EVENTS ====================
 
 export type GameEventType = 
@@ -147,6 +192,12 @@ export interface GalacticGameStateData {
     activeBattles: Battle[];
     /** Scheduled future events */
     eventQueue: GameEvent[];
+    
+    /** 
+     * Recently completed battle replays for client animation
+     * Cleared after being sent to clients
+     */
+    recentBattleReplays: BattleReplay[];
     
     /** Result when game ends */
     endResult?: Player | 'DRAWN_GAME' | null;

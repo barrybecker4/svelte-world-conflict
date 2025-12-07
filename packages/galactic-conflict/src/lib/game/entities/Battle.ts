@@ -3,6 +3,7 @@
  */
 
 import type { Battle, BattleParticipant, BattleRoundResult } from './gameTypes';
+import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -18,10 +19,11 @@ export function createBattle(
 ): Battle {
     const participants: BattleParticipant[] = [];
     
-    // Add defender if planet is owned
-    if (defenderId !== null && defenderShips > 0) {
+    // Add defender if there are ships to defend
+    // Use NEUTRAL_PLAYER_ID (-1) for neutral planet defenders
+    if (defenderShips > 0) {
         participants.push({
-            playerId: defenderId,
+            playerId: defenderId ?? GALACTIC_CONSTANTS.NEUTRAL_PLAYER_ID,
             ships: defenderShips,
             isDefender: true,
             arrivedAt: currentTime,

@@ -2,18 +2,16 @@
  * GameLoop - Processes game events and manages game state updates
  * 
  * Handles:
- * - Armada arrivals
- * - Battle rounds
+ * - Armada arrivals (battles are resolved immediately on arrival)
  * - Resource ticks
  * - Game end conditions
  */
 
-import type { GameEvent, ArmadaArrivalPayload, BattleRoundPayload } from '$lib/game/entities/gameTypes';
+import type { GameEvent, ArmadaArrivalPayload } from '$lib/game/entities/gameTypes';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { BattleManager } from '$lib/game/mechanics/BattleManager';
 import { GALACTIC_CONSTANTS, GAME_STATUS } from '$lib/game/constants/gameConstants';
 import { logger } from '$lib/game/utils/logger';
-import { v4 as uuidv4 } from 'uuid';
 
 export class GameLoop {
     private battleManager: BattleManager;
@@ -66,7 +64,8 @@ export class GameLoop {
                 break;
 
             case 'battle_round':
-                this.processBattleRound(event.payload as BattleRoundPayload);
+                // Battle rounds are no longer scheduled - battles resolve immediately on armada arrival
+                logger.debug('Ignoring deprecated battle_round event');
                 break;
 
             case 'resource_tick':
@@ -84,33 +83,10 @@ export class GameLoop {
 
     /**
      * Process armada arrival event
+     * Note: Battles are resolved immediately when armada arrives - no delayed rounds
      */
     private processArmadaArrival(payload: ArmadaArrivalPayload): void {
         this.battleManager.handleArmadaArrival(payload.armadaId);
-    }
-
-    /**
-     * Process battle round event
-     */
-    private processBattleRound(payload: BattleRoundPayload): void {
-        const battle = this.gameState.getBattle(payload.battleId);
-        
-        if (!battle || battle.status !== 'active') {
-            return;
-        }
-
-        this.battleManager.processBattleRound(payload.battleId);
-
-        // Schedule next battle round if battle is still active
-        const updatedBattle = this.gameState.getBattle(payload.battleId);
-        if (updatedBattle && updatedBattle.status === 'active') {
-            this.gameState.scheduleEvent({
-                id: uuidv4(),
-                type: 'battle_round',
-                scheduledTime: Date.now() + GALACTIC_CONSTANTS.BATTLE_ROUND_INTERVAL_MS,
-                payload: { battleId: payload.battleId },
-            });
-        }
     }
 
     /**
