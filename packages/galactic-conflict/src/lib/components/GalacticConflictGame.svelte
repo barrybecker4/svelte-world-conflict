@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
+    import { goto } from '$app/navigation';
     import type { GalacticGameStateData, Planet } from '$lib/game/entities/gameTypes';
     import GalaxyMap from './galaxy/GalaxyMap.svelte';
     import GameInfoPanel from './GameInfoPanel.svelte';
@@ -15,6 +16,7 @@
         currentPlayerId,
         isConnected,
         updateGameState,
+        clearGameStores,
     } from '$lib/client/stores/gameStateStore';
     import { logger } from '$lib/game/utils/logger';
 
@@ -24,6 +26,7 @@
     let showSendArmadaModal = false;
     let showBuildShipsModal = false;
     let sourcePlanet: Planet | null = null;
+    let destinationPlanet: Planet | null = null;
     let wsClient = getWebSocketClient();
 
     let connectionError: string | null = null;
@@ -54,29 +57,39 @@
 
     function handlePlanetClick(planet: Planet) {
         const currentPlayer = get(currentPlayerId);
-        const selectedPlanet = get(selectedPlanetId);
 
         if (currentPlayer === null) return;
 
-        // If clicking on own planet
+        // Simply select the planet when clicked
         if (planet.ownerId === currentPlayer) {
-            if (selectedPlanet === planet.id) {
-                // Clicking same planet - show build ships modal
-                sourcePlanet = planet;
-                showBuildShipsModal = true;
-            } else {
-                // Select this planet as source
-                selectedPlanetId.set(planet.id);
-            }
-        } else if (selectedPlanet !== null) {
-            // Clicking on another planet with source selected - send armada
-            const state = get(gameState);
-            const source = state?.planets.find(p => p.id === selectedPlanet);
-            if (source && source.ownerId === currentPlayer && source.ships > 0) {
-                sourcePlanet = source;
-                showSendArmadaModal = true;
-            }
+            selectedPlanetId.set(planet.id);
+        } else {
+            // Deselect if clicking on non-owned planet
+            selectedPlanetId.set(null);
         }
+    }
+
+    function handleDragSend(event: CustomEvent<{ sourcePlanet: Planet; destinationPlanet: Planet }>) {
+        const { sourcePlanet: source, destinationPlanet: dest } = event.detail;
+        const currentPlayer = get(currentPlayerId);
+
+        if (currentPlayer === null) return;
+        if (source.ownerId !== currentPlayer || source.ships <= 0) return;
+
+        sourcePlanet = source;
+        destinationPlanet = dest;
+        showSendArmadaModal = true;
+    }
+
+    function handlePlanetDoubleClick(event: CustomEvent<{ planet: Planet }>) {
+        const { planet } = event.detail;
+        const currentPlayer = get(currentPlayerId);
+
+        if (currentPlayer === null) return;
+        if (planet.ownerId !== currentPlayer) return;
+
+        sourcePlanet = planet;
+        showBuildShipsModal = true;
     }
 
     async function handleSendArmada(event: CustomEvent) {
@@ -86,14 +99,37 @@
         if (!sourcePlanet || currentPlayer === null) return;
 
         try {
-            await GameApiClient.sendArmada(
+            const response = await GameApiClient.sendArmada(
                 gameId,
                 currentPlayer,
                 sourcePlanet.id,
                 destinationPlanetId,
                 shipCount
             );
+
+            // Optimistic update: Add the armada to local state immediately
+            if (response.success && response.armada) {
+                gameState.update(state => {
+                    if (!state) return state;
+
+                    // Find and update source planet ship count
+                    const updatedPlanets = state.planets.map(p => {
+                        if (p.id === sourcePlanet!.id) {
+                            return { ...p, ships: p.ships - shipCount };
+                        }
+                        return p;
+                    });
+
+                    return {
+                        ...state,
+                        planets: updatedPlanets,
+                        armadas: [...state.armadas, response.armada],
+                    };
+                });
+            }
+
             showSendArmadaModal = false;
+            destinationPlanet = null;
             selectedPlanetId.set(null);
         } catch (error) {
             logger.error('Failed to send armada:', error);
@@ -107,23 +143,49 @@
         if (!sourcePlanet || currentPlayer === null) return;
 
         try {
-            await GameApiClient.buildShips(
+            const response = await GameApiClient.buildShips(
                 gameId,
                 currentPlayer,
                 sourcePlanet.id,
                 shipCount
             );
+
+            // Update local state with server response
+            if (response.success && response.newShipCount !== undefined) {
+                gameState.update(state => {
+                    if (!state) return state;
+
+                    const updatedPlanets = state.planets.map(p => {
+                        if (p.id === sourcePlanet!.id) {
+                            return {
+                                ...p,
+                                ships: response.newShipCount,
+                                resources: response.newResourceCount ?? p.resources,
+                            };
+                        }
+                        return p;
+                    });
+
+                    return {
+                        ...state,
+                        planets: updatedPlanets,
+                    };
+                });
+            }
+
             showBuildShipsModal = false;
         } catch (error) {
             logger.error('Failed to build ships:', error);
         }
     }
 
-    $: targetPlanet = $gameState?.planets.find(p => {
-        return $selectedPlanetId !== null && 
-               p.id !== $selectedPlanetId &&
-               showSendArmadaModal;
-    });
+    function handleNewGame() {
+        // Clean up current game state
+        wsClient.disconnect();
+        clearGameStores();
+        // Navigate to home page
+        goto('/');
+    }
 </script>
 
 <div class="game-container">
@@ -146,6 +208,8 @@
                     currentPlayerId={$currentPlayerId}
                     selectedPlanetId={$selectedPlanetId}
                     onPlanetClick={handlePlanetClick}
+                    on:dragSend={handleDragSend}
+                    on:doubleClick={handlePlanetDoubleClick}
                 />
             </div>
             <div class="side-panel">
@@ -153,6 +217,7 @@
                     gameState={$gameState}
                     currentPlayerId={$currentPlayerId}
                     isConnected={$isConnected}
+                    onNewGame={handleNewGame}
                 />
             </div>
         </div>
@@ -166,9 +231,11 @@
         {sourcePlanet}
         planets={$gameState.planets}
         currentPlayerId={$currentPlayerId}
+        preselectedDestination={destinationPlanet}
         on:send={handleSendArmada}
         on:close={() => {
             showSendArmadaModal = false;
+            destinationPlanet = null;
             selectedPlanetId.set(null);
         }}
     />

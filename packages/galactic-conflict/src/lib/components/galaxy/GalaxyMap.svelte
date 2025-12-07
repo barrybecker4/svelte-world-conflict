@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, createEventDispatcher } from 'svelte';
     import type { GalacticGameStateData, Planet as PlanetType, Armada as ArmadaType } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import Planet from './Planet.svelte';
@@ -10,8 +10,20 @@
     export let selectedPlanetId: number | null = null;
     export let onPlanetClick: (planet: PlanetType) => void = () => {};
 
+    const dispatch = createEventDispatcher<{
+        dragSend: { sourcePlanet: PlanetType; destinationPlanet: PlanetType };
+        doubleClick: { planet: PlanetType };
+    }>();
+
     let currentTime = Date.now();
     let animationFrame: number;
+
+    // Drag state
+    let isDragging = false;
+    let dragSourcePlanet: PlanetType | null = null;
+    let dragCurrentX = 0;
+    let dragCurrentY = 0;
+    let svgElement: SVGSVGElement;
 
     // Update time for armada positions
     function updateTime() {
@@ -33,6 +45,80 @@
         onPlanetClick(planet);
     }
 
+    function handlePlanetMouseDown(planet: PlanetType, event: MouseEvent) {
+        // Only allow dragging from owned planets with ships
+        if (planet.ownerId !== currentPlayerId || planet.ships <= 0) {
+            return;
+        }
+
+        isDragging = true;
+        dragSourcePlanet = planet;
+        updateDragPosition(event);
+        
+        // Add document-level listeners for drag
+        document.addEventListener('mousemove', handleDocumentMouseMove);
+        document.addEventListener('mouseup', handleDocumentMouseUp);
+    }
+
+    function handleDocumentMouseMove(event: MouseEvent) {
+        if (!isDragging) return;
+        updateDragPosition(event);
+    }
+
+    function handleDocumentMouseUp(event: MouseEvent) {
+        if (!isDragging || !dragSourcePlanet) {
+            cleanupDrag();
+            return;
+        }
+
+        // Find if we're over a planet
+        const targetPlanet = findPlanetAtPosition(dragCurrentX, dragCurrentY);
+        
+        if (targetPlanet && targetPlanet.id !== dragSourcePlanet.id) {
+            // Dispatch drag send event
+            dispatch('dragSend', {
+                sourcePlanet: dragSourcePlanet,
+                destinationPlanet: targetPlanet
+            });
+        }
+
+        cleanupDrag();
+    }
+
+    function cleanupDrag() {
+        isDragging = false;
+        dragSourcePlanet = null;
+        document.removeEventListener('mousemove', handleDocumentMouseMove);
+        document.removeEventListener('mouseup', handleDocumentMouseUp);
+    }
+
+    function updateDragPosition(event: MouseEvent) {
+        if (!svgElement) return;
+        
+        const rect = svgElement.getBoundingClientRect();
+        const scaleX = width / rect.width;
+        const scaleY = height / rect.height;
+        
+        dragCurrentX = (event.clientX - rect.left) * scaleX;
+        dragCurrentY = (event.clientY - rect.top) * scaleY;
+    }
+
+    function findPlanetAtPosition(x: number, y: number): PlanetType | undefined {
+        // Find planet within click radius
+        const clickRadius = 30;
+        return gameState.planets.find(planet => {
+            const dx = planet.position.x - x;
+            const dy = planet.position.y - y;
+            return Math.sqrt(dx * dx + dy * dy) < clickRadius;
+        });
+    }
+
+    function handlePlanetDoubleClick(planet: PlanetType) {
+        if (planet.ownerId === currentPlayerId) {
+            dispatch('doubleClick', { planet });
+        }
+    }
+
     function getPlanetById(id: number): PlanetType | undefined {
         return gameState.planets.find(p => p.id === id);
     }
@@ -47,6 +133,7 @@
 
 <div class="galaxy-container">
     <svg
+        bind:this={svgElement}
         {width}
         {height}
         viewBox="0 0 {width} {height}"
@@ -101,14 +188,40 @@
 
         <!-- Planets -->
         {#each gameState.planets as planet (planet.id)}
+            {@const isOwned = planet.ownerId === currentPlayerId}
+            {@const canMovePlanet = isOwned && planet.ships > 0}
             <Planet
                 {planet}
                 isSelected={selectedPlanetId === planet.id}
-                isOwned={planet.ownerId === currentPlayerId}
+                {isOwned}
+                canMove={canMovePlanet}
                 hasBattle={hasBattleAtPlanet(planet.id)}
                 on:click={() => handlePlanetClick(planet)}
+                on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
+                on:dblclick={() => handlePlanetDoubleClick(planet)}
             />
         {/each}
+
+        <!-- Drag line visualization -->
+        {#if isDragging && dragSourcePlanet}
+            <line
+                x1={dragSourcePlanet.position.x}
+                y1={dragSourcePlanet.position.y}
+                x2={dragCurrentX}
+                y2={dragCurrentY}
+                stroke="#a78bfa"
+                stroke-width="3"
+                stroke-dasharray="8 4"
+                opacity="0.8"
+            />
+            <circle
+                cx={dragCurrentX}
+                cy={dragCurrentY}
+                r="8"
+                fill="#a78bfa"
+                opacity="0.6"
+            />
+        {/if}
     </svg>
 </div>
 

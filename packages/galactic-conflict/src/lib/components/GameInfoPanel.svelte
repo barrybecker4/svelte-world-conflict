@@ -1,10 +1,28 @@
 <script lang="ts">
+    import { onMount, onDestroy } from 'svelte';
     import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
     export let isConnected: boolean = false;
+    export let onNewGame: (() => void) | null = null;
+
+    // Time tracking with interval for live updates
+    let currentTime = Date.now();
+    let timerInterval: ReturnType<typeof setInterval>;
+
+    onMount(() => {
+        timerInterval = setInterval(() => {
+            currentTime = Date.now();
+        }, 1000);
+    });
+
+    onDestroy(() => {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+    });
 
     $: currentPlayer = gameState.players.find(p => p.slotIndex === currentPlayerId);
     $: myPlanets = gameState.planets.filter(p => p.ownerId === currentPlayerId);
@@ -15,7 +33,7 @@
     $: totalShips = myShipsOnPlanets + myArmadaShips;
     $: totalResources = myPlanets.reduce((sum, p) => sum + p.resources, 0);
     
-    $: timeRemaining = Math.max(0, (gameState.startTime + gameState.durationMinutes * 60 * 1000) - Date.now());
+    $: timeRemaining = Math.max(0, (gameState.startTime + gameState.durationMinutes * 60 * 1000) - currentTime);
     $: minutesRemaining = Math.floor(timeRemaining / 60000);
     $: secondsRemaining = Math.floor((timeRemaining % 60000) / 1000);
 
@@ -127,6 +145,11 @@
                 <p class="result-text winner">
                     {gameState.endResult.name} wins!
                 </p>
+            {/if}
+            {#if onNewGame}
+                <button class="new-game-btn" on:click={onNewGame}>
+                    New Game
+                </button>
             {/if}
         </div>
     {/if}
@@ -301,6 +324,24 @@
 
     .result-text.draw {
         color: #fbbf24;
+    }
+
+    .new-game-btn {
+        margin-top: 1rem;
+        padding: 0.75rem 2rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+    }
+
+    .new-game-btn:hover {
+        background: linear-gradient(135deg, #6d28d9, #9333ea);
+        transform: scale(1.05);
     }
 </style>
 

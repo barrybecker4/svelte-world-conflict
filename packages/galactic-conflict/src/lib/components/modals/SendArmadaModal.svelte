@@ -8,11 +8,12 @@
     export let sourcePlanet: Planet;
     export let planets: Planet[];
     export let currentPlayerId: number | null = null;
+    export let preselectedDestination: Planet | null = null;
 
     const dispatch = createEventDispatcher();
 
     let shipCount = 1;
-    let selectedDestinationId: number | null = null;
+    let selectedDestinationId: number | null = preselectedDestination?.id ?? null;
 
     $: maxShips = sourcePlanet.ships;
     $: availablePlanets = planets.filter(p => p.id !== sourcePlanet.id);
