@@ -125,41 +125,67 @@ export class MoveSystem {
   private selectSourceRegion(regionIndex: number): void {
     logger.debug(`🎯 MoveSystem.selectSourceRegion: ${regionIndex}`);
 
-    const currentPlayerSlot = this.gameState.currentPlayerSlot;
-    const owner = this.gameState.ownersByRegion[regionIndex];
-
-    // Validate ownership
-    if (owner !== currentPlayerSlot) {
-      logger.debug('Cannot select region - not owned by current player');
+    if (!this.validateSourceSelection(regionIndex)) {
       return;
     }
 
-    // Check if region was conquered this turn
-    if (this.gameState.conqueredRegions?.includes(regionIndex)) {
-      logger.debug('Cannot select region - conquered this turn');
-      return;
-    }
-
-    // Count soldiers
     const soldiers = this.gameState.soldiersByRegion[regionIndex] || [];
-    if (soldiers.length === 0) {
-      logger.debug('Cannot select region - no soldiers to move');
-      return;
-    }
 
-    // Set state and notify - go directly to target selection
     this.updateState({
       mode: SELECT_TARGET,
       sourceRegion: regionIndex,
       targetRegion: null,
       buildRegion: null,
-      maxSoldiers: soldiers.length, // Can move all soldiers
-      selectedSoldierCount: Math.min(soldiers.length, 1), // Default to 1 soldier
+      maxSoldiers: soldiers.length,
+      selectedSoldierCount: Math.min(soldiers.length, 1),
       isMoving: false,
       availableMoves: this.state.availableMoves
     });
 
     logger.debug('✅ Source region selected, transitioning to SELECT_TARGET');
+  }
+
+  private validateSourceSelection(regionIndex: number): boolean {
+    if (!this.isOwnedByCurrentPlayer(regionIndex)) {
+      return false;
+    }
+
+    if (this.wasConqueredThisTurn(regionIndex)) {
+      return false;
+    }
+
+    if (!this.hasSoldiersToMove(regionIndex)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private isOwnedByCurrentPlayer(regionIndex: number): boolean {
+    const currentPlayerSlot = this.gameState.currentPlayerSlot;
+    const owner = this.gameState.ownersByRegion[regionIndex];
+    if (owner !== currentPlayerSlot) {
+      logger.debug('Cannot select region - not owned by current player');
+      return false;
+    }
+    return true;
+  }
+
+  private wasConqueredThisTurn(regionIndex: number): boolean {
+    if (this.gameState.conqueredRegions?.includes(regionIndex)) {
+      logger.debug('Cannot select region - conquered this turn');
+      return true;
+    }
+    return false;
+  }
+
+  private hasSoldiersToMove(regionIndex: number): boolean {
+    const soldiers = this.gameState.soldiersByRegion[regionIndex] || [];
+    if (soldiers.length === 0) {
+      logger.debug('Cannot select region - no soldiers to move');
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -226,40 +252,10 @@ export class MoveSystem {
   private selectTargetRegion(regionIndex: number): void {
     logger.debug(`🎯 MoveSystem.selectTargetRegion: ${regionIndex}`);
 
-    if (this.state.sourceRegion === null) {
-      logger.error('No source region selected');
+    if (!this.validateTargetSelection(regionIndex)) {
       return;
     }
 
-    // Can't move to the same region
-    if (regionIndex === this.state.sourceRegion) {
-      logger.debug('Cannot move to the same region');
-      this.cancelMove();
-      return;
-    }
-
-    // Check if regions are adjacent - regions is now an array
-    const sourceRegion = this.gameState.regions.find((r: any) => r.index === this.state.sourceRegion);
-    if (!sourceRegion) {
-      logger.error('Source region not found');
-      return;
-    }
-
-    if (!sourceRegion.neighbors.includes(regionIndex)) {
-      logger.debug('Target region is not adjacent');
-      return;
-    }
-
-    // Validate move before opening soldier selection modal
-    // Check with minimum soldier count (1) to ensure move is valid
-    const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion]?.length || 0;
-    if (availableSoldiers < 1) {
-      logger.debug('Not enough soldiers to move (need at least 1)');
-      this.cancelMove();
-      return;
-    }
-
-    // Set target and transition to soldier selection
     this.updateState({
       ...this.state,
       targetRegion: regionIndex,
@@ -268,6 +264,60 @@ export class MoveSystem {
     });
 
     logger.debug('✅ Target region selected, transitioning to ADJUST_SOLDIERS');
+  }
+
+  private validateTargetSelection(regionIndex: number): boolean {
+    if (this.state.sourceRegion === null) {
+      logger.error('No source region selected');
+      return false;
+    }
+
+    if (this.isTargetSameAsSource(regionIndex)) {
+      this.cancelMove();
+      return false;
+    }
+
+    if (!this.isTargetAdjacent(regionIndex)) {
+      return false;
+    }
+
+    if (!this.hasEnoughSoldiersToMove()) {
+      this.cancelMove();
+      return false;
+    }
+
+    return true;
+  }
+
+  private isTargetSameAsSource(regionIndex: number): boolean {
+    if (regionIndex === this.state.sourceRegion) {
+      logger.debug('Cannot move to the same region');
+      return true;
+    }
+    return false;
+  }
+
+  private isTargetAdjacent(regionIndex: number): boolean {
+    const sourceRegion = this.gameState.regions.find((r: any) => r.index === this.state.sourceRegion);
+    if (!sourceRegion) {
+      logger.error('Source region not found');
+      return false;
+    }
+
+    if (!sourceRegion.neighbors.includes(regionIndex)) {
+      logger.debug('Target region is not adjacent');
+      return false;
+    }
+    return true;
+  }
+
+  private hasEnoughSoldiersToMove(): boolean {
+    const availableSoldiers = this.gameState.soldiersByRegion[this.state.sourceRegion!]?.length || 0;
+    if (availableSoldiers < 1) {
+      logger.debug('Not enough soldiers to move (need at least 1)');
+      return false;
+    }
+    return true;
   }
 
   /**

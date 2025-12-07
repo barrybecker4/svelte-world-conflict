@@ -98,38 +98,46 @@ class TurnManager {
    * the local player's turn. This is separate from turn transitions.
    */
   public async showInitialTurnBanner(localPlayerSlotIndex: number): Promise<void> {
-    const gameState = get(this.gameState);
-    if (!gameState) return;
-
-    // Only show if it's the local player's turn
-    if (gameState.currentPlayerSlot !== localPlayerSlotIndex) {
+    if (!this.shouldShowInitialBanner(localPlayerSlotIndex)) {
       return;
+    }
+
+    return new Promise((resolve) => {
+      this.activateBannerState();
+      this.onBannerCompleteCallback = () => resolve();
+      this.setupBannerAutoComplete();
+    });
+  }
+
+  private shouldShowInitialBanner(localPlayerSlotIndex: number): boolean {
+    const gameState = get(this.gameState);
+    if (!gameState) return false;
+
+    if (gameState.currentPlayerSlot !== localPlayerSlotIndex) {
+      return false;
     }
 
     const players = get(this.players);
     const currentPlayer = players.find(p => p.slotIndex === localPlayerSlotIndex);
-    if (!currentPlayer) return;
+    return !!currentPlayer;
+  }
 
-    return new Promise((resolve) => {
-      this.turnState.update(state => ({
-        ...state,
-        showBanner: true,
-        bannerComplete: false,
-        isTransitioning: true
-      }));
+  private activateBannerState(): void {
+    this.turnState.update(state => ({
+      ...state,
+      showBanner: true,
+      bannerComplete: false,
+      isTransitioning: true
+    }));
+  }
 
-      this.onBannerCompleteCallback = () => {
-        resolve();
-      };
-
-      // Auto-complete after BANNER_TIME
-      setTimeout(() => {
-        const state = get(this.turnState);
-        if (state.showBanner && !state.bannerComplete) {
-          this.onBannerComplete();
-        }
-      }, GAME_CONSTANTS.BANNER_TIME + 100);
-    });
+  private setupBannerAutoComplete(): void {
+    setTimeout(() => {
+      const state = get(this.turnState);
+      if (state.showBanner && !state.bannerComplete) {
+        this.onBannerComplete();
+      }
+    }, GAME_CONSTANTS.BANNER_TIME + 100);
   }
 
   /**
@@ -137,60 +145,82 @@ class TurnManager {
    */
   public async transitionToPlayer(newPlayerSlotIndex: number, gameState: GameStateData): Promise<void> {
       return new Promise(async (resolve) => {
-        // Update game state AND players list first to ensure derived stores see correct data
-        this.gameState.set(gameState);
-        if (gameState.players) {
-          this.players.set(gameState.players);
-        }
+        this.updateStoresWithNewGameState(gameState);
 
         const newArrayIndex = this.findArrayIndexForSlot(newPlayerSlotIndex);
-        const players = get(this.players);
-        const newPlayer = players.find(p => p.slotIndex === newPlayerSlotIndex);
-        const playerAtArrayIndex = players[newArrayIndex];
+        const isNewTurn = this.isNewTurnDetected(newPlayerSlotIndex);
 
-        // slot-based turn detection
-        const isNewTurn = this.previousSlotIndex !== newPlayerSlotIndex;
-
-        logger.debug('Turn transition:', {
-          previousSlot: this.previousSlotIndex,
-          newSlot: newPlayerSlotIndex,
-          newPlayerName: newPlayer?.name,
-          newArrayIndex,
-          playerAtArrayIndex: playerAtArrayIndex ? { name: playerAtArrayIndex.name, slot: playerAtArrayIndex.slotIndex } : null,
-          gameStateCurrentSlot: gameState.currentPlayerSlot,
-          totalPlayers: players.length,
-          isNewTurn
-        });
-
-        this.turnState.update(state => ({
-          ...state,
-          previousPlayerIndex: isNewTurn ? state.currentPlayerIndex : state.previousPlayerIndex,
-          currentPlayerIndex: newArrayIndex,
-          isTransitioning: true,
-          showBanner: isNewTurn,
-          bannerComplete: !isNewTurn,
-          turnStartTime: isNewTurn ? Date.now() : state.turnStartTime
-        }));
+        this.logTurnTransition(newPlayerSlotIndex, newArrayIndex, isNewTurn, gameState);
+        this.applyTurnStateUpdate(newArrayIndex, isNewTurn);
 
         this.previousSlotIndex = newPlayerSlotIndex;
 
-        // Wait a tick to ensure derived stores update
-        await new Promise(r => setTimeout(r, 0));
-
-        // If showing a banner, set up auto-complete as a fallback
-        // (in case the Banner component doesn't call onBannerComplete)
-        if (isNewTurn) {
-          setTimeout(() => {
-            const state = get(this.turnState);
-            if (state.isTransitioning || !state.bannerComplete) {
-              logger.debug('🎭 Auto-completing turn transition (fallback)');
-              this.onBannerComplete();
-            }
-          }, GAME_CONSTANTS.BANNER_TIME + 200);
-        }
+        await this.waitForDerivedStoreUpdate();
+        this.setupBannerAutoCompleteIfNeeded(isNewTurn);
 
         setTimeout(() => resolve(), 100);
       });
+  }
+
+  private updateStoresWithNewGameState(gameState: GameStateData): void {
+    this.gameState.set(gameState);
+    if (gameState.players) {
+      this.players.set(gameState.players);
+    }
+  }
+
+  private isNewTurnDetected(newPlayerSlotIndex: number): boolean {
+    return this.previousSlotIndex !== newPlayerSlotIndex;
+  }
+
+  private logTurnTransition(
+    newPlayerSlotIndex: number,
+    newArrayIndex: number,
+    isNewTurn: boolean,
+    gameState: GameStateData
+  ): void {
+    const players = get(this.players);
+    const newPlayer = players.find(p => p.slotIndex === newPlayerSlotIndex);
+    const playerAtArrayIndex = players[newArrayIndex];
+
+    logger.debug('Turn transition:', {
+      previousSlot: this.previousSlotIndex,
+      newSlot: newPlayerSlotIndex,
+      newPlayerName: newPlayer?.name,
+      newArrayIndex,
+      playerAtArrayIndex: playerAtArrayIndex ? { name: playerAtArrayIndex.name, slot: playerAtArrayIndex.slotIndex } : null,
+      gameStateCurrentSlot: gameState.currentPlayerSlot,
+      totalPlayers: players.length,
+      isNewTurn
+    });
+  }
+
+  private applyTurnStateUpdate(newArrayIndex: number, isNewTurn: boolean): void {
+    this.turnState.update(state => ({
+      ...state,
+      previousPlayerIndex: isNewTurn ? state.currentPlayerIndex : state.previousPlayerIndex,
+      currentPlayerIndex: newArrayIndex,
+      isTransitioning: true,
+      showBanner: isNewTurn,
+      bannerComplete: !isNewTurn,
+      turnStartTime: isNewTurn ? Date.now() : state.turnStartTime
+    }));
+  }
+
+  private waitForDerivedStoreUpdate(): Promise<void> {
+    return new Promise(r => setTimeout(r, 0));
+  }
+
+  private setupBannerAutoCompleteIfNeeded(isNewTurn: boolean): void {
+    if (isNewTurn) {
+      setTimeout(() => {
+        const state = get(this.turnState);
+        if (state.isTransitioning || !state.bannerComplete) {
+          logger.debug('🎭 Auto-completing turn transition (fallback)');
+          this.onBannerComplete();
+        }
+      }, GAME_CONSTANTS.BANNER_TIME + 200);
+    }
   }
 
   private findArrayIndexForSlot(slotIndex: number): number {
@@ -375,15 +405,11 @@ class TurnManager {
    * Returns a promise that resolves when the banner animation completes.
    */
   public async showReplayBannerForPlayer(playerSlotIndex: number): Promise<void> {
-    // Skip if we already showed a banner for this player
-    if (this.lastReplayBannerSlot === playerSlotIndex) {
-      logger.debug(`🎭 Skipping replay banner for slot ${playerSlotIndex} - already shown`);
+    if (this.alreadyShowedReplayBanner(playerSlotIndex)) {
       return;
     }
 
-    const players = get(this.players);
-    const player = players.find(p => p.slotIndex === playerSlotIndex);
-
+    const player = this.findPlayerBySlot(playerSlotIndex);
     if (!player) {
       return;
     }
@@ -394,14 +420,29 @@ class TurnManager {
     return new Promise((resolve) => {
       this.replayBannerPlayer.set(player);
       this.onReplayBannerCompleteCallback = resolve;
-
-      // Auto-complete after BANNER_TIME (in case onReplayBannerComplete isn't called)
-      setTimeout(() => {
-        if (get(this.replayBannerPlayer) === player) {
-          this.onReplayBannerComplete();
-        }
-      }, GAME_CONSTANTS.BANNER_TIME + 100);
+      this.setupReplayBannerAutoComplete(player);
     });
+  }
+
+  private alreadyShowedReplayBanner(playerSlotIndex: number): boolean {
+    if (this.lastReplayBannerSlot === playerSlotIndex) {
+      logger.debug(`🎭 Skipping replay banner for slot ${playerSlotIndex} - already shown`);
+      return true;
+    }
+    return false;
+  }
+
+  private findPlayerBySlot(playerSlotIndex: number): Player | undefined {
+    const players = get(this.players);
+    return players.find(p => p.slotIndex === playerSlotIndex);
+  }
+
+  private setupReplayBannerAutoComplete(player: Player): void {
+    setTimeout(() => {
+      if (get(this.replayBannerPlayer) === player) {
+        this.onReplayBannerComplete();
+      }
+    }, GAME_CONSTANTS.BANNER_TIME + 100);
   }
 
   /**

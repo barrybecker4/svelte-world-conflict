@@ -3,11 +3,12 @@
  * Tests Risk-style dice combat, preemptive damage, and battle resolution
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { AttackSequenceGenerator, type ArmyMoveData, type AttackEvent } from './AttackSequenceGenerator';
 import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
 import { GameState } from '$lib/game/state/GameState';
 import type { Player } from '$lib/game/entities/gameTypes';
+import { Region } from '$lib/game/entities/Region';
 import { TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 
 // Helper to create a mock player
@@ -44,8 +45,8 @@ function createCombatGameState(options: {
     ];
 
     const regions = [
-        { index: 0, name: 'Region 0', neighbors: [1], x: 100, y: 100, hasTemple: false, points: [] },
-        { index: 1, name: 'Region 1', neighbors: [0], x: 200, y: 100, hasTemple: true, points: [] }
+        new Region({ index: 0, name: 'Region 0', neighbors: [1], x: 100, y: 100, hasTemple: false, points: [] }),
+        new Region({ index: 1, name: 'Region 1', neighbors: [0], x: 200, y: 100, hasTemple: true, points: [] })
     ];
 
     const soldiersByRegion: Record<number, { i: number }[]> = {
@@ -86,6 +87,7 @@ function createCombatGameState(options: {
         rngSeed: seed
     });
 }
+
 
 describe('AttackSequenceGenerator', () => {
     describe('createAttackSequenceIfFight', () => {
@@ -593,7 +595,7 @@ describe('AttackSequenceGenerator', () => {
             // We need a scenario where attackers take heavy losses but don't all die
             // 10 attackers vs 10 defenders, but we want to find a seed that triggers retreat
             // Retreat threshold for 10 attackers is >5 casualties
-            
+
             // Using a seed that produces high attacker casualties
             const gameState = createCombatGameState({
                 attackerSoldiers: 10,
@@ -615,7 +617,7 @@ describe('AttackSequenceGenerator', () => {
 
             // Check if retreat was triggered (has isRetreat flag)
             const retreatEvent = sequence!.find((e: AttackEvent) => e.isRetreat === true);
-            
+
             if (retreatEvent) {
                 // If retreat was triggered, verify the retreat event structure
                 expect(retreatEvent.floatingText).toBeDefined();
@@ -666,7 +668,7 @@ describe('AttackSequenceGenerator', () => {
 
             // Find retreat event
             const retreatEvent = sequence!.find((e: AttackEvent) => e.isRetreat === true);
-            
+
             if (retreatEvent) {
                 // Verify the isRetreat flag exists and is true
                 expect(retreatEvent.isRetreat).toBe(true);
@@ -776,7 +778,7 @@ describe('AttackSequenceGenerator', () => {
             // (The combat may still result in retreat later, but not immediately from Earth)
             const events = sequence!;
             const earthIndex = events.findIndex(e => e.floatingText?.some(ft => ft.text.includes('Earth kills')));
-            
+
             // The event immediately after Earth should be either combat or outcome, not retreat
             if (earthIndex >= 0 && earthIndex < events.length - 1) {
                 const nextEvent = events[earthIndex + 1];
