@@ -1,5 +1,25 @@
 <script lang="ts">
+    import { TUTORIAL_CARDS, TOTAL_TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
+
     export let oncomplete: () => void;
+
+    let currentCard = 0;
+
+    function nextCard() {
+        if (currentCard < TOTAL_TUTORIAL_CARDS - 1) {
+            currentCard++;
+        }
+    }
+
+    function prevCard() {
+        if (currentCard > 0) {
+            currentCard--;
+        }
+    }
+
+    $: currentTutorial = TUTORIAL_CARDS[currentCard];
+    $: isLastCard = currentCard === TOTAL_TUTORIAL_CARDS - 1;
+    $: isFirstCard = currentCard === 0;
 </script>
 
 <div class="modal-overlay">
@@ -10,58 +30,58 @@
         </header>
 
         <div class="content">
-            <section>
-                <h2>🎯 Objective</h2>
-                <p>
-                    Conquer the galaxy by capturing planets and defeating your opponents.
-                    The player with the most planets when time runs out wins!
-                </p>
-            </section>
+            <div class="card-header">
+                <h2>{currentTutorial.icon} {currentTutorial.title}</h2>
+            </div>
 
-            <section>
-                <h2>🪐 Planets</h2>
-                <ul>
-                    <li>Each planet produces <strong>resources</strong> based on its size</li>
-                    <li>Larger planets produce more resources per minute</li>
-                    <li>Use resources to build new ships</li>
-                    <li>Click your planet to select it, then click again to build ships</li>
-                </ul>
-            </section>
+            <ul class="card-content">
+                {#each currentTutorial.content as item}
+                    <li>{@html item}</li>
+                {/each}
+            </ul>
+        </div>
 
-            <section>
-                <h2>🚀 Armadas</h2>
-                <ul>
-                    <li>Select one of your planets, then click another planet to send ships</li>
-                    <li>Armadas travel through space in real-time</li>
-                    <li>Sending to your own planet = reinforcement</li>
-                    <li>Sending to enemy/neutral planet = attack!</li>
-                </ul>
-            </section>
+        <div class="navigation">
+            <button 
+                class="nav-btn prev" 
+                on:click={prevCard} 
+                disabled={isFirstCard}
+                aria-label="Previous slide"
+            >
+                ‹
+            </button>
 
-            <section>
-                <h2>⚔️ Combat</h2>
-                <ul>
-                    <li>Battles use Risk-style dice mechanics</li>
-                    <li>Attackers roll up to 3 dice, defenders up to 2</li>
-                    <li>Ties go to the defender</li>
-                    <li>In multi-player battles, everyone attacks the weakest!</li>
-                </ul>
-            </section>
+            <div class="dots">
+                {#each TUTORIAL_CARDS as _, index}
+                    <button 
+                        class="dot" 
+                        class:active={index === currentCard}
+                        on:click={() => currentCard = index}
+                        aria-label="Go to slide {index + 1}"
+                    ></button>
+                {/each}
+            </div>
 
-            <section>
-                <h2>🏆 Victory</h2>
-                <ul>
-                    <li>Last player standing wins immediately</li>
-                    <li>If time runs out: most planets wins</li>
-                    <li>Tiebreaker: most ships, then most resources</li>
-                </ul>
-            </section>
+            <button 
+                class="nav-btn next" 
+                on:click={nextCard} 
+                disabled={isLastCard}
+                aria-label="Next slide"
+            >
+                ›
+            </button>
         </div>
 
         <footer>
-            <button class="play-btn" on:click={oncomplete}>
-                Start Playing! 🎮
-            </button>
+            {#if isLastCard}
+                <button class="play-btn" on:click={oncomplete}>
+                    Start Playing! 🎮
+                </button>
+            {:else}
+                <button class="next-btn" on:click={nextCard}>
+                    Next →
+                </button>
+            {/if}
         </footer>
     </div>
 </div>
@@ -86,7 +106,7 @@
         border: 2px solid #4c1d95;
         border-radius: 16px;
         width: 100%;
-        max-width: 600px;
+        max-width: 500px;
         max-height: 90vh;
         overflow-y: auto;
         color: #e5e7eb;
@@ -95,13 +115,13 @@
 
     header {
         text-align: center;
-        padding: 2rem 2rem 1rem;
+        padding: 1.5rem 1.5rem 1rem;
         border-bottom: 1px solid #374151;
     }
 
     h1 {
         margin: 0;
-        font-size: 2.5rem;
+        font-size: 1.75rem;
         background: linear-gradient(135deg, #a78bfa, #c084fc);
         background-clip: text;
         -webkit-background-clip: text;
@@ -111,63 +131,115 @@
     .subtitle {
         margin: 0.5rem 0 0;
         color: #9ca3af;
-        font-size: 1.1rem;
+        font-size: 0.9rem;
     }
 
     .content {
-        padding: 1.5rem 2rem;
+        padding: 1.5rem;
+        min-height: 200px;
     }
 
-    section {
-        margin-bottom: 1.5rem;
+    .card-header {
+        margin-bottom: 1rem;
     }
 
-    section:last-child {
-        margin-bottom: 0;
-    }
-
-    h2 {
-        font-size: 1.1rem;
+    .card-header h2 {
+        font-size: 1.25rem;
         color: #a78bfa;
-        margin: 0 0 0.5rem;
-    }
-
-    p {
         margin: 0;
-        color: #d1d5db;
-        line-height: 1.6;
     }
 
-    ul {
+    .card-content {
         margin: 0;
         padding-left: 1.5rem;
         color: #d1d5db;
     }
 
-    li {
-        margin-bottom: 0.5rem;
-        line-height: 1.5;
+    .card-content li {
+        margin-bottom: 0.75rem;
+        line-height: 1.6;
     }
 
-    li:last-child {
+    .card-content li:last-child {
         margin-bottom: 0;
     }
 
+    .navigation {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 0 1.5rem 1rem;
+    }
+
+    .nav-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 2px solid #4c1d95;
+        background: transparent;
+        color: #a78bfa;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+        background: #4c1d95;
+        color: white;
+    }
+
+    .nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .dots {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: none;
+        background: #4c1d95;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0;
+    }
+
+    .dot.active {
+        background: #a78bfa;
+        transform: scale(1.2);
+    }
+
+    .dot:hover:not(.active) {
+        background: #7c3aed;
+    }
+
     footer {
-        padding: 1.5rem 2rem 2rem;
+        padding: 1rem 1.5rem 1.5rem;
         text-align: center;
     }
 
-    .play-btn {
-        padding: 1rem 3rem;
-        font-size: 1.25rem;
+    .play-btn, .next-btn {
+        padding: 0.875rem 2rem;
+        font-size: 1.1rem;
         font-weight: 600;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
         border: none;
         border-radius: 12px;
         color: white;
         cursor: pointer;
         transition: all 0.3s ease;
+    }
+
+    .play-btn {
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
         box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
     }
 
@@ -176,14 +248,37 @@
         box-shadow: 0 6px 30px rgba(168, 85, 247, 0.5);
     }
 
+    .next-btn {
+        background: linear-gradient(135deg, #4c1d95, #6d28d9);
+        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+    }
+
+    .next-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(124, 58, 237, 0.4);
+    }
+
     @media (max-width: 640px) {
+        .modal {
+            max-width: 100%;
+            margin: 0.5rem;
+        }
+
         h1 {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
         }
 
         .content {
-            padding: 1rem 1.5rem;
+            padding: 1rem;
+            min-height: 180px;
+        }
+
+        .card-header h2 {
+            font-size: 1.1rem;
+        }
+
+        .card-content {
+            font-size: 0.95rem;
         }
     }
 </style>
-
