@@ -1,0 +1,16 @@
+name = "galactic-conflict"
+compatibility_date = "2024-05-15"
+pages_build_output_dir = "dist"
+
+# Add nodejs compatibility for SvelteKit
+compatibility_flags = ["nodejs_compat"]
+
+# Local development KV namespace
+[[kv_namespaces]]
+binding = "GALACTIC_CONFLICT_KV"
+id = "local-dev-storage"
+preview_id = "local-dev-storage"
+
+# Note: WebSocket worker runs separately - no Durable Object binding needed
+# The game connects to the worker via WebSocket URLs configured in src/lib/websocket-config.ts
+

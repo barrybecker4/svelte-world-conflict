@@ -1,0 +1,334 @@
+<script lang="ts">
+    import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+    import { GameApiClient } from '$lib/client/gameController/GameApiClient';
+    import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
+    import { goto } from '$app/navigation';
+    import { logger } from '$lib/game/utils/logger';
+
+    const dispatch = createEventDispatcher();
+
+    let games: any[] = [];
+    let loading = true;
+    let error: string | null = null;
+    let playerName = '';
+    let showNameInput = true;
+
+    onMount(async () => {
+        const storedName = loadPlayerName();
+        if (storedName) {
+            playerName = storedName;
+            showNameInput = false;
+            await loadGames();
+        }
+    });
+
+    async function loadGames() {
+        loading = true;
+        error = null;
+        try {
+            const result = await GameApiClient.getOpenGames();
+            games = result.games || [];
+            
+            // If no open games, go straight to configuration
+            if (games.length === 0) {
+                dispatch('close');
+            }
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to load games';
+            logger.error('Failed to load games:', err);
+        } finally {
+            loading = false;
+        }
+    }
+
+    function handleNameSubmit() {
+        if (playerName.trim()) {
+            savePlayerName(playerName.trim());
+            showNameInput = false;
+            loadGames();
+        }
+    }
+
+    async function handleJoinGame(gameId: string, slotIndex: number) {
+        try {
+            const result = await GameApiClient.joinGame(gameId, playerName, slotIndex);
+            if (result.success) {
+                await goto(`/game/${gameId}`);
+            }
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to join game';
+        }
+    }
+
+    function handleNewGame() {
+        dispatch('close');
+    }
+
+    function getOpenSlots(game: any) {
+        return game.playerSlots?.filter((s: any) => s.type === 'Open') || [];
+    }
+</script>
+
+<div class="lobby-overlay">
+    {#if showNameInput}
+        <div class="name-input-container">
+            <h2>Enter Your Name</h2>
+            <form on:submit|preventDefault={handleNameSubmit}>
+                <input
+                    type="text"
+                    bind:value={playerName}
+                    placeholder="Commander name..."
+                    maxlength="20"
+                    autofocus
+                />
+                <button type="submit" disabled={!playerName.trim()}>
+                    Continue
+                </button>
+            </form>
+        </div>
+    {:else}
+        <div class="lobby-container">
+            <header>
+                <h1>🌌 Galactic Conflict</h1>
+                <p class="subtitle">Select a game to join or create a new one</p>
+            </header>
+
+            <div class="content">
+                {#if error}
+                    <div class="error">{error}</div>
+                {/if}
+
+                {#if loading}
+                    <div class="loading">Loading games...</div>
+                {:else if games.length > 0}
+                    <div class="games-list">
+                        <h3>Open Games ({games.length})</h3>
+                        {#each games as game}
+                            <div class="game-card">
+                                <div class="game-info">
+                                    <span class="game-id">Game: {game.gameId}</span>
+                                    <span class="player-count">
+                                        {game.players?.length || 0}/{game.playerSlots?.length || 0} players
+                                    </span>
+                                </div>
+                                <div class="settings-preview">
+                                    <span>🪐 {game.settings?.planetCount || 30} planets</span>
+                                    <span>⏱️ {game.settings?.gameDuration || 15}min</span>
+                                </div>
+                                <div class="slots">
+                                    {#each getOpenSlots(game) as slot}
+                                        <button
+                                            class="slot-btn"
+                                            on:click={() => handleJoinGame(game.gameId, slot.slotIndex)}
+                                        >
+                                            Join Slot {slot.slotIndex + 1}
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <p class="no-games">No open games available</p>
+                {/if}
+            </div>
+
+            <footer>
+                <button class="new-game-btn" on:click={handleNewGame}>
+                    + New Game
+                </button>
+            </footer>
+        </div>
+    {/if}
+</div>
+
+<style>
+    .lobby-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+    }
+
+    .name-input-container {
+        background: linear-gradient(145deg, #1e1e2e, #2a2a3e);
+        border: 2px solid #4c1d95;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        color: #e5e7eb;
+    }
+
+    .name-input-container h2 {
+        margin: 0 0 1.5rem;
+        color: #a78bfa;
+    }
+
+    .name-input-container form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .name-input-container input {
+        padding: 0.75rem 1rem;
+        font-size: 1.1rem;
+        background: #1f1f2e;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        color: #e5e7eb;
+        text-align: center;
+    }
+
+    .name-input-container button {
+        padding: 0.75rem 2rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .name-input-container button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .lobby-container {
+        background: linear-gradient(145deg, #1e1e2e, #2a2a3e);
+        border: 2px solid #4c1d95;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        color: #e5e7eb;
+    }
+
+    header {
+        text-align: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #374151;
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 1.75rem;
+        color: #a78bfa;
+    }
+
+    .subtitle {
+        margin: 0.5rem 0 0;
+        color: #9ca3af;
+    }
+
+    .content {
+        padding: 1.5rem;
+        min-height: 200px;
+    }
+
+    h3 {
+        margin: 0 0 1rem;
+        color: #e5e7eb;
+    }
+
+    .error {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid #ef4444;
+        padding: 0.75rem;
+        border-radius: 8px;
+        color: #fca5a5;
+        margin-bottom: 1rem;
+    }
+
+    .loading, .no-games {
+        text-align: center;
+        color: #9ca3af;
+        padding: 2rem;
+    }
+
+    .games-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .game-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #374151;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .game-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .game-id {
+        font-weight: 500;
+    }
+
+    .player-count {
+        color: #9ca3af;
+    }
+
+    .settings-preview {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: #9ca3af;
+        margin-bottom: 0.75rem;
+    }
+
+    .slots {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .slot-btn {
+        padding: 0.5rem 1rem;
+        background: #374151;
+        border: none;
+        border-radius: 4px;
+        color: #e5e7eb;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    .slot-btn:hover {
+        background: #4b5563;
+    }
+
+    footer {
+        padding: 1.5rem;
+        border-top: 1px solid #374151;
+        text-align: center;
+    }
+
+    .new-game-btn {
+        padding: 0.75rem 2rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+
+    .new-game-btn:hover {
+        background: linear-gradient(135deg, #6d28d9, #9333ea);
+    }
+</style>
+

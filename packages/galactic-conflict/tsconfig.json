@@ -1,0 +1,27 @@
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["@cloudflare/workers-types"],
+    
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    
+    "noImplicitAny": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false
+  }
+}
+

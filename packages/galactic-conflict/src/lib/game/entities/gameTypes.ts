@@ -1,0 +1,252 @@
+/**
+ * Core game types for Galactic Conflict
+ */
+
+import type { GameStatus } from '$lib/game/constants/gameConstants';
+
+// ==================== POSITION AND GEOMETRY ====================
+
+export interface Position {
+    x: number;
+    y: number;
+}
+
+// ==================== PLAYER ====================
+
+export interface Player {
+    slotIndex: number;
+    name: string;
+    color: string;
+    isAI: boolean;
+    personality?: string; // AI personality type if AI player
+}
+
+export interface PlayerSlot {
+    slotIndex: number;
+    type: 'Set' | 'AI' | 'Open' | 'Disabled';
+    name?: string;
+    personality?: string; // AI personality
+}
+
+// ==================== PLANET ====================
+
+export interface Planet {
+    id: number;
+    name: string;
+    position: Position;
+    /** Volume determines size and resource production (5-100) */
+    volume: number;
+    /** Player slot index who owns this planet, null if neutral */
+    ownerId: number | null;
+    /** Number of ships defending this planet */
+    ships: number;
+    /** Accumulated resources (only for owned planets) */
+    resources: number;
+}
+
+// ==================== ARMADA ====================
+
+export interface Armada {
+    id: string;
+    /** Player slot index who owns this armada */
+    ownerId: number;
+    /** Number of ships in this armada */
+    ships: number;
+    /** Planet ID where armada departed from */
+    sourcePlanetId: number;
+    /** Planet ID where armada is heading */
+    destinationPlanetId: number;
+    /** Unix timestamp when armada departed */
+    departureTime: number;
+    /** Unix timestamp when armada will arrive */
+    arrivalTime: number;
+}
+
+// ==================== BATTLE ====================
+
+export interface BattleParticipant {
+    playerId: number;
+    ships: number;
+    isDefender: boolean;
+    arrivedAt: number;
+}
+
+export interface BattleRoundResult {
+    attackerPlayerId: number;
+    defenderPlayerId: number;
+    attackerLosses: number;
+    defenderLosses: number;
+    attackerRolls: number[];
+    defenderRolls: number[];
+    timestamp: number;
+}
+
+export interface Battle {
+    id: string;
+    planetId: number;
+    participants: BattleParticipant[];
+    rounds: BattleRoundResult[];
+    status: 'active' | 'resolved';
+    startTime: number;
+    resolvedTime?: number;
+    winnerId?: number | null; // null if planet becomes neutral
+}
+
+// ==================== EVENTS ====================
+
+export type GameEventType = 
+    | 'armada_arrival'
+    | 'battle_round'
+    | 'resource_tick'
+    | 'game_end';
+
+export interface GameEvent {
+    id: string;
+    type: GameEventType;
+    /** Unix timestamp when this event should be processed */
+    scheduledTime: number;
+    payload: ArmadaArrivalPayload | BattleRoundPayload | ResourceTickPayload | GameEndPayload;
+}
+
+export interface ArmadaArrivalPayload {
+    armadaId: string;
+}
+
+export interface BattleRoundPayload {
+    battleId: string;
+}
+
+export interface ResourceTickPayload {
+    // No additional data needed - processes all planets
+}
+
+export interface GameEndPayload {
+    reason: 'time_expired' | 'single_player_remaining';
+}
+
+// ==================== GAME STATE ====================
+
+export interface GalacticGameStateData {
+    gameId: string;
+    status: GameStatus;
+    
+    /** Unix timestamp when the game started */
+    startTime: number;
+    /** Game duration in minutes */
+    durationMinutes: number;
+    /** Armada travel speed (units per minute) */
+    armadaSpeed: number;
+    
+    /** All planets in the galaxy */
+    planets: Planet[];
+    /** All players in the game */
+    players: Player[];
+    /** All in-transit armadas */
+    armadas: Armada[];
+    /** All active battles */
+    activeBattles: Battle[];
+    /** Scheduled future events */
+    eventQueue: GameEvent[];
+    
+    /** Result when game ends */
+    endResult?: Player | 'DRAWN_GAME' | null;
+    
+    /** Eliminated player slot indices */
+    eliminatedPlayers: number[];
+    
+    /** Random number generator state for deterministic gameplay */
+    rngSeed?: string;
+    rngState?: any;
+    
+    /** Last state update timestamp */
+    lastUpdateTime: number;
+}
+
+// ==================== PENDING GAME (WAITING ROOM) ====================
+
+export interface PendingGameConfiguration {
+    playerSlots: PlayerSlot[];
+    settings?: GameSettings;
+}
+
+export interface GameSettings {
+    planetCount: number;
+    armadaSpeed: number;
+    gameDuration: number;
+    stateBroadcastInterval: number;
+    aiDifficulty?: string;
+}
+
+export interface PendingGameData {
+    gameId: string;
+    status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
+    creator?: string;
+    playerCount?: number;
+    maxPlayers?: number;
+    createdAt?: number;
+    gameType?: string;
+    players: Array<{ slotIndex: number; name: string }>;
+    pendingConfiguration?: PendingGameConfiguration;
+}
+
+// ==================== STATE UPDATES (FOR WEBSOCKET) ====================
+
+export interface PlanetUpdate {
+    id: number;
+    ownerId?: number | null;
+    ships?: number;
+    resources?: number;
+}
+
+export interface StateUpdate {
+    timestamp: number;
+    gameTime: number; // Elapsed time in milliseconds
+    planets: PlanetUpdate[];
+    armadas: Armada[];
+    activeBattles: Battle[];
+    recentEvents: GameEvent[];
+    eliminatedPlayers: number[];
+    endResult?: Player | 'DRAWN_GAME' | null;
+}
+
+// ==================== MOVE TYPES ====================
+
+export interface SendArmadaAction {
+    type: 'send_armada';
+    sourcePlanetId: number;
+    destinationPlanetId: number;
+    shipCount: number;
+}
+
+export interface BuildShipsAction {
+    type: 'build_ships';
+    planetId: number;
+    shipCount: number;
+}
+
+export type PlayerAction = SendArmadaAction | BuildShipsAction;
+
+// ==================== API TYPES ====================
+
+export interface CreateGameRequest {
+    playerName: string;
+    gameType: string;
+    planetCount: number;
+    armadaSpeed: number;
+    gameDuration: number;
+    playerSlots: PlayerSlot[];
+    settings: GameSettings;
+}
+
+export interface CreateGameResponse {
+    gameId: string;
+    status: GameStatus;
+    player: { slotIndex: number; name: string };
+}
+
+export interface JoinGameResponse {
+    success: boolean;
+    player?: { slotIndex: number; name: string };
+    error?: string;
+}
+
