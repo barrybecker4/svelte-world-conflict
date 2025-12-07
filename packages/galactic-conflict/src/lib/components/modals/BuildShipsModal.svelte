@@ -4,15 +4,23 @@
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 
     export let planet: Planet;
+    export let planets: Planet[] = [];
+    export let currentPlayerId: number | null = null;
 
     const dispatch = createEventDispatcher();
 
     let shipCount = 1;
 
+    // Use fresh planet data from the planets array (it gets updated via polling)
+    $: currentPlanet = planets.find(p => p.id === planet.id) ?? planet;
+    $: stillOwned = currentPlanet.ownerId === currentPlayerId;
     $: shipCost = GALACTIC_CONSTANTS.SHIP_COST;
     $: totalCost = shipCount * shipCost;
-    $: maxAffordable = Math.floor(planet.resources / shipCost);
-    $: canAfford = planet.resources >= totalCost;
+    $: maxAffordable = Math.floor(currentPlanet.resources / shipCost);
+    $: canAfford = currentPlanet.resources >= totalCost;
+    
+    // Clamp shipCount if maxAffordable changes
+    $: if (shipCount > maxAffordable && maxAffordable > 0) shipCount = maxAffordable;
 
     function handleBuild() {
         if (canAfford && shipCount > 0) {
@@ -33,16 +41,21 @@
         </header>
 
         <div class="content">
-            <div class="planet-info">
-                <h3>{planet.name}</h3>
+            {#if !stillOwned}
+                <div class="ownership-warning">
+                    ⚠️ You no longer own this planet! It was conquered.
+                </div>
+            {/if}
+            <div class="planet-info" class:lost={!stillOwned}>
+                <h3>{currentPlanet.name}</h3>
                 <div class="stats">
                     <div class="stat">
                         <span class="stat-label">Current Ships</span>
-                        <span class="stat-value">{planet.ships}</span>
+                        <span class="stat-value">{currentPlanet.ships}</span>
                     </div>
                     <div class="stat">
                         <span class="stat-label">Resources</span>
-                        <span class="stat-value">{Math.floor(planet.resources)}</span>
+                        <span class="stat-value">{Math.floor(currentPlanet.resources)}</span>
                     </div>
                 </div>
             </div>
@@ -89,7 +102,7 @@
 
                 <div class="result-preview">
                     <span>After building:</span>
-                    <span class="preview-value">{planet.ships + shipCount} ships</span>
+                    <span class="preview-value">{currentPlanet.ships + shipCount} ships</span>
                 </div>
             </div>
         </div>
@@ -99,9 +112,9 @@
             <button
                 class="build-btn"
                 on:click={handleBuild}
-                disabled={!canAfford || shipCount < 1}
+                disabled={!stillOwned || !canAfford || shipCount < 1}
             >
-                Build {shipCount} Ship{shipCount !== 1 ? 's' : ''}
+                {stillOwned ? `Build ${shipCount} Ship${shipCount !== 1 ? 's' : ''}` : 'Planet Lost'}
             </button>
         </footer>
     </div>
@@ -168,11 +181,27 @@
         padding: 1.5rem;
     }
 
+    .ownership-warning {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid #ef4444;
+        color: #fca5a5;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 500;
+    }
+
     .planet-info {
         background: rgba(168, 85, 247, 0.1);
         padding: 1rem;
         border-radius: 8px;
         margin-bottom: 1.5rem;
+    }
+
+    .planet-info.lost {
+        background: rgba(239, 68, 68, 0.1);
+        opacity: 0.6;
     }
 
     .stats {

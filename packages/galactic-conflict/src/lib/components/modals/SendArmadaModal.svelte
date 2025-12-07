@@ -15,12 +15,18 @@
     let shipCount = 1;
     let selectedDestinationId: number | null = preselectedDestination?.id ?? null;
 
-    $: maxShips = sourcePlanet.ships;
+    // Use fresh planet data from the planets array (it gets updated via polling)
+    $: currentSourcePlanet = planets.find(p => p.id === sourcePlanet.id) ?? sourcePlanet;
+    $: maxShips = currentSourcePlanet.ships;
+    $: stillOwned = currentSourcePlanet.ownerId === currentPlayerId;
     $: availablePlanets = planets.filter(p => p.id !== sourcePlanet.id);
     $: selectedDestination = planets.find(p => p.id === selectedDestinationId);
     
+    // Clamp shipCount if maxShips changes
+    $: if (shipCount > maxShips) shipCount = Math.max(1, maxShips);
+    
     $: travelTimeMs = selectedDestination 
-        ? calculateTravelTime(sourcePlanet, selectedDestination, GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED)
+        ? calculateTravelTime(currentSourcePlanet, selectedDestination, GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED)
         : 0;
     $: travelTimeSeconds = Math.round(travelTimeMs / 1000);
 
@@ -50,10 +56,15 @@
         </header>
 
         <div class="content">
-            <div class="source-info">
+            {#if !stillOwned}
+                <div class="ownership-warning">
+                    ⚠️ You no longer own this planet! It was conquered.
+                </div>
+            {/if}
+            <div class="source-info" class:lost={!stillOwned}>
                 <span class="label">From:</span>
-                <span class="planet-name">{sourcePlanet.name}</span>
-                <span class="ships">({sourcePlanet.ships} ships available)</span>
+                <span class="planet-name">{currentSourcePlanet.name}</span>
+                <span class="ships">({currentSourcePlanet.ships} ships available)</span>
             </div>
 
             <div class="ship-selection">
@@ -126,9 +137,9 @@
             <button
                 class="send-btn"
                 on:click={handleSend}
-                disabled={selectedDestinationId === null || shipCount < 1}
+                disabled={!stillOwned || selectedDestinationId === null || shipCount < 1 || maxShips < 1}
             >
-                Send Armada
+                {stillOwned ? 'Send Armada' : 'Planet Lost'}
             </button>
         </footer>
     </div>
@@ -191,11 +202,27 @@
         padding: 1.5rem;
     }
 
+    .ownership-warning {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid #ef4444;
+        color: #fca5a5;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 500;
+    }
+
     .source-info {
         background: rgba(168, 85, 247, 0.1);
         padding: 0.75rem;
         border-radius: 8px;
         margin-bottom: 1.5rem;
+    }
+
+    .source-info.lost {
+        background: rgba(239, 68, 68, 0.1);
+        opacity: 0.6;
     }
 
     .label {

@@ -154,6 +154,7 @@
             destinationPlanet = null;
             selectedPlanetId.set(null);
         } catch (error) {
+            // Modal will show updated state - user can see what changed and close it
             logger.error('Failed to send armada:', error);
         }
     }
@@ -263,9 +264,11 @@
     />
 {/if}
 
-{#if showBuildShipsModal && sourcePlanet}
+{#if showBuildShipsModal && sourcePlanet && $gameState}
     <BuildShipsModal
         planet={sourcePlanet}
+        planets={$gameState.planets}
+        currentPlayerId={$currentPlayerId}
         on:build={handleBuildShips}
         on:close={() => showBuildShipsModal = false}
     />
