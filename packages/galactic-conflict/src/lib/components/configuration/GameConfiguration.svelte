@@ -11,6 +11,8 @@
     let planetCount = GALACTIC_CONSTANTS.DEFAULT_PLANET_COUNT;
     let gameDuration = GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES;
     let armadaSpeed = GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED;
+    let neutralShipsMin = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN;
+    let neutralShipsMultiplierMax = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX;
 
     // Player slots (start with 2 players)
     let playerSlots: PlayerSlot[] = [];
@@ -76,6 +78,8 @@
             armadaSpeed,
             gameDuration,
             stateBroadcastInterval: GALACTIC_CONSTANTS.DEFAULT_STATE_BROADCAST_INTERVAL_MS,
+            neutralShipsMin,
+            neutralShipsMultiplierMax,
         };
 
         dispatch('gameCreated', {
@@ -145,6 +149,36 @@
                         min={GALACTIC_CONSTANTS.ARMADA_SPEED_MIN}
                         max={GALACTIC_CONSTANTS.ARMADA_SPEED_MAX}
                         step="10"
+                    />
+                </div>
+
+                <div class="setting-row">
+                    <label for="neutral-ships-min">
+                        <span class="label-text">Neutral Ships Min</span>
+                        <span class="label-value">{neutralShipsMin}</span>
+                    </label>
+                    <input
+                        type="range"
+                        id="neutral-ships-min"
+                        bind:value={neutralShipsMin}
+                        min={0}
+                        max={50}
+                        step="1"
+                    />
+                </div>
+
+                <div class="setting-row">
+                    <label for="neutral-ships-multiplier">
+                        <span class="label-text">Neutral Ships Multiplier Max</span>
+                        <span class="label-value">{neutralShipsMultiplierMax}x</span>
+                    </label>
+                    <input
+                        type="range"
+                        id="neutral-ships-multiplier"
+                        bind:value={neutralShipsMultiplierMax}
+                        min={0}
+                        max={10}
+                        step="1"
                     />
                 </div>
             </section>

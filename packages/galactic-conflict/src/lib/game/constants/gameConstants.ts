@@ -75,8 +75,10 @@ export const GALACTIC_CONSTANTS = {
     
     /** Minimum defending ships on neutral planets */
     NEUTRAL_SHIPS_MIN: 0,
-    /** Maximum defending ships on neutral planets */
-    NEUTRAL_SHIPS_MAX: 10,
+    /** Minimum multiplier for neutral planet defenders (applied to production) */
+    NEUTRAL_SHIPS_MULTIPLIER_MIN: 0,
+    /** Maximum multiplier for neutral planet defenders (applied to production) */
+    NEUTRAL_SHIPS_MULTIPLIER_MAX: 4,
     
     // ==================== PLAYERS ====================
     

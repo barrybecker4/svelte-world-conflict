@@ -74,6 +74,8 @@ export class GalacticGameState {
             playerCount: players.length,
             players,
             seed,
+            neutralShipsMin: settings.neutralShipsMin,
+            neutralShipsMultiplierMax: settings.neutralShipsMultiplierMax,
         });
 
         const now = Date.now();

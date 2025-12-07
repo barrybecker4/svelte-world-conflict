@@ -3,7 +3,7 @@
  */
 
 import type { Planet, Position, Player } from '$lib/game/entities/gameTypes';
-import { createPlanet, getPlanetRadius, generatePlanetName, getDistanceBetweenPositions } from '$lib/game/entities/Planet';
+import { createPlanet, getPlanetRadius, generatePlanetName, getDistanceBetweenPositions, getPlanetProduction } from '$lib/game/entities/Planet';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
 import { logger } from '$lib/game/utils/logger';
@@ -21,6 +21,10 @@ export interface GalaxyGenerationOptions {
     players: Player[];
     /** Random seed for reproducible generation */
     seed?: string;
+    /** Minimum defending ships on neutral planets */
+    neutralShipsMin?: number;
+    /** Maximum multiplier for neutral planet defenders (applied to production) */
+    neutralShipsMultiplierMax?: number;
 }
 
 const MAX_PLACEMENT_ATTEMPTS = 100;
@@ -54,6 +58,8 @@ export class GalaxyGenerator {
             height = this.height,
             playerCount,
             players,
+            neutralShipsMin = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN,
+            neutralShipsMultiplierMax = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX,
         } = options;
 
         logger.debug(`Generating galaxy with ${planetCount} planets for ${playerCount} players`);
@@ -70,7 +76,9 @@ export class GalaxyGenerator {
             neutralPlanetsNeeded,
             planets,
             width,
-            height
+            height,
+            neutralShipsMin,
+            neutralShipsMultiplierMax
         );
         planets.push(...neutralPlanets);
 
@@ -122,7 +130,9 @@ export class GalaxyGenerator {
         count: number,
         existingPlanets: Planet[],
         width: number,
-        height: number
+        height: number,
+        neutralShipsMin: number,
+        neutralShipsMultiplierMax: number
     ): Planet[] {
         const planets: Planet[] = [];
         let planetId = existingPlanets.length;
@@ -132,7 +142,9 @@ export class GalaxyGenerator {
                 planetId,
                 [...existingPlanets, ...planets],
                 width,
-                height
+                height,
+                neutralShipsMin,
+                neutralShipsMultiplierMax
             );
 
             if (planet) {
@@ -153,7 +165,9 @@ export class GalaxyGenerator {
         id: number,
         existingPlanets: Planet[],
         width: number,
-        height: number
+        height: number,
+        neutralShipsMin: number,
+        neutralShipsMultiplierMax: number
     ): Planet | null {
         for (let attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; attempt++) {
             // Random volume
@@ -173,11 +187,14 @@ export class GalaxyGenerator {
 
             // Check for overlaps
             if (this.isValidPosition(position, radius, existingPlanets)) {
-                // Random number of defending ships for neutral planets
-                const ships = this.rng.nextInt(
-                    GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN,
-                    GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MAX
+                // Random number of defending ships based on production capacity
+                const production = getPlanetProduction(volume);
+                const multiplier = this.rng.nextInt(
+                    GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MIN,
+                    neutralShipsMultiplierMax
                 );
+                const maxShips = Math.max(neutralShipsMin, production * multiplier);
+                const ships = this.rng.nextInt(neutralShipsMin, maxShips);
 
                 return createPlanet(
                     id,

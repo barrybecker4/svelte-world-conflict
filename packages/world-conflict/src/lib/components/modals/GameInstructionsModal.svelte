@@ -87,15 +87,14 @@
     </div>
 
     <div class="nav-button-wrapper next">
-      <IconButton
+      <Button
         variant="primary"
         size="lg"
-        disabled={currentCard === TOTAL_TUTORIAL_CARDS - 1}
-        title="Next"
-        on:click={nextCard}
+        title="Start Playing"
+        on:click={complete}
       >
-        ›
-      </IconButton>
+        Start Playing!
+      </Button>
     </div>
 
     <div class="tutorial-content" class:has-image={currentTutorial.image}>
@@ -122,15 +121,12 @@
     </div>
 
     <div class="bottom-box">
-      {#if currentCard === TOTAL_TUTORIAL_CARDS - 1}
-        <Button variant="success" size="lg" on:click={complete} data-testid="instructions-proceed-btn">
-          Got it!
-        </Button>
-      {:else}
-        <Button variant="primary" size="lg" on:click={nextCard} data-testid="instructions-next-btn">
-          Next →
-        </Button>
-      {/if}
+      <!-- Slide indicator dots -->
+      <div class="slide-dots">
+        {#each Array(TOTAL_TUTORIAL_CARDS) as _, i}
+          <span class="dot" class:active={currentCard === i}></span>
+        {/each}
+      </div>
     </div>
   </div>
 </Modal>
@@ -322,5 +318,28 @@
     font-size: 1rem;
     padding: 0.75rem 2rem;
     text-align: center;
+  }
+
+  .slide-dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #475569;
+    transition: all 0.2s ease;
+  }
+
+  .dot.active {
+    background: #60a5fa;
+    transform: scale(1.2);
+  }
+
+  .nav-button-wrapper.next :global(.btn) {
+    white-space: nowrap;
   }
 </style>

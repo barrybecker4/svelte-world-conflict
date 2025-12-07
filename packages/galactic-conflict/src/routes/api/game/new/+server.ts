@@ -63,6 +63,8 @@ function createGameRecord(body: any): GameRecord {
         gameDuration: settings.gameDuration ?? GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES,
         stateBroadcastInterval: settings.stateBroadcastInterval ?? GALACTIC_CONSTANTS.DEFAULT_STATE_BROADCAST_INTERVAL_MS,
         aiDifficulty: settings.aiDifficulty,
+        neutralShipsMin: settings.neutralShipsMin ?? GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN,
+        neutralShipsMultiplierMax: settings.neutralShipsMultiplierMax ?? GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX,
     };
 
     const players: Player[] = [];

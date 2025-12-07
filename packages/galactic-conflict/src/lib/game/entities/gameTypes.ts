@@ -226,6 +226,10 @@ export interface GameSettings {
     gameDuration: number;
     stateBroadcastInterval: number;
     aiDifficulty?: string;
+    /** Minimum defending ships on neutral planets */
+    neutralShipsMin: number;
+    /** Maximum multiplier for neutral planet defenders (applied to production) */
+    neutralShipsMultiplierMax: number;
 }
 
 export interface PendingGameData {

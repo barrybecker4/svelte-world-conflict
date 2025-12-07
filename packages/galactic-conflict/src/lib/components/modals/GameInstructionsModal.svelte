@@ -73,15 +73,9 @@
         </div>
 
         <footer>
-            {#if isLastCard}
-                <button class="play-btn" on:click={oncomplete}>
-                    Start Playing! 🎮
-                </button>
-            {:else}
-                <button class="next-btn" on:click={nextCard}>
-                    Next →
-                </button>
-            {/if}
+            <button class="play-btn" on:click={oncomplete}>
+                Start Playing! 🎮
+            </button>
         </footer>
     </div>
 </div>
