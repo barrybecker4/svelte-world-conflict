@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import type { Planet } from '$lib/game/entities/gameTypes';
-    import { getDistanceBetweenPlanets, calculateTravelTime } from '$lib/game/entities/Armada';
+    import { calculateTravelTime } from '$lib/game/entities/Armada';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 

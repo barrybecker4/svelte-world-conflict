@@ -30,20 +30,34 @@ A real-time multiplayer space strategy game built with SvelteKit, using the [@sv
 
 ### Quick Start
 
-From the monorepo root:
+The game **requires** the WebSocket worker to be running. You need **two terminals**:
 
 ```bash
-# Install dependencies
-npm install
+# Terminal 1: Start the WebSocket worker (REQUIRED)
+cd packages/galactic-conflict
+npm run dev:websocket
 
-# Start development
-npm run dev -w galactic-conflict
-
-# Or with wrangler for KV access
-npm run dev:wrangler -w galactic-conflict
+# Terminal 2: Start the game
+cd packages/galactic-conflict  
+npm run dev
 ```
 
-Open [http://localhost:5174](http://localhost:5174)
+Or run both together (requires `npm install` first):
+
+```bash
+cd packages/galactic-conflict
+npm run dev:all
+```
+
+Open [http://localhost:5173](http://localhost:5173)
+
+> **Note:** The game will fail fast if the WebSocket worker is not running. This is intentional - there is no HTTP polling fallback. Real-time WebSocket communication is required for gameplay.
+
+### With Cloudflare KV (for persistent storage)
+
+```bash
+npm run dev:wrangler -w galactic-conflict
+```
 
 ## Game Mechanics
 

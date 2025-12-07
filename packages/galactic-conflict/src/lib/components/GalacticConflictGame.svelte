@@ -26,6 +26,8 @@
     let sourcePlanet: Planet | null = null;
     let wsClient = getWebSocketClient();
 
+    let connectionError: string | null = null;
+
     onMount(async () => {
         // Initialize state
         updateGameState(initialState);
@@ -36,28 +38,14 @@
             currentPlayerId.set(creatorInfo.playerSlotIndex);
         }
 
-        // Connect to WebSocket for real-time updates
+        // Connect to WebSocket for real-time updates - REQUIRED
         try {
             await wsClient.connect(gameId);
         } catch (error) {
-            logger.error('Failed to connect WebSocket:', error);
+            const errorMsg = 'WebSocket connection failed. Make sure the WebSocket worker is running: npm run dev:websocket';
+            logger.error(errorMsg, error);
+            connectionError = errorMsg;
         }
-
-        // Poll for updates periodically (backup for WebSocket)
-        const pollInterval = setInterval(async () => {
-            try {
-                const data = await GameApiClient.getGame(gameId);
-                if (data.gameState) {
-                    updateGameState(data.gameState);
-                }
-            } catch (error) {
-                logger.warn('Failed to poll game state:', error);
-            }
-        }, 5000);
-
-        return () => {
-            clearInterval(pollInterval);
-        };
     });
 
     onDestroy(() => {
@@ -139,7 +127,18 @@
 </script>
 
 <div class="game-container">
-    {#if $gameState}
+    {#if connectionError}
+        <div class="connection-error">
+            <h2>Connection Failed</h2>
+            <p>{connectionError}</p>
+            <div class="error-instructions">
+                <p>To start the WebSocket worker, run in a separate terminal:</p>
+                <code>npm run dev:websocket</code>
+                <p>Then refresh this page.</p>
+            </div>
+            <button on:click={() => window.location.reload()}>Retry Connection</button>
+        </div>
+    {:else if $gameState}
         <div class="game-layout">
             <div class="map-area">
                 <GalaxyMap
@@ -218,6 +217,61 @@
         height: 100%;
         color: #a78bfa;
         font-size: 1.5rem;
+    }
+
+    .connection-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #e5e7eb;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .connection-error h2 {
+        color: #ef4444;
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .connection-error p {
+        color: #9ca3af;
+        margin: 0.5rem 0;
+    }
+
+    .error-instructions {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #374151;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .error-instructions code {
+        display: block;
+        background: #1f1f2e;
+        padding: 0.75rem 1rem;
+        border-radius: 4px;
+        font-family: monospace;
+        color: #a78bfa;
+        margin: 0.75rem 0;
+    }
+
+    .connection-error button {
+        padding: 0.75rem 2rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 1rem;
+    }
+
+    .connection-error button:hover {
+        background: linear-gradient(135deg, #6d28d9, #9333ea);
     }
 
     @media (max-width: 768px) {

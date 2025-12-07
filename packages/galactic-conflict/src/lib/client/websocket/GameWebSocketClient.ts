@@ -13,8 +13,6 @@ import { logger } from '$lib/game/utils/logger';
 export class GameWebSocketClient {
     private client: WebSocketClient;
     private gameId: string | null = null;
-    private reconnectAttempts = 0;
-    private maxReconnectAttempts = 5;
 
     constructor() {
         const config: WebSocketConfig = {
@@ -63,31 +61,19 @@ export class GameWebSocketClient {
 
         // Connection events
         this.client.onConnected(() => {
-            logger.debug('WebSocket connected');
+            logger.info('WebSocket connected');
             isConnected.set(true);
-            this.reconnectAttempts = 0;
         });
 
         this.client.onDisconnected(() => {
-            logger.debug('WebSocket disconnected');
+            logger.warn('WebSocket disconnected');
             isConnected.set(false);
-            this.handleDisconnect();
+            // No reconnect - fail fast. User must refresh page.
         });
     }
 
-    private handleDisconnect(): void {
-        if (this.gameId && this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            logger.debug(`Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-            
-            setTimeout(() => {
-                this.connect(this.gameId!);
-            }, 1000 * this.reconnectAttempts);
-        }
-    }
-
     /**
-     * Connect to a game
+     * Connect to a game - throws if connection fails
      */
     async connect(gameId: string): Promise<void> {
         this.gameId = gameId;
