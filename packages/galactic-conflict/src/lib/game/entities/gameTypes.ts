@@ -181,6 +181,8 @@ export interface GalacticGameStateData {
     durationMinutes: number;
     /** Armada travel speed (units per minute) */
     armadaSpeed: number;
+    /** Resources generated per planet volume per minute */
+    productionRate: number;
     
     /** All planets in the galaxy */
     planets: Planet[];
@@ -230,6 +232,8 @@ export interface GameSettings {
     neutralShipsMin: number;
     /** Maximum multiplier for neutral planet defenders (applied to production) */
     neutralShipsMultiplierMax: number;
+    /** Resources generated per planet volume per minute */
+    productionRate: number;
 }
 
 export interface PendingGameData {

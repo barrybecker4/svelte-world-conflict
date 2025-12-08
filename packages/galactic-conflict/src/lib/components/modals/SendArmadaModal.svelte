@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import type { Planet } from '$lib/game/entities/gameTypes';
     import { calculateTravelTime } from '$lib/game/entities/Armada';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
@@ -14,6 +14,13 @@
 
     let shipCount = 1;
     let selectedDestinationId: number | null = preselectedDestination?.id ?? null;
+    let initialShips: number | null = null;
+
+    // Track initial ships on mount to detect if all ships were sent
+    onMount(() => {
+        const planet = planets.find(p => p.id === sourcePlanet.id);
+        initialShips = planet?.ships ?? sourcePlanet.ships;
+    });
 
     // Use fresh planet data from the planets array (it gets updated via polling)
     $: currentSourcePlanet = planets.find(p => p.id === sourcePlanet.id) ?? sourcePlanet;
@@ -22,8 +29,24 @@
     $: availablePlanets = planets.filter(p => p.id !== sourcePlanet.id);
     $: selectedDestination = planets.find(p => p.id === selectedDestinationId);
     
+    // Auto-close if all ships were sent (ships went from >0 to 0 while still owned)
+    $: if (initialShips !== null && initialShips > 0 && maxShips === 0 && stillOwned) {
+        // Small delay to let the send complete, then auto-close
+        setTimeout(() => dispatch('close'), 100);
+    }
+    
+    // For slider min/max - ensure min <= max to avoid invalid range that breaks the browser
+    $: sliderMax = Math.max(1, maxShips);
+    $: sliderMin = maxShips > 0 ? 1 : 0;
+    
     // Clamp shipCount if maxShips changes
-    $: if (shipCount > maxShips) shipCount = Math.max(1, maxShips);
+    $: if (maxShips <= 0) {
+        shipCount = 0;
+    } else if (shipCount > maxShips) {
+        shipCount = maxShips;
+    } else if (shipCount < 1) {
+        shipCount = 1;
+    }
     
     $: travelTimeMs = selectedDestination 
         ? calculateTravelTime(currentSourcePlanet, selectedDestination, GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED)
@@ -69,28 +92,32 @@
 
             <div class="ship-selection">
                 <label for="ship-count">Ships to send:</label>
-                <div class="ship-input">
-                    <input
-                        type="range"
-                        id="ship-count"
-                        bind:value={shipCount}
-                        min="1"
-                        max={maxShips}
-                    />
-                    <input
-                        type="number"
-                        bind:value={shipCount}
-                        min="1"
-                        max={maxShips}
-                        class="number-input"
-                    />
-                </div>
-                <div class="quick-buttons">
-                    <button on:click={() => shipCount = 1}>1</button>
-                    <button on:click={() => shipCount = Math.floor(maxShips / 4)}>25%</button>
-                    <button on:click={() => shipCount = Math.floor(maxShips / 2)}>50%</button>
-                    <button on:click={() => shipCount = maxShips}>All</button>
-                </div>
+                {#if maxShips <= 0}
+                    <div class="no-ships-warning">No ships available to send!</div>
+                {:else}
+                    <div class="ship-input">
+                        <input
+                            type="range"
+                            id="ship-count"
+                            bind:value={shipCount}
+                            min={sliderMin}
+                            max={sliderMax}
+                        />
+                        <input
+                            type="number"
+                            bind:value={shipCount}
+                            min={sliderMin}
+                            max={sliderMax}
+                            class="number-input"
+                        />
+                    </div>
+                    <div class="quick-buttons">
+                        <button on:click={() => shipCount = 1}>1</button>
+                        <button on:click={() => shipCount = Math.max(1, Math.floor(maxShips / 4))}>25%</button>
+                        <button on:click={() => shipCount = Math.max(1, Math.floor(maxShips / 2))}>50%</button>
+                        <button on:click={() => shipCount = maxShips}>All</button>
+                    </div>
+                {/if}
             </div>
 
             <div class="destination-selection">
@@ -249,6 +276,16 @@
         display: block;
         margin-bottom: 0.5rem;
         color: #9ca3af;
+    }
+
+    .no-ships-warning {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #fca5a5;
+        padding: 0.75rem;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 0.9rem;
     }
 
     .ship-input {

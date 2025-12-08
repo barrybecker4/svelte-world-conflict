@@ -96,10 +96,13 @@ export class GameLoop {
     private processResourceTick(currentTime: number): void {
         logger.debug('Processing resource tick');
 
+        // Use configurable production rate from game settings
+        const productionRate = this.gameState.state.productionRate ?? GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE;
+
         for (const planet of this.gameState.planets) {
             if (planet.ownerId !== null) {
-                // Resources per minute = planet volume
-                const resourcesGenerated = planet.volume * GALACTIC_CONSTANTS.RESOURCES_PER_VOLUME_PER_MINUTE;
+                // Resources per minute = planet volume * production rate
+                const resourcesGenerated = planet.volume * productionRate;
                 this.gameState.addPlanetResources(planet.id, resourcesGenerated);
             }
         }

@@ -86,6 +86,7 @@ export class GalacticGameState {
             startTime: now,
             durationMinutes: settings.gameDuration,
             armadaSpeed: settings.armadaSpeed,
+            productionRate: settings.productionRate,
             planets,
             players,
             armadas: [],

@@ -35,6 +35,13 @@ export const GALACTIC_CONSTANTS = {
     /** Resources generated per volume unit per minute */
     RESOURCES_PER_VOLUME_PER_MINUTE: 1,
     
+    /** Minimum production rate (resources per volume per minute) */
+    PRODUCTION_RATE_MIN: 0.5,
+    /** Maximum production rate (resources per volume per minute) */
+    PRODUCTION_RATE_MAX: 5,
+    /** Default production rate (resources per volume per minute) */
+    DEFAULT_PRODUCTION_RATE: 1,
+    
     /** Base cost to build one ship */
     SHIP_COST: 10,
     

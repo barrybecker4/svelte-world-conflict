@@ -65,6 +65,7 @@ function createGameRecord(body: any): GameRecord {
         aiDifficulty: settings.aiDifficulty,
         neutralShipsMin: settings.neutralShipsMin ?? GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN,
         neutralShipsMultiplierMax: settings.neutralShipsMultiplierMax ?? GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX,
+        productionRate: settings.productionRate ?? GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE,
     };
 
     const players: Player[] = [];
