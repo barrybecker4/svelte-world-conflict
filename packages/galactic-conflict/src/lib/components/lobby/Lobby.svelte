@@ -12,6 +12,7 @@
     let error: string | null = null;
     let playerName = '';
     let showNameInput = true;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     onMount(async () => {
         const storedName = loadPlayerName();
@@ -19,8 +20,27 @@
             playerName = storedName;
             showNameInput = false;
             await loadGames();
+            startPolling();
         }
     });
+
+    onDestroy(() => {
+        stopPolling();
+    });
+
+    function startPolling() {
+        // Poll every 5 seconds for new games
+        pollInterval = setInterval(() => {
+            loadGames();
+        }, 5000);
+    }
+
+    function stopPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
 
     async function loadGames() {
         loading = true;
@@ -28,11 +48,8 @@
         try {
             const result = await GameApiClient.getOpenGames();
             games = result.games || [];
-            
-            // If no open games, go straight to configuration
-            if (games.length === 0) {
-                dispatch('close');
-            }
+            // Don't auto-close when no games - let users stay in lobby to wait
+            // or click "New Game" to create one
         } catch (err) {
             error = err instanceof Error ? err.message : 'Failed to load games';
             logger.error('Failed to load games:', err);
@@ -46,21 +63,25 @@
             savePlayerName(playerName.trim());
             showNameInput = false;
             loadGames();
+            startPolling();
         }
     }
 
     async function handleJoinGame(gameId: string, slotIndex: number) {
         try {
+            stopPolling();
             const result = await GameApiClient.joinGame(gameId, playerName, slotIndex);
             if (result.success) {
                 await goto(`/game/${gameId}`);
             }
         } catch (err) {
             error = err instanceof Error ? err.message : 'Failed to join game';
+            startPolling(); // Resume polling if join failed
         }
     }
 
     function handleNewGame() {
+        stopPolling();
         dispatch('close');
     }
 
@@ -129,7 +150,10 @@
                         {/each}
                     </div>
                 {:else}
-                    <p class="no-games">No open games available</p>
+                    <div class="no-games">
+                        <p class="no-games-title">🌌 No games available</p>
+                        <p class="no-games-subtitle">Waiting for open games... Create one to get started!</p>
+                    </div>
                 {/if}
             </div>
 
@@ -249,10 +273,27 @@
         margin-bottom: 1rem;
     }
 
-    .loading, .no-games {
+    .loading {
         text-align: center;
         color: #9ca3af;
         padding: 2rem;
+    }
+
+    .no-games {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .no-games-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #e5e7eb;
+        margin: 0 0 0.5rem;
+    }
+
+    .no-games-subtitle {
+        color: #9ca3af;
+        margin: 0;
     }
 
     .games-list {

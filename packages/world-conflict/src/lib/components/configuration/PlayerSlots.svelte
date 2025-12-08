@@ -55,9 +55,10 @@
     // Set the first slot to the current player
     slots[0] = createSlotFromConfig(0, 'Set', name);
 
-    // Add some default AI opponents
-    slots[1] = createSlotFromConfig(1, 'AI');
-    slots[2] = createSlotFromConfig(2, 'AI');
+    // Default to open slots for other human players to join
+    // Users can change these to AI if they prefer playing against computer
+    slots[1] = createSlotFromConfig(1, 'Open');
+    slots[2] = createSlotFromConfig(2, 'Off');
     slots[3] = createSlotFromConfig(3, 'Off');
   }
 

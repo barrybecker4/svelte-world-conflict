@@ -11,7 +11,7 @@ export const GALACTIC_CONSTANTS = {
     /** Maximum number of planets in a galaxy */
     MAX_PLANETS: 100,
     /** Default number of planets */
-    DEFAULT_PLANET_COUNT: 30,
+    DEFAULT_PLANET_COUNT: 10,
     
     /** Minimum planet volume (determines size and production) */
     PLANET_VOLUME_MIN: 5,
@@ -40,7 +40,7 @@ export const GALACTIC_CONSTANTS = {
     /** Maximum production rate (resources per volume per minute) */
     PRODUCTION_RATE_MAX: 5,
     /** Default production rate (resources per volume per minute) */
-    DEFAULT_PRODUCTION_RATE: 1,
+    DEFAULT_PRODUCTION_RATE: 2,
     
     /** Base cost to build one ship */
     SHIP_COST: 10,
@@ -55,7 +55,7 @@ export const GALACTIC_CONSTANTS = {
     /** Maximum armada speed (units per minute) */
     ARMADA_SPEED_MAX: 1000,
     /** Default armada speed */
-    DEFAULT_ARMADA_SPEED: 100,
+    DEFAULT_ARMADA_SPEED: 700,
     
     // ==================== GAME TIMING ====================
     
@@ -64,7 +64,7 @@ export const GALACTIC_CONSTANTS = {
     /** Maximum game duration in minutes */
     GAME_DURATION_MAX_MINUTES: 60,
     /** Default game duration */
-    DEFAULT_GAME_DURATION_MINUTES: 15,
+    DEFAULT_GAME_DURATION_MINUTES: 5,
     
     /** How often to broadcast state updates (configurable range) */
     STATE_BROADCAST_INTERVAL_MIN_MS: 1000,
@@ -81,11 +81,11 @@ export const GALACTIC_CONSTANTS = {
     // ==================== NEUTRAL PLANETS ====================
     
     /** Minimum defending ships on neutral planets */
-    NEUTRAL_SHIPS_MIN: 0,
+    NEUTRAL_SHIPS_MIN: 1,
     /** Minimum multiplier for neutral planet defenders (applied to production) */
     NEUTRAL_SHIPS_MULTIPLIER_MIN: 0,
     /** Maximum multiplier for neutral planet defenders (applied to production) */
-    NEUTRAL_SHIPS_MULTIPLIER_MAX: 4,
+    NEUTRAL_SHIPS_MULTIPLIER_MAX: 1,
     
     // ==================== PLAYERS ====================
     
@@ -94,7 +94,7 @@ export const GALACTIC_CONSTANTS = {
     /** Maximum number of players */
     MAX_PLAYERS: 20,
     /** Default number of players */
-    DEFAULT_PLAYER_COUNT: 4,
+    DEFAULT_PLAYER_COUNT: 2,
     
     // ==================== STARTING CONDITIONS ====================
     

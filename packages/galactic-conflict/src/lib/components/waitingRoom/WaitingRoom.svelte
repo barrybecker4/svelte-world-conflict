@@ -46,8 +46,8 @@
             logger.error('Failed to connect WebSocket:', err);
         }
 
-        // Poll for updates
-        const pollInterval = setInterval(refreshGame, 5000);
+        // Poll for updates (2 seconds for quick detection of game start)
+        const pollInterval = setInterval(refreshGame, 2000);
 
         return () => {
             clearInterval(pollInterval);

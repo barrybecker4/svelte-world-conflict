@@ -47,13 +47,8 @@
     unsubGames = gamesManager.games.subscribe(value => games = value);
     unsubLoading = gamesManager.loading.subscribe(value => {
       loading = value;
-
-      // After loading completes, if no games, skip to configuration
-      if (!loading && games.length === 0) {
-        logger.debug('No open games after loading, switching to configuration');
-        shouldRender = false;
-        dispatch('close');
-      }
+      // Don't auto-close when no games - let users stay in lobby to wait for games
+      // or click "New Game" to create one
     });
     unsubError = gamesManager.error.subscribe(value => error = value);
     unsubWsConnected = gamesManager.wsConnected.subscribe(value => wsConnected = value);
@@ -125,6 +120,11 @@
               {#each games as game (game.gameId)}
                 <OpenGameRow {game} {gamesManager} />
               {/each}
+            </div>
+          {:else}
+            <div class="no-games-message">
+              <p class="no-games-title">🎮 No games available</p>
+              <p class="no-games-subtitle">Waiting for open games... Create one to get started!</p>
             </div>
           {/if}
         </LoadingState>
@@ -229,6 +229,24 @@
     margin-bottom: 1.5rem;
     color: var(--text-primary, #f8fafc);
     font-size: 1.3rem;
+  }
+
+  .no-games-message {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-secondary, #cbd5e1);
+  }
+
+  .no-games-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary, #f8fafc);
+  }
+
+  .no-games-subtitle {
+    font-size: 1rem;
+    color: var(--text-tertiary, #94a3b8);
   }
 
   .stats-button-container {

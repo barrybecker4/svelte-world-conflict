@@ -17,7 +17,7 @@
 
     // Player slots (start with 2 players)
     let playerSlots: PlayerSlot[] = [];
-    let playerCount = 4;
+    let playerCount = GALACTIC_CONSTANTS.DEFAULT_PLAYER_COUNT;
 
     // Initialize slots
     $: {
@@ -32,11 +32,11 @@
                     name: currentName,
                 });
             } else if (i === 1) {
-                // Second slot is AI by default
+                // Second slot is Open by default (for multiplayer)
+                // Users can click to change to AI if they prefer
                 playerSlots.push({
                     slotIndex: i,
-                    type: 'AI',
-                    name: getPlayerDefaultName(i),
+                    type: 'Open',
                 });
             } else {
                 // Additional slots are disabled by default
@@ -200,7 +200,7 @@
                         bind:value={neutralShipsMultiplierMax}
                         min={0}
                         max={5}
-                        step="1"
+                        step="0.5"
                     />
                     <span class="tooltip">Max defender scaling by planet size. Higher = bigger planets have more defenders.</span>
                 </div>

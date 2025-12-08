@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         }
 
         const gameStorage = GameStorage.create(platform!);
-        const gameRecord = await gameStorage.loadGame(gameId);
+        let gameRecord = await gameStorage.loadGame(gameId);
 
         if (!gameRecord) {
             return json({ error: 'Game not found' }, { status: 404 });
@@ -50,10 +50,27 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Notify other players via WebSocket
         await notifyPlayerJoined(gameId, player);
 
+        // Auto-start the game if all slots are filled
+        if (canStart) {
+            logger.info(`All slots filled - auto-starting game ${gameId}`);
+            const startResult = await autoStartGame(gameId, gameStorage);
+            
+            if (startResult.success) {
+                return json({
+                    success: true,
+                    player,
+                    gameStarted: true,
+                    gameState: startResult.gameState,
+                    message: `Joined and started game ${gameId}`,
+                });
+            }
+        }
+
         return json({
             success: true,
             player,
             canStart,
+            gameStarted: false,
             message: `Joined game ${gameId} at slot ${slotIndex}`,
         });
 
@@ -61,6 +78,42 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return handleApiError(error, 'joining game', { platform });
     }
 };
+
+async function autoStartGame(gameId: string, gameStorage: GameStorage): Promise<{ success: boolean; gameState?: any }> {
+    try {
+        const gameRecord = await gameStorage.loadGame(gameId);
+        
+        if (!gameRecord || gameRecord.status !== 'PENDING' || !gameRecord.pendingConfiguration) {
+            return { success: false };
+        }
+
+        // Create game state from pending configuration
+        const gameState = GalacticGameState.createInitialState(
+            gameId,
+            gameRecord.pendingConfiguration.playerSlots,
+            gameRecord.pendingConfiguration.settings!,
+            `seed-${gameId}`
+        );
+
+        // Update game record
+        gameRecord.status = 'ACTIVE';
+        gameRecord.gameState = gameState.toJSON();
+        gameRecord.players = gameState.players;
+        delete gameRecord.pendingConfiguration;
+
+        await gameStorage.saveGame(gameRecord);
+
+        // Notify all players via WebSocket
+        await notifyGameStarted(gameId, gameRecord.gameState);
+
+        logger.info(`Game ${gameId} auto-started with ${gameRecord.players.length} players`);
+
+        return { success: true, gameState: gameRecord.gameState };
+    } catch (error) {
+        logger.error(`Failed to auto-start game ${gameId}:`, error);
+        return { success: false };
+    }
+}
 
 async function notifyPlayerJoined(gameId: string, player: any): Promise<void> {
     try {
@@ -81,6 +134,28 @@ async function notifyPlayerJoined(gameId: string, player: any): Promise<void> {
         });
     } catch (error) {
         logger.warn('Failed to notify player joined:', error);
+    }
+}
+
+async function notifyGameStarted(gameId: string, gameState: any): Promise<void> {
+    try {
+        const isLocal = isLocalDevelopment();
+        const workerUrl = getWorkerHttpUrl(isLocal);
+
+        await fetch(`${workerUrl}/notify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                gameId,
+                message: {
+                    type: 'gameStarted',
+                    gameId,
+                    gameState,
+                },
+            }),
+        });
+    } catch (error) {
+        logger.warn('Failed to notify game started:', error);
     }
 }
 
