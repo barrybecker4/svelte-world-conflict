@@ -25,7 +25,7 @@
 <div class="modal-overlay">
     <div class="modal">
         <header>
-            <h1>🌌 Galactic Conflict</h1>
+            <h1>Galactic Conflict</h1>
             <p class="subtitle">A Real-Time Space Strategy Game</p>
         </header>
 
@@ -42,9 +42,9 @@
         </div>
 
         <div class="navigation">
-            <button 
-                class="nav-btn prev" 
-                on:click={prevCard} 
+            <button
+                class="nav-btn prev"
+                on:click={prevCard}
                 disabled={isFirstCard}
                 aria-label="Previous slide"
             >
@@ -53,8 +53,8 @@
 
             <div class="dots">
                 {#each TUTORIAL_CARDS as _, index}
-                    <button 
-                        class="dot" 
+                    <button
+                        class="dot"
                         class:active={index === currentCard}
                         on:click={() => currentCard = index}
                         aria-label="Go to slide {index + 1}"
@@ -62,9 +62,9 @@
                 {/each}
             </div>
 
-            <button 
-                class="nav-btn next" 
-                on:click={nextCard} 
+            <button
+                class="nav-btn next"
+                on:click={nextCard}
                 disabled={isLastCard}
                 aria-label="Next slide"
             >
@@ -74,7 +74,7 @@
 
         <footer>
             <button class="play-btn" on:click={oncomplete}>
-                Start Playing! 🎮
+                Start Playing!
             </button>
         </footer>
     </div>
