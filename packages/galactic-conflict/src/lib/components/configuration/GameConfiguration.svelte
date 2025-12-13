@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import type { PlayerSlot, GameSettings } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerDefaultName, getPlayerColor } from '$lib/game/constants/playerConfigs';
@@ -15,61 +15,75 @@
     let neutralShipsMultiplierMax = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX;
     let productionRate = GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE;
 
-    // Player slots (start with 2 players)
+    // Dynamic player slots - start with creator and one open slot
     let playerSlots: PlayerSlot[] = [];
-    let playerCount = GALACTIC_CONSTANTS.DEFAULT_PLAYER_COUNT;
+    let nextSlotIndex = 0; // Tracks the next available slot index for color assignment
 
-    // Initialize slots
-    $: {
+    // Initialize slots on mount
+    onMount(() => {
         const currentName = loadPlayerName() || 'Player';
-        playerSlots = [];
-        for (let i = 0; i < playerCount; i++) {
-            if (i === 0) {
-                // First slot is the human player (creator)
-                playerSlots.push({
-                    slotIndex: i,
-                    type: 'Set',
-                    name: currentName,
-                });
-            } else if (i === 1) {
-                // Second slot is Open by default (for multiplayer)
-                // Users can click to change to AI if they prefer
-                playerSlots.push({
-                    slotIndex: i,
-                    type: 'Open',
-                });
-            } else {
-                // Additional slots are disabled by default
-                playerSlots.push({
-                    slotIndex: i,
-                    type: 'Disabled',
-                });
+        
+        // Creator slot (index 0)
+        playerSlots = [
+            {
+                slotIndex: 0,
+                type: 'Set',
+                name: currentName,
+            },
+            {
+                slotIndex: 1,
+                type: 'Open',
             }
-        }
+        ];
+        nextSlotIndex = 2;
+    });
+
+    // Get the next available slot index
+    function getNextSlotIndex(): number {
+        const index = nextSlotIndex;
+        nextSlotIndex++;
+        return index;
     }
 
-    function cycleSlotType(index: number) {
-        if (index === 0) return; // Can't change the creator's slot
-        
-        const slot = playerSlots[index];
-        const types: PlayerSlot['type'][] = ['AI', 'Open', 'Disabled'];
-        const currentIndex = types.indexOf(slot.type as any);
-        const nextIndex = (currentIndex + 1) % types.length;
-        
-        slot.type = types[nextIndex];
-        if (slot.type === 'AI') {
-            slot.name = getPlayerDefaultName(index);
-        } else {
-            delete slot.name;
+    // Add a new open slot for human players to join
+    function addOpenSlot() {
+        if (playerSlots.length >= GALACTIC_CONSTANTS.MAX_PLAYERS) {
+            return; // Max players reached
         }
         
-        playerSlots = [...playerSlots];
+        const slotIndex = getNextSlotIndex();
+        playerSlots = [...playerSlots, {
+            slotIndex,
+            type: 'Open',
+        }];
+    }
+
+    // Add a new AI player with space-themed name
+    function addAIPlayer() {
+        if (playerSlots.length >= GALACTIC_CONSTANTS.MAX_PLAYERS) {
+            return; // Max players reached
+        }
+        
+        const slotIndex = getNextSlotIndex();
+        playerSlots = [...playerSlots, {
+            slotIndex,
+            type: 'AI',
+            name: getPlayerDefaultName(slotIndex),
+        }];
+    }
+
+    // Remove a player slot (cannot remove creator at index 0)
+    function removeSlot(slotIndex: number) {
+        const slotToRemove = playerSlots.find(s => s.slotIndex === slotIndex);
+        if (!slotToRemove || slotToRemove.slotIndex === 0) {
+            return; // Cannot remove creator slot
+        }
+        
+        playerSlots = playerSlots.filter(s => s.slotIndex !== slotIndex);
     }
 
     function handleCreateGame() {
-        const activeSlots = playerSlots.filter(s => s.type !== 'Disabled');
-        
-        if (activeSlots.length < 2) {
+        if (playerSlots.length < 2) {
             alert('At least 2 players are required');
             return;
         }
@@ -94,7 +108,7 @@
         dispatch('close');
     }
 
-    $: activePlayerCount = playerSlots.filter(s => s.type !== 'Disabled').length;
+    $: canAddMorePlayers = playerSlots.length < GALACTIC_CONSTANTS.MAX_PLAYERS;
 </script>
 
 <div class="config-overlay">
@@ -208,36 +222,38 @@
 
             <!-- Player Slots -->
             <section class="players-section">
-                <h2>Players ({activePlayerCount})</h2>
+                <h2>Players ({playerSlots.length})</h2>
                 
-                <div class="player-count-selector">
-                    <span>Player slots:</span>
-                    <div class="count-buttons">
-                        {#each [2, 4, 6, 8, 10, 20] as count}
-                            <button
-                                class:active={playerCount === count}
-                                on:click={() => playerCount = count}
-                            >
-                                {count}
-                            </button>
-                        {/each}
-                    </div>
+                <div class="add-player-buttons">
+                    <button
+                        class="add-btn add-open"
+                        on:click={addOpenSlot}
+                        disabled={!canAddMorePlayers}
+                    >
+                        <span class="add-icon">+</span>
+                        Add Open Slot
+                    </button>
+                    <button
+                        class="add-btn add-ai"
+                        on:click={addAIPlayer}
+                        disabled={!canAddMorePlayers}
+                    >
+                        <span class="add-icon">+</span>
+                        Add AI Player
+                    </button>
                 </div>
 
                 <div class="player-grid">
-                    {#each playerSlots as slot}
-                        <button
+                    {#each playerSlots as slot (slot.slotIndex)}
+                        <div
                             class="player-slot"
                             class:human={slot.type === 'Set'}
                             class:ai={slot.type === 'AI'}
                             class:open={slot.type === 'Open'}
-                            class:disabled={slot.type === 'Disabled'}
-                            on:click={() => cycleSlotType(slot.slotIndex)}
-                            disabled={slot.slotIndex === 0}
                         >
                             <div 
                                 class="slot-color"
-                                style="background-color: {slot.type !== 'Disabled' ? getPlayerColor(slot.slotIndex) : '#374151'}"
+                                style="background-color: {getPlayerColor(slot.slotIndex)}"
                             ></div>
                             <div class="slot-info">
                                 <span class="slot-name">
@@ -246,23 +262,31 @@
                                     {:else if slot.type === 'AI'}
                                         {slot.name || 'AI'}
                                     {:else if slot.type === 'Open'}
-                                        Open
-                                    {:else}
-                                        —
+                                        &lt;Open&gt;
                                     {/if}
                                 </span>
                                 <span class="slot-type">
                                     {slot.type === 'Set' ? '👤 Human' : 
                                      slot.type === 'AI' ? '🤖 AI' : 
-                                     slot.type === 'Open' ? '🔓 Open' : 
-                                     '⛔ Disabled'}
+                                     '🔓 Open'}
                                 </span>
                             </div>
-                        </button>
+                            {#if slot.slotIndex !== 0}
+                                <button
+                                    class="remove-btn"
+                                    on:click={() => removeSlot(slot.slotIndex)}
+                                    title="Remove player"
+                                >
+                                    ×
+                                </button>
+                            {/if}
+                        </div>
                     {/each}
                 </div>
 
-                <p class="hint">Click a slot to change its type (AI → Open → Disabled)</p>
+                {#if !canAddMorePlayers}
+                    <p class="hint">Maximum {GALACTIC_CONSTANTS.MAX_PLAYERS} players reached</p>
+                {/if}
             </section>
         </div>
 
@@ -273,7 +297,7 @@
             <button 
                 class="create-btn" 
                 on:click={handleCreateGame}
-                disabled={activePlayerCount < 2}
+                disabled={playerSlots.length < 2}
             >
                 Create Game 🚀
             </button>
@@ -408,29 +432,52 @@
         margin-bottom: 1rem;
     }
 
-    .player-count-selector {
+    .add-player-buttons {
         display: flex;
-        align-items: center;
-        gap: 1rem;
+        gap: 0.75rem;
         margin-bottom: 1rem;
     }
 
-    .count-buttons {
+    .add-btn {
+        flex: 1;
         display: flex;
+        align-items: center;
+        justify-content: center;
         gap: 0.5rem;
-    }
-
-    .count-buttons button {
-        padding: 0.5rem 0.75rem;
-        background: #374151;
-        border: none;
-        border-radius: 4px;
-        color: #e5e7eb;
+        padding: 0.75rem 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px dashed #4b5563;
+        border-radius: 8px;
+        color: #9ca3af;
+        font-size: 0.9rem;
         cursor: pointer;
+        transition: all 0.2s;
     }
 
-    .count-buttons button.active {
-        background: #7c3aed;
+    .add-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.08);
+        color: #e5e7eb;
+    }
+
+    .add-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .add-btn.add-open:hover:not(:disabled) {
+        border-color: #3b82f6;
+        color: #60a5fa;
+    }
+
+    .add-btn.add-ai:hover:not(:disabled) {
+        border-color: #a855f7;
+        color: #c084fc;
+    }
+
+    .add-icon {
+        font-size: 1.25rem;
+        font-weight: bold;
+        line-height: 1;
     }
 
     .player-grid {
@@ -441,6 +488,7 @@
     }
 
     .player-slot {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 0.5rem;
@@ -448,18 +496,9 @@
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid #374151;
         border-radius: 8px;
-        cursor: pointer;
         text-align: left;
         color: #e5e7eb;
         transition: all 0.2s;
-    }
-
-    .player-slot:not(:disabled):hover {
-        border-color: #4c1d95;
-    }
-
-    .player-slot:disabled {
-        cursor: default;
     }
 
     .player-slot.human {
@@ -469,15 +508,13 @@
 
     .player-slot.ai {
         border-color: #a855f7;
+        background: rgba(168, 85, 247, 0.1);
     }
 
     .player-slot.open {
         border-color: #3b82f6;
         border-style: dashed;
-    }
-
-    .player-slot.disabled {
-        opacity: 0.4;
+        background: rgba(59, 130, 246, 0.05);
     }
 
     .slot-color {
@@ -504,6 +541,36 @@
         display: block;
         font-size: 0.75rem;
         color: #9ca3af;
+    }
+
+    .remove-btn {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #374151;
+        border: 1px solid #4b5563;
+        border-radius: 50%;
+        color: #9ca3af;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: all 0.2s;
+        opacity: 0;
+    }
+
+    .player-slot:hover .remove-btn {
+        opacity: 1;
+    }
+
+    .remove-btn:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
     }
 
     .hint {
