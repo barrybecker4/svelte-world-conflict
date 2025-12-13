@@ -60,8 +60,8 @@
           <span>User: {userName}</span>
         {/if}
         <span>Version: {VERSION}</span>
-        <a href="https://github.com/barrybecker4/svelte-world-conflict/wiki/World-Conflict-History-and-Credits" 
-           target="_blank" 
+        <a href="https://github.com/barrybecker4/svelte-world-conflict/wiki/World-Conflict-History-and-Credits"
+           target="_blank"
            rel="noopener noreferrer">
           Credits
         </a>
@@ -86,16 +86,18 @@
       </IconButton>
     </div>
 
-    <div class="nav-button-wrapper next">
-      <Button
-        variant="primary"
-        size="lg"
-        title="Start Playing"
-        on:click={complete}
-      >
-        Start Playing!
-      </Button>
-    </div>
+    {#if currentCard < TOTAL_TUTORIAL_CARDS - 1}
+      <div class="nav-button-wrapper next">
+        <IconButton
+          variant="primary"
+          size="lg"
+          title="Next"
+          on:click={nextCard}
+        >
+          ›
+        </IconButton>
+      </div>
+    {/if}
 
     <div class="tutorial-content" class:has-image={currentTutorial.image}>
       <div class="tutorial-card">
@@ -127,6 +129,19 @@
           <span class="dot" class:active={currentCard === i}></span>
         {/each}
       </div>
+
+      {#if currentCard === TOTAL_TUTORIAL_CARDS - 1}
+        <div class="start-button-wrapper">
+          <Button
+            variant="primary"
+            size="lg"
+            title="Got it"
+            on:click={complete}
+          >
+            Got it!
+          </Button>
+        </div>
+      {/if}
     </div>
   </div>
 </Modal>
@@ -302,7 +317,7 @@
 
   .nav-button-wrapper :global(.icon-btn:hover:not(.icon-btn-disabled)) {
     background: rgba(59, 130, 246, 1);
-    transform: scale(1.5);
+    transform: scale(1.2);
   }
 
   /* Mobile responsive adjustments */
@@ -339,7 +354,9 @@
     transform: scale(1.2);
   }
 
-  .nav-button-wrapper.next :global(.btn) {
-    white-space: nowrap;
+  .start-button-wrapper {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
   }
 </style>
