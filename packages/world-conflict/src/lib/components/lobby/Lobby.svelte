@@ -29,7 +29,7 @@
 
   onMount(() => {
     logger.debug('Lobby component mounted');
-    
+
     // Check if player has a name saved
     const storedName = loadPlayerName();
     if (storedName) {
@@ -92,7 +92,7 @@
   {:else}
     <div class="lobby-container">
       <div class="lobby-header">
-        <h1>Select Game
+        <h1>Select Game (or create new one)
           <br />
           <span class="title-subheader">
             Click on an open player slot to join a game
@@ -137,8 +137,8 @@
       </div>
 
       <div class="bottom-box">
-        <Button variant="primary" size="lg" on:click={close} data-testid="new-game-btn">
-          New Game
+        <Button variant="primary" size="lg" on:click={close} data-testid="new-game-btn" data-tooltip="Create a new game if none of the above are to your liking">
+          Create New
         </Button>
         <Button variant="ghost" size="lg" on:click={close} data-testid="lobby-back-btn">
           Back
