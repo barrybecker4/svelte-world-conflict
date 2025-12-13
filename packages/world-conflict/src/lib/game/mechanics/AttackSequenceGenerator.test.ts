@@ -27,7 +27,8 @@ function createCombatGameState(options: {
     defenderSoldiers: number;
     attackerOwner?: number;
     defenderOwner?: number;
-    earthLevel?: number;
+    earthDamage?: number; // Desired preemptive damage (1 or 2 for Earth upgrade)
+    fireDamage?: number;  // Desired attack damage (1 or 2 for Fire upgrade)
     seed?: string;
 }): GameState {
     const {
@@ -35,7 +36,8 @@ function createCombatGameState(options: {
         defenderSoldiers,
         attackerOwner = 0,
         defenderOwner = 1,
-        earthLevel = 0,
+        earthDamage = 0,
+        fireDamage = 0,
         seed = 'test-seed'
     } = options;
 
@@ -45,7 +47,7 @@ function createCombatGameState(options: {
     ];
 
     const regions = [
-        new Region({ index: 0, name: 'Region 0', neighbors: [1], x: 100, y: 100, hasTemple: false, points: [] }),
+        new Region({ index: 0, name: 'Region 0', neighbors: [1], x: 100, y: 100, hasTemple: fireDamage > 0, points: [] }),
         new Region({ index: 1, name: 'Region 1', neighbors: [0], x: 200, y: 100, hasTemple: true, points: [] })
     ];
 
@@ -59,13 +61,26 @@ function createCombatGameState(options: {
         1: defenderOwner
     };
 
-    // Set up Earth temple if defense level is specified
+    // Set up temples with upgrade bonuses
+    // Earth level: [1, 2] means temple level 0 = 1 damage, level 1 = 2 damage
+    // Fire level: [1, 2] means temple level 0 = 1 damage, level 1 = 2 damage
     const templesByRegion: Record<number, any> = {};
-    if (earthLevel > 0) {
+    if (earthDamage > 0) {
+        // Convert desired damage to temple level (damage 1 = level 0, damage 2 = level 1)
+        const templeLevel = Math.min(earthDamage - 1, 1); // Cap at level 1 (max for Earth)
         templesByRegion[1] = {
             regionIndex: 1,
             upgradeIndex: TEMPLE_UPGRADES_BY_NAME.EARTH.index,
-            level: earthLevel
+            level: templeLevel
+        };
+    }
+    if (fireDamage > 0) {
+        // Convert desired damage to temple level (damage 1 = level 0, damage 2 = level 1)
+        const templeLevel = Math.min(fireDamage - 1, 1); // Cap at level 1 (max for Fire)
+        templesByRegion[0] = {
+            regionIndex: 0,
+            upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index,
+            level: templeLevel
         };
     }
 
@@ -255,7 +270,7 @@ describe('AttackSequenceGenerator', () => {
             const gameState = createCombatGameState({
                 attackerSoldiers: 10,
                 defenderSoldiers: 3,
-                earthLevel: 1, // Level 1 Earth = 1 preemptive kill
+                earthDamage: 1, // Level 1 Earth = 1 preemptive kill
                 seed: 'earth-seed'
             });
 
@@ -285,7 +300,7 @@ describe('AttackSequenceGenerator', () => {
             const gameState = createCombatGameState({
                 attackerSoldiers: 10,
                 defenderSoldiers: 3,
-                earthLevel: 2, // Level 2 Earth = 2 preemptive kills
+                earthDamage: 2, // Level 2 Earth = 2 preemptive kills
                 seed: 'earth-level2-seed'
             });
 
@@ -315,7 +330,7 @@ describe('AttackSequenceGenerator', () => {
             const gameState = createCombatGameState({
                 attackerSoldiers: 5,
                 defenderSoldiers: 3,
-                earthLevel: 2, // Level 2 wants to kill 2
+                earthDamage: 2, // Level 2 wants to kill 2
                 seed: 'earth-cap-seed'
             });
 
@@ -339,6 +354,167 @@ describe('AttackSequenceGenerator', () => {
             expect(earthEvent).toBeDefined();
             // Should only kill 1 (capped at incoming soldiers)
             expect(earthEvent!.attackerCasualties).toBe(1);
+        });
+    });
+
+    describe('Fire upgrade preemptive damage', () => {
+        it('should apply Fire attack damage before combat', () => {
+            const gameState = createCombatGameState({
+                attackerSoldiers: 10,
+                defenderSoldiers: 5,
+                fireDamage: 1, // Level 0 Fire = 1 preemptive defender kill
+                seed: 'fire-seed'
+            });
+
+            const rng = new RandomNumberGenerator('fire-seed');
+            const moveData: ArmyMoveData = {
+                source: 0,
+                destination: 1,
+                count: 5
+            };
+
+            const generator = new AttackSequenceGenerator(moveData, rng);
+            const sequence = generator.createAttackSequenceIfFight(gameState, gameState.players);
+
+            expect(sequence).toBeDefined();
+
+            // Look for Fire damage event (has "Fire kills" text)
+            const fireEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            );
+
+            expect(fireEvent).toBeDefined();
+            expect(fireEvent!.defenderCasualties).toBe(1);
+            expect(fireEvent!.attackerCasualties).toBe(0);
+        });
+
+        it('should apply level 2 Fire damage correctly', () => {
+            const gameState = createCombatGameState({
+                attackerSoldiers: 10,
+                defenderSoldiers: 5,
+                fireDamage: 2, // Level 1 Fire = 2 preemptive defender kills
+                seed: 'fire-level2-seed'
+            });
+
+            const rng = new RandomNumberGenerator('fire-level2-seed');
+            const moveData: ArmyMoveData = {
+                source: 0,
+                destination: 1,
+                count: 5
+            };
+
+            const generator = new AttackSequenceGenerator(moveData, rng);
+            const sequence = generator.createAttackSequenceIfFight(gameState, gameState.players);
+
+            expect(sequence).toBeDefined();
+
+            // Find Fire damage event
+            const fireEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            );
+
+            expect(fireEvent).toBeDefined();
+            expect(fireEvent!.defenderCasualties).toBe(2);
+        });
+
+        it('should cap Fire damage at defender count', () => {
+            const gameState = createCombatGameState({
+                attackerSoldiers: 10,
+                defenderSoldiers: 1, // Only 1 defender
+                fireDamage: 2, // Level 1 Fire wants to kill 2
+                seed: 'fire-cap-seed'
+            });
+
+            const rng = new RandomNumberGenerator('fire-cap-seed');
+            const moveData: ArmyMoveData = {
+                source: 0,
+                destination: 1,
+                count: 5
+            };
+
+            const generator = new AttackSequenceGenerator(moveData, rng);
+            const sequence = generator.createAttackSequenceIfFight(gameState, gameState.players);
+
+            expect(sequence).toBeDefined();
+
+            // Find Fire damage event
+            const fireEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            );
+
+            expect(fireEvent).toBeDefined();
+            // Should only kill 1 (capped at defender count)
+            expect(fireEvent!.defenderCasualties).toBe(1);
+        });
+
+        it('should conquer region if Fire kills all defenders', () => {
+            const gameState = createCombatGameState({
+                attackerSoldiers: 10,
+                defenderSoldiers: 2, // Only 2 defenders
+                fireDamage: 2, // Level 1 Fire kills 2
+                seed: 'fire-conquer-seed'
+            });
+
+            const rng = new RandomNumberGenerator('fire-conquer-seed');
+            const moveData: ArmyMoveData = {
+                source: 0,
+                destination: 1,
+                count: 5
+            };
+
+            const generator = new AttackSequenceGenerator(moveData, rng);
+            const sequence = generator.createAttackSequenceIfFight(gameState, gameState.players);
+
+            expect(sequence).toBeDefined();
+
+            // Should have Fire damage event
+            const fireEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            );
+            expect(fireEvent).toBeDefined();
+            expect(fireEvent!.defenderCasualties).toBe(2);
+
+            // Should conquer (no remaining defenders after Fire)
+            const conqueredEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+            );
+            expect(conqueredEvent).toBeDefined();
+        });
+
+        it('should apply both Earth and Fire damage in same combat', () => {
+            const gameState = createCombatGameState({
+                attackerSoldiers: 10,
+                defenderSoldiers: 5,
+                earthDamage: 1, // Defender has Earth (kills 1 attacker)
+                fireDamage: 1, // Attacker has Fire (kills 1 defender)
+                seed: 'both-upgrades-seed'
+            });
+
+            const rng = new RandomNumberGenerator('both-upgrades-seed');
+            const moveData: ArmyMoveData = {
+                source: 0,
+                destination: 1,
+                count: 5
+            };
+
+            const generator = new AttackSequenceGenerator(moveData, rng);
+            const sequence = generator.createAttackSequenceIfFight(gameState, gameState.players);
+
+            expect(sequence).toBeDefined();
+
+            // Should have Earth damage event
+            const earthEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            );
+            expect(earthEvent).toBeDefined();
+            expect(earthEvent!.attackerCasualties).toBe(1);
+
+            // Should have Fire damage event
+            const fireEvent = sequence!.find(
+                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            );
+            expect(fireEvent).toBeDefined();
+            expect(fireEvent!.defenderCasualties).toBe(1);
         });
     });
 
@@ -710,12 +886,12 @@ describe('AttackSequenceGenerator', () => {
         });
 
         it('should trigger retreat from preemptive Earth damage if >50% killed', () => {
-            // Earth level 4 kills 4 attackers preemptively
-            // With 6 attackers, threshold is >3, so 4 kills should trigger retreat
+            // Earth level 1 (damage 2) kills 2 attackers preemptively
+            // With 3 attackers, threshold is >1.5 (floor to >1), so 2 kills should trigger retreat
             const gameState = createCombatGameState({
                 attackerSoldiers: 10,
                 defenderSoldiers: 5,
-                earthLevel: 4, // Kills 4 preemptively
+                earthDamage: 2, // Max Earth damage (temple level 1)
                 seed: 'earth-retreat-test'
             });
 
@@ -723,7 +899,7 @@ describe('AttackSequenceGenerator', () => {
             const moveData: ArmyMoveData = {
                 source: 0,
                 destination: 1,
-                count: 6 // Sending 6, Earth kills 4, threshold is >3
+                count: 3 // Sending 3, Earth kills 2, threshold is >1
             };
 
             const generator = new AttackSequenceGenerator(moveData, rng);
@@ -736,9 +912,9 @@ describe('AttackSequenceGenerator', () => {
                 (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
             expect(earthEvent).toBeDefined();
-            expect(earthEvent!.attackerCasualties).toBe(4);
+            expect(earthEvent!.attackerCasualties).toBe(2);
 
-            // Should trigger retreat since 4 > 3 (threshold for 6 attackers)
+            // Should trigger retreat since 2 > 1 (threshold for 3 attackers)
             const retreatEvent = sequence!.find((e: AttackEvent) => e.isRetreat === true);
             expect(retreatEvent).toBeDefined();
             expect(retreatEvent!.floatingText?.some(ft => ft.text === 'Retreat!')).toBe(true);
@@ -750,7 +926,7 @@ describe('AttackSequenceGenerator', () => {
             const gameState = createCombatGameState({
                 attackerSoldiers: 10,
                 defenderSoldiers: 5,
-                earthLevel: 2, // Kills exactly 2 preemptively
+                earthDamage: 2, // Kills exactly 2 preemptively
                 seed: 'exact-half-test'
             });
 

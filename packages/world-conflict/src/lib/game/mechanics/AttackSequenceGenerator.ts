@@ -51,10 +51,16 @@ export class AttackSequenceGenerator {
 
         const fromList = this.state!.soldiersAtRegion(this.fromRegion);
         const toList = this.state!.soldiersAtRegion(this.toRegion);
-        const defendingSoldiers = toList.length;
+        let defendingSoldiers = toList.length;
 
         const attackSequence: AttackEvent[] = [];
+        
+        // Apply Earth (defense) preemptive damage to attackers
         const preemptiveCasualties = this.applyPreemptiveDamage(attackSequence, fromList);
+        
+        // Apply Fire (attack) preemptive damage to defenders
+        const fireDefenderCasualties = this.applyFireDamage(attackSequence, toList, preemptiveCasualties);
+        defendingSoldiers -= fireDefenderCasualties;
 
         if (this.hasBothSidesWithForces(defendingSoldiers)) {
             this.resolveCombatWithOutcome(attackSequence, fromList, toList, defendingSoldiers, preemptiveCasualties, players);
@@ -88,6 +94,33 @@ export class AttackSequenceGenerator {
             return preemptiveDamage;
         }
         return 0;
+    }
+
+    private applyFireDamage(attackSequence: AttackEvent[], toList: { i: number }[], runningAttackerCasualties: number): number {
+        const fireDamage = Math.min(
+            toList.length,
+            this.state!.upgradeLevel(this.fromOwner, 'ATTACK') || 0
+        );
+
+        if (fireDamage > 0) {
+            this.recordFireDamage(fireDamage, attackSequence, toList, runningAttackerCasualties);
+            return fireDamage;
+        }
+        return 0;
+    }
+
+    private recordFireDamage(
+        damage: number,
+        attackSequence: AttackEvent[],
+        toList: { i: number }[],
+        runningAttackerCasualties: number
+    ): void {
+        // Remove soldiers from defending force
+        for (let i = 0; i < damage && toList.length > 0; i++) {
+            toList.pop();
+        }
+
+        attackSequence.push(this.eventFactory.createFireDamageEvent(damage, this.toRegion, runningAttackerCasualties));
     }
 
     private hasBothSidesWithForces(defendingSoldiers: number): boolean {

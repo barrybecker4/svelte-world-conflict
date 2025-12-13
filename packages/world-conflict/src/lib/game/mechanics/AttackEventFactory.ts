@@ -108,7 +108,7 @@ export class AttackEventFactory {
     }
 
     /**
-     * Create an event for preemptive damage (defense upgrade)
+     * Create an event for preemptive defense damage (Earth upgrade - kills attackers)
      */
     createPreemptiveDamageEvent(
         damage: number,
@@ -125,6 +125,30 @@ export class AttackEventFactory {
                 regionIdx: toRegion,
                 text: `Earth kills ${damage}!`,
                 color: '#8B4513',
+                width: AttackEventFactory.PREEMPTIVE_TEXT_WIDTH
+            }]
+        };
+    }
+
+    /**
+     * Create an event for preemptive attack damage (Fire upgrade - kills defenders)
+     */
+    createFireDamageEvent(
+        damage: number,
+        toRegion: number,
+        runningAttackerTotal: number
+    ): AttackEvent {
+        return {
+            attackerCasualties: 0,
+            defenderCasualties: damage,
+            runningAttackerTotal: runningAttackerTotal,
+            runningDefenderTotal: damage,
+            soundCue: 'ATTACK',
+            delay: AttackEventFactory.BATTLE_ROUND_DELAY,
+            floatingText: [{
+                regionIdx: toRegion,
+                text: `Fire kills ${damage}!`,
+                color: '#ef4444',
                 width: AttackEventFactory.PREEMPTIVE_TEXT_WIDTH
             }]
         };

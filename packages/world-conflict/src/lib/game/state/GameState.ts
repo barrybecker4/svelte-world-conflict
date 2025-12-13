@@ -324,8 +324,9 @@ export class GameState {
     }
 
     /**
-     * Get the upgrade level for a specific upgrade type owned by a player
-     * Used for calculating upgrade bonuses (e.g., EARTH defense)
+     * Get the upgrade bonus value for a specific upgrade type owned by a player
+     * Used for calculating upgrade bonuses (e.g., EARTH defense, FIRE attack)
+     * Returns the actual bonus value from the upgrade definition, not the level
      */
     upgradeLevel(playerSlotIndex: number | undefined, upgradeName: string): number {
         if (playerSlotIndex === undefined) return 0;
@@ -333,13 +334,16 @@ export class GameState {
         // Map upgrade names to their effects
         const upgradeMap: Record<string, string> = {
             'DEFENSE': 'EARTH',
-            'EARTH': 'EARTH'
+            'EARTH': 'EARTH',
+            'ATTACK': 'FIRE',
+            'FIRE': 'FIRE'
         };
 
         const targetUpgradeName = upgradeMap[upgradeName] || upgradeName;
 
         // Find all temples owned by this player with the specified upgrade
-        let maxLevel = 0;
+        // Return the highest bonus value (not level) from any matching temple
+        let maxBonusValue = 0;
         for (const [regionIndex, temple] of Object.entries(this.state.templesByRegion)) {
             const regionIdx = parseInt(regionIndex);
             if (this.state.ownersByRegion[regionIdx] === playerSlotIndex && temple) {
@@ -347,14 +351,16 @@ export class GameState {
                 if (temple.upgradeIndex !== undefined) {
                     const upgrade = TEMPLE_UPGRADES[temple.upgradeIndex];
 
-                    if (upgrade && upgrade.name === targetUpgradeName && temple.level) {
-                        maxLevel = Math.max(maxLevel, temple.level);
+                    if (upgrade && upgrade.name === targetUpgradeName && temple.level !== undefined) {
+                        // Get the actual bonus value from the upgrade definition
+                        const bonusValue = upgrade.level[temple.level] || 0;
+                        maxBonusValue = Math.max(maxBonusValue, bonusValue);
                     }
                 }
             }
         }
 
-        return maxLevel;
+        return maxBonusValue;
     }
 
     /**
