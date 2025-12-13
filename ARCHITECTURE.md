@@ -7,7 +7,7 @@ This repository is organized as a monorepo with two main packages:
 ```
 svelte-world-conflict/
 ├── packages/
-│   ├── svelte-multiplayer-framework/    # Reusable WebSocket framework
+│   ├── multiplayer-framework/           # Reusable WebSocket framework
 │   │   ├── src/
 │   │   │   ├── client/                  # WebSocket client
 │   │   │   ├── server/                  # Storage adapters
@@ -30,7 +30,7 @@ svelte-world-conflict/
 
 ### Framework Package Scope
 
-The `@svelte-mp/framework` provides generic multiplayer infrastructure:
+The `multiplayer-framework` provides generic multiplayer infrastructure:
 
 - **Client**: WebSocket connection management, reconnection, keep-alive
 - **Server**: Storage abstraction with Cloudflare KV implementation
@@ -69,7 +69,7 @@ The World Conflict game is built on a modern serverless architecture using Cloud
               │ WebSocket               │ HTTP Notifications
               │                         │
 ┌─────────────┼─────────────────────────┼───────────────────────────────────┐
-│             │    @svelte-mp/framework │                                   │
+│             │    multiplayer-framework │                                   │
 ├─────────────┼─────────────────────────┼───────────────────────────────────┤
 │             │                         │                                   │
 │  ┌──────────▼──────────┐     ┌────────▼────────┐     ┌─────────────────┐ │
@@ -87,7 +87,7 @@ The World Conflict game is built on a modern serverless architecture using Cloud
 
 **Key:**
 - **Top section**: Game-specific code (World Conflict)
-- **Bottom section**: Reusable framework (@svelte-mp/framework)
+- **Bottom section**: Reusable framework (multiplayer-framework)
 - **Boundary**: Clear separation allows framework reuse in other games
 
 ## 🔄 Real-time Communication Flow

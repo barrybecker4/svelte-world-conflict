@@ -8,7 +8,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { handleApiError } from '$lib/server/api-utils';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
-import { isLocalDevelopment } from '@svelte-mp/framework/shared';
+import { isLocalDevelopment } from 'multiplayer-framework/shared';
 import { logger } from '$lib/game/utils/logger';
 
 export const POST: RequestHandler = async ({ params, platform }) => {

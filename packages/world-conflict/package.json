@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250614.0",
-    "@svelte-mp/framework": "*",
+    "multiplayer-framework": "*",
     "@sveltejs/adapter-cloudflare": "^7.0.4",
     "@types/seedrandom": "^3.0.8",
     "@types/uuid": "^10.0.0",

@@ -1,6 +1,6 @@
 # World Conflict
 
-A real-time multiplayer strategy game built with SvelteKit, using the [@svelte-mp/framework](../svelte-multiplayer-framework) for WebSocket communication.
+A real-time multiplayer strategy game built with SvelteKit, using the [multiplayer-framework](../multiplayer-framework) for WebSocket communication.
 
 ![World Conflict Gameplay](static/gameplay.png)
 
@@ -15,7 +15,7 @@ A real-time multiplayer strategy game built with SvelteKit, using the [@svelte-m
 ## 🏗️ Architecture
 
 - **Frontend**: SvelteKit app deployed on Cloudflare Pages
-- **Real-time**: WebSocket Durable Objects from `@svelte-mp/framework`
+- **Real-time**: WebSocket Durable Objects from `multiplayer-framework`
 - **Storage**: Cloudflare KV for persistent game data
 - **Backend**: Cloudflare Workers with SvelteKit API routes
 - **Deployment**: Fully serverless on Cloudflare
@@ -26,7 +26,7 @@ A real-time multiplayer strategy game built with SvelteKit, using the [@svelte-m
 
 - Node.js 18+
 - Cloudflare account (free tier works)
-- Framework WebSocket worker deployed (see [framework docs](../svelte-multiplayer-framework/README.md))
+- Framework WebSocket worker deployed (see [framework docs](../multiplayer-framework/README.md))
 
 ### Quick Start
 
@@ -131,7 +131,7 @@ curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup?maxAgeDa
 
 ## 🔌 Framework Integration
 
-World Conflict uses `@svelte-mp/framework` for real-time multiplayer:
+World Conflict uses `multiplayer-framework` for real-time multiplayer:
 
 ```typescript
 // WebSocket client wrapper

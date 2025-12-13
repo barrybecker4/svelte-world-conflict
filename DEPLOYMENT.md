@@ -50,7 +50,7 @@ The WebSocket worker must be deployed first since the game depends on it.
 
 ```bash
 # Navigate to the worker directory
-cd packages/svelte-multiplayer-framework/src/worker
+cd packages/multiplayer-framework/src/worker
 
 # Deploy to Cloudflare
 npx wrangler deploy
@@ -186,7 +186,7 @@ This will:
 View worker logs in real-time:
 
 ```bash
-cd packages/svelte-multiplayer-framework/src/worker
+cd packages/multiplayer-framework/src/worker
 npx wrangler tail
 ```
 
@@ -195,7 +195,7 @@ npx wrangler tail
 ### Update WebSocket Worker
 
 ```bash
-cd packages/svelte-multiplayer-framework/src/worker
+cd packages/multiplayer-framework/src/worker
 npx wrangler deploy
 ```
 
@@ -231,7 +231,7 @@ If players in different geographic locations (e.g., California and Japan) cannot
 
 2. **Check worker logs** for routing errors:
    ```bash
-   cd packages/svelte-multiplayer-framework/src/worker
+   cd packages/multiplayer-framework/src/worker
    npx wrangler tail
    ```
 
@@ -288,7 +288,7 @@ Monitor your deployments:
 
 Real-time worker logs:
 ```bash
-cd packages/svelte-multiplayer-framework/src/worker
+cd packages/multiplayer-framework/src/worker
 npx wrangler tail
 ```
 

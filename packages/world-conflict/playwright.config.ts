@@ -45,7 +45,7 @@ export default defineConfig({
       // Use npx to run wrangler (works regardless of where it's installed)
       // Wrangler dev defaults to port 8787 for workers
       command: 'npx wrangler dev',
-      cwd: '../svelte-multiplayer-framework/src/worker',
+      cwd: '../multiplayer-framework/src/worker',
       url: 'http://localhost:8787/health',  // Use health check endpoint
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

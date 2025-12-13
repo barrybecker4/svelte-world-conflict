@@ -2,8 +2,8 @@
  * World Conflict-specific wrapper around the framework WebSocketClient
  * Provides full type safety for game state and messages
  */
-import { WebSocketClient } from '@svelte-mp/framework/client';
-import type { WebSocketConfig, BaseMessage } from '@svelte-mp/framework/shared';
+import { WebSocketClient } from 'multiplayer-framework/client';
+import type { WebSocketConfig, BaseMessage } from 'multiplayer-framework/shared';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
 

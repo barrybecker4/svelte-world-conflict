@@ -2,7 +2,7 @@
  * World Conflict-specific wrapper around the framework KVStorageAdapter
  * This maintains backward compatibility with existing code
  */
-import { KVStorageAdapter, type StorageAdapter } from '@svelte-mp/framework/server';
+import { KVStorageAdapter, type StorageAdapter } from 'multiplayer-framework/server';
 import { logger } from '$lib/game/utils/logger';
 
 /**

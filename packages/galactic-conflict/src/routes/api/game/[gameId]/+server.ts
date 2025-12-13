@@ -9,7 +9,7 @@ import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from '$lib/server/GameLoop';
 import { handleApiError } from '$lib/server/api-utils';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
-import { isLocalDevelopment } from '@svelte-mp/framework/shared';
+import { isLocalDevelopment } from 'multiplayer-framework/shared';
 import { logger } from '$lib/game/utils/logger';
 
 export const GET: RequestHandler = async ({ params, platform }) => {

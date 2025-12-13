@@ -3,8 +3,8 @@
  * Provides full type safety for game state and messages
  */
 
-import { WebSocketClient } from '@svelte-mp/framework/client';
-import type { WebSocketConfig, BaseMessage } from '@svelte-mp/framework/shared';
+import { WebSocketClient } from 'multiplayer-framework/client';
+import type { WebSocketConfig, BaseMessage } from 'multiplayer-framework/shared';
 import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
 import { updateGameState, isConnected } from '$lib/client/stores/gameStateStore';
 import type { GalacticGameStateData } from '$lib/game/entities/gameTypes';

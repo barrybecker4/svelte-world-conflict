@@ -3,7 +3,7 @@
  * This file can be imported from anywhere in the application
  */
 
-import { isLocalDevelopment } from '@svelte-mp/framework/shared';
+import { isLocalDevelopment } from 'multiplayer-framework/shared';
 
 // Update with your deployed worker URL
 export const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';

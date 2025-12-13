@@ -1,7 +1,7 @@
 import type { Player, GameStateData } from '$lib/game/state/GameState';
 import type { GameRecord } from '../storage/GameStorage';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
-import type { NotificationResponse } from '@svelte-mp/framework/shared';
+import type { NotificationResponse } from 'multiplayer-framework/shared';
 import { logger } from '$lib/game/utils/logger';
 
 /** Payload for game state updates with battle replay data */

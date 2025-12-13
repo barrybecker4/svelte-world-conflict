@@ -1,7 +1,7 @@
 /**
  * Galactic Conflict-specific wrapper around the framework KVStorageAdapter
  */
-import { KVStorageAdapter, type StorageAdapter } from '@svelte-mp/framework/server';
+import { KVStorageAdapter, type StorageAdapter } from 'multiplayer-framework/server';
 import { logger } from '$lib/game/utils/logger';
 
 /**

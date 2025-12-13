@@ -7,11 +7,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @svelte-mp/framework && npm run build -w world-conflict",
+    "build": "npm run build -w multiplayer-framework && npm run build -w world-conflict",
     "dev": "npm run dev -w world-conflict",
     "dev:full": "concurrently \"npm run dev:websocket\" \"npm run dev -w world-conflict\"",
-    "dev:websocket": "cd packages/svelte-multiplayer-framework/src/worker && wrangler dev",
-    "deploy:worker": "cd packages/svelte-multiplayer-framework/src/worker && wrangler deploy",
+    "dev:websocket": "cd packages/multiplayer-framework/src/worker && wrangler dev",
+    "deploy:worker": "cd packages/multiplayer-framework/src/worker && wrangler deploy",
     "test": "npm run test --workspaces",
     "format": "prettier --write packages",
     "lint": "prettier --check packages && eslint .",

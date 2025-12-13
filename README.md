@@ -4,9 +4,9 @@ A real-time multiplayer strategy game built with SvelteKit and Cloudflare infras
 
 ## 📦 Packages
 
-### [`@svelte-mp/framework`](./packages/svelte-multiplayer-framework)
+### [`multiplayer-framework`](./packages/multiplayer-framework)
 
-A minimal WebSocket framework for building real-time multiplayer Svelte games.
+A minimal WebSocket framework for building real-time multiplayer games.
 
 **Features:**
 - Client WebSocket management with reconnection
@@ -69,7 +69,7 @@ npm run build
 Or build individual packages:
 
 ```bash
-npm run build -w @svelte-mp/framework
+npm run build -w multiplayer-framework
 npm run build -w world-conflict
 ```
 
@@ -78,7 +78,7 @@ npm run build -w world-conflict
 ```
 svelte-world-conflict/
 ├── packages/
-│   ├── svelte-multiplayer-framework/   # Reusable WebSocket framework
+│   ├── multiplayer-framework/          # Reusable WebSocket framework
 │   │   ├── src/
 │   │   │   ├── client/                 # WebSocket client
 │   │   │   ├── server/                 # Storage adapters
@@ -122,7 +122,7 @@ Run commands in a specific package:
 npm run dev -w world-conflict
 
 # Build only the framework
-npm run build -w @svelte-mp/framework
+npm run build -w multiplayer-framework
 
 # Run tests in a specific package
 npm run test -w world-conflict
@@ -134,22 +134,22 @@ The framework is designed to be reusable. Here's how to use it:
 
 1. **Deploy the WebSocket worker:**
    ```bash
-   cd packages/svelte-multiplayer-framework/src/worker
+   cd packages/multiplayer-framework/src/worker
    npx wrangler deploy
    ```
 
 2. **Add the framework to your project:**
    ```bash
-   npm install @svelte-mp/framework
+   npm install multiplayer-framework
    ```
 
 3. **Use in your code:**
    ```typescript
-   import { WebSocketClient } from '@svelte-mp/framework/client';
-   import { KVStorageAdapter } from '@svelte-mp/framework/server';
+   import { WebSocketClient } from 'multiplayer-framework/client';
+   import { KVStorageAdapter } from 'multiplayer-framework/server';
    ```
 
-See the [framework README](./packages/svelte-multiplayer-framework/README.md) for detailed usage examples.
+See the [framework README](./packages/multiplayer-framework/README.md) for detailed usage examples.
 
 ## 🚀 Deployment to Cloudflare
 
@@ -157,7 +157,7 @@ See the [framework README](./packages/svelte-multiplayer-framework/README.md) fo
 
 ```bash
 # 1. Deploy WebSocket worker (required first)
-cd packages/svelte-multiplayer-framework/src/worker
+cd packages/multiplayer-framework/src/worker
 npx wrangler deploy
 
 # 2. Deploy the game
@@ -187,7 +187,7 @@ World Conflict is a strategic multiplayer game where players:
 
 ## 📚 Documentation
 
-- [Framework Documentation](./packages/svelte-multiplayer-framework/README.md) - How to use the multiplayer framework
+- [Framework Documentation](./packages/multiplayer-framework/README.md) - How to use the multiplayer framework
 - [World Conflict Documentation](./packages/world-conflict/README.md) - Game-specific documentation
 - [Architecture Guide](./ARCHITECTURE.md) - System architecture and design
 
