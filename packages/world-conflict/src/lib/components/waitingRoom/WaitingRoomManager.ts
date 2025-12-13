@@ -130,7 +130,7 @@ export class WaitingRoomManager {
       logger.debug(`Setting up WebSocket connection for game ${this.gameId} (playerId: ${playerIdStr || 'none'})`);
 
       // Monitor connection state
-      this.wsStateUnsubscribe = this.wsClient.connected.subscribe((isConnected: boolean) => {
+      this.wsStateUnsubscribe = this.wsClient.onConnectionChange((isConnected: boolean) => {
         this.wsConnected.set(isConnected);
         logger.debug(`WebSocket connection state: ${isConnected ? 'connected' : 'disconnected'}`);
       });

@@ -1,8 +1,7 @@
 import { MessageHandler } from './MessageHandler';
 import type { WebSocketConfig } from '../shared';
 import { buildWebSocketUrl } from '../shared';
-import type { BaseMessage, SubscribeMessage, PingMessage } from '../shared/types';
-import { writable, type Writable } from 'svelte/store';
+import type { BaseMessage, SubscribeMessage, PingMessage } from '../shared';
 
 /**
  * Generic WebSocket client for multiplayer communication
@@ -19,13 +18,41 @@ export class WebSocketClient<
   private messageHandler: MessageHandler<TGameState>;
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private config: WebSocketConfig;
-  public connected: Writable<boolean>;
+  private _connected: boolean = false;
+  private connectionChangeCallbacks: Set<(connected: boolean) => void> = new Set();
 
   constructor(config: WebSocketConfig, playerId?: string) {
     this.config = config;
     this.playerId = playerId || null;
     this.messageHandler = new MessageHandler<TGameState>();
-    this.connected = writable(false);
+  }
+
+  /**
+   * Get the current connection state
+   */
+  get connected(): boolean {
+    return this._connected;
+  }
+
+  /**
+   * Subscribe to connection state changes
+   * @param callback - Called whenever connection state changes
+   * @returns Unsubscribe function
+   */
+  onConnectionChange(callback: (connected: boolean) => void): () => void {
+    this.connectionChangeCallbacks.add(callback);
+    // Immediately call with current state
+    callback(this._connected);
+    return () => {
+      this.connectionChangeCallbacks.delete(callback);
+    };
+  }
+
+  private setConnected(value: boolean): void {
+    if (this._connected !== value) {
+      this._connected = value;
+      this.connectionChangeCallbacks.forEach(cb => cb(value));
+    }
   }
 
   /**
@@ -78,7 +105,7 @@ export class WebSocketClient<
       console.log(
         `🔌 WebSocket closed: code=${event.code}, reason=${event.reason || 'none'}`
       );
-      this.connected.set(false);
+      this.setConnected(false);
       this.messageHandler.triggerDisconnected();
     };
   }
@@ -108,11 +135,11 @@ export class WebSocketClient<
       this.ws.onopen = () => {
         console.log('WebSocket connected');
         this.clearConnectionTimeout();
-        this.connected.set(true);
+        this.setConnected(true);
 
         // Send subscribe message with optional playerId for disconnect tracking
-        const subscribeMessage: SubscribeMessage = { 
-          type: 'subscribe', 
+        const subscribeMessage: SubscribeMessage = {
+          type: 'subscribe',
           gameId: this.gameId!
         };
         if (this.playerId) {
@@ -151,7 +178,7 @@ export class WebSocketClient<
       this.ws.onclose = (event) => {
         console.log(`🔌 WebSocket closed: code=${event.code}`);
         this.clearConnectionTimeout();
-        this.connected.set(false);
+        this.setConnected(false);
         this.messageHandler.triggerDisconnected();
         reject(new Error(`WebSocket closed before connection established: ${event.code}`));
       };
@@ -183,7 +210,7 @@ export class WebSocketClient<
   private cleanup(): void {
     this.clearConnectionTimeout();
     this.stopKeepAlive();
-    this.connected.set(false);
+    this.setConnected(false);
     if (this.ws) {
       this.ws.onopen = null;
       this.ws.onclose = null;
@@ -203,7 +230,7 @@ export class WebSocketClient<
   disconnect(): void {
     console.log('Disconnecting WebSocket');
     this.stopKeepAlive();
-    this.connected.set(false);
+    this.setConnected(false);
     this.cleanup();
     this.gameId = null;
     this.messageHandler.clearCallbacks();

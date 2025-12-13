@@ -1,7 +1,7 @@
 {
   "name": "@svelte-mp/framework",
   "version": "0.1.0",
-  "description": "Minimal multiplayer WebSocket framework for Svelte games",
+  "description": "Minimal multiplayer WebSocket framework for games with Cloudflare infrastructure",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,6 @@
     "build": "tsc"
   },
   "keywords": [
-    "svelte",
     "multiplayer",
     "websocket",
     "cloudflare",
@@ -24,8 +23,7 @@
     "game-framework"
   ],
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20250614.0",
-    "svelte": "^5.0.0"
+    "@cloudflare/workers-types": "^4.20250614.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

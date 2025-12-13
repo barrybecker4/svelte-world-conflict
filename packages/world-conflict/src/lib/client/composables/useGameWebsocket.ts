@@ -12,6 +12,7 @@ export function useGameWebSocket(
   playerId?: string
 ) {
   let wsClient: GameWebSocketClient | null = null;
+  let connectionUnsubscribe: (() => void) | null = null;
   const connected: Writable<boolean> = writable(false);
 
   /**
@@ -23,7 +24,7 @@ export function useGameWebSocket(
     }
 
     wsClient = new GameWebSocketClient(playerId);
-    wsClient.connected.subscribe((isConnected) => connected.set(isConnected));
+    connectionUnsubscribe = wsClient.onConnectionChange((isConnected) => connected.set(isConnected));
     wsClient.onError((error) => console.error('[WS] Error:', error));
     wsClient.onGameUpdate(onGameUpdate);
 
@@ -42,6 +43,8 @@ export function useGameWebSocket(
    * Clean up WebSocket connection
    */
   function cleanup(): void {
+    connectionUnsubscribe?.();
+    connectionUnsubscribe = null;
     wsClient?.disconnect();
     wsClient = null;
     connected.set(false);

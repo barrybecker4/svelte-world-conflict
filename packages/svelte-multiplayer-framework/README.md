@@ -1,6 +1,6 @@
-# Svelte Multiplayer Framework
+# Multiplayer WebSocket Framework
 
-A minimal WebSocket framework for building real-time multiplayer Svelte games with Cloudflare infrastructure.
+A minimal, framework-agnostic WebSocket library for building multiplayer games with Cloudflare infrastructure. Works with any JavaScript framework (Svelte, React, Vue, vanilla JS, etc.).
 
 ## Features
 
@@ -99,14 +99,13 @@ client.on<{ text: string }>('chat', (data) => {
 client.disconnect();
 ```
 
-### 4. Server Setup (SvelteKit) with Type Safety
+### 4. Server Setup with Type Safety
 
 ```typescript
-// src/routes/api/game/[gameId]/move/+server.ts
+// Example using any backend framework (SvelteKit, Express, Hono, etc.)
 import { KVStorageAdapter } from '@svelte-mp/framework/server';
 import type { GameUpdateMessage, NotificationPayload } from '@svelte-mp/framework/shared';
-import { json } from '@sveltejs/kit';
-import type { MyGameState } from '$lib/types';
+import type { MyGameState } from './types';
 
 // Define your game record type
 interface GameRecord {
@@ -173,8 +172,8 @@ async function notifyClients<TGameState>(
 
 ```
 ┌─────────────────┐     WebSocket     ┌──────────────────┐     HTTP      ┌─────────────────┐
-│  Svelte Client  │◄─────────────────►│  Durable Object  │◄────────────► │    SvelteKit    │
-│                 │    real-time      │  (per game)      │ notifications │   API Routes    │
+│   Game Client   │◄─────────────────►│  Durable Object  │◄────────────► │   API Server    │
+│  (any framework)│    real-time      │  (per game)      │ notifications │  (any backend)  │
 │ • Game UI       │                   │                  │               │                 │
 │ • WebSocket     │                   │ • Session mgmt   │               │ • Game Logic    │
 │   Client<T>     │                   │ • Broadcasting   │               │ • Storage<T>    │
@@ -197,6 +196,10 @@ A generic WebSocket client for multiplayer communication.
 class WebSocketClient<TGameState = unknown, TOutgoingMessage extends BaseMessage = BaseMessage> {
   constructor(config: WebSocketConfig, playerId?: string);
   
+  // Connection state
+  readonly connected: boolean;  // Current connection state
+  onConnectionChange(callback: (connected: boolean) => void): () => void;  // Returns unsubscribe fn
+  
   // Connection management
   connect(gameId: string): Promise<void>;
   disconnect(): void;
@@ -217,9 +220,6 @@ class WebSocketClient<TGameState = unknown, TOutgoingMessage extends BaseMessage
   
   // Custom message types with typed payloads
   on<TPayload>(messageType: string, callback: (data: TPayload) => void): void;
-  
-  // Svelte store for connection state
-  connected: Writable<boolean>;
 }
 ```
 
