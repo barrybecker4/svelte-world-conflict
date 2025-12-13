@@ -1,4 +1,4 @@
-import type { StorageAdapter } from './StorageAdapter';
+import type { StorageAdapter, StorageInfo } from './StorageAdapter';
 
 // Memory storage for development fallback
 const memoryStorage = new Map<string, string>();
@@ -9,8 +9,18 @@ let hasWarnedAboutMemoryStorage = false;
  */
 export interface KVPlatform {
   env?: {
-    [key: string]: any;
+    [key: string]: KVNamespace | unknown;
   };
+}
+
+/**
+ * Cloudflare KV Namespace interface (subset of full API)
+ */
+interface KVNamespace {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string): Promise<void>;
+  delete(key: string): Promise<void>;
+  list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>;
 }
 
 /**
@@ -25,19 +35,29 @@ export interface KVStorageConfig {
 }
 
 /**
+ * Storage info specific to KV adapter
+ */
+export interface KVStorageInfo extends StorageInfo {
+  type: 'memory' | 'cloudflare-kv';
+  bindingName: string;
+  keyCount?: number;
+}
+
+/**
  * Storage adapter for Cloudflare KV
  * Falls back to memory storage in development when KV is not available
  */
 export class KVStorageAdapter implements StorageAdapter {
-  private kv: any;
+  private kv: KVNamespace | null;
   private isMemoryMode: boolean;
   private bindingName: string;
 
   constructor(platform: KVPlatform, config: KVStorageConfig) {
     this.bindingName = config.kvBindingName;
 
-    if (platform?.env?.[config.kvBindingName]) {
-      this.kv = platform.env[config.kvBindingName];
+    const kvBinding = platform?.env?.[config.kvBindingName];
+    if (kvBinding && this.isKVNamespace(kvBinding)) {
+      this.kv = kvBinding;
       this.isMemoryMode = false;
     } else {
       // Fallback to memory storage for development
@@ -54,14 +74,28 @@ export class KVStorageAdapter implements StorageAdapter {
     }
   }
 
-  async get<T = any>(key: string): Promise<T | null> {
+  /**
+   * Type guard to check if a value is a KV namespace
+   */
+  private isKVNamespace(value: unknown): value is KVNamespace {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      'get' in value &&
+      'put' in value &&
+      'delete' in value &&
+      'list' in value
+    );
+  }
+
+  async get<T>(key: string): Promise<T | null> {
     try {
       let value: string | null;
 
       if (this.isMemoryMode) {
         value = memoryStorage.get(key) || null;
       } else {
-        value = await this.kv.get(key);
+        value = await this.kv!.get(key);
       }
 
       if (!value) return null;
@@ -69,7 +103,8 @@ export class KVStorageAdapter implements StorageAdapter {
       try {
         return JSON.parse(value) as T;
       } catch {
-        return value as T;
+        // If it's not valid JSON, return as-is (for string values)
+        return value as unknown as T;
       }
     } catch (error) {
       console.error(`Error getting key ${key}:`, error);
@@ -77,14 +112,14 @@ export class KVStorageAdapter implements StorageAdapter {
     }
   }
 
-  async put(key: string, value: any): Promise<void> {
+  async put<T>(key: string, value: T): Promise<void> {
     try {
       const serialized = typeof value === 'string' ? value : JSON.stringify(value);
 
       if (this.isMemoryMode) {
         memoryStorage.set(key, serialized);
       } else {
-        await this.kv.put(key, serialized);
+        await this.kv!.put(key, serialized);
       }
     } catch (error) {
       console.error(`Error putting key ${key}:`, error);
@@ -97,7 +132,7 @@ export class KVStorageAdapter implements StorageAdapter {
       if (this.isMemoryMode) {
         memoryStorage.delete(key);
       } else {
-        await this.kv.delete(key);
+        await this.kv!.delete(key);
       }
     } catch (error) {
       console.error(`Error deleting key ${key}:`, error);
@@ -114,7 +149,7 @@ export class KVStorageAdapter implements StorageAdapter {
         return { keys };
       } else {
         const options = prefix ? { prefix } : {};
-        return await this.kv.list(options);
+        return await this.kv!.list(options);
       }
     } catch (error) {
       console.error(`Error listing keys with prefix ${prefix}:`, error);
@@ -122,7 +157,7 @@ export class KVStorageAdapter implements StorageAdapter {
     }
   }
 
-  getStorageInfo(): { type: string; keyCount?: number; bindingName: string } {
+  getStorageInfo(): KVStorageInfo {
     if (this.isMemoryMode) {
       return {
         type: 'memory',
@@ -136,4 +171,3 @@ export class KVStorageAdapter implements StorageAdapter {
     };
   }
 }
-

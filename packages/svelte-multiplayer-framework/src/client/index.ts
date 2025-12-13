@@ -3,5 +3,5 @@
  */
 
 export { WebSocketClient } from './WebSocketClient';
-export { MessageHandler } from './MessageHandler';
+export { MessageHandler, type MessageCallbacks, type CustomMessageHandler } from './MessageHandler';
 

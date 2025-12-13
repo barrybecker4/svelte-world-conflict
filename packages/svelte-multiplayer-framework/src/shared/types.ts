@@ -5,15 +5,15 @@
 export interface BaseMessage {
   type: string;
   timestamp?: number;
-  [key: string]: any;
 }
 
 /**
- * Game state update message
+ * Game state update message with generic game state type
+ * @template TGameState - The type of the game state payload
  */
-export interface GameStateMessage extends BaseMessage {
+export interface GameStateMessage<TGameState = unknown> extends BaseMessage {
   gameId: string;
-  gameState: any;
+  gameState: TGameState;
 }
 
 /**
@@ -69,6 +69,8 @@ export interface PongMessage extends BaseMessage {
  */
 export interface ErrorMessage extends BaseMessage {
   type: 'error';
+  error: string;
+  /** @deprecated Use `error` property instead */
   gameState?: {
     error: string;
   };
@@ -76,27 +78,28 @@ export interface ErrorMessage extends BaseMessage {
 
 /**
  * Generic game update message types
+ * @template TGameState - The type of the game state payload
  */
-export interface GameUpdateMessage extends GameStateMessage {
+export interface GameUpdateMessage<TGameState = unknown> extends GameStateMessage<TGameState> {
   type: 'gameUpdate';
 }
 
-export interface GameStartedMessage extends GameStateMessage {
+export interface GameStartedMessage<TGameState = unknown> extends GameStateMessage<TGameState> {
   type: 'gameStarted';
 }
 
-export interface PlayerJoinedMessage extends GameStateMessage {
+export interface PlayerJoinedMessage<TGameState = unknown> extends GameStateMessage<TGameState> {
   type: 'playerJoined';
 }
 
-export interface GameEndedMessage extends GameStateMessage {
+export interface GameEndedMessage<TGameState = unknown> extends GameStateMessage<TGameState> {
   type: 'gameEnded';
 }
 
 /**
- * Union type of all standard message types
+ * Union type of all standard message types (framework-level messages)
  */
-export type StandardMessage =
+export type StandardMessage<TGameState = unknown> =
   | SubscribeMessage
   | SubscribedMessage
   | UnsubscribeMessage
@@ -104,17 +107,18 @@ export type StandardMessage =
   | PingMessage
   | PongMessage
   | ErrorMessage
-  | GameUpdateMessage
-  | GameStartedMessage
-  | PlayerJoinedMessage
-  | GameEndedMessage;
+  | GameUpdateMessage<TGameState>
+  | GameStartedMessage<TGameState>
+  | PlayerJoinedMessage<TGameState>
+  | GameEndedMessage<TGameState>;
 
 /**
  * Notification payload for HTTP notifications to the worker
+ * @template TMessage - The type of message being sent
  */
-export interface NotificationPayload {
+export interface NotificationPayload<TMessage extends BaseMessage = BaseMessage> {
   gameId: string;
-  message: BaseMessage;
+  message: TMessage;
 }
 
 /**
@@ -126,3 +130,32 @@ export interface NotificationResponse {
   gameId: string;
 }
 
+/**
+ * Player event notification (sent from worker to app on disconnect, etc.)
+ */
+export interface PlayerEventPayload {
+  type: 'disconnect' | 'reconnect';
+  playerId: string;
+  timestamp: number;
+}
+
+/**
+ * Helper type to extract the game state type from a message type
+ */
+export type ExtractGameState<T> = T extends GameStateMessage<infer TGameState> ? TGameState : never;
+
+/**
+ * Type guard to check if a message is a GameStateMessage
+ */
+export function isGameStateMessage<TGameState = unknown>(
+  message: BaseMessage
+): message is GameStateMessage<TGameState> {
+  return 'gameId' in message && 'gameState' in message;
+}
+
+/**
+ * Type guard to check if a message is an ErrorMessage
+ */
+export function isErrorMessage(message: BaseMessage): message is ErrorMessage {
+  return message.type === 'error';
+}

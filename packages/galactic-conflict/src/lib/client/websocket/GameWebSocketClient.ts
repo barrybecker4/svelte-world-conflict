@@ -1,17 +1,23 @@
 /**
  * WebSocket client for Galactic Conflict real-time updates
+ * Provides full type safety for game state and messages
  */
 
 import { WebSocketClient } from '@svelte-mp/framework/client';
-import type { WebSocketConfig } from '@svelte-mp/framework/shared';
-import { buildWebSocketUrl, WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
-import { isLocalDevelopment } from '@svelte-mp/framework/shared';
+import type { WebSocketConfig, BaseMessage } from '@svelte-mp/framework/shared';
+import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
 import { updateGameState, isConnected } from '$lib/client/stores/gameStateStore';
 import type { GalacticGameStateData } from '$lib/game/entities/gameTypes';
 import { logger } from '$lib/game/utils/logger';
 
+/**
+ * Game-specific outgoing message types
+ * Extend this as needed for custom WebSocket messages
+ */
+export type GalacticConflictMessage = BaseMessage;
+
 export class GameWebSocketClient {
-    private client: WebSocketClient;
+    private client: WebSocketClient<GalacticGameStateData, GalacticConflictMessage>;
     private gameId: string | null = null;
 
     constructor() {
@@ -20,46 +26,47 @@ export class GameWebSocketClient {
             localHost: 'localhost:8787',
         };
 
-        this.client = new WebSocketClient(config);
+        this.client = new WebSocketClient<GalacticGameStateData, GalacticConflictMessage>(config);
         this.setupEventHandlers();
     }
 
     private setupEventHandlers(): void {
-        // Game state updates
-        this.client.onGameUpdate((data: any) => {
+        // Game state updates - fully typed, no more `any` or manual casting!
+        this.client.onGameUpdate((gameState) => {
             console.log('[WebSocketClient] Received game update:', {
-                hasGameState: !!data.gameState,
-                recentBattleReplays: data.gameState?.recentBattleReplays?.length ?? 0,
-                armadas: data.gameState?.armadas?.length ?? 0,
+                hasGameState: !!gameState,
+                recentBattleReplays: gameState?.recentBattleReplays?.length ?? 0,
+                armadas: gameState?.armadas?.length ?? 0,
             });
-            if (data.gameState) {
-                updateGameState(data.gameState as GalacticGameStateData);
+            if (gameState) {
+                updateGameState(gameState);
             }
         });
 
         // Game started
-        this.client.onGameStarted((data: any) => {
+        this.client.onGameStarted((gameState) => {
             logger.debug('Game started');
-            if (data.gameState) {
-                updateGameState(data.gameState as GalacticGameStateData);
+            if (gameState) {
+                updateGameState(gameState);
             }
         });
 
         // Player joined
-        this.client.onPlayerJoined((data: any) => {
-            logger.debug('Player joined:', data.player);
+        this.client.onPlayerJoined((gameState) => {
+            logger.debug('Player joined');
+            // gameState contains player info if needed
         });
 
         // Game ended
-        this.client.onGameEnded((data: any) => {
+        this.client.onGameEnded((gameState) => {
             logger.debug('Game ended');
-            if (data.gameState) {
-                updateGameState(data.gameState as GalacticGameStateData);
+            if (gameState) {
+                updateGameState(gameState);
             }
         });
 
         // Error handling
-        this.client.onError((error: string) => {
+        this.client.onError((error) => {
             logger.error('WebSocket error:', error);
         });
 
@@ -108,16 +115,16 @@ export class GameWebSocketClient {
     }
 
     /**
-     * Register custom event handler
+     * Register custom event handler with typed payload
      */
-    on(messageType: string, callback: (data: any) => void): void {
-        this.client.on(messageType, callback);
+    on<TPayload = unknown>(messageType: string, callback: (data: TPayload) => void): void {
+        this.client.on<TPayload>(messageType, callback);
     }
 
     /**
-     * Send a message
+     * Send a typed message
      */
-    send(message: any): void {
+    send(message: GalacticConflictMessage): void {
         this.client.send(message);
     }
 }
@@ -131,4 +138,3 @@ export function getWebSocketClient(): GameWebSocketClient {
     }
     return clientInstance;
 }
-

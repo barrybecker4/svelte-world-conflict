@@ -1,15 +1,30 @@
+import type { BaseMessage } from '../shared/types';
+
+/**
+ * Session info including game subscription and player identity
+ */
+export interface SessionInfo {
+  webSocket: WebSocket;
+  gameId?: string;
+  playerId?: string;
+}
+
+/**
+ * Result of removing a session
+ */
+export interface SessionRemovalResult {
+  gameId?: string;
+  playerId?: string;
+}
+
 /**
  * Manages WebSocket sessions and game subscriptions
  */
 export class SessionManager {
-  private sessions: Map<string, WebSocket>;
-  private gameSubscriptions: Map<string, string>; // sessionId -> gameId
-  private playerSessions: Map<string, string>; // sessionId -> playerId
+  private sessions: Map<string, SessionInfo>;
 
   constructor() {
     this.sessions = new Map();
-    this.gameSubscriptions = new Map();
-    this.playerSessions = new Map();
   }
 
   generateSessionId(): string {
@@ -20,39 +35,41 @@ export class SessionManager {
   }
 
   addSession(sessionId: string, webSocket: WebSocket): void {
-    this.sessions.set(sessionId, webSocket);
+    this.sessions.set(sessionId, { webSocket });
     console.log(`Session ${sessionId} added`);
   }
 
-  removeSession(sessionId: string): { gameId?: string; playerId?: string } {
+  removeSession(sessionId: string): SessionRemovalResult {
     console.log(`Session ${sessionId} disconnected`);
-    const gameId = this.gameSubscriptions.get(sessionId);
-    const playerId = this.playerSessions.get(sessionId);
+    const session = this.sessions.get(sessionId);
+    const result: SessionRemovalResult = {
+      gameId: session?.gameId,
+      playerId: session?.playerId
+    };
     
     this.sessions.delete(sessionId);
-    this.gameSubscriptions.delete(sessionId);
-    this.playerSessions.delete(sessionId);
     
-    return { gameId, playerId };
+    return result;
   }
 
-  getSession(sessionId: string): WebSocket | undefined {
+  getSession(sessionId: string): SessionInfo | undefined {
     return this.sessions.get(sessionId);
   }
 
   isSessionConnected(sessionId: string): boolean {
-    const ws = this.sessions.get(sessionId);
-    return ws !== undefined && ws.readyState === 1;
+    const session = this.sessions.get(sessionId);
+    return session !== undefined && session.webSocket.readyState === 1;
   }
 
   subscribeToGame(sessionId: string, gameId: string, playerId?: string): void {
-    if (!this.sessions.has(sessionId)) {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
       throw new Error(`Session ${sessionId} not found`);
     }
 
-    this.gameSubscriptions.set(sessionId, gameId);
+    session.gameId = gameId;
     if (playerId) {
-      this.playerSessions.set(sessionId, playerId);
+      session.playerId = playerId;
       console.log(`Session ${sessionId} subscribed to game ${gameId} as player ${playerId}`);
     } else {
       console.log(`Session ${sessionId} subscribed to game ${gameId} (no player ID - observer)`);
@@ -60,9 +77,11 @@ export class SessionManager {
   }
 
   unsubscribeFromGame(sessionId: string): string | null {
-    const gameId = this.gameSubscriptions.get(sessionId);
-    if (gameId) {
-      this.gameSubscriptions.delete(sessionId);
+    const session = this.sessions.get(sessionId);
+    if (session?.gameId) {
+      const gameId = session.gameId;
+      session.gameId = undefined;
+      session.playerId = undefined;
       console.log(`Session ${sessionId} unsubscribed from game ${gameId}`);
       return gameId;
     }
@@ -70,27 +89,31 @@ export class SessionManager {
   }
 
   getSessionGame(sessionId: string): string | undefined {
-    return this.gameSubscriptions.get(sessionId);
+    return this.sessions.get(sessionId)?.gameId;
   }
 
   getSessionPlayer(sessionId: string): string | undefined {
-    return this.playerSessions.get(sessionId);
+    return this.sessions.get(sessionId)?.playerId;
   }
 
   getGameSessions(gameId: string): string[] {
     const gameSessions: string[] = [];
-    for (const [sessionId, subscribedGameId] of this.gameSubscriptions.entries()) {
-      if (subscribedGameId === gameId) {
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.gameId === gameId) {
         gameSessions.push(sessionId);
       }
     }
     return gameSessions;
   }
 
-  sendToSession(sessionId: string, message: any): boolean {
-    const ws = this.sessions.get(sessionId);
+  /**
+   * Send a typed message to a specific session
+   * @template TMessage - The type of message being sent
+   */
+  sendToSession<TMessage extends BaseMessage>(sessionId: string, message: TMessage): boolean {
+    const session = this.sessions.get(sessionId);
     // Use numeric constant 1 for OPEN state
-    if (ws && ws.readyState === 1) {
+    if (session && session.webSocket.readyState === 1) {
       try {
         const serialized = JSON.stringify(message);
         console.log(`📤 SessionManager sending to ${sessionId}:`, {
@@ -100,7 +123,7 @@ export class SessionManager {
           first100chars: serialized.substring(0, 100)
         });
 
-        ws.send(serialized);
+        session.webSocket.send(serialized);
         return true;
       } catch (error) {
         console.error(`Error sending to session ${sessionId}:`, error);
@@ -109,13 +132,17 @@ export class SessionManager {
       }
     } else {
       console.warn(
-        `⚠Cannot send to session ${sessionId}: WebSocket not open (readyState: ${ws?.readyState})`
+        `⚠Cannot send to session ${sessionId}: WebSocket not open (readyState: ${session?.webSocket.readyState})`
       );
       return false;
     }
   }
 
-  broadcastToGame(gameId: string, message: any): number {
+  /**
+   * Broadcast a typed message to all sessions in a game
+   * @template TMessage - The type of message being broadcast
+   */
+  broadcastToGame<TMessage extends BaseMessage>(gameId: string, message: TMessage): number {
     let sentCount = 0;
     const gameSessions = this.getGameSessions(gameId);
 
@@ -134,8 +161,8 @@ export class SessionManager {
   cleanupDisconnectedSessions(): number {
     let cleanedCount = 0;
 
-    for (const [sessionId, ws] of this.sessions.entries()) {
-      if (ws.readyState !== 1) {
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.webSocket.readyState !== 1) {
         this.removeSession(sessionId);
         cleanedCount++;
       }

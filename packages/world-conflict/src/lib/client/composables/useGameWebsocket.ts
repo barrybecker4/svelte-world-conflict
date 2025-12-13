@@ -1,4 +1,5 @@
 import { GameWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
+import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { writable, type Writable } from 'svelte/store';
 
 /**
@@ -7,7 +8,7 @@ import { writable, type Writable } from 'svelte/store';
  */
 export function useGameWebSocket(
   gameId: string,
-  onGameUpdate: (gameData: any) => void,
+  onGameUpdate: (gameData: GameStateData) => void,
   playerId?: string
 ) {
   let wsClient: GameWebSocketClient | null = null;

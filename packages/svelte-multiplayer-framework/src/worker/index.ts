@@ -1,5 +1,12 @@
-import { WebSocketServer } from './WebSocketServer';
-import { isLocalDevelopment } from '../shared/config';
+import { WebSocketServer, type WebSocketServerEnv } from './WebSocketServer';
+import { isLocalDevelopment } from '../shared';
+
+/**
+ * Worker environment with Durable Object bindings
+ */
+export interface WorkerEnv extends WebSocketServerEnv {
+  WEBSOCKET_SERVER: DurableObjectNamespace;
+}
 
 /**
  * Common CORS headers for cross-origin requests
@@ -15,7 +22,7 @@ const CORS_HEADERS = {
  * This is the main entry point for the Cloudflare Worker
  */
 export default {
-  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     // Handle CORS preflight requests
@@ -52,24 +59,25 @@ export default {
 /**
  * Routes requests to the appropriate Durable Object instance
  */
-async function handleDurableObjectRequest(request: Request, env: any): Promise<Response> {
+async function handleDurableObjectRequest(request: Request, env: WorkerEnv): Promise<Response> {
   try {
     const gameId = await getGameIdFromRequest(request);
     const url = new URL(request.url);
-    
+
     // Use location hint to ensure consistent global routing
     // All game instances route to Western North America for accessibility from any region
     // NOTE: Location hint is disabled in local dev (localhost) to avoid routing issues with wrangler dev
     const locationHint = 'wnam'; // Western North America (California, Oregon)
-    
+
     // Detect local dev using shared utility function
     // This is more reliable than env variables which may not be set correctly
     const isLocalDev = isLocalDevelopment(url);
-    
+
     // Get Cloudflare datacenter information if available (only in production)
-    const cfDatacenter = (request as any).cf?.colo || 'unknown';
-    const cfCountry = (request as any).cf?.country || 'unknown';
-    
+    const cfInfo = (request as Request & { cf?: Record<string, unknown> }).cf || {};
+    const cfDatacenter = cfInfo.colo || 'unknown';
+    const cfCountry = cfInfo.country || 'unknown';
+
     console.log('[Worker] Routing request to Durable Object:', {
       pathname: url.pathname,
       method: request.method,
@@ -84,13 +92,13 @@ async function handleDurableObjectRequest(request: Request, env: any): Promise<R
     });
 
     const id = env.WEBSOCKET_SERVER.idFromName(gameId);
-    
+
     // Only use locationHint in production to ensure cross-region routing
     // In local dev, skip locationHint as wrangler dev doesn't support it properly
-    const durableObject = isLocalDev 
+    const durableObject = isLocalDev
       ? env.WEBSOCKET_SERVER.get(id)
       : env.WEBSOCKET_SERVER.get(id, { locationHint });
-    
+
     console.log('[Worker] Durable Object requested:', {
       gameId,
       durableObjectId: id.toString(),
@@ -118,6 +126,13 @@ async function handleDurableObjectRequest(request: Request, env: any): Promise<R
 }
 
 /**
+ * Body shape for notification requests
+ */
+interface NotificationBody {
+  gameId?: string;
+}
+
+/**
  * Extract gameId from request (query param or body)
  */
 async function getGameIdFromRequest(request: Request): Promise<string> {
@@ -129,8 +144,8 @@ async function getGameIdFromRequest(request: Request): Promise<string> {
     try {
       // Clone the request to read the body without consuming the original
       const clonedRequest = request.clone();
-      const body = await clonedRequest.json();
-      gameId = (body as any).gameId;
+      const body = await clonedRequest.json() as NotificationBody;
+      gameId = body.gameId ?? null;
       console.log('[Worker] Extracted gameId from POST body:', gameId);
     } catch (error) {
       console.error('[Worker] Error reading gameId from notification body:', error);
@@ -142,10 +157,11 @@ async function getGameIdFromRequest(request: Request): Promise<string> {
     console.warn('[Worker] No gameId found, using default');
     gameId = 'default';
   }
-  
+
   return gameId;
 }
 
 // Export the WebSocketServer class for Durable Objects
-export { WebSocketServer } from './WebSocketServer';
+export { WebSocketServer, type WebSocketServerEnv } from './WebSocketServer';
+export { SessionManager, type SessionInfo, type SessionRemovalResult } from './SessionManager';
 

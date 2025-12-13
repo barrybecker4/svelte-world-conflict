@@ -1,4 +1,23 @@
 import { SessionManager } from './SessionManager';
+import type { 
+  BaseMessage, 
+  SubscribeMessage, 
+  SubscribedMessage, 
+  UnsubscribedMessage, 
+  PongMessage, 
+  ErrorMessage,
+  NotificationPayload,
+  NotificationResponse,
+  PlayerEventPayload
+} from '../shared/types';
+
+/**
+ * Environment bindings for the WebSocket worker
+ */
+export interface WebSocketServerEnv {
+  WORKER_URL?: string;
+  [key: string]: unknown;
+}
 
 /**
  * WebSocket Server Durable Object
@@ -6,10 +25,10 @@ import { SessionManager } from './SessionManager';
  */
 export class WebSocketServer {
   private state: DurableObjectState;
-  private env: any;
+  private env: WebSocketServerEnv;
   private sessionManager: SessionManager;
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, env: WebSocketServerEnv) {
     this.state = state;
     this.env = env;
     this.sessionManager = new SessionManager();
@@ -44,7 +63,7 @@ export class WebSocketServer {
     // Extract request metadata for debugging cross-region issues
     const url = new URL(request.url);
     const gameId = url.searchParams.get('gameId') || 'unknown';
-    const cfInfo = (request as any).cf || {};
+    const cfInfo = (request as Request & { cf?: Record<string, unknown> }).cf || {};
     
     console.log(`🔌 [DO] WebSocket connection established:`, {
       sessionId,
@@ -60,16 +79,17 @@ export class WebSocketServer {
     // Handle incoming messages
     server.addEventListener('message', (event) => {
       try {
-        const message = JSON.parse(event.data as string);
+        const message = JSON.parse(event.data as string) as BaseMessage;
         console.log(`Received message from ${sessionId}:`, message.type);
         this.handleMessage(sessionId, message);
       } catch (error) {
         console.error(`Error parsing message from ${sessionId}:`, error);
-        this.sessionManager.sendToSession(sessionId, {
+        const errorMsg: ErrorMessage = {
           type: 'error',
-          gameState: { error: 'Invalid message format' },
+          error: 'Invalid message format',
           timestamp: Date.now()
-        });
+        };
+        this.sessionManager.sendToSession(sessionId, errorMsg);
       }
     });
 
@@ -119,8 +139,8 @@ export class WebSocketServer {
     };
 
     try {
-      const body = await request.json();
-      const { gameId, message } = body as { gameId: string; message: any };
+      const body = await request.json() as NotificationPayload;
+      const { gameId, message } = body;
 
       if (!gameId || !message) {
         console.error('❌ [DO] Invalid notification request:', { 
@@ -170,14 +190,16 @@ export class WebSocketServer {
         });
       }
 
+      const response: NotificationResponse & { totalSessions: number; gameSessions: number } = {
+        success: true,
+        sentCount,
+        gameId,
+        totalSessions: allSessions,
+        gameSessions: gameSessions.length
+      };
+
       return new Response(
-        JSON.stringify({
-          success: true,
-          sentCount,
-          gameId,
-          totalSessions: allSessions,
-          gameSessions: gameSessions.length
-        }),
+        JSON.stringify(response),
         {
           status: 200,
           headers: corsHeaders
@@ -198,46 +220,53 @@ export class WebSocketServer {
     }
   }
 
-  handleMessage(sessionId: string, message: any): void {
+  handleMessage(sessionId: string, message: BaseMessage): void {
     console.log(`📨 Processing message from ${sessionId}: ${message.type}`, {
-      gameId: message.gameId,
-      playerId: message.playerId || 'NONE'
+      gameId: 'gameId' in message ? message.gameId : undefined,
+      playerId: 'playerId' in message ? message.playerId : 'NONE'
     });
 
     switch (message.type) {
-      case 'subscribe':
-        this.handleSubscribe(sessionId, message.gameId, message.playerId);
+      case 'subscribe': {
+        const subscribeMsg = message as SubscribeMessage;
+        this.handleSubscribe(sessionId, subscribeMsg.gameId, subscribeMsg.playerId);
         break;
+      }
 
       case 'unsubscribe':
         this.handleUnsubscribe(sessionId);
         break;
 
-      case 'ping':
-        this.sessionManager.sendToSession(sessionId, {
+      case 'ping': {
+        const pongMsg: PongMessage = {
           type: 'pong',
           timestamp: Date.now()
-        });
+        };
+        this.sessionManager.sendToSession(sessionId, pongMsg);
         break;
+      }
 
-      default:
+      default: {
         console.warn(`Unknown message type from ${sessionId}: ${message.type}`);
-        this.sessionManager.sendToSession(sessionId, {
+        const errorMsg: ErrorMessage = {
           type: 'error',
-          gameState: { error: `Unknown message type: ${message.type}` },
+          error: `Unknown message type: ${message.type}`,
           timestamp: Date.now()
-        });
+        };
+        this.sessionManager.sendToSession(sessionId, errorMsg);
+      }
     }
   }
 
   handleSubscribe(sessionId: string, gameId: string, playerId?: string): void {
     if (!gameId) {
       console.error(`❌ [DO] Session ${sessionId} tried to subscribe without gameId`);
-      this.sessionManager.sendToSession(sessionId, {
+      const errorMsg: ErrorMessage = {
         type: 'error',
-        gameState: { error: 'Missing gameId' },
+        error: 'Missing gameId',
         timestamp: Date.now()
-      });
+      };
+      this.sessionManager.sendToSession(sessionId, errorMsg);
       return;
     }
 
@@ -265,18 +294,20 @@ export class WebSocketServer {
         timestamp: Date.now()
       });
       
-      this.sessionManager.sendToSession(sessionId, {
+      const subscribedMsg: SubscribedMessage = {
         type: 'subscribed',
         gameId,
         timestamp: Date.now()
-      });
+      };
+      this.sessionManager.sendToSession(sessionId, subscribedMsg);
     } catch (error) {
       console.error(`❌ [DO] Error subscribing session ${sessionId} to game ${gameId}:`, error);
-      this.sessionManager.sendToSession(sessionId, {
+      const errorMsg: ErrorMessage = {
         type: 'error',
-        gameState: { error: (error as Error).message },
+        error: (error as Error).message,
         timestamp: Date.now()
-      });
+      };
+      this.sessionManager.sendToSession(sessionId, errorMsg);
     }
   }
 
@@ -284,11 +315,12 @@ export class WebSocketServer {
     const gameId = this.sessionManager.unsubscribeFromGame(sessionId);
     if (gameId) {
       console.log(`Session ${sessionId} unsubscribed from game ${gameId}`);
-      this.sessionManager.sendToSession(sessionId, {
+      const unsubscribedMsg: UnsubscribedMessage = {
         type: 'unsubscribed',
         gameId,
         timestamp: Date.now()
-      });
+      };
+      this.sessionManager.sendToSession(sessionId, unsubscribedMsg);
     }
   }
 
@@ -307,7 +339,7 @@ export class WebSocketServer {
       const baseUrl = this.env.WORKER_URL || 'http://localhost:5173';
       const url = `${baseUrl}/api/game/${gameId}/player-event`;
       
-      const payload = {
+      const payload: PlayerEventPayload = {
         type: 'disconnect',
         playerId,
         timestamp: Date.now()
@@ -334,4 +366,3 @@ export class WebSocketServer {
     }
   }
 }
-

@@ -1,16 +1,22 @@
 import { MessageHandler } from './MessageHandler';
 import type { WebSocketConfig } from '../shared';
 import { buildWebSocketUrl } from '../shared';
+import type { BaseMessage, SubscribeMessage, PingMessage } from '../shared/types';
 import { writable, type Writable } from 'svelte/store';
 
 /**
  * Generic WebSocket client for multiplayer communication
+ * @template TGameState - The type of the game state received from the server
+ * @template TOutgoingMessage - The type of messages that can be sent to the server
  */
-export class WebSocketClient {
+export class WebSocketClient<
+  TGameState = unknown,
+  TOutgoingMessage extends BaseMessage = BaseMessage
+> {
   private ws: WebSocket | null = null;
   private gameId: string | null = null;
   private playerId: string | null = null;
-  private messageHandler: MessageHandler;
+  private messageHandler: MessageHandler<TGameState>;
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null;
   private config: WebSocketConfig;
   public connected: Writable<boolean>;
@@ -18,7 +24,7 @@ export class WebSocketClient {
   constructor(config: WebSocketConfig, playerId?: string) {
     this.config = config;
     this.playerId = playerId || null;
-    this.messageHandler = new MessageHandler();
+    this.messageHandler = new MessageHandler<TGameState>();
     this.connected = writable(false);
   }
 
@@ -54,11 +60,11 @@ export class WebSocketClient {
     // Handle incoming messages (persists for lifetime of connection)
     this.ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
+        const message = JSON.parse(event.data) as BaseMessage;
         console.log('📨 WebSocket message received:', {
           type: message.type,
-          gameId: message.gameId,
-          hasGameState: !!message.gameState
+          gameId: 'gameId' in message ? message.gameId : undefined,
+          hasGameState: 'gameState' in message
         });
         this.messageHandler.handleMessage(message);
       } catch (error) {
@@ -105,14 +111,17 @@ export class WebSocketClient {
         this.connected.set(true);
 
         // Send subscribe message with optional playerId for disconnect tracking
-        const subscribeMessage: any = { type: 'subscribe', gameId: this.gameId! };
+        const subscribeMessage: SubscribeMessage = { 
+          type: 'subscribe', 
+          gameId: this.gameId!
+        };
         if (this.playerId) {
           subscribeMessage.playerId = this.playerId;
           console.log(`🆔 [WS] Subscribing with playerId: ${this.playerId}`);
         } else {
           console.log(`⚠️ [WS] Subscribing WITHOUT playerId (observer mode)`);
         }
-        this.send(subscribeMessage);
+        this.sendRaw(subscribeMessage);
         this.messageHandler.triggerConnected();
 
         resolve();
@@ -204,7 +213,18 @@ export class WebSocketClient {
     return this.ws?.readyState === WebSocket.OPEN;
   }
 
-  send(message: any): void {
+  /**
+   * Send a typed message to the server
+   * @param message - The message to send (must match TOutgoingMessage type)
+   */
+  send(message: TOutgoingMessage): void {
+    this.sendRaw(message);
+  }
+
+  /**
+   * Send a raw message (internal use for framework messages)
+   */
+  private sendRaw(message: BaseMessage): void {
     if (this.isConnected()) {
       try {
         this.ws!.send(JSON.stringify(message));
@@ -230,7 +250,8 @@ export class WebSocketClient {
 
     const keepAlive = () => {
       if (this.isConnected()) {
-        this.send({ type: 'ping', timestamp: Date.now() });
+        const pingMessage: PingMessage = { type: 'ping', timestamp: Date.now() };
+        this.sendRaw(pingMessage);
       }
     };
 
@@ -245,20 +266,20 @@ export class WebSocketClient {
     }
   }
 
-  // Delegate callback registration to MessageHandler
-  onGameUpdate(callback: (data: any) => void): void {
+  // Delegate callback registration to MessageHandler with proper types
+  onGameUpdate(callback: (data: TGameState) => void): void {
     this.messageHandler.onGameUpdate(callback);
   }
 
-  onGameStarted(callback: (data: any) => void): void {
+  onGameStarted(callback: (data: TGameState) => void): void {
     this.messageHandler.onGameStarted(callback);
   }
 
-  onPlayerJoined(callback: (data: any) => void): void {
+  onPlayerJoined(callback: (data: TGameState) => void): void {
     this.messageHandler.onPlayerJoined(callback);
   }
 
-  onGameEnded(callback: (data: any) => void): void {
+  onGameEnded(callback: (data: TGameState) => void): void {
     this.messageHandler.onGameEnded(callback);
   }
 
@@ -275,11 +296,13 @@ export class WebSocketClient {
   }
 
   /**
-   * Register a custom message type handler
+   * Register a custom message type handler with typed payload
    * Allows extending the client with game-specific message types
+   * @template TPayload - The expected type of the message payload
+   * @param messageType - The message type to handle
+   * @param callback - The callback function with typed payload
    */
-  on(messageType: string, callback: (data: any) => void): void {
-    this.messageHandler.on(messageType, callback);
+  on<TPayload = unknown>(messageType: string, callback: (data: TPayload) => void): void {
+    this.messageHandler.on<TPayload>(messageType, callback);
   }
 }
-

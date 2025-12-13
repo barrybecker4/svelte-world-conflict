@@ -1,16 +1,23 @@
 /**
  * World Conflict-specific wrapper around the framework WebSocketClient
- * This maintains backward compatibility with existing code
+ * Provides full type safety for game state and messages
  */
 import { WebSocketClient } from '@svelte-mp/framework/client';
-import type { WebSocketConfig } from '@svelte-mp/framework/shared';
+import type { WebSocketConfig, BaseMessage } from '@svelte-mp/framework/shared';
+import type { GameStateData } from '$lib/game/entities/gameTypes';
 import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
 
 /**
- * Game WebSocket Client for World Conflict
- * Wraps the framework WebSocketClient with game-specific configuration
+ * Game-specific outgoing message types
+ * Extend this as needed for custom WebSocket messages
  */
-export class GameWebSocketClient extends WebSocketClient {
+export type WorldConflictMessage = BaseMessage;
+
+/**
+ * Game WebSocket Client for World Conflict
+ * Wraps the framework WebSocketClient with game-specific configuration and types
+ */
+export class GameWebSocketClient extends WebSocketClient<GameStateData, WorldConflictMessage> {
   constructor(playerId?: string) {
     const config: WebSocketConfig = {
       workerUrl: WEBSOCKET_WORKER_URL,

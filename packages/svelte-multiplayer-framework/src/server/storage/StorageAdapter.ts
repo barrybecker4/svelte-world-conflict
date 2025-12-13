@@ -5,17 +5,19 @@
 export interface StorageAdapter {
   /**
    * Get a value from storage
+   * @template T - The expected type of the stored value
    * @param key - Storage key
    * @returns The stored value or null if not found
    */
-  get<T = any>(key: string): Promise<T | null>;
+  get<T>(key: string): Promise<T | null>;
 
   /**
    * Store a value
+   * @template T - The type of value being stored
    * @param key - Storage key
    * @param value - Value to store (will be JSON serialized)
    */
-  put(key: string, value: any): Promise<void>;
+  put<T>(key: string, value: T): Promise<void>;
 
   /**
    * Delete a value from storage
@@ -34,6 +36,13 @@ export interface StorageAdapter {
    * Get information about the storage adapter
    * Useful for debugging and monitoring
    */
-  getStorageInfo(): { type: string; [key: string]: any };
+  getStorageInfo(): StorageInfo;
 }
 
+/**
+ * Storage adapter information
+ */
+export interface StorageInfo {
+  type: string;
+  [key: string]: unknown;
+}

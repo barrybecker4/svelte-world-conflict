@@ -1,74 +1,116 @@
+import type { 
+  BaseMessage, 
+  ErrorMessage, 
+  SubscribedMessage, 
+  UnsubscribedMessage,
+  PongMessage,
+  GameStateMessage
+} from '../shared/types';
+
+/**
+ * Callback types for message handling
+ * @template TGameState - The type of the game state
+ */
+export interface MessageCallbacks<TGameState = unknown> {
+  gameUpdate?: (data: TGameState) => void;
+  gameStarted?: (data: TGameState) => void;
+  playerJoined?: (data: TGameState) => void;
+  gameEnded?: (data: TGameState) => void;
+  error?: (error: string) => void;
+  connected?: () => void;
+  disconnected?: () => void;
+  subscribed?: (gameId: string) => void;
+  unsubscribed?: (gameId: string) => void;
+  pong?: (timestamp: number) => void;
+}
+
+/**
+ * Type for custom message handlers
+ */
+export type CustomMessageHandler<T = unknown> = (data: T) => void;
+
 /**
  * Handles incoming WebSocket messages and delegates to appropriate callbacks
+ * @template TGameState - The type of the game state payload
  */
-export class MessageHandler {
-  private callbacks: {
-    gameUpdate?: (data: any) => void;
-    gameStarted?: (data: any) => void;
-    playerJoined?: (data: any) => void;
-    gameEnded?: (data: any) => void;
-    error?: (error: string) => void;
-    connected?: () => void;
-    disconnected?: () => void;
-    subscribed?: (gameId: string) => void;
-    unsubscribed?: (gameId: string) => void;
-    pong?: (timestamp: number) => void;
-    [key: string]: ((data?: any) => void) | undefined;
-  } = {};
+export class MessageHandler<TGameState = unknown> {
+  private callbacks: MessageCallbacks<TGameState> = {};
+  private customHandlers: Map<string, CustomMessageHandler<unknown>> = new Map();
 
   /**
    * Process incoming WebSocket message
    */
-  handleMessage(message: any): void {
+  handleMessage(message: BaseMessage): void {
     console.log('📨 Received WebSocket message:', message.type);
 
     try {
       switch (message.type) {
-        case 'subscribed':
-          console.log(`✅ Subscribed to game ${message.gameId}`);
-          this.callbacks.subscribed?.(message.gameId);
+        case 'subscribed': {
+          const msg = message as unknown as SubscribedMessage;
+          console.log(`✅ Subscribed to game ${msg.gameId}`);
+          this.callbacks.subscribed?.(msg.gameId);
           break;
+        }
 
-        case 'gameUpdate':
-          this.callbacks.gameUpdate?.(message.gameState);
+        case 'gameUpdate': {
+          const msg = message as unknown as GameStateMessage<TGameState>;
+          this.callbacks.gameUpdate?.(msg.gameState);
           break;
+        }
 
-        case 'gameStarted':
-          this.callbacks.gameStarted?.(message.gameState);
+        case 'gameStarted': {
+          const msg = message as unknown as GameStateMessage<TGameState>;
+          this.callbacks.gameStarted?.(msg.gameState);
           break;
+        }
 
-        case 'playerJoined':
-          this.callbacks.playerJoined?.(message.gameState);
+        case 'playerJoined': {
+          const msg = message as unknown as GameStateMessage<TGameState>;
+          this.callbacks.playerJoined?.(msg.gameState);
           break;
+        }
 
-        case 'gameEnded':
-          this.callbacks.gameEnded?.(message.gameState);
+        case 'gameEnded': {
+          const msg = message as unknown as GameStateMessage<TGameState>;
+          this.callbacks.gameEnded?.(msg.gameState);
           break;
+        }
 
-        case 'pong':
-          // Handle ping/pong for keep-alive
-          this.callbacks.pong?.(message.timestamp);
+        case 'pong': {
+          const msg = message as unknown as PongMessage;
+          this.callbacks.pong?.(msg.timestamp);
           break;
+        }
 
-        case 'error':
-          console.error('❌ Server error:', message.gameState?.error);
-          this.callbacks.error?.(message.gameState?.error || 'Unknown server error');
+        case 'error': {
+          const errorMsg = message as unknown as ErrorMessage;
+          const errorText = errorMsg.error || errorMsg.gameState?.error || 'Unknown server error';
+          console.error('❌ Server error:', errorText);
+          this.callbacks.error?.(errorText);
           break;
+        }
 
-        case 'unsubscribed':
-          console.log(`❌ Unsubscribed from game ${message.gameId}`);
-          this.callbacks.unsubscribed?.(message.gameId);
+        case 'unsubscribed': {
+          const msg = message as unknown as UnsubscribedMessage;
+          console.log(`❌ Unsubscribed from game ${msg.gameId}`);
+          this.callbacks.unsubscribed?.(msg.gameId);
           break;
+        }
 
-        default:
+        default: {
           // Support custom message types
-          const callback = this.callbacks[message.type];
-          if (callback) {
-            callback(message.gameState || message);
+          const customHandler = this.customHandlers.get(message.type);
+          if (customHandler) {
+            // For custom handlers, pass the gameState if available, otherwise the whole message
+            const payload = 'gameState' in message 
+              ? (message as unknown as { gameState: unknown }).gameState 
+              : message;
+            customHandler(payload);
           } else {
             console.warn(`❓ Unknown message type: ${message.type}`);
             this.callbacks.error?.(`Unknown message type: ${message.type}`);
           }
+        }
       }
     } catch (error) {
       console.error('Error processing WebSocket message:', error);
@@ -79,19 +121,19 @@ export class MessageHandler {
   /**
    * Register callback for game updates
    */
-  onGameUpdate(callback: (data: any) => void): void {
+  onGameUpdate(callback: (data: TGameState) => void): void {
     this.callbacks.gameUpdate = callback;
   }
 
-  onGameStarted(callback: (data: any) => void): void {
+  onGameStarted(callback: (data: TGameState) => void): void {
     this.callbacks.gameStarted = callback;
   }
 
-  onPlayerJoined(callback: (data: any) => void): void {
+  onPlayerJoined(callback: (data: TGameState) => void): void {
     this.callbacks.playerJoined = callback;
   }
 
-  onGameEnded(callback: (data: any) => void): void {
+  onGameEnded(callback: (data: TGameState) => void): void {
     this.callbacks.gameEnded = callback;
   }
 
@@ -108,16 +150,18 @@ export class MessageHandler {
   }
 
   /**
-   * Register a custom message type handler
+   * Register a custom message type handler with typed payload
+   * @template TPayload - The expected type of the message payload
    * @param messageType - The message type to handle
-   * @param callback - The callback function
+   * @param callback - The callback function with typed payload
    */
-  on(messageType: string, callback: (data: any) => void): void {
-    this.callbacks[messageType] = callback;
+  on<TPayload = unknown>(messageType: string, callback: (data: TPayload) => void): void {
+    this.customHandlers.set(messageType, callback as CustomMessageHandler<unknown>);
   }
 
   clearCallbacks(): void {
     this.callbacks = {};
+    this.customHandlers.clear();
   }
 
   triggerConnected(): void {
@@ -132,4 +176,3 @@ export class MessageHandler {
     this.callbacks.error?.(error);
   }
 }
-
