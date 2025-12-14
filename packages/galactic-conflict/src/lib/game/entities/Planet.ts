@@ -38,13 +38,13 @@ export function getDistanceBetweenPositions(pos1: Position, pos2: Position): num
 
 /**
  * Calculate travel time in milliseconds for an armada to travel between planets
- */
+ *
 export function getTravelTime(planet1: Planet, planet2: Planet, speed: number): number {
     const distance = getDistanceBetweenPlanets(planet1, planet2);
     // Speed is in units per minute, convert to milliseconds
     const timeInMinutes = distance / speed;
     return timeInMinutes * 60 * 1000;
-}
+}*/
 
 /**
  * Create a new planet with default values
@@ -70,22 +70,22 @@ export function createPlanet(
 
 /**
  * Check if a position is within a planet's bounds
- */
+ *
 export function isPositionInPlanet(position: Position, planet: Planet): boolean {
     const radius = getPlanetRadius(planet.volume);
     const distance = getDistanceBetweenPositions(position, planet.position);
     return distance <= radius;
-}
+}*/
 
 /**
  * Check if two planets overlap (for galaxy generation)
- */
+ *
 export function doPlanetsOverlap(planet1: Planet, planet2: Planet, minDistance: number = 0): boolean {
     const radius1 = getPlanetRadius(planet1.volume);
     const radius2 = getPlanetRadius(planet2.volume);
     const distance = getDistanceBetweenPlanets(planet1, planet2);
     return distance < radius1 + radius2 + minDistance;
-}
+}*/
 
 /**
  * Generate a random planet name
@@ -105,7 +105,7 @@ export function generatePlanetName(index: number): string {
     const prefix = PLANET_PREFIXES[index % PLANET_PREFIXES.length];
     const suffix = PLANET_SUFFIXES[Math.floor(index / PLANET_PREFIXES.length) % PLANET_SUFFIXES.length];
     const number = Math.floor(index / (PLANET_PREFIXES.length * PLANET_SUFFIXES.length));
-    
+
     if (number > 0) {
         return `${prefix} ${suffix} ${number + 1}`;
     }

@@ -187,27 +187,60 @@ export class GalaxyGenerator {
 
             // Check for overlaps
             if (this.isValidPosition(position, radius, existingPlanets)) {
-                // Random number of defending ships based on production capacity
-                const production = getPlanetProduction(volume);
-                const multiplier = this.rng.nextInt(
-                    GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MIN,
-                    neutralShipsMultiplierMax
-                );
-                const maxShips = Math.max(neutralShipsMin, production * multiplier);
-                const ships = this.rng.nextInt(neutralShipsMin, maxShips);
-
-                return createPlanet(
+                return this.createNeutralPlanet(
                     id,
-                    generatePlanetName(id),
                     position,
                     volume,
-                    null, // Neutral - no owner
-                    ships
+                    neutralShipsMin,
+                    neutralShipsMultiplierMax
                 );
             }
         }
 
         return null;
+    }
+
+    /**
+     * Create a neutral planet with random defending ships
+     */
+    private createNeutralPlanet(
+        id: number,
+        position: Position,
+        volume: number,
+        neutralShipsMin: number,
+        neutralShipsMultiplierMax: number
+    ): Planet {
+        const ships = this.calculateDefendingNeutralShips(
+            volume,
+            neutralShipsMin,
+            neutralShipsMultiplierMax
+        );
+
+        return createPlanet(
+            id,
+            generatePlanetName(id),
+            position,
+            volume,
+            null, // Neutral - no owner
+            ships
+        );
+    }
+
+    /**
+     * Calculate random number of defending ships based on production capacity
+     */
+    private calculateDefendingNeutralShips(
+        volume: number,
+        neutralShipsMin: number,
+        neutralShipsMultiplierMax: number
+    ): number {
+        const production = getPlanetProduction(volume);
+        const multiplier = this.rng.nextInt(
+            GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MIN,
+            neutralShipsMultiplierMax
+        );
+        const maxShips = Math.max(neutralShipsMin, production * multiplier);
+        return this.rng.nextInt(neutralShipsMin, maxShips);
     }
 
     /**
