@@ -3,7 +3,10 @@
  */
 
 import type { CreateGameRequest, CreateGameResponse, JoinGameResponse } from '$lib/game/entities/gameTypes';
-import { logger } from 'multiplayer-framework/shared';
+
+interface ApiErrorResponse {
+    error?: string;
+}
 
 export class GameApiClient {
     /**
@@ -17,7 +20,7 @@ export class GameApiClient {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to create game');
         }
 
@@ -31,7 +34,7 @@ export class GameApiClient {
         const response = await fetch(`/api/game/${gameId}`);
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to get game');
         }
 
@@ -49,7 +52,7 @@ export class GameApiClient {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to join game');
         }
 
@@ -66,7 +69,7 @@ export class GameApiClient {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to start game');
         }
 
@@ -95,7 +98,7 @@ export class GameApiClient {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to send armada');
         }
 
@@ -122,7 +125,7 @@ export class GameApiClient {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to build ships');
         }
 
@@ -136,7 +139,7 @@ export class GameApiClient {
         const response = await fetch('/api/games/open');
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to get open games');
         }
 
@@ -154,7 +157,7 @@ export class GameApiClient {
         });
 
         if (!response.ok) {
-            const error = await response.json();
+            const error: ApiErrorResponse = await response.json();
             throw new Error(error.error || 'Failed to resign');
         }
 

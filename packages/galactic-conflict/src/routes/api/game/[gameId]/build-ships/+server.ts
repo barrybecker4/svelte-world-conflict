@@ -13,10 +13,16 @@ import { getWorkerHttpUrl } from '$lib/websocket-config';
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
 import { logger } from 'multiplayer-framework/shared';
 
+interface BuildShipsRequest {
+    playerId: number;
+    planetId: number;
+    shipCount: number;
+}
+
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
-        const body = await request.json();
+        const body = await request.json() as BuildShipsRequest;
         const { playerId, planetId, shipCount } = body;
 
         // Validate required fields
@@ -60,8 +66,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const totalCost = shipCount * GALACTIC_CONSTANTS.SHIP_COST;
 
         if (planet.resources < totalCost) {
-            return json({ 
-                error: `Not enough resources. Need ${totalCost}, have ${planet.resources}` 
+            return json({
+                error: `Not enough resources. Need ${totalCost}, have ${planet.resources}`
             }, { status: 400 });
         }
 
