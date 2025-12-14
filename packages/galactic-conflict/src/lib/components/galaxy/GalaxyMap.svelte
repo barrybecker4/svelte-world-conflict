@@ -31,8 +31,12 @@
     let dragCurrentY = 0;
     let svgElement: SVGSVGElement;
 
-    // Update time for armada positions
+    // Update time for armada positions (only when game is active)
     function updateTime() {
+        // Stop updating time when game is complete - this freezes armadas in place
+        if (gameState.status === 'COMPLETED') {
+            return;
+        }
         currentTime = Date.now();
         animationFrame = requestAnimationFrame(updateTime);
     }
