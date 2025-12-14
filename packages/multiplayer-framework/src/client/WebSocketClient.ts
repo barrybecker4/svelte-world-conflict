@@ -1,7 +1,7 @@
 import { MessageHandler } from './MessageHandler';
 import type { WebSocketConfig } from '../shared';
 import { buildWebSocketUrl } from '../shared';
-import type { BaseMessage, SubscribeMessage, PingMessage } from '../shared';
+import type { BaseMessage, SubscribeMessage, PingMessage, StandardMessage } from '../shared';
 
 /**
  * Generic WebSocket client for multiplayer communication
@@ -87,7 +87,7 @@ export class WebSocketClient<
     // Handle incoming messages (persists for lifetime of connection)
     this.ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data) as BaseMessage;
+        const message = JSON.parse(event.data) as StandardMessage<TGameState>;
         console.log('📨 WebSocket message received:', {
           type: message.type,
           gameId: 'gameId' in message ? message.gameId : undefined,

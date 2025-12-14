@@ -1,11 +1,4 @@
-import type { 
-  BaseMessage, 
-  ErrorMessage, 
-  SubscribedMessage, 
-  UnsubscribedMessage,
-  PongMessage,
-  GameStateMessage
-} from '../shared/types';
+import type { StandardMessage } from '../shared/types';
 
 /**
  * Callback types for message handling
@@ -40,73 +33,56 @@ export class MessageHandler<TGameState = unknown> {
   /**
    * Process incoming WebSocket message
    */
-  handleMessage(message: BaseMessage): void {
+  handleMessage(message: StandardMessage<TGameState>): void {
     console.log('📨 Received WebSocket message:', message.type);
 
     try {
       switch (message.type) {
-        case 'subscribed': {
-          const msg = message as unknown as SubscribedMessage;
-          console.log(`✅ Subscribed to game ${msg.gameId}`);
-          this.callbacks.subscribed?.(msg.gameId);
+        case 'subscribed':
+          console.log(`✅ Subscribed to game ${message.gameId}`);
+          this.callbacks.subscribed?.(message.gameId);
           break;
-        }
 
-        case 'gameUpdate': {
-          const msg = message as unknown as GameStateMessage<TGameState>;
-          this.callbacks.gameUpdate?.(msg.gameState);
+        case 'gameUpdate':
+          this.callbacks.gameUpdate?.(message.gameState);
           break;
-        }
 
-        case 'gameStarted': {
-          const msg = message as unknown as GameStateMessage<TGameState>;
-          this.callbacks.gameStarted?.(msg.gameState);
+        case 'gameStarted':
+          this.callbacks.gameStarted?.(message.gameState);
           break;
-        }
 
-        case 'playerJoined': {
-          const msg = message as unknown as GameStateMessage<TGameState>;
-          this.callbacks.playerJoined?.(msg.gameState);
+        case 'playerJoined':
+          this.callbacks.playerJoined?.(message.gameState);
           break;
-        }
 
-        case 'gameEnded': {
-          const msg = message as unknown as GameStateMessage<TGameState>;
-          this.callbacks.gameEnded?.(msg.gameState);
+        case 'gameEnded':
+          this.callbacks.gameEnded?.(message.gameState);
           break;
-        }
 
-        case 'pong': {
-          const msg = message as unknown as PongMessage;
-          this.callbacks.pong?.(msg.timestamp);
+        case 'pong':
+          this.callbacks.pong?.(message.timestamp);
           break;
-        }
 
         case 'error': {
-          const errorMsg = message as unknown as ErrorMessage;
-          const errorText = errorMsg.error || errorMsg.gameState?.error || 'Unknown server error';
+          const errorText = message.error || message.gameState?.error || 'Unknown server error';
           console.error('❌ Server error:', errorText);
           this.callbacks.error?.(errorText);
           break;
         }
 
-        case 'unsubscribed': {
-          const msg = message as unknown as UnsubscribedMessage;
-          console.log(`❌ Unsubscribed from game ${msg.gameId}`);
-          this.callbacks.unsubscribed?.(msg.gameId);
+        case 'unsubscribed':
+          console.log(`❌ Unsubscribed from game ${message.gameId}`);
+          this.callbacks.unsubscribed?.(message.gameId);
           break;
-        }
 
         default: {
-          // Support custom message types
+          // Support custom message types (falls through for subscribe, unsubscribe, ping)
           const customHandler = this.customHandlers.get(message.type);
           if (customHandler) {
             // For custom handlers, pass the gameState if available, otherwise the whole message
-            const payload = 'gameState' in message 
-              ? (message as unknown as { gameState: unknown }).gameState 
-              : message;
+            const payload = 'gameState' in message ? message.gameState : message;
             customHandler(payload);
-          } else {
+          } else if (!['subscribe', 'unsubscribe', 'ping'].includes(message.type)) {
             console.warn(`❓ Unknown message type: ${message.type}`);
             this.callbacks.error?.(`Unknown message type: ${message.type}`);
           }
