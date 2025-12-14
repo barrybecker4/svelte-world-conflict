@@ -1,4 +1,4 @@
-import type { StandardMessage } from '../shared/types';
+import type { StandardMessage } from '../shared';
 
 /**
  * Callback types for message handling

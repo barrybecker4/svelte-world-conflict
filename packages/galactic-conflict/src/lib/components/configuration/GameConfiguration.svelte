@@ -4,8 +4,12 @@
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerDefaultName, getPlayerColor } from '$lib/game/constants/playerConfigs';
     import { loadPlayerName } from '$lib/client/stores/clientStorage';
+    import AudioButton from './AudioButton.svelte';
+    import SoundTestModal from '../modals/SoundTestModal.svelte';
 
     const dispatch = createEventDispatcher();
+
+    let showSoundTestModal = false;
 
     // Game settings
     let planetCount = GALACTIC_CONSTANTS.DEFAULT_PLANET_COUNT;
@@ -289,6 +293,23 @@
                     <p class="hint">Maximum {GALACTIC_CONSTANTS.MAX_PLAYERS} players reached</p>
                 {/if}
             </section>
+
+            <!-- Audio Settings -->
+            <section class="audio-section">
+                <h2>Audio</h2>
+                <div class="audio-controls">
+                    <AudioButton />
+                    {#if import.meta.env.DEV}
+                        <button 
+                            class="test-sounds-btn" 
+                            on:click={() => showSoundTestModal = true}
+                            title="Test all game sounds"
+                        >
+                            🎵 Test Sounds
+                        </button>
+                    {/if}
+                </div>
+            </section>
         </div>
 
         <footer>
@@ -305,6 +326,13 @@
         </footer>
     </div>
 </div>
+
+{#if import.meta.env.DEV && showSoundTestModal}
+    <SoundTestModal 
+        isOpen={showSoundTestModal} 
+        onClose={() => showSoundTestModal = false} 
+    />
+{/if}
 
 <style>
     .config-overlay {
@@ -625,6 +653,36 @@
         .player-grid {
             grid-template-columns: repeat(2, 1fr);
         }
+    }
+
+    /* Audio section */
+    .audio-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #374151;
+    }
+
+    .audio-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .test-sounds-btn {
+        padding: 0.5rem 1rem;
+        background: rgba(168, 85, 247, 0.15);
+        border: 1px solid #7c3aed;
+        border-radius: 8px;
+        color: #c4b5fd;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .test-sounds-btn:hover {
+        background: rgba(168, 85, 247, 0.25);
+        border-color: #a855f7;
+        color: #e9d5ff;
     }
 </style>
 

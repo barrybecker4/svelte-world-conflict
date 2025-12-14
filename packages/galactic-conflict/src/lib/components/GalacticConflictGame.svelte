@@ -19,6 +19,7 @@
         clearGameStores,
     } from '$lib/client/stores/gameStateStore';
     import { logger } from 'multiplayer-framework/shared';
+    import { audioSystem, SOUNDS } from '$lib/client/audio';
 
     export let gameId: string;
     export let initialState: GalacticGameStateData;
@@ -33,6 +34,20 @@
     let connectionError: string | null = null;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let hasResigned = false;
+    let gameEndSoundPlayed = false;
+
+    // Track game completion and play appropriate sound
+    $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed) {
+        gameEndSoundPlayed = true;
+        const myPlayerId = $currentPlayerId;
+        const winnerId = $gameState.endResult?.slotIndex;
+        
+        if (winnerId !== undefined && winnerId === myPlayerId) {
+            audioSystem.playSound(SOUNDS.GAME_WON);
+        } else if (winnerId !== undefined) {
+            audioSystem.playSound(SOUNDS.GAME_LOST);
+        }
+    }
 
     // Poll server to process events and get updates (armada arrivals, battles)
     async function pollGameState() {

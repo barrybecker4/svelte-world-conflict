@@ -1,13 +1,8 @@
 /**
- * ADSR envelope parameters
+ * ADSR envelope utilities for sound synthesis
  */
-export interface EnvelopeParams {
-    attackTime: number;
-    decayTime: number;
-    sustainTime: number;
-    releaseTime: number;
-    sustainLevel: number;
-}
+
+import type { EnvelopeParams } from './audioTypes';
 
 /**
  * Calculate the total duration of an ADSR envelope

@@ -4,6 +4,7 @@
     import { calculateTravelTime } from '$lib/game/entities/Armada';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+    import { audioSystem, SOUNDS } from '$lib/client/audio';
 
     export let sourcePlanet: Planet;
     export let planets: Planet[];
@@ -55,6 +56,7 @@
 
     function handleSend() {
         if (selectedDestinationId !== null && shipCount > 0 && shipCount <= maxShips) {
+            audioSystem.playSound(SOUNDS.SHIP_LAUNCH);
             dispatch('send', { 
                 shipCount, 
                 destinationPlanetId: selectedDestinationId 

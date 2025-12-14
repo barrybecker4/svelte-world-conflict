@@ -2,6 +2,7 @@
     import { createEventDispatcher } from 'svelte';
     import type { Planet } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
+    import { audioSystem, SOUNDS } from '$lib/client/audio';
 
     export let planet: Planet;
     export let planets: Planet[] = [];
@@ -24,6 +25,7 @@
 
     function handleBuild() {
         if (canAfford && shipCount > 0) {
+            audioSystem.playSound(SOUNDS.SHIP_BUILT);
             dispatch('build', { shipCount });
         }
     }

@@ -7,6 +7,7 @@
 
 import { writable, get, type Writable } from 'svelte/store';
 import type { BattleReplay, BattleReplayRound } from '$lib/game/entities/gameTypes';
+import { audioSystem, SOUNDS } from '$lib/client/audio';
 
 /**
  * Animation state for displaying a battle
@@ -82,6 +83,9 @@ async function playBattleAnimation(replayId: string): Promise<void> {
 
     console.log(`[BattleAnimation] Starting animation for ${replay.planetName} with ${replay.rounds.length} rounds`);
 
+    // Play battle alarm when battle starts
+    audioSystem.playSound(SOUNDS.BATTLE_ALARM);
+
     // Initial pause to show the battle starting
     await delay(600);
 
@@ -140,6 +144,18 @@ async function playRound(replayId: string, round: BattleReplayRound, roundIndex:
         return new Map(map);
     });
 
+    // Play destruction sounds for casualties (staggered)
+    const totalCasualties = round.attackerLosses + round.defenderLosses;
+    if (totalCasualties > 0) {
+        // Play up to 3 destruction sounds, staggered
+        const soundCount = Math.min(totalCasualties, 3);
+        for (let i = 0; i < soundCount; i++) {
+            setTimeout(() => {
+                audioSystem.playSound(SOUNDS.SHIP_DESTROYED);
+            }, i * 80);
+        }
+    }
+
     // Pause between rounds
     await delay(500);
 }
@@ -156,6 +172,8 @@ async function showOutcome(replayId: string): Promise<void> {
     let outcomeMessage: string;
     if (replay.winnerId === replay.attackerPlayerId) {
         outcomeMessage = `${replay.attackerName} conquers ${replay.planetName}!`;
+        // Play conquest sound for attacker victory
+        audioSystem.playSound(SOUNDS.PLANET_CONQUERED);
     } else if (replay.winnerId === replay.defenderPlayerId || replay.winnerId === -1) {
         outcomeMessage = `${replay.defenderName} defend ${replay.planetName}!`;
     } else if (replay.winnerId === null && replay.winnerShipsRemaining === 0) {

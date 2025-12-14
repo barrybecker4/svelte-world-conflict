@@ -1,3 +1,6 @@
+import type { SoundConfig } from 'multiplayer-framework/shared';
+import { VOLUME_LEVELS } from 'multiplayer-framework/shared';
+
 export const SOUNDS = {
     // Game events
     GAME_CREATED: 'created',
@@ -28,36 +31,10 @@ export const SOUNDS = {
 
 export type SoundType = typeof SOUNDS[keyof typeof SOUNDS];
 
-/** Note definition: time offset, pitch (Hz), duration multiplier */
-export interface Note {
-    t: number;
-    p: number;
-    d: number;
-}
-
-/** Configuration for note-based sounds */
-export interface NoteSoundConfig {
-    type: 'note';
-    frequencies: Note[];
-    volume: number;
-    length: number;
-}
-
-/** Configuration for sliding pitch sounds */
-export interface SlidingSoundConfig {
-    type: 'sliding';
-    startFreq: number;
-    endFreq: number;
-    volume: number;
-    length: number;
-}
-
-export type SoundConfig = NoteSoundConfig | SlidingSoundConfig;
-
 // Volume levels matching original GAS version
-const CLICK_VOLUME = 0.1;
-const EFFECT_VOLUME = 0.2;
-const VICTORY_VOLUME = 0.6;
+const CLICK_VOLUME = VOLUME_LEVELS.UI;
+const EFFECT_VOLUME = VOLUME_LEVELS.EFFECT;
+const VICTORY_VOLUME = VOLUME_LEVELS.VICTORY;
 
 // Default envelope timing for click sounds
 const CLICK_LENGTH = 0.06; // ATTACK + DECAY + SUSTAIN + RELEASE

@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+    import AudioButton from './configuration/AudioButton.svelte';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
@@ -179,6 +180,11 @@
             {/if}
         </div>
     {/if}
+
+    <!-- Icon buttons row -->
+    <div class="icon-buttons">
+        <AudioButton />
+    </div>
 </div>
 
 <style>
@@ -425,6 +431,15 @@
     .leave-btn:hover {
         background: linear-gradient(135deg, #6d28d9, #9333ea);
         transform: scale(1.02);
+    }
+
+    /* Icon buttons */
+    .icon-buttons {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #374151;
+        margin-top: 1rem;
     }
 </style>
 
