@@ -163,9 +163,8 @@
 <div class="galaxy-container">
     <svg
         bind:this={svgElement}
-        {width}
-        {height}
         viewBox="0 0 {width} {height}"
+        preserveAspectRatio="xMidYMid meet"
         class="galaxy-map"
     >
         <!-- Definitions -->
@@ -277,8 +276,8 @@
     }
 
     .galaxy-map {
-        max-width: 100%;
-        max-height: 100%;
+        width: 100%;
+        height: 100%;
         user-select: none;
     }
 </style>
