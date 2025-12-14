@@ -1,0 +1,32 @@
+{
+  "name": "multiplayer-framework",
+  "version": "0.1.0",
+  "description": "Minimal multiplayer WebSocket framework for games with Cloudflare infrastructure",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client/index.js",
+    "./server": "./dist/server/index.js",
+    "./worker": "./dist/worker/index.js",
+    "./shared": "./dist/shared/index.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "multiplayer",
+    "websocket",
+    "cloudflare",
+    "durable-objects",
+    "game-framework"
+  ],
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20250614.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
+

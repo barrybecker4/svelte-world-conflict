@@ -1,0 +1,13 @@
+{
+  "name": "multiplayer-framework-worker",
+  "version": "0.1.0",
+  "description": "WebSocket worker for multiplayer-framework",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  }
+}
+
