@@ -36,6 +36,7 @@ export class GalacticGameState {
         if (!this.state.eventQueue) this.state.eventQueue = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
         if (!this.state.recentBattleReplays) this.state.recentBattleReplays = [];
+        if (!this.state.resourcesByPlayer) this.state.resourcesByPlayer = {};
 
         // Initialize or restore RNG
         if (this.state.rngSeed && this.state.rngState) {
@@ -80,6 +81,12 @@ export class GalacticGameState {
 
         const now = Date.now();
 
+        // Initialize player resources (start with 0)
+        const resourcesByPlayer: Record<number, number> = {};
+        for (const player of players) {
+            resourcesByPlayer[player.slotIndex] = 0;
+        }
+
         const initialState: GalacticGameStateData = {
             gameId,
             status: GAME_STATUS.ACTIVE,
@@ -92,6 +99,7 @@ export class GalacticGameState {
             armadas: [],
             activeBattles: [],
             eventQueue: [],
+            resourcesByPlayer,
             recentBattleReplays: [],
             eliminatedPlayers: [],
             rngSeed: seed || `galactic-${gameId}`,
@@ -154,6 +162,7 @@ export class GalacticGameState {
 
     get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
+    get resourcesByPlayer(): Record<number, number> { return { ...this.state.resourcesByPlayer }; }
 
     // ==================== PLANET MANAGEMENT ====================
 
@@ -242,12 +251,40 @@ export class GalacticGameState {
     }
 
     /**
-     * Get total resources for a player
+     * Get player's global resources
+     */
+    getPlayerResources(slotIndex: number): number {
+        return this.state.resourcesByPlayer[slotIndex] ?? 0;
+    }
+
+    /**
+     * Add resources to a player's global pool
+     */
+    addPlayerResources(slotIndex: number, amount: number): void {
+        if (!this.state.resourcesByPlayer[slotIndex]) {
+            this.state.resourcesByPlayer[slotIndex] = 0;
+        }
+        this.state.resourcesByPlayer[slotIndex] += amount;
+    }
+
+    /**
+     * Spend resources from a player's global pool
+     * Returns true if successful, false if not enough resources
+     */
+    spendPlayerResources(slotIndex: number, amount: number): boolean {
+        const currentResources = this.getPlayerResources(slotIndex);
+        if (currentResources >= amount) {
+            this.state.resourcesByPlayer[slotIndex] = currentResources - amount;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get total resources for a player (alias for getPlayerResources for compatibility)
      */
     getTotalResources(slotIndex: number): number {
-        return this.state.planets
-            .filter(p => p.ownerId === slotIndex)
-            .reduce((sum, p) => sum + p.resources, 0);
+        return this.getPlayerResources(slotIndex);
     }
 
     // ==================== ARMADA MANAGEMENT ====================
@@ -459,6 +496,7 @@ export class GalacticGameState {
                 rounds: b.rounds.map(r => ({ ...r })),
             })),
             eventQueue: this.state.eventQueue.map(e => ({ ...e })),
+            resourcesByPlayer: { ...this.state.resourcesByPlayer },
             recentBattleReplays: this.state.recentBattleReplays.map(r => ({
                 ...r,
                 rounds: r.rounds.map(round => ({ ...round })),

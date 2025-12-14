@@ -38,7 +38,7 @@
         .filter(a => a.ownerId === currentPlayerId)
         .reduce((sum, a) => sum + a.ships, 0);
     $: totalShips = myShipsOnPlanets + myArmadaShips;
-    $: totalResources = myPlanets.reduce((sum, p) => sum + p.resources, 0);
+    $: totalResources = currentPlayerId !== null ? (gameState.resourcesByPlayer?.[currentPlayerId] ?? 0) : 0;
     
     $: timeRemaining = Math.max(0, (gameState.startTime + gameState.durationMinutes * 60 * 1000) - currentTime);
     $: minutesRemaining = Math.floor(timeRemaining / 60000);

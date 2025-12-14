@@ -7,6 +7,7 @@
     export let planet: Planet;
     export let planets: Planet[] = [];
     export let currentPlayerId: number | null = null;
+    export let playerResources: number = 0;
 
     const dispatch = createEventDispatcher();
 
@@ -17,8 +18,8 @@
     $: stillOwned = currentPlanet.ownerId === currentPlayerId;
     $: shipCost = GALACTIC_CONSTANTS.SHIP_COST;
     $: totalCost = shipCount * shipCost;
-    $: maxAffordable = Math.floor(currentPlanet.resources / shipCost);
-    $: canAfford = currentPlanet.resources >= totalCost;
+    $: maxAffordable = Math.floor(playerResources / shipCost);
+    $: canAfford = playerResources >= totalCost;
     
     // Clamp shipCount if maxAffordable changes
     $: if (shipCount > maxAffordable && maxAffordable > 0) shipCount = maxAffordable;
@@ -52,12 +53,12 @@
                 <h3>{currentPlanet.name}</h3>
                 <div class="stats">
                     <div class="stat">
-                        <span class="stat-label">Current Ships</span>
+                        <span class="stat-label">Ships on Planet</span>
                         <span class="stat-value">{currentPlanet.ships}</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-label">Resources</span>
-                        <span class="stat-value">{Math.floor(currentPlanet.resources)}</span>
+                        <span class="stat-label">Your Resources</span>
+                        <span class="stat-value">{Math.floor(playerResources)}</span>
                     </div>
                 </div>
             </div>

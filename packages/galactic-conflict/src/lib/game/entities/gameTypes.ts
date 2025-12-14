@@ -196,6 +196,12 @@ export interface GalacticGameStateData {
     eventQueue: GameEvent[];
     
     /** 
+     * Global resources per player (player slot index -> resource count)
+     * Resources accumulate from all owned planets into a single pool
+     */
+    resourcesByPlayer: Record<number, number>;
+    
+    /** 
      * Recently completed battle replays for client animation
      * Cleared after being sent to clients
      */

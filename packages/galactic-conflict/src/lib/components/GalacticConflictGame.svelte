@@ -200,15 +200,21 @@
                             return {
                                 ...p,
                                 ships: response.newShipCount,
-                                resources: response.newResourceCount ?? p.resources,
                             };
                         }
                         return p;
                     });
 
+                    // Update player's global resources
+                    const updatedResourcesByPlayer = {
+                        ...state.resourcesByPlayer,
+                        [currentPlayer]: response.newPlayerResources ?? state.resourcesByPlayer?.[currentPlayer] ?? 0,
+                    };
+
                     return {
                         ...state,
                         planets: updatedPlanets,
+                        resourcesByPlayer: updatedResourcesByPlayer,
                     };
                 });
             }
@@ -319,6 +325,7 @@
         planet={sourcePlanet}
         planets={$gameState.planets}
         currentPlayerId={$currentPlayerId}
+        playerResources={$currentPlayerId !== null ? ($gameState.resourcesByPlayer?.[$currentPlayerId] ?? 0) : 0}
         on:build={handleBuildShips}
         on:close={() => showBuildShipsModal = false}
     />

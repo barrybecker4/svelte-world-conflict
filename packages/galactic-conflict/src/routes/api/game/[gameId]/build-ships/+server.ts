@@ -65,14 +65,16 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Calculate cost
         const totalCost = shipCount * GALACTIC_CONSTANTS.SHIP_COST;
 
-        if (planet.resources < totalCost) {
+        // Check player's global resources
+        const playerResources = gameState.getPlayerResources(playerId);
+        if (playerResources < totalCost) {
             return json({
-                error: `Not enough resources. Need ${totalCost}, have ${planet.resources}`
+                error: `Not enough resources. Need ${totalCost}, have ${Math.floor(playerResources)}`
             }, { status: 400 });
         }
 
-        // Spend resources and add ships
-        gameState.spendPlanetResources(planetId, totalCost);
+        // Spend resources from player's global pool and add ships to planet
+        gameState.spendPlayerResources(playerId, totalCost);
         gameState.addPlanetShips(planetId, shipCount);
 
         // Save updated state
@@ -83,12 +85,13 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await notifyGameUpdate(gameId, gameRecord.gameState);
 
         const updatedPlanet = gameState.getPlanet(planetId);
-        logger.debug(`Built ${shipCount} ships at planet ${planetId}, cost: ${totalCost}`);
+        const newPlayerResources = gameState.getPlayerResources(playerId);
+        logger.debug(`Built ${shipCount} ships at planet ${planetId}, cost: ${totalCost}, remaining resources: ${newPlayerResources}`);
 
         return json({
             success: true,
             newShipCount: updatedPlanet?.ships,
-            newResourceCount: updatedPlanet?.resources,
+            newPlayerResources: newPlayerResources,
             message: `Built ${shipCount} ships at ${planet.name} for ${totalCost} resources`,
         });
 

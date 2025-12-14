@@ -91,7 +91,8 @@ export class GameLoop {
     }
 
     /**
-     * Process resource tick - accumulate resources for all owned planets
+     * Process resource tick - accumulate resources into each player's global pool
+     * based on the total volume of all their owned planets
      */
     private processResourceTick(currentTime: number): void {
         logger.debug('Processing resource tick');
@@ -99,11 +100,18 @@ export class GameLoop {
         // Use configurable production rate from game settings
         const productionRate = this.gameState.state.productionRate ?? GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE;
 
-        for (const planet of this.gameState.planets) {
-            if (planet.ownerId !== null) {
+        // Calculate resources generated for each player based on their owned planets
+        for (const player of this.gameState.players) {
+            if (this.gameState.isPlayerEliminated(player.slotIndex)) continue;
+
+            // Sum up volume of all planets owned by this player
+            const ownedPlanets = this.gameState.getPlanetsOwnedBy(player.slotIndex);
+            const totalVolume = ownedPlanets.reduce((sum, planet) => sum + planet.volume, 0);
+
+            if (totalVolume > 0) {
                 // Resources per minute divided by updates per minute
-                const resourcesGenerated = (planet.volume * productionRate) / GALACTIC_CONSTANTS.RESOURCE_UPDATES_PER_MIN;
-                this.gameState.addPlanetResources(planet.id, resourcesGenerated);
+                const resourcesGenerated = (totalVolume * productionRate) / GALACTIC_CONSTANTS.RESOURCE_UPDATES_PER_MIN;
+                this.gameState.addPlayerResources(player.slotIndex, resourcesGenerated);
             }
         }
 
