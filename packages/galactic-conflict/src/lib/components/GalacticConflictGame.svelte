@@ -225,6 +225,14 @@
         </div>
     {:else if $gameState}
         <div class="game-layout">
+            <div class="side-panel">
+                <GameInfoPanel
+                    gameState={$gameState}
+                    currentPlayerId={$currentPlayerId}
+                    isConnected={$isConnected}
+                    onNewGame={handleNewGame}
+                />
+            </div>
             <div class="map-area">
                 <GalaxyMap
                     gameState={$gameState}
@@ -233,14 +241,6 @@
                     onPlanetClick={handlePlanetClick}
                     on:dragSend={handleDragSend}
                     on:doubleClick={handlePlanetDoubleClick}
-                />
-            </div>
-            <div class="side-panel">
-                <GameInfoPanel
-                    gameState={$gameState}
-                    currentPlayerId={$currentPlayerId}
-                    isConnected={$isConnected}
-                    onNewGame={handleNewGame}
                 />
             </div>
         </div>
@@ -298,7 +298,7 @@
         width: 320px;
         height: 100%;
         background: rgba(15, 15, 26, 0.95);
-        border-left: 1px solid #374151;
+        border-right: 1px solid #374151;
         overflow-y: auto;
     }
 
