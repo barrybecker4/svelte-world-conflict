@@ -1,8 +1,10 @@
 /**
  * Galactic Conflict-specific wrapper around the framework KVStorageAdapter
  */
-import { KVStorageAdapter, type StorageAdapter } from 'multiplayer-framework/server';
+import { KVStorageAdapter, type StorageAdapter, type KVNamespace } from 'multiplayer-framework/server';
 import { logger } from '$lib/game/utils/logger';
+
+const BINDING_NAME = 'GALACTIC_CONFLICT_KV';
 
 /**
  * KVStorage for Galactic Conflict
@@ -12,9 +14,8 @@ export class KVStorage implements StorageAdapter {
     private adapter: KVStorageAdapter;
 
     constructor(platform: App.Platform) {
-        this.adapter = new KVStorageAdapter(platform, {
-            kvBindingName: 'GALACTIC_CONFLICT_KV'
-        });
+        const kv = platform?.env?.[BINDING_NAME] as KVNamespace | undefined;
+        this.adapter = new KVStorageAdapter(kv, BINDING_NAME);
     }
 
     async get<T = unknown>(key: string): Promise<T | null> {

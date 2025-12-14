@@ -115,10 +115,9 @@ interface GameRecord {
 }
 
 export async function POST({ request, platform, params }) {
-  // Initialize storage
-  const storage = new KVStorageAdapter(platform, {
-    kvBindingName: 'YOUR_KV_NAMESPACE'
-  });
+  // Initialize storage - extract the KV binding from platform
+  const kv = platform?.env?.YOUR_KV_NAMESPACE;
+  const storage = new KVStorageAdapter(kv, 'YOUR_KV_NAMESPACE');
 
   // Load game state with proper typing
   const gameId = params.gameId;
@@ -384,7 +383,7 @@ interface GameRecord {
 }
 
 export async function POST({ request, platform }) {
-  const storage = new KVStorageAdapter(platform, { kvBindingName: 'TTT_KV' });
+  const storage = new KVStorageAdapter(platform?.env?.TTT_KV, 'TTT_KV');
   const { gameId, position } = await request.json();
   
   const game = await storage.get<GameRecord>(`game:${gameId}`);

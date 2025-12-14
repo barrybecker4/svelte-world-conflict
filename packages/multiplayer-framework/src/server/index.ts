@@ -3,5 +3,5 @@
  */
 
 export type { StorageAdapter, StorageInfo } from './storage/StorageAdapter';
-export { KVStorageAdapter, type KVPlatform, type KVStorageConfig, type KVStorageInfo } from './storage/KVStorageAdapter';
+export { KVStorageAdapter, type KVNamespace, type KVStorageInfo } from './storage/KVStorageAdapter';
 
