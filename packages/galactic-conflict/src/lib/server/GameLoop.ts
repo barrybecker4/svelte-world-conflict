@@ -1,6 +1,6 @@
 /**
  * GameLoop - Processes game events and manages game state updates
- * 
+ *
  * Handles:
  * - Armada arrivals (battles are resolved immediately on arrival)
  * - Resource ticks
@@ -12,7 +12,7 @@ import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { BattleManager } from '$lib/game/mechanics/BattleManager';
 import { GALACTIC_CONSTANTS, GAME_STATUS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
-import { processAITurns } from './ai/RealTimeAI';
+import { processAITurns } from '$lib/server/ai';
 
 export class GameLoop {
     private battleManager: BattleManager;
@@ -30,7 +30,7 @@ export class GameLoop {
 
         while (true) {
             const event = this.gameState.getNextEvent();
-            
+
             if (!event || event.scheduledTime > currentTime) {
                 break;
             }
@@ -101,8 +101,8 @@ export class GameLoop {
 
         for (const planet of this.gameState.planets) {
             if (planet.ownerId !== null) {
-                // Resources per minute = planet volume * production rate
-                const resourcesGenerated = planet.volume * productionRate;
+                // Resources per minute divided by updates per minute
+                const resourcesGenerated = (planet.volume * productionRate) / GALACTIC_CONSTANTS.RESOURCE_UPDATES_PER_MIN;
                 this.gameState.addPlanetResources(planet.id, resourcesGenerated);
             }
         }
@@ -148,12 +148,12 @@ export class GameLoop {
 export function processGameState(gameState: GalacticGameState, currentTime: number = Date.now()): GalacticGameState {
     const gameLoop = new GameLoop(gameState);
     gameLoop.processEvents(currentTime);
-    
+
     // Process AI decisions for AI players
     if (!gameState.isGameComplete()) {
         processAITurns(gameState);
     }
-    
+
     return gameState;
 }
 

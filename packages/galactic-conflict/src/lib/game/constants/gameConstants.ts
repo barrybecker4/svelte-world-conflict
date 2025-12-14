@@ -45,8 +45,11 @@ export const GALACTIC_CONSTANTS = {
     /** Base cost to build one ship */
     SHIP_COST: 10,
 
-    /** Resources accumulated every this many milliseconds */
-    RESOURCE_TICK_INTERVAL_MS: 60000, // 1 minute
+    /** Number of resource updates per minute (for smoother accumulation) */
+    RESOURCE_UPDATES_PER_MIN: 6,
+
+    /** Resources accumulated every this many milliseconds (60000 / RESOURCE_UPDATES_PER_MIN) */
+    RESOURCE_TICK_INTERVAL_MS: 10000,
 
     // ==================== ARMADA MOVEMENT ====================
 
