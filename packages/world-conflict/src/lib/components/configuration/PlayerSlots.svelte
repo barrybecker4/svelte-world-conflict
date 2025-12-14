@@ -46,7 +46,7 @@
   }
 
   function createInitialSlots(): PlayerSlot[] {
-    return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(slotIndex => 
+    return [...Array(GAME_CONSTANTS.MAX_PLAYERS).keys()].map(slotIndex =>
       createSlotFromConfig(slotIndex, 'Off')
     );
   }

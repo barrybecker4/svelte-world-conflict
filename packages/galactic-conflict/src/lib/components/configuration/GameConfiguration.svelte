@@ -15,7 +15,7 @@
     let neutralShipsMultiplierMax = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX;
     let productionRate = GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE;
 
-    // Dynamic player slots - start with creator and one open slot
+    // Dynamic player slots - start with creator and one AI player
     let playerSlots: PlayerSlot[] = [];
     let nextSlotIndex = 0; // Tracks the next available slot index for color assignment
 
@@ -23,7 +23,7 @@
     onMount(() => {
         const currentName = loadPlayerName() || 'Player';
         
-        // Creator slot (index 0)
+        // Creator slot (index 0) and default AI opponent
         playerSlots = [
             {
                 slotIndex: 0,
@@ -32,7 +32,8 @@
             },
             {
                 slotIndex: 1,
-                type: 'Open',
+                type: 'AI',
+                name: getPlayerDefaultName(1),
             }
         ];
         nextSlotIndex = 2;
