@@ -142,5 +142,23 @@ export class GameApiClient {
 
         return response.json();
     }
+
+    /**
+     * Resign from the game
+     */
+    static async resign(gameId: string, playerId: number): Promise<any> {
+        const response = await fetch(`/api/game/${gameId}/resign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to resign');
+        }
+
+        return response.json();
+    }
 }
 

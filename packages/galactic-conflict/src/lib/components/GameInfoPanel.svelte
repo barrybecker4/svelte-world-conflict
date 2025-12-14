@@ -7,6 +7,12 @@
     export let currentPlayerId: number | null = null;
     export let isConnected: boolean = false;
     export let onNewGame: (() => void) | null = null;
+    export let onResign: (() => void) | null = null;
+    export let onLeave: (() => void) | null = null;
+    export let hasResigned: boolean = false;
+
+    // Check if current player is eliminated (resigned or defeated)
+    $: isEliminated = gameState.eliminatedPlayers?.includes(currentPlayerId ?? -1) ?? false;
 
     // Time tracking with interval for live updates
     let currentTime = Date.now();
@@ -153,12 +159,35 @@
             {/if}
         </div>
     {/if}
+
+    <!-- Resign/Leave section -->
+    {#if gameState.status !== 'COMPLETED'}
+        <div class="action-section">
+            {#if isEliminated || hasResigned}
+                <div class="resigned-notice">
+                    <p>You have resigned. You can continue watching.</p>
+                    {#if onLeave}
+                        <button class="leave-btn" on:click={onLeave}>
+                            Leave Game
+                        </button>
+                    {/if}
+                </div>
+            {:else if onResign}
+                <button class="resign-btn" on:click={onResign}>
+                    Resign
+                </button>
+            {/if}
+        </div>
+    {/if}
 </div>
 
 <style>
     .panel {
         padding: 1rem;
         color: #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
     }
 
     h3 {
@@ -342,6 +371,60 @@
     .new-game-btn:hover {
         background: linear-gradient(135deg, #6d28d9, #9333ea);
         transform: scale(1.05);
+    }
+
+    /* Action section */
+    .action-section {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #374151;
+    }
+
+    .resigned-notice {
+        text-align: center;
+    }
+
+    .resigned-notice p {
+        color: #9ca3af;
+        font-size: 0.85rem;
+        margin: 0 0 0.75rem 0;
+    }
+
+    .resign-btn {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        border: 1px solid #dc2626;
+        border-radius: 8px;
+        color: #f87171;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .resign-btn:hover {
+        background: rgba(220, 38, 38, 0.15);
+        border-color: #ef4444;
+        color: #fca5a5;
+    }
+
+    .leave-btn {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .leave-btn:hover {
+        background: linear-gradient(135deg, #6d28d9, #9333ea);
+        transform: scale(1.02);
     }
 </style>
 
