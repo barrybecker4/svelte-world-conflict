@@ -3,7 +3,7 @@
  */
 
 import type { CreateGameRequest, CreateGameResponse, JoinGameResponse } from '$lib/game/entities/gameTypes';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 export class GameApiClient {
     /**

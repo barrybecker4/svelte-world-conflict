@@ -1,5 +1,5 @@
 import type { GameStateData, Player } from '$lib/game/entities/gameTypes';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 /**

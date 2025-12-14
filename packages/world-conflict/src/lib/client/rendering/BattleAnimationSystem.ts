@@ -3,7 +3,7 @@ import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS, type SoundType } from '$lib/client/audio/sounds';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import type { Region } from '$lib/game/entities/gameTypes';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 export interface FloatingTextEvent {
   regionIdx: number;

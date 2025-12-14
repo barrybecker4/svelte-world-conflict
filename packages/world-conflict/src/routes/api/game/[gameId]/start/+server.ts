@@ -8,7 +8,7 @@ import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
 import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Start a pending multiplayer game

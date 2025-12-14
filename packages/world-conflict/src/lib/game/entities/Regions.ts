@@ -1,5 +1,5 @@
 import { Region, type RegionData } from './Region';
-import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import { RandomNumberGenerator } from 'multiplayer-framework/shared';
 
 /**
  * A collection class for managing regions in the game

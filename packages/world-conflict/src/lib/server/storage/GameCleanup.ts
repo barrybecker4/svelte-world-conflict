@@ -2,7 +2,7 @@
  * Utility for cleaning up old game entries from KV storage
  */
 import { KVStorage } from './KVStorage';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const GAME_KEY_PREFIX = 'wc_game:';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;

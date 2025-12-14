@@ -3,7 +3,7 @@ import { writable, derived } from 'svelte/store';
 import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { get } from 'svelte/store';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 interface TurnState {
   currentPlayerIndex: number;

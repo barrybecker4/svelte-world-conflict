@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { getSlotInfoFromGame, type BaseSlotInfo } from '$lib/client/slots/slotUtils';
 import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 import type { PendingGameData } from '$lib/game/entities/gameTypes';

@@ -1,59 +1,36 @@
 /**
- * Client-side storage utilities for Galactic Conflict
+ * Galactic Conflict client storage
+ * Uses the framework's createClientStorage factory with game-specific configuration
  */
+import { 
+    createClientStorage,
+    type GameCreatorInfo as BaseGameCreatorInfo
+} from 'multiplayer-framework/shared';
 
-const PLAYER_NAME_KEY = 'gc_player_name';
-const GAME_CREATOR_PREFIX = 'gc_creator_';
+// Galactic Conflict uses the same GameCreatorInfo structure
+export type GameCreatorInfo = BaseGameCreatorInfo;
 
-export interface GameCreatorInfo {
-    playerId: string;
-    playerSlotIndex: number;
-    playerName: string;
-}
+// Create storage instance with Galactic Conflict prefix
+const storage = createClientStorage({ prefix: 'gc_' });
 
-/**
- * Save player name to local storage
- */
-export function savePlayerName(name: string): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(PLAYER_NAME_KEY, name);
-}
-
-/**
- * Load player name from local storage
- */
+// Re-export functions from the storage instance
 export function loadPlayerName(): string | null {
-    if (typeof localStorage === 'undefined') return null;
-    return localStorage.getItem(PLAYER_NAME_KEY);
+    return storage.loadPlayerName();
 }
 
-/**
- * Save game creator info (for the player who created the game)
- */
+export function savePlayerName(name: string): void {
+    storage.savePlayerName(name);
+}
+
 export function saveGameCreator(gameId: string, info: GameCreatorInfo): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(`${GAME_CREATOR_PREFIX}${gameId}`, JSON.stringify(info));
+    storage.saveGameCreator(gameId, info);
 }
 
-/**
- * Load game creator info
- */
 export function loadGameCreator(gameId: string): GameCreatorInfo | null {
-    if (typeof localStorage === 'undefined') return null;
-    const data = localStorage.getItem(`${GAME_CREATOR_PREFIX}${gameId}`);
-    if (!data) return null;
-    try {
-        return JSON.parse(data);
-    } catch {
-        return null;
-    }
+    return storage.loadGameCreator(gameId);
 }
 
-/**
- * Clear game creator info
- */
+// Galactic Conflict uses "clearGameCreator" instead of "removeGameCreator"
 export function clearGameCreator(gameId: string): void {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(`${GAME_CREATOR_PREFIX}${gameId}`);
+    storage.removeGameCreator(gameId);
 }
-

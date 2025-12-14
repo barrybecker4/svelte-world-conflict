@@ -2,7 +2,7 @@
  * Galactic Conflict-specific wrapper around the framework KVStorageAdapter
  */
 import { KVStorageAdapter, type StorageAdapter, type KVNamespace } from 'multiplayer-framework/server';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const BINDING_NAME = 'GALACTIC_CONFLICT_KV';
 

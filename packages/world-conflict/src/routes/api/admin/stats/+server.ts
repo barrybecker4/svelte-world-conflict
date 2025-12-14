@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStatsService } from '$lib/server/storage/GameStatsService';
 import { GameStorage } from '$lib/server/storage/GameStorage';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { VERSION } from '$lib/version';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 

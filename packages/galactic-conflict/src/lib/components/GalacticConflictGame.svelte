@@ -18,7 +18,7 @@
         updateGameState,
         clearGameStores,
     } from '$lib/client/stores/gameStateStore';
-    import { logger } from '$lib/game/utils/logger';
+    import { logger } from 'multiplayer-framework/shared';
 
     export let gameId: string;
     export let initialState: GalacticGameStateData;

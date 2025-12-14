@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types.ts';
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const TWENTY_MINUTES = 30 * 60 * 1000;
 const OLD_GAMES_THRESHOLD = TWENTY_MINUTES;

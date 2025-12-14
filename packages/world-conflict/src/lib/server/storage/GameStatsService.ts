@@ -3,7 +3,7 @@
  */
 import { KVStorage } from './KVStorage';
 import type { DailyGameStats, StatsError, GameRecord } from './types';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
 
 const STATS_KEY_PREFIX = 'wc_stats:';

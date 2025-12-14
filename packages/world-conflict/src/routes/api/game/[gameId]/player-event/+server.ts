@@ -4,7 +4,7 @@ import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier'
 import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { eliminateAndAdvanceTurn } from '$lib/server/utils/playerGameUtils';
 
 interface PlayerEventRequest {

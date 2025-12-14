@@ -8,7 +8,7 @@ import type { Planet, Player, Armada } from '$lib/game/entities/gameTypes';
 import { createArmada } from '$lib/game/entities/Armada';
 import { getDistanceBetweenPlanets } from '$lib/game/entities/Planet';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 export interface AIDecision {
     type: 'send_armada' | 'build_ships' | 'wait';

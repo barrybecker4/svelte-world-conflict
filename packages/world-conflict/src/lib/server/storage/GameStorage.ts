@@ -2,7 +2,7 @@ import { KVStorage } from './KVStorage';
 import { GameStatsService } from './GameStatsService';
 import { cleanupOldGames } from './GameCleanup';
 import type { Player } from '$lib/game/state/GameState';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 

@@ -5,7 +5,7 @@ import { json } from '@sveltejs/kit';
 import { AI_PERSONALITIES } from '$lib/game/entities/aiPersonalities';
 import { getAiLevelFromDifficulty } from '$lib/server/ai/AiHeuristics';
 import { GameStatsService } from '$lib/server/storage/GameStatsService';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Helper function to safely get error message from unknown error type

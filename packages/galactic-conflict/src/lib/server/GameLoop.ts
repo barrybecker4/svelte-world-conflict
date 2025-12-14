@@ -11,7 +11,7 @@ import type { GameEvent, ArmadaArrivalPayload } from '$lib/game/entities/gameTyp
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { BattleManager } from '$lib/game/mechanics/BattleManager';
 import { GALACTIC_CONSTANTS, GAME_STATUS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { processAITurns } from './ai/RealTimeAI';
 
 export class GameLoop {

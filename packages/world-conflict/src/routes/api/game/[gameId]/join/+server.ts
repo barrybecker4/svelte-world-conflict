@@ -5,7 +5,7 @@ import { createPlayer, handleApiError } from '$lib/server/api-utils';
 import { GameState } from '$lib/game/state/GameState';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 interface JoinRequest {
     playerName?: string;

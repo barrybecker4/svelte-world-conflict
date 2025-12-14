@@ -1,146 +1,105 @@
-const PLAYER_NAME_KEY = 'wc_player_name';
-const GAME_PREFIX = 'game_';
-const GAME_CONFIG_KEY = 'wc_game_config';
-const FIRST_TIME_INSTRUCTIONS_KEY = 'wc_first_time_instructions';
+/**
+ * World Conflict client storage
+ * Uses the framework's createClientStorage factory with game-specific configuration
+ */
+import { 
+    createClientStorage,
+    type GameCreatorInfo as BaseGameCreatorInfo,
+    type GameConfiguration as BaseGameConfiguration,
+    type PlayerSlotConfig,
+    type FirstTimeInstructions
+} from 'multiplayer-framework/shared';
 
-export interface GameCreatorInfo {
-  playerId: string;
-  playerSlotIndex: number;
-  playerName: string;
-}
+// Re-export framework types
+export type { PlayerSlotConfig, FirstTimeInstructions };
 
+// World Conflict uses the same GameCreatorInfo structure
+export type GameCreatorInfo = BaseGameCreatorInfo;
+
+// World Conflict GameConfiguration has required fields
 export interface GameConfiguration {
-  aiDifficulty: string;
-  maxTurns: number;
-  timeLimit: number;
-  mapSize: string;
-  playerSlots: PlayerSlotConfig[];
+    aiDifficulty: string;
+    maxTurns: number;
+    timeLimit: number;
+    mapSize: string;
+    playerSlots: PlayerSlotConfig[];
 }
 
-export interface PlayerSlotConfig {
-  slotIndex: number;
-  type: string;
-  customName: string;
-}
+// Create storage instance with World Conflict prefix
+const storage = createClientStorage({ prefix: 'wc_' });
 
-export interface FirstTimeInstructions {
-  [key: string]: boolean;
-}
-
+// Re-export functions from the storage instance
 export function loadPlayerName(): string {
-    return localStorage.getItem(PLAYER_NAME_KEY) ?? '';
+    return storage.loadPlayerName() ?? '';
 }
 
 export function savePlayerName(name: string): void {
-    localStorage.setItem(PLAYER_NAME_KEY, name.trim());
+    storage.savePlayerName(name);
 }
 
 export function saveGameCreator(gameId: string, creatorInfo: GameCreatorInfo): void {
-  localStorage.setItem(gameKey(gameId), JSON.stringify(creatorInfo));
+    storage.saveGameCreator(gameId, creatorInfo);
 }
 
 export function loadGameCreator(gameId: string): GameCreatorInfo | null {
-  const item = localStorage.getItem(gameKey(gameId));
-  return item ? JSON.parse(item) : null;
+    return storage.loadGameCreator(gameId);
 }
 
 export function removeGameCreator(gameId: string): void {
-  localStorage.removeItem(gameKey(gameId));
-}
-
-function gameKey(gameId: string): string {
-  return GAME_PREFIX + gameId;
+    storage.removeGameCreator(gameId);
 }
 
 export function saveGameConfiguration(config: GameConfiguration): void {
-  try {
-    localStorage.setItem(GAME_CONFIG_KEY, JSON.stringify(config));
-  } catch (e) {
-    console.error('Error saving game configuration:', e);
-  }
+    storage.saveGameConfiguration(config);
 }
 
 export function loadGameConfiguration(): GameConfiguration | null {
-  try {
-    const stored = localStorage.getItem(GAME_CONFIG_KEY);
-    if (!stored) {
-      return null;
-    }
+    const config = storage.loadGameConfiguration();
+    if (!config) return null;
     
-    const config = JSON.parse(stored) as GameConfiguration;
-    
-    // Validate the configuration
+    // Validate the configuration for World Conflict requirements
     if (!isValidConfiguration(config)) {
-      console.warn('Invalid stored configuration, ignoring');
-      return null;
+        console.warn('Invalid stored configuration, ignoring');
+        return null;
     }
     
-    return config;
-  } catch (e) {
-    console.error('Error loading game configuration:', e);
-    return null;
-  }
+    return config as GameConfiguration;
 }
 
-function isValidConfiguration(config: any): config is GameConfiguration {
-  if (!config || typeof config !== 'object') {
-    return false;
-  }
-  
-  // Check required fields exist
-  if (
-    typeof config.aiDifficulty !== 'string' ||
-    typeof config.maxTurns !== 'number' ||
-    typeof config.timeLimit !== 'number' ||
-    typeof config.mapSize !== 'string' ||
-    !Array.isArray(config.playerSlots)
-  ) {
-    return false;
-  }
-  
-  // Validate player slots
-  if (!config.playerSlots.every((slot: any) => 
-    typeof slot === 'object' &&
-    typeof slot.slotIndex === 'number' &&
-    typeof slot.type === 'string' &&
-    typeof slot.customName === 'string'
-  )) {
-    return false;
-  }
-  
-  return true;
-}
-
-// First-time instructions tracking
-export function loadFirstTimeInstructions(): FirstTimeInstructions {
-  try {
-    const stored = localStorage.getItem(FIRST_TIME_INSTRUCTIONS_KEY);
-    if (!stored) {
-      return {};
+function isValidConfiguration(config: BaseGameConfiguration): config is GameConfiguration {
+    if (!config || typeof config !== 'object') {
+        return false;
     }
-    return JSON.parse(stored) as FirstTimeInstructions;
-  } catch (e) {
-    console.error('Error loading first-time instructions:', e);
-    return {};
-  }
+    
+    // Check required fields exist
+    if (
+        typeof config.aiDifficulty !== 'string' ||
+        typeof config.maxTurns !== 'number' ||
+        typeof config.timeLimit !== 'number' ||
+        typeof config.mapSize !== 'string' ||
+        !Array.isArray(config.playerSlots)
+    ) {
+        return false;
+    }
+    
+    // Validate player slots
+    if (!config.playerSlots.every((slot) => 
+        typeof slot === 'object' &&
+        typeof slot.slotIndex === 'number' &&
+        typeof slot.type === 'string' &&
+        typeof slot.customName === 'string'
+    )) {
+        return false;
+    }
+    
+    return true;
 }
 
-function saveFirstTimeInstructions(instructions: FirstTimeInstructions): void {
-  try {
-    localStorage.setItem(FIRST_TIME_INSTRUCTIONS_KEY, JSON.stringify(instructions));
-  } catch (e) {
-    console.error('Error saving first-time instructions:', e);
-  }
-}
-
+// First-time instructions
 export function hasInstructionBeenShown(instructionKey: string): boolean {
-  const instructions = loadFirstTimeInstructions();
-  const result = instructions[instructionKey] === true;
-  return result;
+    return storage.hasInstructionBeenShown(instructionKey);
 }
 
 export function markInstructionAsShown(instructionKey: string): void {
-  const instructions = loadFirstTimeInstructions();
-  instructions[instructionKey] = true;
-  saveFirstTimeInstructions(instructions);
+    storage.markInstructionAsShown(instructionKey);
 }

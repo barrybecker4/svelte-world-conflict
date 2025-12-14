@@ -3,7 +3,7 @@ import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS } from '$lib/client/audio/sounds';
 import { cloneGameState } from '$lib/game/utils/GameStateUtils';
 import { GAME_CONSTANTS } from '$lib/game/constants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Coordinates animation states for battles and peaceful moves

@@ -3,7 +3,7 @@
  * Adapted from World Conflict for space battles
  */
 
-import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import type { RandomNumberGenerator } from 'multiplayer-framework/shared';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 /**

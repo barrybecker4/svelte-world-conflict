@@ -7,7 +7,7 @@
   import Army from './Army.svelte';
   import SmokeLayer from './SmokeLayer.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
-  import { logger } from '$lib/game/utils/logger';
+  import { logger } from 'multiplayer-framework/shared';
 
   export let regions: Region[] = [];
   export let gameState: GameStateData | null = null;

@@ -17,7 +17,7 @@ import { ArmyMoveCommand } from '$lib/game/commands/ArmyMoveCommand';
 import { BuildCommand } from '$lib/game/commands/BuildCommand';
 import { TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 import { checkGameEnd } from '$lib/game/mechanics/endGameLogic';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /** Metadata about a move for client animation */
 interface MoveMetadata {

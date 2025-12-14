@@ -4,7 +4,7 @@
  */
 import { TEMPLE_UPGRADES } from '$lib/game/constants/templeUpgradeDefinitions';
 import { type AiLevel } from './aiPersonalities';
-import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import type { RandomNumberGenerator } from 'multiplayer-framework/shared';
 
 export interface AiPersonalityData {
     name: string;

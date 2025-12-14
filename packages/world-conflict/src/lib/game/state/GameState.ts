@@ -6,8 +6,8 @@ import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/va
 import type { ValidationResult, MoveValidationResult } from '$lib/game/validation/validation';
 import { Regions } from '$lib/game/entities/Regions';
 import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
-import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
-import { logger } from '$lib/game/utils/logger';
+import { RandomNumberGenerator } from 'multiplayer-framework/shared';
+import { logger } from 'multiplayer-framework/shared';
 
 // Re-export types for convenience
 export type { Player, Region, GameStateData, Soldier, Temple };

@@ -8,7 +8,7 @@ import { handleApiError } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { flushPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import type { MoveMetadata } from '$lib/server/storage/types';
 
 interface PendingMove {

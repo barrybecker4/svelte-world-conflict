@@ -4,7 +4,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import type { Player } from '$lib/game/state/GameState';
 import { handleApiError } from '$lib/server/api-utils';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 interface QuitGameRequest {
     playerId: string;

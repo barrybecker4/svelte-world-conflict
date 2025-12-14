@@ -2,7 +2,7 @@ import type { Player, GameStateData } from '$lib/game/state/GameState';
 import type { GameRecord } from '../storage/GameStorage';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
 import type { NotificationResponse } from 'multiplayer-framework/shared';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /** Payload for game state updates with battle replay data */
 interface GameUpdatePayload extends GameStateData {

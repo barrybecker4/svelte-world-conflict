@@ -5,8 +5,8 @@
 import type { Planet, Position, Player } from '$lib/game/entities/gameTypes';
 import { createPlanet, getPlanetRadius, generatePlanetName, getDistanceBetweenPositions, getPlanetProduction } from '$lib/game/entities/Planet';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
-import { logger } from '$lib/game/utils/logger';
+import { RandomNumberGenerator } from 'multiplayer-framework/shared';
+import { logger } from 'multiplayer-framework/shared';
 
 export interface GalaxyGenerationOptions {
     /** Number of planets to generate */

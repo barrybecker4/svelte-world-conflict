@@ -8,7 +8,7 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { loadPlayerName, saveGameCreator } from '$lib/client/stores/clientStorage';
 import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
 import { goto } from '$app/navigation';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { GameApiClient, type OpenGame } from '$lib/client/gameController/GameApiClient';
 
 // Re-export OpenGame type for consumers that import from this file

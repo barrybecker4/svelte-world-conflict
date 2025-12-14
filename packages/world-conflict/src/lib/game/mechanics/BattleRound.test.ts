@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { BattleRound, type BattleRoundResult } from './BattleRound';
-import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import { RandomNumberGenerator } from 'multiplayer-framework/shared';
 
 describe('BattleRound', () => {
     describe('resolve', () => {

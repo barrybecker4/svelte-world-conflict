@@ -7,7 +7,7 @@ import { Region } from '$lib/game/entities/Region';
 import type { Player } from '$lib/game/entities/gameTypes';
 import { generateGameId, createPlayer, handleApiError } from "$lib/server/api-utils";
 import { MapGenerator } from '$lib/game/map/MapGenerator.ts';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Create a new game

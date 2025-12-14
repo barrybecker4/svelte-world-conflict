@@ -6,7 +6,7 @@ import { ArmyMoveCommand, BuildCommand, CommandProcessor } from '$lib/game/comma
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { handleApiError } from '$lib/server/api-utils';
 import { getPendingUpdate, setPendingUpdate, clearPendingUpdate } from '$lib/server/storage/PendingGameUpdates';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 interface MoveRequest {
     playerId: string;

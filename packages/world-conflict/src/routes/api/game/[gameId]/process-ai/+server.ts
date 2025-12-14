@@ -4,7 +4,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { handleApiError } from '$lib/server/api-utils';
 import { processAiTurns } from '$lib/server/ai/AiTurnProcessor';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Trigger AI turn processing for a game

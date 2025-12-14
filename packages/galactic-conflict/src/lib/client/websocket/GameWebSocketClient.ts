@@ -8,7 +8,7 @@ import type { WebSocketConfig, BaseMessage } from 'multiplayer-framework/shared'
 import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
 import { updateGameState, isConnected } from '$lib/client/stores/gameStateStore';
 import type { GalacticGameStateData } from '$lib/game/entities/gameTypes';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Game-specific outgoing message types

@@ -8,7 +8,7 @@
   import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
   import { OpenGamesManager, type OpenGame } from './OpenGamesManager';
   import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
-  import { logger } from '$lib/game/utils/logger';
+  import { logger } from 'multiplayer-framework/shared';
 
   const dispatch = createEventDispatcher();
 

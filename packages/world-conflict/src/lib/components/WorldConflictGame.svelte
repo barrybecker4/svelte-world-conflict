@@ -13,7 +13,7 @@
   import { GameController } from '$lib/client/gameController/GameController';
   import type { Player } from '$lib/game/state/GameState';
   import { BUILD } from '$lib/game/mechanics/moveConstants';
-  import { logger } from '$lib/game/utils/logger';
+  import { logger } from 'multiplayer-framework/shared';
 
   export let gameId: string;
   export let playerId: string;

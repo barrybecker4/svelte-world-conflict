@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { cleanupOldGames, getGameStats } from '$lib/server/storage/GameCleanup';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 

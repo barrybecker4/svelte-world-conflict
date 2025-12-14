@@ -8,7 +8,7 @@ import { GameStateUpdater } from './GameStateUpdater';
 import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 import type { GameStateData, Player, Region } from '$lib/game/entities/gameTypes';
 import type { BattleAnimationSystem } from '$lib/client/rendering/BattleAnimationSystem';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Svelte Store for managing game state loading, initialization, and updates.

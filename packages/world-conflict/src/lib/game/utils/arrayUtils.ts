@@ -1,7 +1,7 @@
 /**
  * Array utility functions for game logic
  */
-import type { RandomNumberGenerator } from './RandomNumberGenerator';
+import type { RandomNumberGenerator } from 'multiplayer-framework/shared';
 
 /**
  * Fisher-Yates shuffle algorithm with seeded RNG for deterministic behavior

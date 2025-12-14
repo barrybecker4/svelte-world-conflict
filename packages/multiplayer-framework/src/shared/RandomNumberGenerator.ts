@@ -10,12 +10,12 @@ import seedrandom from 'seedrandom';
 
 export interface RNGState {
     seed: string;
-    state: any; // seedrandom state object
+    state: unknown; // seedrandom state object
 }
 
 // Extend the PRNG type to include state method
 interface PRNGWithState extends seedrandom.PRNG {
-    state(): any;
+    state(): unknown;
 }
 
 export class RandomNumberGenerator {
@@ -27,12 +27,12 @@ export class RandomNumberGenerator {
      * @param seed - String seed for the RNG
      * @param serializedState - Optional serialized state for restoring from saved state
      */
-    constructor(seed: string, serializedState?: any) {
+    constructor(seed: string, serializedState?: unknown) {
         this.originalSeed = seed;
         
         if (serializedState) {
-            // Restore from serialized state
-            this.prng = seedrandom(seed, { state: serializedState }) as PRNGWithState;
+            // Restore from serialized state - cast to any since seedrandom accepts the serialized state object
+            this.prng = seedrandom(seed, { state: serializedState as any }) as PRNGWithState;
         } else {
             // Create new PRNG with state tracking enabled
             this.prng = seedrandom(seed, { state: true }) as PRNGWithState;

@@ -14,7 +14,7 @@ import type { Planet, BattleReplay, BattleReplayRound } from '$lib/game/entities
 import { BattleRound } from './BattleRound';
 import type { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { GALACTIC_CONSTANTS, getPlayerColor, NEUTRAL_COLOR } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 import { v4 as uuidv4 } from 'uuid';
 
 export class BattleManager {

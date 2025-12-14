@@ -17,8 +17,8 @@ import type {
 } from '$lib/game/entities/gameTypes';
 import { GALACTIC_CONSTANTS, GAME_STATUS, getPlayerColor } from '$lib/game/constants/gameConstants';
 import { GalaxyGenerator } from '$lib/game/map/GalaxyGenerator';
-import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
-import { logger } from '$lib/game/utils/logger';
+import { RandomNumberGenerator } from 'multiplayer-framework/shared';
+import { logger } from 'multiplayer-framework/shared';
 import { v4 as uuidv4 } from 'uuid';
 
 export class GalacticGameState {

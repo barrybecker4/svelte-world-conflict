@@ -4,7 +4,7 @@
 
 import type { GalacticGameStateData, Player, PendingGameConfiguration } from '$lib/game/entities/gameTypes';
 import { KVStorage } from './KVStorage';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const GAME_KEY_PREFIX = 'gc_game:';
 const OPEN_GAMES_KEY = 'gc_open_games';

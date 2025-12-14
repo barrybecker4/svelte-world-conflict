@@ -1,6 +1,6 @@
 import type { GameRecord } from './types';
 import type { GameStorage } from './GameStorage';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * In-memory cache for pending game updates (server-side KV write batching)

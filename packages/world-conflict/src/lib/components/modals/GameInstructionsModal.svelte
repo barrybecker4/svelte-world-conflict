@@ -6,7 +6,7 @@
   import { TUTORIAL_CARDS, TOTAL_TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
   import { loadPlayerName } from '$lib/client/stores/clientStorage';
   import { VERSION } from '$lib/version';
-  import { logger } from '$lib/game/utils/logger';
+  import { logger } from 'multiplayer-framework/shared';
 
   interface Props {
     oncomplete?: () => void;

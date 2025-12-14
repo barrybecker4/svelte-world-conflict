@@ -3,7 +3,7 @@
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
     import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
     import { goto } from '$app/navigation';
-    import { logger } from '$lib/game/utils/logger';
+    import { logger } from 'multiplayer-framework/shared';
 
     const dispatch = createEventDispatcher();
 

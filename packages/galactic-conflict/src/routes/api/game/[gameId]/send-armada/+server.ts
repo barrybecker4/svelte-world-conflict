@@ -11,7 +11,7 @@ import { createArmada } from '$lib/game/entities/Armada';
 import { handleApiError } from '$lib/server/api-utils';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {

@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { AttackSequenceGenerator, type ArmyMoveData, type AttackEvent } from './AttackSequenceGenerator';
-import { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import { RandomNumberGenerator } from 'multiplayer-framework/shared';
 import { GameState } from '$lib/game/state/GameState';
 import type { Player } from '$lib/game/entities/gameTypes';
 import { Region } from '$lib/game/entities/Region';

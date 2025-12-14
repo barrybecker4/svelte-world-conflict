@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Player } from '$lib/game/entities/gameTypes';
 import { getPlayerColor } from '$lib/game/constants/gameConstants';
 import { getPlayerDefaultName } from '$lib/game/constants/playerConfigs';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Generate a unique game ID

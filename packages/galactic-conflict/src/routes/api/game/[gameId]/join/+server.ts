@@ -9,7 +9,7 @@ import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { createPlayer, handleApiError } from '$lib/server/api-utils';
 import { getWorkerHttpUrl, buildWebSocketUrl } from '$lib/websocket-config';
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {

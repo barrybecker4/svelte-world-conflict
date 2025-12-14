@@ -11,7 +11,7 @@ import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { handleApiError } from '$lib/server/api-utils';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {

@@ -1,7 +1,7 @@
 import type { Player } from '$lib/game/entities/gameTypes';
 import type { GameState } from '$lib/game/state/GameState';
-import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
-import { logger } from '$lib/game/utils/logger';
+import type { RandomNumberGenerator } from 'multiplayer-framework/shared';
+import { logger } from 'multiplayer-framework/shared';
 import { BattleRound } from './BattleRound';
 import { AttackEventFactory, type AttackEvent } from './AttackEventFactory';
 

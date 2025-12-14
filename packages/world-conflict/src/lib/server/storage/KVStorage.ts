@@ -3,7 +3,7 @@
  * This maintains backward compatibility with existing code
  */
 import { KVStorageAdapter, type StorageAdapter, type KVNamespace } from 'multiplayer-framework/server';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 const BINDING_NAME = 'WORLD_CONFLICT_KV';
 

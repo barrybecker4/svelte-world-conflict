@@ -1,4 +1,4 @@
-import type { RandomNumberGenerator } from '$lib/game/utils/RandomNumberGenerator';
+import type { RandomNumberGenerator } from 'multiplayer-framework/shared';
 
 /**
  * Result of a single battle round

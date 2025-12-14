@@ -4,4 +4,7 @@
 
 export * from './types';
 export * from './config';
+export * from './logger';
+export * from './RandomNumberGenerator';
+export * from './clientStorage';
 

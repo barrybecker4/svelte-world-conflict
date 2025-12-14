@@ -6,7 +6,7 @@ import { GameState, type Player } from '$lib/game/state/GameState';
 import { PlayerEliminationService } from '$lib/game/mechanics/PlayerEliminationService';
 import { Temple } from '$lib/game/entities/Temple';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from '$lib/game/utils/logger';
+import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Get list of active (non-eliminated) player slots
