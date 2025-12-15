@@ -58,5 +58,8 @@
     "seedrandom": "^3.0.5",
     "uuid": "^11.1.0",
     "wrangler": "^4.20.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.45.1"
   }
 }

@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "prebuild": "npm install --include=optional",
     "build": "npm run build -w multiplayer-framework && npm run build -w world-conflict",
     "dev": "npm run dev -w world-conflict",
     "dev:full": "concurrently \"npm run dev:websocket\" \"npm run dev -w world-conflict\"",
