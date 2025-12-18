@@ -1,6 +1,6 @@
-# Svelte World Conflict Monorepo
+# Svelte Multiplayer Games Monorepo
 
-A real-time multiplayer strategy game built with SvelteKit and Cloudflare infrastructure. This monorepo contains both the **World Conflict** game and a reusable **Svelte Multiplayer Framework** extracted from it.
+A collection of real-time multiplayer games built with SvelteKit and Cloudflare infrastructure. This monorepo contains multiple multiplayer games and a reusable **Svelte Multiplayer Framework** that powers them.
 
 ## 📦 Packages
 
@@ -40,14 +40,18 @@ This will automatically install dependencies for all packages in the workspace.
 
 ### Development
 
-**Option 1: Start World Conflict only** (WebSocket worker runs separately)
+Each game requires the WebSocket worker to be running. You can start them separately or together:
+
+**Option 1: Start worker and game separately**
 
 ```bash
 # Terminal 1: Start the WebSocket worker
 npm run dev:websocket
 
-# Terminal 2: Start World Conflict
-npm run dev
+# Terminal 2: Start a game (specify workspace)
+npm run dev -w world-conflict
+# or
+npm run dev -w galactic-conflict
 ```
 
 **Option 2: Start everything with concurrently**
@@ -56,7 +60,9 @@ npm run dev
 npm run dev:full
 ```
 
-Then open [http://localhost:5173](http://localhost:5173)
+Then open the game URL (typically [http://localhost:5173](http://localhost:5173))
+
+See individual game READMEs for game-specific development instructions.
 
 ### Building
 
@@ -71,6 +77,7 @@ Or build individual packages:
 ```bash
 npm run build -w multiplayer-framework
 npm run build -w world-conflict
+npm run build -w galactic-conflict
 ```
 
 ## 🏗️ Monorepo Structure
@@ -87,7 +94,13 @@ svelte-world-conflict/
 │   │   ├── package.json
 │   │   └── README.md
 │   │
-│   └── world-conflict/                 # World Conflict game
+│   ├── world-conflict/                 # World Conflict game
+│   │   ├── src/                        # Game source code
+│   │   ├── static/                     # Static assets
+│   │   ├── package.json
+│   │   └── README.md
+│   │
+│   └── galactic-conflict/              # Galactic Conflict game
 │       ├── src/                        # Game source code
 │       ├── static/                     # Static assets
 │       ├── package.json
@@ -104,8 +117,8 @@ From the root directory:
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start World Conflict dev server |
-| `npm run dev:full` | Start WebSocket worker + World Conflict |
+| `npm run dev -w <package>` | Start a game dev server (requires workspace flag) |
+| `npm run dev:full` | Start WebSocket worker + default game |
 | `npm run dev:websocket` | Start WebSocket worker only |
 | `npm run build` | Build all packages |
 | `npm run deploy:worker` | Deploy WebSocket worker to Cloudflare |
@@ -118,14 +131,16 @@ From the root directory:
 Run commands in a specific package:
 
 ```bash
-# Run dev server in world-conflict package
+# Run dev server for a game
 npm run dev -w world-conflict
+npm run dev -w galactic-conflict
 
 # Build only the framework
 npm run build -w multiplayer-framework
 
 # Run tests in a specific package
 npm run test -w world-conflict
+npm run test -w galactic-conflict
 ```
 
 ## 🎯 Using the Framework in Your Own Game
@@ -160,9 +175,11 @@ See the [framework README](./packages/multiplayer-framework/README.md) for detai
 cd packages/multiplayer-framework/src/worker
 npx wrangler deploy
 
-# 2. Deploy the game
+# 2. Deploy a game
 cd ../../..
 npm run deploy -w world-conflict
+# or
+npm run deploy -w galactic-conflict
 ```
 
 ### Full Deployment Guide
@@ -170,26 +187,20 @@ npm run deploy -w world-conflict
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment instructions including:
 - KV namespace setup
 - Worker configuration
+- Multi-game deployment strategy
 - Testing and troubleshooting
 - Production best practices
 - Monitoring and logs
 
-The deployment guide covers both initial setup and updates.
-
-## 🎮 How to Play World Conflict
-
-World Conflict is a strategic multiplayer game where players:
-
-1. **Conquer territories** by moving armies between regions
-2. **Build up forces** to strengthen your position
-3. **Attack opponents** to expand your territory
-4. **Win by elimination** or controlling the most territory
+The deployment guide covers both initial setup and updates. See individual game READMEs for game-specific deployment details.
 
 ## 📚 Documentation
 
 - [Framework Documentation](./packages/multiplayer-framework/README.md) - How to use the multiplayer framework
-- [World Conflict Documentation](./packages/world-conflict/README.md) - Game-specific documentation
+- [World Conflict Documentation](./packages/world-conflict/README.md) - World Conflict game documentation
+- [Galactic Conflict Documentation](./packages/galactic-conflict/README.md) - Galactic Conflict game documentation
 - [Architecture Guide](./ARCHITECTURE.md) - System architecture and design
+- [Deployment Guide](./DEPLOYMENT.md) - Complete deployment instructions
 
 ## 🤝 Contributing
 
@@ -207,7 +218,7 @@ MIT License - feel free to use this project as a starting point for your own mul
 
 - Original World Conflict game by Jakub Wasilewski
 - Google Apps Script version by Barry Becker
-- SvelteKit port, modernization, and framework extraction by Barry Becker (with help from Claude AI)
+- SvelteKit port, modernization, framework extraction, and additional games by Barry Becker (with help from Claude AI)
 
 ---
 
