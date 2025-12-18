@@ -1,15 +1,25 @@
 # Deployment Guide
 
-This guide explains how to deploy the World Conflict game and its WebSocket infrastructure to Cloudflare.
+This guide explains how to deploy the games and their WebSocket infrastructure to Cloudflare.
 
 ## 🏗️ Architecture
 
-The deployment consists of two separate Cloudflare services:
+The deployment consists of:
 
-1. **WebSocket Worker** (Durable Objects) - Handles real-time connections
-2. **World Conflict App** (Cloudflare Pages) - The game itself
+1. **WebSocket Worker** (Durable Objects) - Handles real-time connections (shared by all games)
+2. **Separate Cloudflare Pages Projects** - Each game has its own Pages project:
+   - World Conflict: `https://svelte-world-conflict.pages.dev/`
+   - Galactic Conflict: `https://galactic-conflict.pages.dev/`
 
-The game communicates with the worker via HTTP (for notifications) and WebSocket (for real-time updates).
+Each game communicates with the worker via HTTP (for notifications) and WebSocket (for real-time updates).
+
+### Multi-Game Deployment Strategy
+
+Each game is deployed as a **separate Cloudflare Pages project** with:
+- **Independent builds**: Only rebuilds when its own code changes (via build watch paths)
+- **Isolated code**: Each build only includes code from its package directory
+- **Separate KV namespaces**: Each game uses its own KV storage
+- **Shared WebSocket worker**: All games use the same worker for real-time communication
 
 ## 📋 Prerequisites
 
@@ -18,9 +28,11 @@ The game communicates with the worker via HTTP (for notifications) and WebSocket
 3. Logged into Wrangler: `wrangler login`
 4. KV namespaces created (see below)
 
-## 🗄️ Step 1: Create KV Namespaces (If Needed)
+## 🗄️ Step 1: Create KV Namespaces
 
-If you don't have KV namespaces yet:
+Each game needs its own KV namespace. Create them using Wrangler:
+
+### World Conflict KV Namespaces
 
 ```bash
 # Create production namespace
@@ -43,6 +55,18 @@ kv_namespaces = [
     { binding = "WORLD_CONFLICT_KV", id = "your-preview-id" }
 ]
 ```
+
+### Galactic Conflict KV Namespaces
+
+```bash
+# Create production namespace
+wrangler kv:namespace create "GALACTIC_CONFLICT_KV"
+
+# Create preview namespace
+wrangler kv:namespace create "GALACTIC_CONFLICT_KV" --preview
+```
+
+**Note:** For Cloudflare Pages deployments, KV bindings are configured in the dashboard (see Step 4), but you can keep these in `wrangler.toml` for local development.
 
 ## 🔌 Step 2: Deploy WebSocket Worker
 
@@ -85,7 +109,17 @@ curl https://svelte-world-conflict-websocket.<your-subdomain>.workers.dev/health
 
 Expected response: `WebSocket worker is healthy`
 
-## 🎮 Step 3: Deploy World Conflict Game
+## 🎮 Step 3: Set Up Cloudflare Pages Projects
+
+Each game needs its own Cloudflare Pages project. You can set them up via the dashboard (recommended) or continue using Wrangler CLI for manual deployments.
+
+### Option A: Cloudflare Dashboard (Recommended for CI/CD)
+
+See the [Multi-Game Pages Setup](#-multi-game-pages-setup) section below for detailed instructions on setting up separate Pages projects with build watch paths.
+
+### Option B: Manual Deployment via Wrangler CLI
+
+#### Deploy World Conflict
 
 ```bash
 # Navigate back to monorepo root
@@ -109,6 +143,16 @@ npx wrangler pages deploy dist
 ✨ Deployment complete!
 🌍  https://svelte-world-conflict.pages.dev
 ```
+
+#### Deploy Galactic Conflict
+
+```bash
+cd packages/galactic-conflict
+npm run build
+npx wrangler pages deploy dist --project-name=galactic-conflict
+```
+
+**Note:** If you're using the dashboard setup, deployments happen automatically on git push.
 
 ## 🔧 Configuration
 
@@ -190,6 +234,101 @@ cd packages/multiplayer-framework/src/worker
 npx wrangler tail
 ```
 
+## 🎯 Multi-Game Pages Setup
+
+This section explains how to set up separate Cloudflare Pages projects for each game, enabling automatic deployments and efficient builds.
+
+### Step 1: Create Galactic Conflict Pages Project
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages**
+2. Click **Create application** → **Pages** → **Connect to Git**
+3. Connect your repository (GitHub/GitLab)
+4. Configure the project:
+   - **Project name**: `galactic-conflict`
+   - **Production branch**: `main` (or your default branch)
+   - **Root directory**: `packages/galactic-conflict`
+   - **Build command**: `npm install && npm run build`
+   - **Build output directory**: `dist`
+   - **Node version**: 18 or 20
+5. Click **Save and Deploy**
+
+### Step 2: Configure Build Watch Paths
+
+Configure build watch paths so each project only rebuilds when its own code changes.
+
+#### For World Conflict Project:
+
+1. Go to your **svelte-world-conflict** Pages project
+2. Navigate to **Settings** → **Builds**
+3. Under **Build watch paths**, configure:
+   - **Include paths:**
+     - `packages/world-conflict/**`
+     - `packages/multiplayer-framework/**` (shared dependency)
+   - **Exclude paths:**
+     - `packages/galactic-conflict/**`
+     - `packages/*/node_modules/**`
+     - `.git/**`
+
+#### For Galactic Conflict Project:
+
+1. Go to your **galactic-conflict** Pages project
+2. Navigate to **Settings** → **Builds**
+3. Under **Build watch paths**, configure:
+   - **Include paths:**
+     - `packages/galactic-conflict/**`
+     - `packages/multiplayer-framework/**` (shared dependency)
+   - **Exclude paths:**
+     - `packages/world-conflict/**`
+     - `packages/*/node_modules/**`
+     - `.git/**`
+
+### Step 3: Configure KV Namespace Bindings
+
+Each Pages project needs its KV namespace bound in the dashboard.
+
+#### For World Conflict:
+
+1. Go to **svelte-world-conflict** Pages project
+2. Navigate to **Settings** → **Functions** → **KV Namespace Bindings**
+3. Click **Add binding**
+4. Configure:
+   - **Variable name**: `WORLD_CONFLICT_KV`
+   - **KV namespace**: Select your `WORLD_CONFLICT_KV` namespace
+5. Click **Save**
+
+#### For Galactic Conflict:
+
+1. Go to **galactic-conflict** Pages project
+2. Navigate to **Settings** → **Functions** → **KV Namespace Bindings**
+3. Click **Add binding**
+4. Configure:
+   - **Variable name**: `GALACTIC_CONFLICT_KV`
+   - **KV namespace**: Select your `GALACTIC_CONFLICT_KV` namespace
+   - If you don't have the namespace yet, create it first:
+     ```bash
+     wrangler kv:namespace create "GALACTIC_CONFLICT_KV"
+     ```
+5. Click **Save**
+
+### Step 4: Verify Build Behavior
+
+After setup, test that builds work correctly:
+
+1. Make a change to `packages/world-conflict/src/routes/+page.svelte`
+2. Push to your repository
+3. Verify only the **world-conflict** project rebuilds
+4. Make a change to `packages/galactic-conflict/src/routes/+page.svelte`
+5. Push to your repository
+6. Verify only the **galactic-conflict** project rebuilds
+
+### Benefits of This Setup
+
+- ✅ **Efficient builds**: Only rebuild what changed
+- ✅ **Automatic deployments**: Deploy on every git push
+- ✅ **Isolated builds**: Each build only includes its game's code
+- ✅ **Independent scaling**: Each game can have different settings
+- ✅ **Easy to add games**: Just create a new Pages project
+
 ## 🔄 Updating Deployments
 
 ### Update WebSocket Worker
@@ -201,10 +340,18 @@ npx wrangler deploy
 
 **Important:** After deploying with location hints, existing game sessions may need to be recreated. Players should create new games to ensure proper geographic routing.
 
-### Update Game
+### Update Games
+
+If using dashboard setup with git integration, deployments happen automatically on push.
+
+For manual deployments:
 
 ```bash
+# World Conflict
 npm run deploy -w world-conflict
+
+# Galactic Conflict
+cd packages/galactic-conflict && npm run build && npx wrangler pages deploy dist
 ```
 
 ## 🚨 Troubleshooting
