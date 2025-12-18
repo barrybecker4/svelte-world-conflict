@@ -6,7 +6,7 @@
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
 
 // Update with your deployed worker URL
-export const WEBSOCKET_WORKER_URL = 'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
+export const WEBSOCKET_WORKER_URL = 'https://multiplayer-games-websocket.barrybecker4.workers.dev';
 
 /**
  * Build WebSocket URL for a specific game

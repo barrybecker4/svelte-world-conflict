@@ -44,7 +44,7 @@ export default defineConfig({
   /* No webServer configuration - tests run against deployed app */
   // The deployed app uses:
   // - App: https://svelte-world-conflict.pages.dev
-  // - WebSocket Worker: https://svelte-world-conflict-websocket.barrybecker4.workers.dev
+  // - WebSocket Worker: https://multiplayer-games-websocket.barrybecker4.workers.dev
 });
 
 

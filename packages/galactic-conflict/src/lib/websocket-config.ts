@@ -6,7 +6,7 @@
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
 
 // Update with your deployed worker URL when deploying
-export const WEBSOCKET_WORKER_URL = 'https://galactic-conflict-websocket.barrybecker4.workers.dev';
+export const WEBSOCKET_WORKER_URL = 'https://multiplayer-games-websocket.barrybecker4.workers.dev';
 
 /**
  * Build WebSocket URL for a specific game

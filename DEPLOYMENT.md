@@ -84,10 +84,10 @@ npx wrangler deploy
 ```
 ✨ Uploading...
 ✨ Deployment complete!
-🌍  https://svelte-world-conflict-websocket.<your-subdomain>.workers.dev
+🌍  https://multiplayer-games-websocket.<your-subdomain>.workers.dev
 ```
 
-**Important:** The worker name is configured to match your existing deployment (`svelte-world-conflict-websocket`), so this will update your existing worker with the new framework code.
+**Important:** The worker name is configured as `multiplayer-games-websocket` to serve all multiplayer games. This creates a new worker deployment.
 
 ### Geographic Routing
 
@@ -104,7 +104,7 @@ This is configured automatically in the worker code - no additional setup requir
 Test the health endpoint:
 
 ```bash
-curl https://svelte-world-conflict-websocket.<your-subdomain>.workers.dev/health
+curl https://multiplayer-games-websocket.<your-subdomain>.workers.dev/health
 ```
 
 Expected response: `WebSocket worker is healthy`
@@ -162,11 +162,11 @@ npx wrangler pages deploy dist --project-name=galactic-conflict
 
 ### WebSocket Worker URL
 
-The game is pre-configured to use your existing worker URL in `packages/world-conflict/src/lib/websocket-config.ts`:
+The game is pre-configured to use the shared worker URL in `packages/world-conflict/src/lib/websocket-config.ts`:
 
 ```typescript
 export const WEBSOCKET_WORKER_URL = 
-  'https://svelte-world-conflict-websocket.barrybecker4.workers.dev';
+  'https://multiplayer-games-websocket.barrybecker4.workers.dev';
 ```
 
 This configuration automatically:
@@ -185,10 +185,10 @@ No additional environment variables are needed. Everything is configured via:
 
 ```bash
 # Health check
-curl https://svelte-world-conflict-websocket.barrybecker4.workers.dev/health
+curl https://multiplayer-games-websocket.barrybecker4.workers.dev/health
 
 # Test notification endpoint
-curl -X POST https://svelte-world-conflict-websocket.barrybecker4.workers.dev/notify \
+curl -X POST https://multiplayer-games-websocket.barrybecker4.workers.dev/notify \
   -H "Content-Type: application/json" \
   -d '{"gameId":"test","message":{"type":"gameUpdate","gameState":{}}}'
 ```
@@ -364,7 +364,7 @@ cd packages/galactic-conflict && npm run build && npx wrangler pages deploy dist
 
 1. **Check worker is deployed:**
    ```bash
-   curl https://svelte-world-conflict-websocket.barrybecker4.workers.dev/health
+   curl https://multiplayer-games-websocket.barrybecker4.workers.dev/health
    ```
 
 2. **Check browser console** for WebSocket errors

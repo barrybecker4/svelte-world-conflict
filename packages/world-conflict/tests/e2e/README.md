@@ -73,7 +73,7 @@ BASE_URL=https://your-custom-url.pages.dev npx playwright test --config=playwrig
 - The production config (`playwright.config.production.ts`) uses `https://svelte-world-conflict.pages.dev` by default
 - Tests will interact with the live production environment and create real game data in KV storage
 - Make sure both the game app AND the WebSocket worker are deployed before running tests
-- WebSocket worker URL: `https://svelte-world-conflict-websocket.barrybecker4.workers.dev`
+- WebSocket worker URL: `https://multiplayer-games-websocket.barrybecker4.workers.dev`
 - Consider using a preview/staging environment for testing instead of production
 
 **Running specific tests against production:**

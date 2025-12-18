@@ -1,4 +1,4 @@
-name = "svelte-world-conflict-websocket"
+name = "multiplayer-games-websocket"
 main = "index.ts"
 compatibility_date = "2025-01-20"
 
@@ -6,7 +6,7 @@ compatibility_date = "2025-01-20"
 [[durable_objects.bindings]]
 name = "WEBSOCKET_SERVER"
 class_name = "WebSocketServer"
-script_name = "svelte-world-conflict-websocket"
+script_name = "multiplayer-games-websocket"
 
 # Migration to enable Durable Objects (using SQLite backend for free tier)
 [[migrations]]
