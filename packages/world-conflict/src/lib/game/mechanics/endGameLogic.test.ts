@@ -78,11 +78,13 @@ describe('endGameLogic', () => {
             expect(result.winner).not.toBe('DRAWN_GAME');
         });
 
-        it('should end game at exactly maxTurns (edge case with >= comparison)', () => {
-            // This tests the fix: turnNumber = maxTurns - 1 means currentTurn = maxTurns
-            // With >= comparison, game should end
+        it('should end game after maxTurns rounds complete', () => {
+            // After maxTurns rounds complete: turnNumber = maxTurns - 1
+            // With turnNumber >= maxTurns check: after round maxTurns, turnNumber = maxTurns - 1, false, continue
+            // After round maxTurns+1: turnNumber = maxTurns, turnNumber >= maxTurns? true, end
+            // This allows maxTurns rounds to complete before ending
             const gameState = createGameState({
-                turnNumber: 2, // currentTurn = 3, maxTurns = 3, 3 >= 3 = true
+                turnNumber: 3, // After round 4, turnNumber = 3, 3 >= 3 = true
                 maxTurns: 3,
                 ownersByRegion: { 0: 0, 1: 1 },
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] }
@@ -217,7 +219,7 @@ describe('endGameLogic', () => {
             // Turn limit is checked first, so if both conditions are met,
             // turn limit should be the reason
             const gameState = createGameState({
-                turnNumber: 9, // currentTurn = 10 >= maxTurns = 10
+                turnNumber: 10, // turnNumber >= maxTurns = 10
                 maxTurns: 10,
                 ownersByRegion: { 0: 0 } // Also would trigger elimination
             });

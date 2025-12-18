@@ -48,9 +48,10 @@ function checkTurnLimit(gameState: GameStateData, players: Player[]): GameEndRes
   }
 
   // Check if turn limit reached
-  // Use >= because checkGameEnd is called BEFORE turnNumber is incremented
+  // checkGameEnd is called before turnNumber is incremented
   // After round N completes, turnNumber is still N-1, so currentTurn = N
-  if (currentTurn >= maxTurns) {
+  // We want to end after maxTurns rounds complete
+  if (gameState.turnNumber >= maxTurns) {
     const winner = determineWinnerByScore(gameState, players);
     return {
       isGameEnded: true,
