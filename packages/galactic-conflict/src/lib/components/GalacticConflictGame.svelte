@@ -18,7 +18,7 @@
         updateGameState,
         clearGameStores,
     } from '$lib/client/stores/gameStateStore';
-    import { logger } from 'multiplayer-framework/shared';
+    import { logger, isLocalDevelopment } from 'multiplayer-framework/shared';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
 
     export let gameId: string;
@@ -32,9 +32,9 @@
     let wsClient = getWebSocketClient();
 
     let connectionError: string | null = null;
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
     let hasResigned = false;
     let gameEndSoundPlayed = false;
+    let devEventProcessingInterval: ReturnType<typeof setInterval> | null = null;
 
     // Track game completion and play appropriate sound
     $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed) {
@@ -50,21 +50,6 @@
             audioSystem.playSound(SOUNDS.GAME_LOST);
         }
     }
-
-    // Poll server to process events and get updates (armada arrivals, battles)
-    async function pollGameState() {
-        try {
-            const response = await GameApiClient.getGame(gameId);
-            if (response.gameState) {
-                console.log('[GalacticConflictGame] Poll received state with replays:', 
-                    response.gameState.recentBattleReplays?.length ?? 0);
-                updateGameState(response.gameState);
-            }
-        } catch (error) {
-            logger.warn('Poll failed:', error);
-        }
-    }
-
     onMount(async () => {
         // Initialize state
         updateGameState(initialState);
@@ -85,23 +70,38 @@
         }
 
         // Connect to WebSocket for real-time updates
+        // Fail fast if websocket connection fails - no polling fallback
+        // Event processing is handled server-side via scheduled cron job (production)
+        // In local development, we trigger event processing manually since cron doesn't run
         try {
             await wsClient.connect(gameId);
         } catch (error) {
             const errorMsg = 'WebSocket connection failed. Make sure the WebSocket worker is running: npm run dev:websocket';
             logger.error(errorMsg, error);
             connectionError = errorMsg;
+            // Fail fast - don't continue without websocket connection
+            return;
         }
 
-        // Poll every 1 second to process server-side events (armada arrivals, battles)
-        // This ensures the game loop runs even without player actions
-        pollInterval = setInterval(pollGameState, 1000);
+        // Dev-only: Trigger event processing periodically (cron triggers don't run in local dev)
+        if (isLocalDevelopment()) {
+            logger.debug('[Dev] Starting local event processing interval (cron triggers not available in dev)');
+            devEventProcessingInterval = setInterval(async () => {
+                try {
+                    await GameApiClient.processEvents();
+                } catch (error) {
+                    // Silently fail - this is just triggering server-side processing
+                    // Errors are logged server-side
+                    logger.debug('[Dev] Event processing trigger failed (non-critical):', error);
+                }
+            }, 2000); // Every 2 seconds, matching production cron schedule
+        }
     });
 
     onDestroy(() => {
         wsClient.disconnect();
-        if (pollInterval) {
-            clearInterval(pollInterval);
+        if (devEventProcessingInterval) {
+            clearInterval(devEventProcessingInterval);
         }
     });
 

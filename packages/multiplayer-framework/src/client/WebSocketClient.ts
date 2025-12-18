@@ -59,6 +59,14 @@ export class WebSocketClient<
    * Connect to WebSocket server for a specific game
    */
   async connect(gameId: string): Promise<void> {
+    // Disconnect existing connection if any
+    if (this.ws && this.ws.readyState !== WebSocket.CLOSED && this.ws.readyState !== WebSocket.CLOSING) {
+      console.log('Disconnecting existing WebSocket before reconnecting');
+      this.ws.close(1000, 'Reconnecting');
+      this.ws = null as any;
+      this.setConnected(false);
+    }
+
     this.gameId = gameId;
 
     try {

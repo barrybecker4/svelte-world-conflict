@@ -18,7 +18,17 @@ A real-time multiplayer space strategy game built with SvelteKit, using the [mul
 - **Real-time**: WebSocket Durable Objects from `multiplayer-framework`
 - **Storage**: Cloudflare KV for persistent game data
 - **Backend**: Cloudflare Workers with SvelteKit API routes
+- **Event Processing**: Server-side cron job (every 2 seconds) processes game events (armada arrivals, battles)
 - **Deployment**: Fully serverless on Cloudflare
+
+### Event Processing
+
+Game events (armada arrivals, battles, resource ticks) are processed automatically by a Cloudflare cron trigger that runs every 2 seconds. This ensures:
+- Events are processed server-side, independent of client connections
+- Works for both real-time and turn-based games
+- No client-side polling required (fail-fast WebSocket-only approach)
+
+**Note**: Cron triggers only run when using `wrangler pages dev` or in production. They do not run with `vite dev`.
 
 ## Development
 
@@ -53,11 +63,22 @@ Open [http://localhost:5173](http://localhost:5173)
 
 > **Note:** The game will fail fast if the WebSocket worker is not running. This is intentional - there is no HTTP polling fallback. Real-time WebSocket communication is required for gameplay.
 
-### With Cloudflare KV (for persistent storage)
+### With Cloudflare KV (for persistent storage and cron triggers)
 
+**Important**: Cron triggers only work when using `wrangler pages dev` or in production. They do not work with `vite dev`.
+
+**Option 1: Build and serve with wrangler** (supports cron triggers):
 ```bash
-npm run dev:wrangler -w galactic-conflict
+npm run build
+npm run preview
 ```
+
+**Option 2: For development without cron triggers** (faster iteration):
+```bash
+npm run dev
+```
+
+**Note**: In production, cron triggers run automatically every 2 seconds to process game events (armada arrivals, battles). For local testing of cron triggers, you need to build and use `wrangler pages dev`.
 
 ## Game Mechanics
 

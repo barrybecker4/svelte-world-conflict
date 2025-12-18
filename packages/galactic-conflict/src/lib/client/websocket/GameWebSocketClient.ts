@@ -91,6 +91,9 @@ export class GameWebSocketClient {
         
         try {
             await this.client.connect(gameId);
+            // Re-setup event handlers in case they were cleared by a previous disconnect
+            // (e.g., when transitioning from WaitingRoom to game component)
+            this.setupEventHandlers();
             this.client.startKeepAlive(30000);
         } catch (error) {
             logger.error('Failed to connect:', error);

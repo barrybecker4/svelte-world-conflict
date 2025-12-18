@@ -163,5 +163,23 @@ export class GameApiClient {
 
         return response.json();
     }
+
+    /**
+     * Trigger event processing (dev-only, for local development)
+     * In production, events are processed automatically via cron triggers
+     */
+    static async processEvents(): Promise<any> {
+        const response = await fetch('/api/admin/process-events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+            const error: ApiErrorResponse = await response.json();
+            throw new Error(error.error || 'Failed to process events');
+        }
+
+        return response.json();
+    }
 }
 

@@ -165,11 +165,29 @@
     }
     
     // Process battle replays whenever they change
+    // Track the replay IDs to detect new ones even if array reference doesn't change
+    let lastReplayIds: string[] = [];
     $: {
         const replays = gameState.recentBattleReplays ?? [];
-        console.log(`[GalaxyMap] Checking battle replays: ${replays.length}`, replays.map(r => r.planetName));
-        if (replays.length > 0) {
+        const currentReplayIds = replays.map(r => r.id);
+        const hasNewReplays = currentReplayIds.some(id => !lastReplayIds.includes(id));
+        
+        console.log(`[GalaxyMap] Checking battle replays:`, {
+            count: replays.length,
+            planetNames: replays.map(r => r.planetName),
+            replayIds: currentReplayIds,
+            lastReplayIds: lastReplayIds,
+            hasNewReplays: hasNewReplays,
+            gameStateReference: gameState,
+        });
+        
+        if (replays.length > 0 && hasNewReplays) {
+            console.log(`[GalaxyMap] Processing ${replays.length} battle replays (${replays.length - lastReplayIds.length} new)`);
             processNewBattleReplays(replays);
+            lastReplayIds = currentReplayIds;
+        } else if (replays.length === 0) {
+            // Reset when replays are cleared
+            lastReplayIds = [];
         }
     }
 

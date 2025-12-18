@@ -27,17 +27,22 @@ export class GameLoop {
      */
     processEvents(currentTime: number = Date.now()): boolean {
         let eventsProcessed = false;
+        const pendingEvents: string[] = [];
 
         while (true) {
             const event = this.gameState.getNextEvent();
 
             if (!event || event.scheduledTime > currentTime) {
+                if (event) {
+                    pendingEvents.push(`${event.type}@${new Date(event.scheduledTime).toISOString()}`);
+                }
                 break;
             }
 
             // Remove event from queue before processing
             this.gameState.popNextEvent();
 
+            logger.debug(`[GameLoop] Processing ${event.type} event scheduled for ${new Date(event.scheduledTime).toISOString()} (current: ${new Date(currentTime).toISOString()})`);
             this.processEvent(event, currentTime);
             eventsProcessed = true;
 
@@ -45,6 +50,10 @@ export class GameLoop {
             if (this.gameState.isGameComplete()) {
                 break;
             }
+        }
+
+        if (pendingEvents.length > 0) {
+            logger.debug(`[GameLoop] ${pendingEvents.length} events still pending: ${pendingEvents.join(', ')}`);
         }
 
         // Update last update time
@@ -87,6 +96,7 @@ export class GameLoop {
      * Note: Battles are resolved immediately when armada arrives - no delayed rounds
      */
     private processArmadaArrival(payload: ArmadaArrivalPayload): void {
+        logger.info(`[GameLoop] Processing armada arrival: ${payload.armadaId}`);
         this.battleManager.handleArmadaArrival(payload.armadaId);
     }
 
