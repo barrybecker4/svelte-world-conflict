@@ -25,14 +25,14 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
       "Each planet produces <strong>resources</strong> based on its size.",
       "Larger planets produce <strong>more resources</strong> per minute.",
       "Use resources to <strong>build new ships</strong>.",
-      "Click your planet to select it, then click again to <strong>build ships</strong>."
+      "Double click on a planet to <strong>build ships</strong> there."
     ]
   },
   {
     title: "Armadas (3/5)",
     icon: "🚀",
     content: [
-      "Select one of your planets, then click another planet to <strong>send ships</strong>.",
+      "Click on a source planet then drag to a destination planet to <strong>send ships</strong>.",
       "Armadas travel through space in <strong>real-time</strong>.",
       "Sending to your own planet = <strong>reinforcement</strong>.",
       "Sending to enemy/neutral planet = <strong>attack</strong>!"
