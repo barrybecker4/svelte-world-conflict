@@ -40,7 +40,9 @@
     $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed) {
         gameEndSoundPlayed = true;
         const myPlayerId = $currentPlayerId;
-        const winnerId = $gameState.endResult?.slotIndex;
+        const winnerId = typeof $gameState.endResult === 'object' && $gameState.endResult 
+            ? $gameState.endResult.slotIndex 
+            : undefined;
         
         if (winnerId !== undefined && winnerId === myPlayerId) {
             audioSystem.playSound(SOUNDS.GAME_WON);
@@ -68,12 +70,21 @@
         updateGameState(initialState);
 
         // Get current player from local storage
-        const creatorInfo = loadGameCreator(gameId);
+        let creatorInfo = loadGameCreator(gameId);
+        
+        // If not in localStorage, try to identify player from game state
+        // This handles cases where player joined but localStorage wasn't set
+        if (!creatorInfo && initialState.players) {
+            logger.warn('No player info in localStorage for game', gameId);
+        }
+        
         if (creatorInfo) {
             currentPlayerId.set(creatorInfo.playerSlotIndex);
+        } else {
+            logger.error('Could not determine current player ID for game', gameId);
         }
 
-        // Connect to WebSocket for real-time updates - REQUIRED
+        // Connect to WebSocket for real-time updates
         try {
             await wsClient.connect(gameId);
         } catch (error) {
@@ -111,23 +122,35 @@
     function handleDragSend(event: CustomEvent<{ sourcePlanet: Planet; destinationPlanet: Planet }>) {
         const { sourcePlanet: source, destinationPlanet: dest } = event.detail;
         const currentPlayer = get(currentPlayerId);
+        const currentState = get(gameState);
 
-        if (currentPlayer === null) return;
-        if (source.ownerId !== currentPlayer || source.ships <= 0) return;
+        if (currentPlayer === null || !currentState) return;
 
-        sourcePlanet = source;
-        destinationPlanet = dest;
+        // Resolve planets from current gameState to ensure fresh references
+        const freshSourcePlanet = currentState.planets.find(p => p.id === source.id);
+        const freshDestPlanet = currentState.planets.find(p => p.id === dest.id);
+
+        if (!freshSourcePlanet || !freshDestPlanet) return;
+        if (freshSourcePlanet.ownerId !== currentPlayer || freshSourcePlanet.ships <= 0) return;
+
+        sourcePlanet = freshSourcePlanet;
+        destinationPlanet = freshDestPlanet;
         showSendArmadaModal = true;
     }
 
     function handlePlanetDoubleClick(event: CustomEvent<{ planet: Planet }>) {
         const { planet } = event.detail;
         const currentPlayer = get(currentPlayerId);
+        const currentState = get(gameState);
 
-        if (currentPlayer === null) return;
-        if (planet.ownerId !== currentPlayer) return;
+        if (currentPlayer === null || !currentState) return;
 
-        sourcePlanet = planet;
+        // Resolve planet from current gameState to ensure fresh reference
+        const freshPlanet = currentState.planets.find(p => p.id === planet.id);
+        if (!freshPlanet) return;
+        if (freshPlanet.ownerId !== currentPlayer) return;
+
+        sourcePlanet = freshPlanet;
         showBuildShipsModal = true;
     }
 

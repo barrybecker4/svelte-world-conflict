@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
-    import { loadPlayerName, savePlayerName } from '$lib/client/stores/clientStorage';
+    import { loadPlayerName, savePlayerName, saveGameCreator } from '$lib/client/stores/clientStorage';
     import { goto } from '$app/navigation';
     import { logger } from 'multiplayer-framework/shared';
 
@@ -71,7 +71,13 @@
         try {
             stopPolling();
             const result = await GameApiClient.joinGame(gameId, playerName, slotIndex);
-            if (result.success) {
+            if (result.success && result.player) {
+                // Save player info to localStorage so they can be identified when game loads
+                saveGameCreator(gameId, {
+                    playerId: result.player.slotIndex.toString(),
+                    playerSlotIndex: result.player.slotIndex,
+                    playerName: result.player.name
+                });
                 await goto(`/game/${gameId}`);
             }
         } catch (err) {

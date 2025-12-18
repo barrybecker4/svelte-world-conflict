@@ -24,12 +24,18 @@
     let currentTime = Date.now();
     let animationFrame: number;
 
-    // Drag state
+    // Drag state - store planet ID instead of object to survive re-renders
     let isDragging = false;
-    let dragSourcePlanet: PlanetType | null = null;
+    let dragSourcePlanetId: number | null = null;
     let dragCurrentX = 0;
     let dragCurrentY = 0;
     let svgElement: SVGSVGElement;
+
+    // Helper to get drag source planet from current gameState
+    function getDragSourcePlanet(): PlanetType | null {
+        if (dragSourcePlanetId === null) return null;
+        return gameState.planets.find(p => p.id === dragSourcePlanetId) || null;
+    }
 
     // Update time for armada positions (only when game is active)
     function updateTime() {
@@ -70,7 +76,7 @@
         }
 
         isDragging = true;
-        dragSourcePlanet = planet;
+        dragSourcePlanetId = planet.id;
         updateDragPosition(event);
         
         // Add document-level listeners for drag
@@ -84,7 +90,14 @@
     }
 
     function handleDocumentMouseUp(event: MouseEvent) {
-        if (!isDragging || !dragSourcePlanet) {
+        if (!isDragging || dragSourcePlanetId === null) {
+            cleanupDrag();
+            return;
+        }
+
+        // Look up source planet from current gameState (always fresh)
+        const sourcePlanet = getDragSourcePlanet();
+        if (!sourcePlanet) {
             cleanupDrag();
             return;
         }
@@ -92,10 +105,10 @@
         // Find if we're over a planet
         const targetPlanet = findPlanetAtPosition(dragCurrentX, dragCurrentY);
         
-        if (targetPlanet && targetPlanet.id !== dragSourcePlanet.id) {
+        if (targetPlanet && targetPlanet.id !== sourcePlanet.id) {
             // Dispatch drag send event
             dispatch('dragSend', {
-                sourcePlanet: dragSourcePlanet,
+                sourcePlanet: sourcePlanet,
                 destinationPlanet: targetPlanet
             });
         }
@@ -105,7 +118,7 @@
 
     function cleanupDrag() {
         isDragging = false;
-        dragSourcePlanet = null;
+        dragSourcePlanetId = null;
         document.removeEventListener('mousemove', handleDocumentMouseMove);
         document.removeEventListener('mouseup', handleDocumentMouseUp);
     }
@@ -246,24 +259,27 @@
         {/each}
 
         <!-- Drag line visualization -->
-        {#if isDragging && dragSourcePlanet}
-            <line
-                x1={dragSourcePlanet.position.x}
-                y1={dragSourcePlanet.position.y}
-                x2={dragCurrentX}
-                y2={dragCurrentY}
-                stroke="#a78bfa"
-                stroke-width="3"
-                stroke-dasharray="8 4"
-                opacity="0.8"
-            />
-            <circle
-                cx={dragCurrentX}
-                cy={dragCurrentY}
-                r="8"
-                fill="#a78bfa"
-                opacity="0.6"
-            />
+        {#if isDragging && dragSourcePlanetId !== null}
+            {@const sourcePlanet = getDragSourcePlanet()}
+            {#if sourcePlanet}
+                <line
+                    x1={sourcePlanet.position.x}
+                    y1={sourcePlanet.position.y}
+                    x2={dragCurrentX}
+                    y2={dragCurrentY}
+                    stroke="#a78bfa"
+                    stroke-width="3"
+                    stroke-dasharray="8 4"
+                    opacity="0.8"
+                />
+                <circle
+                    cx={dragCurrentX}
+                    cy={dragCurrentY}
+                    r="8"
+                    fill="#a78bfa"
+                    opacity="0.6"
+                />
+            {/if}
         {/if}
     </svg>
 </div>

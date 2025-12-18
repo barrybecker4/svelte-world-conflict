@@ -18,6 +18,7 @@
     let isConnected = false;
     let currentPlayerId: number | null = null;
     let isCreator = false;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     let wsClient = getWebSocketClient();
 
@@ -47,14 +48,13 @@
         }
 
         // Poll for updates (2 seconds for quick detection of game start)
-        const pollInterval = setInterval(refreshGame, 2000);
-
-        return () => {
-            clearInterval(pollInterval);
-        };
+        pollInterval = setInterval(refreshGame, 2000);
     });
 
     onDestroy(() => {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
         wsClient.disconnect();
     });
 
@@ -64,7 +64,23 @@
             if (data.status === 'ACTIVE') {
                 dispatch('gameStarted', { gameId });
             } else {
-                game = data;
+                // Only update if player slots actually changed to prevent flickering
+                const currentSlots = game?.pendingConfiguration?.playerSlots || [];
+                const newSlots = data?.pendingConfiguration?.playerSlots || [];
+                
+                // Compare by checking if slot types/names changed
+                const slotsChanged = currentSlots.length !== newSlots.length ||
+                    currentSlots.some((slot, i) => {
+                        const newSlot = newSlots[i];
+                        return !newSlot || 
+                            slot.type !== newSlot.type || 
+                            slot.name !== newSlot.name ||
+                            slot.slotIndex !== newSlot.slotIndex;
+                    });
+                
+                if (game === null || slotsChanged) {
+                    game = data;
+                }
             }
         } catch (err) {
             logger.warn('Failed to refresh game:', err);
