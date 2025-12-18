@@ -353,7 +353,7 @@
 
 {#if showResignConfirmModal}
     <div class="modal-overlay" on:click={handleCancelResign} on:keydown={(e) => e.key === 'Escape' && handleCancelResign()} role="button" tabindex="0">
-        <div class="resign-modal" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="resign-modal-title">
+        <div class="resign-modal" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="resign-modal-title" tabindex="-1">
             <h2 id="resign-modal-title">Resign from Game?</h2>
             <p>Are you sure you want to resign? Your planets will become neutral and your fleets will be disbanded.</p>
             <p class="spectate-note">You'll still be able to watch the rest of the game.</p>

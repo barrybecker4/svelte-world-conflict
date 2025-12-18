@@ -6,7 +6,12 @@
   import { goto } from '$app/navigation';
   import type { GalacticGameStateData, PendingGameData } from '$lib/game/entities/gameTypes';
 
-  let gameId: string;
+  type GameApiResponse =
+    | { status: 'PENDING'; gameId: string; players: Array<{ slotIndex: number; name: string }>; pendingConfiguration?: any; createdAt?: number }
+    | { status: 'ACTIVE' | 'COMPLETED'; gameId: string; gameState: GalacticGameStateData }
+    | { error: string };
+
+  let gameId: string | undefined;
   let gameState: GalacticGameStateData | null = null;
   let pendingGame: PendingGameData | null = null;
   let loading = true;
@@ -19,6 +24,12 @@
   });
 
   async function loadGame() {
+    if (!gameId) {
+      error = 'Game ID is required';
+      loading = false;
+      return;
+    }
+
     loading = true;
     error = null;
 
@@ -29,16 +40,18 @@
         throw new Error(`Failed to load game: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as GameApiResponse;
+
+      if ('error' in data) {
+        throw new Error(data.error);
+      }
 
       if (data.status === 'PENDING') {
-        pendingGame = data;
+        pendingGame = data as PendingGameData;
         gameState = null;
-      } else if (data.status === 'ACTIVE' || data.status === 'COMPLETED') {
+      } else {
         gameState = data.gameState;
         pendingGame = null;
-      } else {
-        throw new Error(`Unknown game status: ${data.status}`);
       }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load game';
@@ -74,14 +87,14 @@
       Return Home
     </button>
   </div>
-{:else if pendingGame}
+{:else if pendingGame && gameId}
   <WaitingRoom
     {gameId}
     initialGame={pendingGame}
     on:gameStarted={handleGameStarted}
     on:gameLeft={handleGameLeft}
   />
-{:else if gameState}
+{:else if gameState && gameId}
   <GalacticConflictGame {gameId} initialState={gameState} />
 {:else}
   <div class="error-container">
