@@ -11,11 +11,15 @@ binding = "GALACTIC_CONFLICT_KV"
 id = "local-dev-storage"
 preview_id = "local-dev-storage"
 
-# Scheduled event (cron trigger) for processing game events
-# Runs every 2 seconds to process armada arrivals, battles, and other time-based events
-[[triggers.crons]]
-cron = "*/2 * * * * *"
+[env.preview]
+kv_namespaces = [
+    { binding = "GALACTIC_CONFLICT_KV", id = "2e0584ff1854476ba6bdecd5bd0a9daf" }
+]
+
+[env.production]
+kv_namespaces = [
+    { binding = "GALACTIC_CONFLICT_KV", id = "45d22a743168411f8abe7d8819ea0881" }
+]
 
 # Note: WebSocket worker runs separately - no Durable Object binding needed
 # The game connects to the worker via WebSocket URLs configured in src/lib/websocket-config.ts
-

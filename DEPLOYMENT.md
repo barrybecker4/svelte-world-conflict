@@ -144,6 +144,10 @@ npx wrangler pages deploy dist
 🌍  https://svelte-world-conflict.pages.dev
 ```
 
+#### Event Processing
+
+Galactic Conflict processes game events (armada arrivals, battles, etc.) automatically via client-side polling. When players are in a game, their browser calls the event processing API every 2 seconds. This is handled automatically by the game component - no additional setup required.
+
 #### Deploy Galactic Conflict
 
 ```bash

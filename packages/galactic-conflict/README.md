@@ -18,17 +18,15 @@ A real-time multiplayer space strategy game built with SvelteKit, using the [mul
 - **Real-time**: WebSocket Durable Objects from `multiplayer-framework`
 - **Storage**: Cloudflare KV for persistent game data
 - **Backend**: Cloudflare Workers with SvelteKit API routes
-- **Event Processing**: Server-side cron job (every 2 seconds) processes game events (armada arrivals, battles)
+- **Event Processing**: Client-side polling (every 2 seconds) triggers server-side event processing
 - **Deployment**: Fully serverless on Cloudflare
 
 ### Event Processing
 
-Game events (armada arrivals, battles, resource ticks) are processed automatically by a Cloudflare cron trigger that runs every 2 seconds. This ensures:
-- Events are processed server-side, independent of client connections
-- Works for both real-time and turn-based games
-- No client-side polling required (fail-fast WebSocket-only approach)
-
-**Note**: Cron triggers only run when using `wrangler pages dev` or in production. They do not run with `vite dev`.
+Game events (armada arrivals, battles, resource ticks) are processed automatically by client-side polling that calls the server API every 2 seconds. This ensures:
+- Events are processed server-side for all active games
+- Works reliably without requiring cron triggers or external services
+- Simple and maintainable approach
 
 ## Development
 

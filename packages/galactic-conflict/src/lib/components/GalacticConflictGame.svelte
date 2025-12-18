@@ -18,7 +18,7 @@
         updateGameState,
         clearGameStores,
     } from '$lib/client/stores/gameStateStore';
-    import { logger, isLocalDevelopment } from 'multiplayer-framework/shared';
+    import { logger } from 'multiplayer-framework/shared';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
 
     export let gameId: string;
@@ -71,8 +71,6 @@
 
         // Connect to WebSocket for real-time updates
         // Fail fast if websocket connection fails - no polling fallback
-        // Event processing is handled server-side via scheduled cron job (production)
-        // In local development, we trigger event processing manually since cron doesn't run
         try {
             await wsClient.connect(gameId);
         } catch (error) {
@@ -83,19 +81,18 @@
             return;
         }
 
-        // Dev-only: Trigger event processing periodically (cron triggers don't run in local dev)
-        if (isLocalDevelopment()) {
-            logger.debug('[Dev] Starting local event processing interval (cron triggers not available in dev)');
-            devEventProcessingInterval = setInterval(async () => {
-                try {
-                    await GameApiClient.processEvents();
-                } catch (error) {
-                    // Silently fail - this is just triggering server-side processing
-                    // Errors are logged server-side
-                    logger.debug('[Dev] Event processing trigger failed (non-critical):', error);
-                }
-            }, 2000); // Every 2 seconds, matching production cron schedule
-        }
+        // Trigger event processing periodically
+        // This ensures game events (armada arrivals, battles, etc.) are processed server-side
+        logger.debug('Starting event processing interval');
+        devEventProcessingInterval = setInterval(async () => {
+            try {
+                await GameApiClient.processEvents();
+            } catch (error) {
+                // Silently fail - this is just triggering server-side processing
+                // Errors are logged server-side
+                logger.debug('Event processing trigger failed (non-critical):', error);
+            }
+        }, 2000); // Every 2 seconds
     });
 
     onDestroy(() => {
