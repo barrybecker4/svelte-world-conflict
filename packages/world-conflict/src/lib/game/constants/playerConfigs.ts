@@ -3,7 +3,9 @@ import type { Player } from '$lib/game/entities/gameTypes';
 export interface PlayerColorConfig {
   slotIndex: number;
   defaultName: string;
+  /** Gradient start color (primary color for UI) */
   colorStart: string;
+  /** Gradient end color */
   colorEnd: string;
   highlightStart: string;
   highlightEnd: string;

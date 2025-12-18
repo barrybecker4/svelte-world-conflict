@@ -1,4 +1,4 @@
-import { WebSocketServer, type WebSocketServerEnv } from './WebSocketServer';
+import { type WebSocketServerEnv } from './WebSocketServer';
 import { isLocalDevelopment } from '../shared';
 
 /**

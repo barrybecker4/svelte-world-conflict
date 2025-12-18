@@ -1,24 +1,16 @@
 # World Conflict
 
-A real-time multiplayer strategy game built with SvelteKit, using the [multiplayer-framework](../multiplayer-framework) for WebSocket communication.
+A multiplayer strategy game built with SvelteKit, using the [multiplayer-framework](../multiplayer-framework) for WebSocket communication.
 
 ![World Conflict Gameplay](static/gameplay.png)
 
 ## 🎮 Features
 
-- ✅ Real-time multiplayer gameplay (up to 4 players - AI or human)
+- ✅ multiplayer gameplay (up to 4 players - AI or human)
 - ✅ Strategic combat system inspired by Risk
 - ✅ Persistent game state with Cloudflare KV
 - ✅ Instant WebSocket updates via Durable Objects
 - ✅ Global CDN distribution
-
-## 🏗️ Architecture
-
-- **Frontend**: SvelteKit app deployed on Cloudflare Pages
-- **Real-time**: WebSocket Durable Objects from `multiplayer-framework`
-- **Storage**: Cloudflare KV for persistent game data
-- **Backend**: Cloudflare Workers with SvelteKit API routes
-- **Deployment**: Fully serverless on Cloudflare
 
 ## 🚀 Development
 

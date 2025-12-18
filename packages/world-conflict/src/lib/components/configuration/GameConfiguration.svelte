@@ -77,12 +77,15 @@
 
       // Load player slots
       if (storedConfig.playerSlots && storedConfig.playerSlots.length > 0) {
-        playerSlots = storedConfig.playerSlots.map(slot => ({
-          ...getPlayerConfig(slot.slotIndex),
-          slotIndex: slot.slotIndex,
-          type: slot.type,
-          customName: slot.customName
-        }));
+        playerSlots = storedConfig.playerSlots.map(slot => {
+          const config = getPlayerConfig(slot.slotIndex);
+          return {
+            ...config,
+            slotIndex: slot.slotIndex,
+            type: slot.type,
+            customName: slot.customName ?? ''
+          } as PlayerSlot;
+        });
       }
     }
   }
@@ -161,7 +164,7 @@
       playerSlots: playerSlots.map(slot => ({
         slotIndex: slot.slotIndex,
         type: slot.type,
-        customName: slot.customName
+        customName: slot.customName ?? ''
       }))
     };
     saveGameConfiguration(config);

@@ -1,6 +1,7 @@
 # Multiplayer WebSocket Framework
 
-A minimal, framework-agnostic WebSocket library for building multiplayer games with Cloudflare infrastructure. Works with any JavaScript framework (Svelte, React, Vue, vanilla JS, etc.).
+A minimal, framework-agnostic WebSocket library for building multiplayer games with Cloudflare infrastructure. 
+Works with any JavaScript framework (Svelte, React, Vue, vanilla JS, etc.).
 
 ## Features
 
@@ -88,7 +89,7 @@ client.onGameUpdate((gameState) => {
 client.send({
   type: 'move',
   position: { x: 0, y: 1 }
-}); // ✓ Type-safe - matches MoveMessage
+});
 
 // Custom message handlers with typed payloads
 client.on<{ text: string }>('chat', (data) => {
@@ -99,7 +100,7 @@ client.on<{ text: string }>('chat', (data) => {
 client.disconnect();
 ```
 
-### 4. Server Setup with Type Safety
+### 4. Server Setup
 
 ```typescript
 // Example using any backend framework (SvelteKit, Express, Hono, etc.)
@@ -452,29 +453,6 @@ curl http://localhost:8787/health
 curl -X POST http://localhost:8787/notify \
   -H "Content-Type: application/json" \
   -d '{"gameId":"test","message":{"type":"gameUpdate","gameState":{}}}'
-```
-
-## Migration from Untyped Usage
-
-If you're upgrading from an untyped version:
-
-1. **Define your types** - Create interfaces for your game state and messages
-2. **Add type parameters** - Update `WebSocketClient` instantiation with your types
-3. **Update callbacks** - Your callbacks will now receive typed data
-4. **Update send calls** - TypeScript will ensure your messages match your type
-
-```typescript
-// Before (untyped)
-const client = new WebSocketClient(config);
-client.onGameUpdate((data) => {
-  // data is 'any' - no type safety
-});
-
-// After (typed)
-const client = new WebSocketClient<MyGameState, MyMessage>(config);
-client.onGameUpdate((gameState) => {
-  // gameState is MyGameState - full type safety!
-});
 ```
 
 ## License

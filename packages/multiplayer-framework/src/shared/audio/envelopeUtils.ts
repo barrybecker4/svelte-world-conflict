@@ -40,4 +40,3 @@ export function calculateEnvelope(localTime: number, params: EnvelopeParams): nu
     const releaseProgress = (localTime - attackTime - decayTime - sustainTime) / releaseTime;
     return sustainLevel * Math.max(0, 1 - releaseProgress);
 }
-

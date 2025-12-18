@@ -156,10 +156,14 @@ export class WaitingRoomManager {
     }
   }
 
-  getSlotInfo(game: PendingGameData | null, slotIndex: number, getPlayerConfig: (index: number) => { color: string }): WaitingRoomSlotInfo {
+  getSlotInfo(
+    game: PendingGameData | null,
+    slotIndex: number,
+    getPlayerConfig: (index: number) => { colorStart: string }
+  ): WaitingRoomSlotInfo {
     const slotInfo = getSlotInfoFromGame(game, slotIndex, {
       currentPlayerId: this.currentPlayerId,
-      getPlayerColor: (idx) => getPlayerConfig(idx).color
+      getPlayerColor: (idx) => getPlayerConfig(idx).colorStart
     });
 
     // Customize display name for waiting room context

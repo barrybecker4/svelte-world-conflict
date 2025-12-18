@@ -3,7 +3,7 @@
  * Tests creation of AttackEvent objects for combat animations
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { AttackEventFactory, type AttackEvent } from './AttackEventFactory';
 import type { Player } from '$lib/game/entities/gameTypes';
 import type { BattleRoundResult } from './BattleRound';

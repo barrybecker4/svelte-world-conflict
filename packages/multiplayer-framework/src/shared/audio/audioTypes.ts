@@ -60,4 +60,3 @@ export const VOLUME_LEVELS = {
     EFFECT: 0.2,
     VICTORY: 0.6,
 } as const;
-

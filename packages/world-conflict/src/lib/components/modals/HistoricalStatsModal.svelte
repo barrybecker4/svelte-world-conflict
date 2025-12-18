@@ -37,8 +37,8 @@
       if (!response.ok) {
         throw new Error('Failed to fetch stats');
       }
-      const data = await response.json();
-      stats = data.stats || [];
+      const data = (await response.json()) as { stats?: DailyGameStats[] };
+      stats = data.stats ?? [];
     } catch (e) {
       error = e instanceof Error ? e.message : 'Unknown error';
     } finally {

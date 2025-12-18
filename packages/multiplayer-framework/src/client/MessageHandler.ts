@@ -71,7 +71,7 @@ export class MessageHandler<TGameState = unknown> {
         }
 
         case 'unsubscribed':
-          console.log(`❌ Unsubscribed from game ${message.gameId}`);
+          console.log(`Unsubscribed from game ${message.gameId}`);
           this.callbacks.unsubscribed?.(message.gameId);
           break;
 

@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MoveReplayer } from './MoveReplayer';
+import type { GameStateData } from '$lib/game/entities/gameTypes';
 
 // Mock requestAnimationFrame for Node environment
 global.requestAnimationFrame = vi.fn((cb) => {
@@ -55,7 +56,7 @@ describe('MoveReplayer', () => {
     const baseState = {
       ownersByRegion: { 0: 0, 1: 1, 2: undefined },
       soldiersByRegion: {}
-    };
+    } as unknown as GameStateData;
 
     describe('army_move type', () => {
       it('should construct a movement when ownership does not change', () => {
@@ -77,8 +78,14 @@ describe('MoveReplayer', () => {
       });
 
       it('should construct a conquest when ownership changes', () => {
-        const previousState = { ownersByRegion: { 5: 1 }, soldiersByRegion: {} };
-        const newState = { ownersByRegion: { 5: 0 }, soldiersByRegion: {} };
+        const previousState = {
+          ownersByRegion: { 5: 1 },
+          soldiersByRegion: {}
+        } as unknown as GameStateData;
+        const newState = {
+          ownersByRegion: { 5: 0 },
+          soldiersByRegion: {}
+        } as unknown as GameStateData;
         const moveData = {
           type: 'army_move' as const,
           sourceRegion: 4,
@@ -99,8 +106,14 @@ describe('MoveReplayer', () => {
       });
 
       it('should construct a conquest when taking neutral territory', () => {
-        const previousState = { ownersByRegion: {}, soldiersByRegion: {} };
-        const newState = { ownersByRegion: { 3: 0 }, soldiersByRegion: {} };
+        const previousState = {
+          ownersByRegion: {},
+          soldiersByRegion: {}
+        } as unknown as GameStateData;
+        const newState = {
+          ownersByRegion: { 3: 0 },
+          soldiersByRegion: {}
+        } as unknown as GameStateData;
         const moveData = {
           type: 'army_move' as const,
           sourceRegion: 2,
@@ -187,7 +200,7 @@ describe('MoveReplayer', () => {
           1: [{ i: 4 }]
         },
         ownersByRegion: { 0: 0, 1: 0 }
-      };
+      } as unknown as GameStateData;
 
       const move = {
         type: 'movement' as const,
@@ -211,7 +224,7 @@ describe('MoveReplayer', () => {
           1: []
         },
         ownersByRegion: { 0: 0, 1: 1 }
-      };
+      } as unknown as GameStateData;
 
       const move = {
         type: 'conquest' as const,
@@ -234,7 +247,7 @@ describe('MoveReplayer', () => {
           1: []
         },
         ownersByRegion: {}
-      };
+      } as unknown as GameStateData;
 
       const move = {
         type: 'movement' as const,
@@ -256,7 +269,7 @@ describe('MoveReplayer', () => {
       const state = {
         soldiersByRegion: { 0: [{ i: 1 }] },
         ownersByRegion: { 0: 0 }
-      };
+      } as unknown as GameStateData;
 
       const move = {
         type: 'recruitment' as const,
@@ -272,7 +285,7 @@ describe('MoveReplayer', () => {
       const state = {
         soldiersByRegion: { 0: [{ i: 1 }] },
         ownersByRegion: {}
-      };
+      } as unknown as GameStateData;
 
       const move = {
         type: 'movement' as const,
@@ -293,7 +306,7 @@ describe('MoveReplayer', () => {
           1: []
         },
         ownersByRegion: { 0: 0 }
-      };
+      } as unknown as GameStateData;
 
       const move = {
         type: 'movement' as const,
@@ -312,13 +325,21 @@ describe('MoveReplayer', () => {
 
   describe('replayMoves', () => {
     it('should not replay when previousState is null', async () => {
-      await replayer.replayMoves({ regions: [] }, null);
+      const newState = { regions: [] } as unknown as GameStateData;
+      await replayer.replayMoves(newState, null);
       // Should complete without error
     });
 
     it('should not replay when no moves detected', async () => {
-      const previousState = { ownersByRegion: {}, soldiersByRegion: {} };
-      const newState = { ownersByRegion: {}, soldiersByRegion: {}, regions: [] };
+      const previousState = {
+        ownersByRegion: {},
+        soldiersByRegion: {}
+      } as unknown as GameStateData;
+      const newState = {
+        ownersByRegion: {},
+        soldiersByRegion: {},
+        regions: []
+      } as unknown as GameStateData;
 
       await replayer.replayMoves(newState, previousState);
       // Should complete without error
@@ -328,7 +349,7 @@ describe('MoveReplayer', () => {
       const previousState = {
         ownersByRegion: { 0: 0 },
         soldiersByRegion: { 0: [{ i: 1 }] }
-      };
+      } as unknown as GameStateData;
 
       const newState = {
         ownersByRegion: { 0: 0 },
@@ -338,7 +359,7 @@ describe('MoveReplayer', () => {
           { type: 'army_move' as const, sourceRegion: 0, targetRegion: 1, soldierCount: 1 }
         ],
         lastMove: { type: 'army_move' as const, sourceRegion: 99, targetRegion: 98, soldierCount: 99 }
-      };
+      } as unknown as GameStateData;
 
       // The mock will track which moves are played
       await replayer.replayMoves(newState, previousState);
@@ -351,14 +372,14 @@ describe('MoveReplayer', () => {
       const previousState = {
         ownersByRegion: { 0: 0 },
         soldiersByRegion: { 0: [{ i: 1 }] }
-      };
+      } as unknown as GameStateData;
 
       const newState = {
         ownersByRegion: { 0: 0 },
         soldiersByRegion: { 0: [], 1: [{ i: 1 }] },
         regions: [],
         lastMove: { type: 'army_move' as const, sourceRegion: 0, targetRegion: 1, soldierCount: 1 }
-      };
+      } as unknown as GameStateData;
 
       await replayer.replayMoves(newState, previousState);
       // Should complete using lastMove
@@ -370,7 +391,7 @@ describe('MoveReplayer', () => {
       const previousState = {
         ownersByRegion: {},
         soldiersByRegion: { 0: [{ i: 1 }] }
-      };
+      } as unknown as GameStateData;
 
       const attackSequence = [{ type: 'attack', damage: 1 }];
       const newState = {
@@ -386,7 +407,7 @@ describe('MoveReplayer', () => {
             attackSequence
           }
         ]
-      };
+      } as unknown as GameStateData;
 
       // The move should have attackSequence attached
       await replayer.replayMoves(newState, previousState);

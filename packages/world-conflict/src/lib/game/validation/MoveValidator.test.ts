@@ -5,11 +5,12 @@
 
 import { describe, it, expect } from 'vitest';
 import { MoveValidator } from './MoveValidator';
-import type { GameStateData, Region, Player } from '$lib/game/entities/gameTypes';
+import type { GameStateData, Player } from '$lib/game/entities/gameTypes';
+import { Region } from '$lib/game/entities/Region';
 
 // Helper to create a region
 function createRegion(index: number, neighbors: number[]): Region {
-    return {
+    return new Region({
         index,
         name: `Region ${index}`,
         neighbors,
@@ -17,7 +18,7 @@ function createRegion(index: number, neighbors: number[]): Region {
         y: 100,
         hasTemple: false,
         points: []
-    };
+    });
 }
 
 // Helper to create a player

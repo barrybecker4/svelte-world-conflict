@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+import { onMount } from 'svelte';
+import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import WaitingRoom from '$lib/components/waitingRoom/WaitingRoom.svelte';
   import WorldConflictGame from '$lib/components/WorldConflictGame.svelte';
@@ -24,7 +24,7 @@
       loading = true;
       error = null;
 
-      const gameId = $page.params.gameId;
+    const gameId = $page.params.gameId as string;
       currentPlayer = loadGameCreator(gameId);
 
       if (!currentPlayer) {
@@ -84,14 +84,14 @@
 
   {#if gameState === 'waiting'}
     <WaitingRoom
-      gameId={$page.params.gameId}
+      gameId={$page.params.gameId as string}
       initialGame={game}
       on:gameStarted={handleGameStarted}
       on:gameLeft={handleGameLeft}
     />
   {:else if gameState === 'playing'}
     <WorldConflictGame
-      gameId={$page.params.gameId}
+      gameId={$page.params.gameId as string}
       playerId={currentPlayer.playerId}
       playerSlotIndex={currentPlayer.playerSlotIndex}
     />
