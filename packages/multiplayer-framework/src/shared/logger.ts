@@ -4,7 +4,20 @@
  * 
  * Works in both browser and server (Node/Cloudflare Workers) contexts
  * No framework dependencies - pure TypeScript
+ * 
+ * LOG_LEVEL can be configured via environment variable:
+ * - Server/Node: process.env.LOG_LEVEL
+ * - Client/Browser: import.meta.env.VITE_LOG_LEVEL
+ * - Default: 'INFO' if not specified
+ * 
+ * Allowed values: 'DEBUG', 'INFO', 'WARN', 'ERROR'
+ * - DEBUG: Shows DEBUG (only if isDev), INFO, WARN, ERROR
+ * - INFO: Shows INFO, WARN, ERROR
+ * - WARN: Shows WARN, ERROR
+ * - ERROR: Shows ERROR only
  */
+
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 // Detect development mode - works in browser (Vite) and server (Node) contexts
 const isDev = (): boolean => {
@@ -20,27 +33,77 @@ const isDev = (): boolean => {
   return false;
 };
 
-const DEBUG = isDev();
+// Read LOG_LEVEL from environment variable
+const getLogLevel = (): LogLevel => {
+  // Browser context with Vite
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LOG_LEVEL) {
+    const level = (import.meta as any).env.VITE_LOG_LEVEL.toUpperCase();
+    if (level === 'DEBUG' || level === 'INFO' || level === 'WARN' || level === 'ERROR') {
+      return level as LogLevel;
+    }
+  }
+  // Node/server context
+  const globalProcess = (globalThis as any).process;
+  if (typeof globalProcess !== 'undefined' && globalProcess.env?.LOG_LEVEL) {
+    const level = globalProcess.env.LOG_LEVEL.toUpperCase();
+    if (level === 'DEBUG' || level === 'INFO' || level === 'WARN' || level === 'ERROR') {
+      return level as LogLevel;
+    }
+  }
+  // Default to INFO
+  return 'INFO';
+};
+
+const currentLogLevel = getLogLevel();
+const devMode = isDev();
+
+// Helper function to check if a log level should be shown
+const shouldLog = (level: LogLevel): boolean => {
+  switch (currentLogLevel) {
+    case 'DEBUG':
+      // DEBUG logs only show if LOG_LEVEL is DEBUG AND isDev is true
+      if (level === 'DEBUG') {
+        return devMode;
+      }
+      return true; // All other levels shown
+    case 'INFO':
+      return level === 'INFO' || level === 'WARN' || level === 'ERROR';
+    case 'WARN':
+      return level === 'WARN' || level === 'ERROR';
+    case 'ERROR':
+      return level === 'ERROR';
+    default:
+      return true; // Fallback: show all
+  }
+};
 
 export const logger = {
-  /** Debug logs - only shown in development */
+  /** Debug logs - only shown if LOG_LEVEL='DEBUG' AND isDev() is true */
   debug: (...args: unknown[]): void => {
-    if (DEBUG) console.log('[DEBUG]', ...args);
+    if (shouldLog('DEBUG')) {
+      console.log('[DEBUG]', ...args);
+    }
   },
   
-  /** Info logs - always shown */
+  /** Info logs - shown if LOG_LEVEL is 'DEBUG' or 'INFO' */
   info: (...args: unknown[]): void => {
-    console.log('[INFO]', ...args);
+    if (shouldLog('INFO')) {
+      console.log('[INFO]', ...args);
+    }
   },
   
-  /** Warning logs - always shown */
+  /** Warning logs - shown if LOG_LEVEL is 'DEBUG', 'INFO', or 'WARN' */
   warn: (...args: unknown[]): void => {
-    console.warn('[WARN]', ...args);
+    if (shouldLog('WARN')) {
+      console.warn('[WARN]', ...args);
+    }
   },
   
-  /** Error logs - always shown */
+  /** Error logs - always shown regardless of LOG_LEVEL */
   error: (...args: unknown[]): void => {
-    console.error('[ERROR]', ...args);
+    if (shouldLog('ERROR')) {
+      console.error('[ERROR]', ...args);
+    }
   }
 };
 

@@ -64,6 +64,41 @@ Then open the game URL (typically [http://localhost:5173](http://localhost:5173)
 
 See individual game READMEs for game-specific development instructions.
 
+### Logging Configuration
+
+The logger supports configurable log levels via environment variables. This allows you to control the verbosity of logs during development and production.
+
+**Available Log Levels:**
+- `DEBUG` - Shows all logs including DEBUG (only if `isDev` is also true), INFO, WARN, and ERROR
+- `INFO` - Shows INFO, WARN, and ERROR logs (default)
+- `WARN` - Shows WARN and ERROR logs only
+- `ERROR` - Shows ERROR logs only
+
+**Setting Log Level:**
+
+For client-side code (browser):
+```bash
+# In your .env file or environment
+VITE_LOG_LEVEL=DEBUG
+```
+
+For server-side code (Node.js/Cloudflare Workers):
+```bash
+# In your .env file or environment
+LOG_LEVEL=INFO
+```
+
+**Examples:**
+```bash
+# Development with verbose logging
+VITE_LOG_LEVEL=DEBUG npm run dev -w world-conflict
+
+# Production with minimal logging
+LOG_LEVEL=WARN npm run build -w world-conflict
+```
+
+**Note:** DEBUG logs will only appear if both `LOG_LEVEL=DEBUG` (or `VITE_LOG_LEVEL=DEBUG`) is set AND the code is running in development mode (`NODE_ENV=development` or Vite dev mode).
+
 ### Building
 
 Build all packages:
