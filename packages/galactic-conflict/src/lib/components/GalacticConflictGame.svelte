@@ -190,27 +190,19 @@
                 shipCount
             );
 
-            // Optimistic update: Add the armada to local state immediately
+            // Count updated by websocket.
             if (response.success && response.armada) {
                 gameState.update(state => {
                     if (!state) return state;
 
-                    // Find and update source planet ship count
-                    const updatedPlanets = state.planets.map(p => {
-                        if (p.id === sourcePlanet!.id) {
-                            return { ...p, ships: p.ships - shipCount };
-                        }
-                        return p;
-                    });
-
                     return {
                         ...state,
-                        planets: updatedPlanets,
                         armadas: [...state.armadas, response.armada],
                     };
                 });
             }
 
+            // Close the modal after successful send
             showSendArmadaModal = false;
             destinationPlanet = null;
             selectedPlanetId.set(null);
