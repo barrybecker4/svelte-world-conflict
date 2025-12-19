@@ -3,6 +3,8 @@
     import type { BattleAnimationState } from '$lib/client/stores/battleAnimationStore';
     import type { Planet } from '$lib/game/entities/gameTypes';
     import { removeBattleAnimation } from '$lib/client/stores/battleAnimationStore';
+    import DiceDisplay from './DiceDisplay.svelte';
+    import ShipCountDisplay from './ShipCountDisplay.svelte';
 
     export let animationState: BattleAnimationState;
     export let planet: Planet;
@@ -54,22 +56,12 @@
         }
     });
 
-    // Helper to get dice face symbol (using dots pattern)
-    function getDiceDots(value: number): { cx: number; cy: number }[] {
-        const dots: { cx: number; cy: number }[][] = [
-            [], // 0 (unused)
-            [{ cx: 10, cy: 10 }], // 1
-            [{ cx: 5, cy: 5 }, { cx: 15, cy: 15 }], // 2
-            [{ cx: 5, cy: 5 }, { cx: 10, cy: 10 }, { cx: 15, cy: 15 }], // 3
-            [{ cx: 5, cy: 5 }, { cx: 15, cy: 5 }, { cx: 5, cy: 15 }, { cx: 15, cy: 15 }], // 4
-            [{ cx: 5, cy: 5 }, { cx: 15, cy: 5 }, { cx: 10, cy: 10 }, { cx: 5, cy: 15 }, { cx: 15, cy: 15 }], // 5
-            [{ cx: 5, cy: 4 }, { cx: 15, cy: 4 }, { cx: 5, cy: 10 }, { cx: 15, cy: 10 }, { cx: 5, cy: 16 }, { cx: 15, cy: 16 }], // 6
-        ];
-        return dots[value] || [];
-    }
-
     // Determine outcome colors
     $: outcomeIsAttackerWin = replay.winnerId === replay.attackerPlayerId;
+    
+    // Casualties from last round result
+    $: attackerCasualties = animationState.lastRoundResult?.attackerLost;
+    $: defenderCasualties = animationState.lastRoundResult?.defenderLost;
 </script>
 
 <!-- Battle Animation Overlay -->
@@ -114,39 +106,13 @@
         </text>
         
         <!-- Ship count and casualties -->
-        <g>
-            <text x="50" y="35" text-anchor="middle" fill="white" font-size="20" font-weight="bold" class="ship-count">
-                {animationState.displayedAttackerShips}
-            </text>
-            
-            <!-- Casualties to the right of ship count -->
-            {#if animationState.lastRoundResult && animationState.lastRoundResult.attackerLost > 0}
-                <text x="60" y="35" text-anchor="start" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
-                    -{animationState.lastRoundResult.attackerLost} 💥
-                </text>
-            {/if}
-        </g>
+        <ShipCountDisplay 
+            shipCount={animationState.displayedAttackerShips}
+            casualties={attackerCasualties}
+        />
         
         <!-- Dice display -->
-        {#if attackerDice.length > 0}
-            <g transform="translate(5, 50)">
-                {#each attackerDice as die, i}
-                    <g transform="translate({i * 28 + 15}, 0)" class="die">
-                        <rect
-                            x="0" y="0"
-                            width="24" height="24"
-                            rx="4"
-                            fill={attackerColor}
-                            stroke="white"
-                            stroke-width="1.5"
-                        />
-                        {#each getDiceDots(die) as dot}
-                            <circle cx={dot.cx + 2} cy={dot.cy + 2} r="2.5" fill="white" />
-                        {/each}
-                    </g>
-                {/each}
-            </g>
-        {/if}
+        <DiceDisplay dice={attackerDice} color={attackerColor} offsetX={5} innerOffset={15} />
     </g>
     
     <!-- VS divider -->
@@ -160,39 +126,13 @@
         </text>
         
         <!-- Ship count and casualties -->
-        <g>
-            <text x="50" y="35" text-anchor="middle" fill="white" font-size="20" font-weight="bold" class="ship-count">
-                {animationState.displayedDefenderShips}
-            </text>
-            
-            <!-- Casualties to the right of ship count -->
-            {#if animationState.lastRoundResult && animationState.lastRoundResult.defenderLost > 0}
-                <text x="60" y="35" text-anchor="start" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
-                    -{animationState.lastRoundResult.defenderLost} 💥
-                </text>
-            {/if}
-        </g>
+        <ShipCountDisplay 
+            shipCount={animationState.displayedDefenderShips}
+            casualties={defenderCasualties}
+        />
         
         <!-- Dice display -->
-        {#if defenderDice.length > 0}
-            <g transform="translate(20, 50)">
-                {#each defenderDice as die, i}
-                    <g transform="translate({i * 28}, 0)" class="die">
-                        <rect
-                            x="0" y="0"
-                            width="24" height="24"
-                            rx="4"
-                            fill={defenderColor}
-                            stroke="white"
-                            stroke-width="1.5"
-                        />
-                        {#each getDiceDots(die) as dot}
-                            <circle cx={dot.cx + 2} cy={dot.cy + 2} r="2.5" fill="white" />
-                        {/each}
-                    </g>
-                {/each}
-            </g>
-        {/if}
+        <DiceDisplay dice={defenderDice} color={defenderColor} offsetX={20} innerOffset={0} />
     </g>
     
     <!-- Outcome message -->
@@ -258,18 +198,6 @@
         animation: flash-title 0.6s ease-in-out infinite alternate;
     }
     
-    .die {
-        animation: roll-in 0.3s ease-out;
-    }
-    
-    .ship-count {
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
-    }
-    
-    .casualty-text {
-        animation: shake-casualty 0.4s ease-out;
-    }
-    
     .outcome-message {
         animation: slide-up 0.5s ease-out;
     }
@@ -296,41 +224,6 @@
         }
     }
     
-    @keyframes roll-in {
-        0% {
-            transform: scale(0) rotate(-180deg);
-            opacity: 0;
-        }
-        100% {
-            transform: scale(1) rotate(0deg);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes shake-casualty {
-        0%, 100% {
-            transform: translateX(0);
-        }
-        15% {
-            transform: translateX(-4px);
-        }
-        30% {
-            transform: translateX(4px);
-        }
-        45% {
-            transform: translateX(-3px);
-        }
-        60% {
-            transform: translateX(3px);
-        }
-        75% {
-            transform: translateX(-2px);
-        }
-        90% {
-            transform: translateX(2px);
-        }
-    }
-    
     @keyframes slide-up {
         0% {
             transform: translateY(15px);
@@ -353,3 +246,4 @@
         }
     }
 </style>
+

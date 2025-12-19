@@ -4,7 +4,7 @@
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import Planet from './Planet.svelte';
     import Armada from './Armada.svelte';
-    import BattleAnimationOverlay from './BattleAnimationOverlay.svelte';
+    import BattleAnimationOverlay from './battle-animation/BattleAnimationOverlay.svelte';
     import FloatingTextMessage from './FloatingTextMessage.svelte';
     import {
         battleAnimations,
