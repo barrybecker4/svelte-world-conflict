@@ -11,6 +11,7 @@ import {
   joinExistingGame,
   waitForPlayerToJoin,
   waitForAllGamesToLoad,
+  createGameWithSeed,
 } from './helpers/game-setup';
 import {
   endTurn,
@@ -74,36 +75,57 @@ test.describe('Multi-Game Concurrent Tests', () => {
 
       const gameCreationResults = await Promise.allSettled(
         games.map(async (game, gameIndex) => {
-          // Stagger game creation to reduce server load
-          await new Promise(resolve => setTimeout(resolve, gameIndex * 1000));
+          try {
+            // Stagger game creation to reduce server load
+            await new Promise(resolve => setTimeout(resolve, gameIndex * 500));
 
-          const creatorPage = game.pages[0];
-          const playerName = game.players[0];
+            const creatorPage = game.pages[0];
+            const playerName = game.players[0];
 
-          console.log(`[${game.name}] 👤 ${playerName}: Creating game`);
+            console.log(`[${game.name}] 👤 ${playerName}: Creating game via API...`);
 
-          await creatorPage.goto('/');
-          await skipInstructions(creatorPage);
-          await navigateToConfiguration(creatorPage);
-          await enterPlayerName(creatorPage, playerName);
+            // Navigate to home page first (needed for API calls to work)
+            await creatorPage.goto('/');
 
-          // Configure: 4 human slots (slot 0 = Set, slots 1-3 = Open)
-          await configurePlayerSlot(creatorPage, 1, 'Open');
-          await configurePlayerSlot(creatorPage, 2, 'Open');
-          await configurePlayerSlot(creatorPage, 3, 'Open');
+            // Use API to create game directly - much faster and avoids UI blocking
+            const result = await createGameWithSeed(
+              creatorPage,
+              playerName,
+              {
+                playerSlots: [
+                  { type: 'Set', name: playerName, slotIndex: 0 },
+                  { type: 'Open', slotIndex: 1 },
+                  { type: 'Open', slotIndex: 2 },
+                  { type: 'Open', slotIndex: 3 },
+                ],
+                settings: GAME_SETTINGS.QUICK,
+                gameType: 'MULTIPLAYER'
+              }
+            );
 
-          // Use QUICK settings to reduce test time
-          await setGameSettings(creatorPage, GAME_SETTINGS.QUICK);
+            const gameId = result.gameId;
+            game.gameId = gameId;
 
-          await createGame(creatorPage);
-          await waitForGameReady(creatorPage);
+            // Navigate to the game page
+            console.log(`[${game.name}]   Navigating to game page...`);
+            await creatorPage.goto(`/game/${gameId}`);
+            await creatorPage.waitForTimeout(1000); // Wait for page to load
+            
+            // Wait for waiting room or game interface to appear
+            const waitingRoom = creatorPage.getByTestId('waiting-room');
+            const gameInterface = creatorPage.getByTestId('game-interface');
+            await Promise.race([
+              waitingRoom.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+              gameInterface.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+            ]);
 
-          const gameId = getGameIdFromUrl(creatorPage);
-          game.gameId = gameId;
+            console.log(`[${game.name}] ✅ Game created successfully: ${gameId}\n`);
 
-          console.log(`[${game.name}] ✅ Game created: ${gameId}\n`);
-
-          return { gameIndex, gameId };
+            return { gameIndex, gameId };
+          } catch (error) {
+            console.error(`[${game.name}] ❌ Error creating game:`, error);
+            throw new Error(`Failed to create ${game.name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
         })
       );
 
@@ -130,21 +152,25 @@ test.describe('Multi-Game Concurrent Tests', () => {
 
       const joinOperations = games.flatMap((game, gameIndex) =>
         [1, 2, 3].map(async (playerIndex) => {
-          // Stagger joins to reduce server load (each game offset + player offset)
-          await new Promise(resolve => setTimeout(resolve, (gameIndex * 3 + playerIndex) * 500));
+          try {
+            // Stagger joins to reduce server load (each game offset + player offset)
+            await new Promise(resolve => setTimeout(resolve, (gameIndex * 3 + playerIndex) * 500));
 
-          const page = game.pages[playerIndex];
-          const playerName = game.players[playerIndex];
+            const page = game.pages[playerIndex];
+            const playerName = game.players[playerIndex];
 
-          console.log(`[${game.name}] 👤 ${playerName}: Joining game ${game.gameId}`);
+            console.log(`[${game.name}] 👤 ${playerName}: Joining game ${game.gameId}`);
 
-          await page.goto('/');
-          await skipInstructions(page);
-          await joinExistingGame(page, game.gameId, playerName);
+            // joinExistingGame now handles navigation and skipping instructions
+            await joinExistingGame(page, game.gameId, playerName);
 
-          console.log(`[${game.name}] ✅ ${playerName} joined`);
+            console.log(`[${game.name}] ✅ ${playerName} joined`);
 
-          return { game: game.name, player: playerName };
+            return { game: game.name, player: playerName };
+          } catch (error) {
+            console.error(`[${game.name}] ❌ Error joining game for ${game.players[playerIndex]}:`, error);
+            throw error;
+          }
         })
       );
 

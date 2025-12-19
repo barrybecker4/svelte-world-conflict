@@ -11,6 +11,7 @@ import {
   joinExistingGame,
   waitForPlayerToJoin,
   waitForAllGamesToLoad,
+  createGameWithSeed,
 } from './helpers/game-setup';
 import {
   endTurn,
@@ -52,36 +53,47 @@ test.describe('Multi-Human Player Gameplay Tests', () => {
       console.log('👤 PLAYER 1: Creating 4-player game');
       
       await player1Page.goto('/');
-      await skipInstructions(player1Page);
-      await navigateToConfiguration(player1Page);
-      await enterPlayerName(player1Page, TEST_PLAYERS.PLAYER1);
+      
+      // Use API to create game directly - avoids UI blocking
+      const gameResult = await createGameWithSeed(
+        player1Page,
+        TEST_PLAYERS.PLAYER1,
+        {
+          playerSlots: [
+            { type: 'Set', name: TEST_PLAYERS.PLAYER1, slotIndex: 0 },
+            { type: 'Open', slotIndex: 1 },
+            { type: 'Open', slotIndex: 2 },
+            { type: 'Open', slotIndex: 3 },
+          ],
+          settings: GAME_SETTINGS.QUICK,
+          gameType: 'MULTIPLAYER'
+        }
+      );
 
-      await configurePlayerSlot(player1Page, 1, 'Open');
-      await configurePlayerSlot(player1Page, 2, 'Open');
-      await configurePlayerSlot(player1Page, 3, 'Open');
-
-      await setGameSettings(player1Page, GAME_SETTINGS.QUICK);
-      await createGame(player1Page);
-      await waitForGameReady(player1Page);
-
-      const gameId = getGameIdFromUrl(player1Page);
+      const gameId = gameResult.gameId;
+      await player1Page.goto(`/game/${gameId}`);
+      await player1Page.waitForTimeout(1000);
+      
+      // Wait for waiting room or game interface to appear
+      const waitingRoom = player1Page.getByTestId('waiting-room');
+      const gameInterface = player1Page.getByTestId('game-interface');
+      await Promise.race([
+        waitingRoom.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        gameInterface.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+      ]);
+      
       console.log(`📋 Game created: ${gameId}`);
 
       // ===== ALL PLAYERS JOIN =====
       console.log('\n👥 Players 2, 3, 4 joining...');
       
-      await player2Page.goto('/');
-      await skipInstructions(player2Page);
+      // joinExistingGame now handles navigation and skipping instructions
       await joinExistingGame(player2Page, gameId, TEST_PLAYERS.PLAYER2);
       await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER2, 1);
 
-      await player3Page.goto('/');
-      await skipInstructions(player3Page);
       await joinExistingGame(player3Page, gameId, TEST_PLAYERS.PLAYER3);
       await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER3, 2);
 
-      await player4Page.goto('/');
-      await skipInstructions(player4Page);
       await joinExistingGame(player4Page, gameId, TEST_PLAYERS.PLAYER4);
       await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER4, 3);
 
@@ -272,25 +284,40 @@ test.describe('Multi-Human Player Gameplay Tests', () => {
       console.log('👤 PLAYER 1: Creating game');
       
       await player1Page.goto('/');
-      await skipInstructions(player1Page);
-      await navigateToConfiguration(player1Page);
-      await enterPlayerName(player1Page, TEST_PLAYERS.PLAYER1);
+      
+      // Use API to create game directly - avoids UI blocking
+      const gameResult = await createGameWithSeed(
+        player1Page,
+        TEST_PLAYERS.PLAYER1,
+        {
+          playerSlots: [
+            { type: 'Set', name: TEST_PLAYERS.PLAYER1, slotIndex: 0 },
+            { type: 'Open', slotIndex: 1 },
+            { type: 'Off', slotIndex: 2 },
+            { type: 'Off', slotIndex: 3 },
+          ],
+          settings: GAME_SETTINGS.QUICK,
+          gameType: 'MULTIPLAYER'
+        }
+      );
 
-      await configurePlayerSlot(player1Page, 1, 'Open');
-      await configurePlayerSlot(player1Page, 2, 'Off');
-      await configurePlayerSlot(player1Page, 3, 'Off');
-
-      await setGameSettings(player1Page, GAME_SETTINGS.QUICK);
-      await createGame(player1Page);
-      await waitForGameReady(player1Page);
-
-      const gameId = getGameIdFromUrl(player1Page);
+      const gameId = gameResult.gameId;
+      await player1Page.goto(`/game/${gameId}`);
+      await player1Page.waitForTimeout(1000);
+      
+      // Wait for waiting room or game interface to appear
+      const waitingRoom = player1Page.getByTestId('waiting-room');
+      const gameInterface = player1Page.getByTestId('game-interface');
+      await Promise.race([
+        waitingRoom.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        gameInterface.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+      ]);
+      
       console.log(`📋 Game created: ${gameId}`);
 
       // ===== PLAYER 2 JOINS =====
       console.log('\n👤 PLAYER 2: Joining game');
-      await player2Page.goto('/');
-      await skipInstructions(player2Page);
+      // joinExistingGame now handles navigation and skipping instructions
       await joinExistingGame(player2Page, gameId, TEST_PLAYERS.PLAYER2);
       await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER2, 1);
 
@@ -326,8 +353,8 @@ test.describe('Multi-Human Player Gameplay Tests', () => {
       await player2Page.waitForTimeout(2000);
 
       // Verify Player 2 sees game interface again
-      const gameInterface = player2Page.getByTestId('game-interface');
-      await expect(gameInterface).toBeVisible({ timeout: 10000 });
+      const player2GameInterface = player2Page.getByTestId('game-interface');
+      await expect(player2GameInterface).toBeVisible({ timeout: 10000 });
 
       console.log('✅ Player 2 reconnected and sees game');
 

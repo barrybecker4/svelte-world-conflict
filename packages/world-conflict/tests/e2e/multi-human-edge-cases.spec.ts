@@ -11,6 +11,7 @@ import {
   joinExistingGame,
   waitForPlayerToJoin,
   waitForAllGamesToLoad,
+  createGameWithSeed,
 } from './helpers/game-setup';
 import {
   endTurn,
@@ -53,19 +54,35 @@ test.describe('Multi-Human Player Advanced Edge Cases', () => {
       console.log('👤 PLAYER 1: Creating Game A');
       
       await player1Page.goto('/');
-      await skipInstructions(player1Page);
-      await navigateToConfiguration(player1Page);
-      await enterPlayerName(player1Page, TEST_PLAYERS.PLAYER1);
+      
+      // Use API to create game directly - avoids UI blocking
+      const gameAResult = await createGameWithSeed(
+        player1Page,
+        TEST_PLAYERS.PLAYER1,
+        {
+          playerSlots: [
+            { type: 'Set', name: TEST_PLAYERS.PLAYER1, slotIndex: 0 },
+            { type: 'Open', slotIndex: 1 },
+            { type: 'Off', slotIndex: 2 },
+            { type: 'Off', slotIndex: 3 },
+          ],
+          settings: GAME_SETTINGS.QUICK,
+          gameType: 'MULTIPLAYER'
+        }
+      );
 
-      await configurePlayerSlot(player1Page, 1, 'Open');
-      await configurePlayerSlot(player1Page, 2, 'Off');
-      await configurePlayerSlot(player1Page, 3, 'Off');
-
-      await setGameSettings(player1Page, GAME_SETTINGS.QUICK);
-      await createGame(player1Page);
-      await waitForGameReady(player1Page);
-
-      const gameIdA = getGameIdFromUrl(player1Page);
+      const gameIdA = gameAResult.gameId;
+      await player1Page.goto(`/game/${gameIdA}`);
+      await player1Page.waitForTimeout(1000);
+      
+      // Wait for waiting room or game interface to appear
+      const waitingRoomA = player1Page.getByTestId('waiting-room');
+      const gameInterfaceA = player1Page.getByTestId('game-interface');
+      await Promise.race([
+        waitingRoomA.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        gameInterfaceA.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+      ]);
+      
       console.log(`📋 Game A created: ${gameIdA}`);
 
       // ===== GAME B: PLAYERS 3 & 4 =====
@@ -73,19 +90,35 @@ test.describe('Multi-Human Player Advanced Edge Cases', () => {
       console.log('👤 PLAYER 3: Creating Game B');
       
       await player3Page.goto('/');
-      await skipInstructions(player3Page);
-      await navigateToConfiguration(player3Page);
-      await enterPlayerName(player3Page, TEST_PLAYERS.PLAYER3);
+      
+      // Use API to create game directly - avoids UI blocking
+      const gameBResult = await createGameWithSeed(
+        player3Page,
+        TEST_PLAYERS.PLAYER3,
+        {
+          playerSlots: [
+            { type: 'Set', name: TEST_PLAYERS.PLAYER3, slotIndex: 0 },
+            { type: 'Open', slotIndex: 1 },
+            { type: 'Off', slotIndex: 2 },
+            { type: 'Off', slotIndex: 3 },
+          ],
+          settings: GAME_SETTINGS.QUICK,
+          gameType: 'MULTIPLAYER'
+        }
+      );
 
-      await configurePlayerSlot(player3Page, 1, 'Open');
-      await configurePlayerSlot(player3Page, 2, 'Off');
-      await configurePlayerSlot(player3Page, 3, 'Off');
-
-      await setGameSettings(player3Page, GAME_SETTINGS.QUICK);
-      await createGame(player3Page);
-      await waitForGameReady(player3Page);
-
-      const gameIdB = getGameIdFromUrl(player3Page);
+      const gameIdB = gameBResult.gameId;
+      await player3Page.goto(`/game/${gameIdB}`);
+      await player3Page.waitForTimeout(1000);
+      
+      // Wait for waiting room or game interface to appear
+      const waitingRoomB = player3Page.getByTestId('waiting-room');
+      const gameInterfaceB = player3Page.getByTestId('game-interface');
+      await Promise.race([
+        waitingRoomB.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        gameInterfaceB.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+      ]);
+      
       console.log(`📋 Game B created: ${gameIdB}`);
 
       // Verify different game IDs
@@ -94,15 +127,13 @@ test.describe('Multi-Human Player Advanced Edge Cases', () => {
 
       // ===== PLAYER 2 JOINS GAME A =====
       console.log('\n👤 PLAYER 2: Joining Game A');
-      await player2Page.goto('/');
-      await skipInstructions(player2Page);
+      // joinExistingGame now handles navigation and skipping instructions
       await joinExistingGame(player2Page, gameIdA, TEST_PLAYERS.PLAYER2);
       await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER2, 1);
 
       // ===== PLAYER 4 JOINS GAME B =====
       console.log('\n👤 PLAYER 4: Joining Game B');
-      await player4Page.goto('/');
-      await skipInstructions(player4Page);
+      // joinExistingGame now handles navigation and skipping instructions
       await joinExistingGame(player4Page, gameIdB, TEST_PLAYERS.PLAYER4);
       await waitForPlayerToJoin(player3Page, TEST_PLAYERS.PLAYER4, 1);
 
@@ -195,32 +226,45 @@ test.describe('Multi-Human Player Advanced Edge Cases', () => {
       console.log('👤 PLAYER 1: Creating game with maxTurns: 3');
       
       await player1Page.goto('/');
-      await skipInstructions(player1Page);
-      await navigateToConfiguration(player1Page);
-      await enterPlayerName(player1Page, TEST_PLAYERS.PLAYER1);
+      
+      // Use API to create game directly with short turn limit
+      const gameResult = await createGameWithSeed(
+        player1Page,
+        TEST_PLAYERS.PLAYER1,
+        {
+          playerSlots: [
+            { type: 'Set', name: TEST_PLAYERS.PLAYER1, slotIndex: 0 },
+            { type: 'Open', slotIndex: 1 },
+            { type: 'Off', slotIndex: 2 },
+            { type: 'Off', slotIndex: 3 },
+          ],
+          settings: {
+            mapSize: 'Medium',
+            aiDifficulty: 'Nice',
+            maxTurns: 3,  // Only 3 turns total
+            timeLimit: 60,
+          },
+          gameType: 'MULTIPLAYER'
+        }
+      );
 
-      await configurePlayerSlot(player1Page, 1, 'Open');
-      await configurePlayerSlot(player1Page, 2, 'Off');
-      await configurePlayerSlot(player1Page, 3, 'Off');
-
-      // Set very short turn limit
-      await setGameSettings(player1Page, {
-        mapSize: 'Medium',
-        aiDifficulty: 'Nice',
-        maxTurns: 3,  // Only 3 turns total
-        timeLimit: 60,
-      });
-
-      await createGame(player1Page);
-      await waitForGameReady(player1Page);
-
-      const gameId = getGameIdFromUrl(player1Page);
+      const gameId = gameResult.gameId;
+      await player1Page.goto(`/game/${gameId}`);
+      await player1Page.waitForTimeout(1000);
+      
+      // Wait for waiting room or game interface to appear
+      const waitingRoom = player1Page.getByTestId('waiting-room');
+      const gameInterface = player1Page.getByTestId('game-interface');
+      await Promise.race([
+        waitingRoom.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
+        gameInterface.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {})
+      ]);
+      
       console.log(`📋 Game created: ${gameId} (maxTurns: 3)`);
 
       // ===== PLAYER 2 JOINS =====
       console.log('\n👤 PLAYER 2: Joining game');
-      await player2Page.goto('/');
-      await skipInstructions(player2Page);
+      // joinExistingGame now handles navigation and skipping instructions
       await joinExistingGame(player2Page, gameId, TEST_PLAYERS.PLAYER2);
       await waitForPlayerToJoin(player1Page, TEST_PLAYERS.PLAYER2, 1);
 

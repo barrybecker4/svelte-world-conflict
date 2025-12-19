@@ -208,18 +208,70 @@ export async function createGame(page: Page) {
  * Wait for game to be ready (either waiting room or active game)
  */
 export async function waitForGameReady(page: Page) {
-  // Wait for URL to change to game page
-  await page.waitForURL(/\/game\/[a-zA-Z0-9-]+/, { timeout: TIMEOUTS.GAME_LOAD });
+  const startTime = Date.now();
   
-  // Wait for either waiting room or game interface to load
-  const waitingRoom = page.getByTestId('waiting-room');
-  const gameInterface = page.getByTestId('game-interface');
-  
-  // Wait for one of them to be visible
-  await Promise.race([
-    expect(waitingRoom).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD }),
-    expect(gameInterface).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD })
-  ]);
+  try {
+    // Wait for URL to change to game page
+    console.log('  ⏳ Waiting for URL to change to game page...');
+    await page.waitForURL(/\/game\/[a-zA-Z0-9-]+/, { timeout: TIMEOUTS.GAME_LOAD });
+    const url = page.url();
+    console.log(`  ✓ URL changed to: ${url}`);
+    
+    // Wait for either waiting room or game interface to load
+    const waitingRoom = page.getByTestId('waiting-room');
+    const gameInterface = page.getByTestId('game-interface');
+    
+    console.log('  ⏳ Waiting for waiting room or game interface...');
+    
+    // Use a more robust approach with explicit timeout handling
+    const result = await Promise.race([
+      (async () => {
+        try {
+          await expect(waitingRoom).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD });
+          return 'waiting-room';
+        } catch (e) {
+          return null;
+        }
+      })(),
+      (async () => {
+        try {
+          await expect(gameInterface).toBeVisible({ timeout: TIMEOUTS.GAME_LOAD });
+          return 'game-interface';
+        } catch (e) {
+          return null;
+        }
+      })(),
+      // Add a timeout to prevent infinite hanging
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), TIMEOUTS.GAME_LOAD))
+    ]);
+    
+    if (result === 'timeout') {
+      // Check what's actually on the page
+      const bodyText = await page.locator('body').textContent().catch(() => 'Could not read page');
+      const hasWaitingRoom = await waitingRoom.isVisible().catch(() => false);
+      const hasGameInterface = await gameInterface.isVisible().catch(() => false);
+      
+      console.error(`  ❌ Timeout waiting for game to load. Page state:`);
+      console.error(`     - Waiting room visible: ${hasWaitingRoom}`);
+      console.error(`     - Game interface visible: ${hasGameInterface}`);
+      console.error(`     - Page content preview: ${bodyText?.substring(0, 200)}...`);
+      
+      throw new Error(`Game did not load within ${TIMEOUTS.GAME_LOAD}ms. URL: ${url}`);
+    }
+    
+    if (result === 'waiting-room') {
+      console.log('  ✓ Waiting room loaded');
+    } else if (result === 'game-interface') {
+      console.log('  ✓ Game interface loaded');
+    }
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`  ✓ Game ready (took ${elapsed}ms)`);
+  } catch (error) {
+    const elapsed = Date.now() - startTime;
+    console.error(`  ❌ Error waiting for game to load (after ${elapsed}ms):`, error);
+    throw error;
+  }
 }
 
 /**
@@ -266,7 +318,24 @@ export async function joinExistingGame(
 ): Promise<void> {
   console.log(`🔗 ${playerName} joining game ${gameId}`);
   
+  // Navigate to home page first to establish context
+  console.log(`  🔄 Navigating to home page...`);
+  await page.goto('/');
+  
+  // Skip instructions if they appear
+  try {
+    const instructionsModal = page.getByTestId('instructions-modal');
+    const isVisible = await instructionsModal.isVisible({ timeout: 2000 }).catch(() => false);
+    if (isVisible) {
+      console.log(`  ⏭️  Skipping instructions...`);
+      await skipInstructionsQuick(page);
+    }
+  } catch (error) {
+    // Instructions might not be visible, that's ok
+  }
+  
   // Call the join API
+  console.log(`  📡 Calling join API...`);
   const joinResponse = await page.evaluate(async ({ gameId, playerName }) => {
     const response = await fetch(`/api/game/${gameId}/join`, {
       method: 'POST',
@@ -284,18 +353,10 @@ export async function joinExistingGame(
   
   console.log(`  ✓ API join successful, slot: ${joinResponse.player.slotIndex}`);
   
-  // Navigate to the game page first
-  console.log(`  🔄 Navigating to /game/${gameId}`);
-  await page.goto(`/game/${gameId}`);
-  
-  // NOW save player data to localStorage on the game page
+  // Save player data to localStorage BEFORE navigating to game page
   // NOTE: The key must be 'game_' prefix (not 'gameCreator_') to match clientStorage.ts
+  console.log(`  💾 Saving player data to localStorage...`);
   await page.evaluate(({ gameId, player }) => {
-    console.log('Setting localStorage:', `game_${gameId}`, {
-      playerId: player.slotIndex.toString(),
-      playerSlotIndex: player.slotIndex,
-      playerName: player.name
-    });
     localStorage.setItem(`game_${gameId}`, JSON.stringify({
       playerId: player.slotIndex.toString(),
       playerSlotIndex: player.slotIndex,
@@ -305,21 +366,33 @@ export async function joinExistingGame(
   
   console.log(`  ✓ Saved player data to localStorage`);
   
-  // Reload the page so it picks up the localStorage
-  console.log(`  🔄 Reloading page to apply localStorage...`);
-  await page.reload({ waitUntil: 'networkidle' });
+  // Now navigate to the game page
+  console.log(`  🔄 Navigating to /game/${gameId}...`);
+  await page.goto(`/game/${gameId}`);
+  
+  // Handle name input screen if it appears (shouldn't if localStorage is set correctly)
+  try {
+    const nameInput = page.getByTestId('player-name-input');
+    const isNameInputVisible = await nameInput.isVisible({ timeout: 2000 }).catch(() => false);
+    if (isNameInputVisible) {
+      console.log(`  ⚠️  Name input screen appeared, entering name...`);
+      await enterPlayerName(page, playerName);
+      // Wait a bit for the page to process
+      await page.waitForTimeout(500);
+    }
+  } catch (error) {
+    // Name input might not appear, that's ok if localStorage is set
+  }
   
   // Wait for page to settle
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
   
   // Wait for waiting room or game interface to appear
   // The game might auto-start if all slots are now filled
   const waitingRoom = page.getByTestId('waiting-room');
   const gameInterface = page.getByTestId('game-interface');
-  const loadingState = page.locator('text=/loading/i').first();
   
-  // First wait for loading to appear or skip if already past loading
-  console.log(`  ⏳ Waiting for page to load...`);
+  console.log(`  ⏳ Waiting for waiting room or game interface...`);
   
   try {
     // Try to wait for either waiting room or game interface
@@ -333,15 +406,25 @@ export async function joinExistingGame(
     const inGame = await gameInterface.isVisible().catch(() => false);
     
     if (inGame) {
-      console.log(`✅ ${playerName} joined - game auto-started`);
+      console.log(`  ✅ ${playerName} joined - game auto-started`);
     } else if (inWaitingRoom) {
-      console.log(`✅ ${playerName} joined waiting room`);
+      console.log(`  ✅ ${playerName} joined waiting room`);
     }
   } catch (error) {
     // Debug: What's actually on the page?
     const bodyText = await page.locator('body').textContent().catch(() => 'Could not read page');
-    console.error(`❌ Failed to load game page for ${playerName}`);
-    console.error(`Page content preview: ${bodyText?.substring(0, 200)}...`);
+    const currentUrl = page.url();
+    console.error(`  ❌ Failed to load game page for ${playerName}`);
+    console.error(`  Current URL: ${currentUrl}`);
+    console.error(`  Page content preview: ${bodyText?.substring(0, 300)}...`);
+    
+    // Check if there's an error message on the page
+    const errorElement = await page.locator('text=/error|not found|rejoin/i').first().isVisible().catch(() => false);
+    if (errorElement) {
+      const errorText = await page.locator('text=/error|not found|rejoin/i').first().textContent().catch(() => 'Unknown error');
+      console.error(`  Error message: ${errorText}`);
+    }
+    
     throw error;
   }
 }
@@ -502,10 +585,27 @@ export async function createGameWithSeed(
       throw new Error(error.error || `Game creation failed: ${response.status}`);
     }
     
-    return await response.json();
+    const data = await response.json() as Record<string, any>;
+    // Return the full response for debugging
+    return {
+      ...data,
+      _debug_keys: Object.keys(data),
+      _debug_hasGameState: !!data.gameState,
+      _debug_gameStateType: typeof data.gameState,
+      _debug_gameStateKeys: data.gameState ? Object.keys(data.gameState as Record<string, any>) : []
+    };
   }, { playerName, config, seed }) as any;
   
   console.log(`✅ Game created: ${response.gameId} with seed: ${seed || 'random'}`);
+  console.log('Response structure:', { 
+    hasGameId: !!response.gameId, 
+    hasPlayer: !!response.player, 
+    hasGameState: !!response.gameState,
+    debugKeys: response._debug_keys,
+    debugHasGameState: response._debug_hasGameState,
+    debugGameStateType: response._debug_gameStateType,
+    debugGameStateKeys: response._debug_gameStateKeys
+  });
   
   // Save player data to localStorage
   await page.evaluate(({ gameId, player }) => {
