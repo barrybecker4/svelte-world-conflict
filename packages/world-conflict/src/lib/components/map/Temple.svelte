@@ -21,6 +21,7 @@
   $: darkColor = colorScheme.dark;
   $: lightColor = colorScheme.light;
   $: discColor = colorScheme.disc;
+  $: templeAttributes = isPlayerOwned ? { tabindex: 0 } : {};
 
   function handleClick(event: MouseEvent) {
     event.stopPropagation();
@@ -64,13 +65,12 @@
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<!-- svelte-ignore a11y-noninteractive-tabindex -->
 <g 
   class="temple-group" 
   class:clickable={isPlayerOwned}
   class:glowing={showGlow}
   role={isPlayerOwned ? "button" : "img"}
-  tabindex={isPlayerOwned ? 0 : -1}
+  {...templeAttributes}
   aria-label="Temple in region {regionIndex + 1}, level {upgradeLevel}"
   on:click={handleClick}
   on:keydown={handleKeyDown}

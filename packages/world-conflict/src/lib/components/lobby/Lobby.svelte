@@ -92,7 +92,7 @@
   {:else}
     <div class="lobby-container">
       <div class="lobby-header">
-        <h1>Select Game (or create new one)
+        <h1>Select Game (or configure new one)
           <br />
           <span class="title-subheader">
             Click on an open player slot to join a game

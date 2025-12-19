@@ -6,7 +6,6 @@
 
   export let playerSlot: PlayerSlot;
   export let index: number;
-  export let playerName: string = '';
 
   const slotTypes = ['Off', 'Set', 'Open', 'AI'];
   

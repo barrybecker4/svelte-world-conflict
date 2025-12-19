@@ -125,7 +125,6 @@
     <PlayerConfiguration
       playerSlot={slot}
       {index}
-      {playerName}
       on:slotUpdated={handleSlotUpdated}
       on:nameChange={handlePlayerNameChange}
     />

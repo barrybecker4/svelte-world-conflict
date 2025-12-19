@@ -21,9 +21,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         logger.debug("gameRecord gameId = ", gameRecord.gameId);
         logger.debug("gameRecord.worldConflictState exists:", !!gameRecord.worldConflictState);
         logger.debug("gameRecord.worldConflictState type:", typeof gameRecord.worldConflictState);
-        if (gameRecord.worldConflictState) {
-            logger.debug("gameRecord.worldConflictState keys:", Object.keys(gameRecord.worldConflictState));
-        }
         await save(gameRecord, platform!);
 
         // Find the creator player by matching the playerName from the request
