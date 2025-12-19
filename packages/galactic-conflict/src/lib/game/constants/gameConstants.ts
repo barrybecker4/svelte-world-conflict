@@ -10,8 +10,8 @@ export const GALACTIC_CONSTANTS = {
     MIN_PLANETS: 5,
     /** Maximum number of planets in a galaxy */
     MAX_PLANETS: 100,
-    /** Default number of planets */
-    DEFAULT_PLANET_COUNT: 10,
+    /** Default number of neutral planets */
+    DEFAULT_NEUTRAL_PLANET_COUNT: 8,
 
     /** Minimum planet volume (determines size and production) */
     PLANET_VOLUME_MIN: 5,

@@ -12,7 +12,7 @@
     let showSoundTestModal = false;
 
     // Game settings
-    let planetCount = GALACTIC_CONSTANTS.DEFAULT_PLANET_COUNT;
+    let neutralPlanetCount = GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT;
     let gameDuration = GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES;
     let armadaSpeed = GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED;
     let neutralShipsMin = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN;
@@ -94,7 +94,7 @@
         }
 
         const settings: GameSettings = {
-            planetCount,
+            neutralPlanetCount,
             armadaSpeed,
             gameDuration,
             stateBroadcastInterval: GALACTIC_CONSTANTS.DEFAULT_STATE_BROADCAST_INTERVAL_MS,
@@ -129,19 +129,19 @@
                 <h2>Galaxy Settings</h2>
                 
                 <div class="setting-row">
-                    <label for="planet-count">
-                        <span class="label-text">Planets</span>
-                        <span class="label-value">{planetCount}</span>
+                    <label for="neutral-planet-count">
+                        <span class="label-text">Neutral Planets</span>
+                        <span class="label-value">{neutralPlanetCount}</span>
                     </label>
                     <input
                         type="range"
-                        id="planet-count"
-                        bind:value={planetCount}
-                        min={GALACTIC_CONSTANTS.MIN_PLANETS}
-                        max={GALACTIC_CONSTANTS.MAX_PLANETS}
-                        step="5"
+                        id="neutral-planet-count"
+                        bind:value={neutralPlanetCount}
+                        min={0}
+                        max={GALACTIC_CONSTANTS.MAX_PLANETS - playerSlots.length}
+                        step="1"
                     />
-                    <span class="tooltip">Total planets in the galaxy. More planets = larger map with more expansion opportunities.</span>
+                    <span class="tooltip">Number of neutral planets to conquer. Total planets = players ({playerSlots.length}) + neutral planets ({neutralPlanetCount}).</span>
                 </div>
 
                 <div class="setting-row">

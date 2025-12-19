@@ -131,6 +131,9 @@
                     <div class="games-list">
                         <h3>Open Games ({games.length})</h3>
                         {#each games as game}
+                            {@const playerCount = game.players?.length || game.playerSlots?.length || 0}
+                            {@const neutralPlanets = game.settings?.neutralPlanetCount ?? (game.settings?.planetCount ? game.settings.planetCount - playerCount : 8)}
+                            {@const totalPlanets = playerCount + neutralPlanets}
                             <div class="game-card">
                                 <div class="game-info">
                                     <span class="game-id">Game: {game.gameId}</span>
@@ -139,7 +142,7 @@
                                     </span>
                                 </div>
                                 <div class="settings-preview">
-                                    <span>🪐 {game.settings?.planetCount || 30} planets</span>
+                                    <span>🪐 {totalPlanets} planets ({neutralPlanets} neutral)</span>
                                     <span>⏱️ {game.settings?.gameDuration || 15}min</span>
                                 </div>
                                 <div class="slots">

@@ -253,7 +253,8 @@ export interface PendingGameConfiguration {
 }
 
 export interface GameSettings {
-    planetCount: number;
+    /** Number of neutral planets (total planets = players + neutralPlanetCount) */
+    neutralPlanetCount: number;
     armadaSpeed: number;
     gameDuration: number;
     stateBroadcastInterval: number;
@@ -319,7 +320,6 @@ export type PlayerAction = SendArmadaAction | BuildShipsAction;
 export interface CreateGameRequest {
     playerName: string;
     gameType: string;
-    planetCount: number;
     armadaSpeed: number;
     gameDuration: number;
     playerSlots: PlayerSlot[];

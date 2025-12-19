@@ -57,8 +57,14 @@ function createGameRecord(body: any): GameRecord {
     const gameId = generateGameId();
 
     // Merge settings with defaults
+    // Default neutral planets: if old planetCount exists, calculate neutral from it (for backward compatibility)
+    // Otherwise use default
+    const defaultNeutralPlanets = settings.planetCount 
+        ? Math.max(0, settings.planetCount - 2) // Legacy: assume 2 players
+        : GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT;
+    
     const gameSettings: GameSettings = {
-        planetCount: settings.planetCount ?? GALACTIC_CONSTANTS.DEFAULT_PLANET_COUNT,
+        neutralPlanetCount: settings.neutralPlanetCount ?? defaultNeutralPlanets,
         armadaSpeed: settings.armadaSpeed ?? GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED,
         gameDuration: settings.gameDuration ?? GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES,
         stateBroadcastInterval: settings.stateBroadcastInterval ?? GALACTIC_CONSTANTS.DEFAULT_STATE_BROADCAST_INTERVAL_MS,

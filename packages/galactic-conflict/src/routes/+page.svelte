@@ -23,7 +23,6 @@
     const result = await GameApiClient.createGame({
       playerName: humanPlayer.name,
       gameType: 'MULTIPLAYER',
-      planetCount: gameConfig.settings.planetCount,
       armadaSpeed: gameConfig.settings.armadaSpeed,
       gameDuration: gameConfig.settings.gameDuration,
       playerSlots: gameConfig.playerSlots,

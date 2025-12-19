@@ -107,6 +107,9 @@
     $: playerSlots = game?.pendingConfiguration?.playerSlots || [];
     $: openSlots = playerSlots.filter(s => s.type === 'Open').length;
     $: filledSlots = playerSlots.filter(s => s.type === 'Set' || s.type === 'AI').length;
+    $: activePlayerCount = playerSlots.filter(s => s.type === 'Set' || s.type === 'AI').length;
+    $: neutralPlanets = game?.pendingConfiguration?.settings?.neutralPlanetCount ?? (game?.pendingConfiguration?.settings?.planetCount ? game.pendingConfiguration.settings.planetCount - activePlayerCount : 8);
+    $: totalPlanets = activePlayerCount + neutralPlanets;
 </script>
 
 <div class="waiting-room-overlay">
@@ -165,7 +168,7 @@
                 <div class="settings-grid">
                     <div class="setting">
                         <span class="setting-label">Planets</span>
-                        <span class="setting-value">{game?.pendingConfiguration?.settings?.planetCount || 30}</span>
+                        <span class="setting-value">{totalPlanets} ({neutralPlanets} neutral)</span>
                     </div>
                     <div class="setting">
                         <span class="setting-label">Duration</span>
