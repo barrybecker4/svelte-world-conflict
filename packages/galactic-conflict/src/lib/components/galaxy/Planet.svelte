@@ -30,6 +30,14 @@
         on:mousedown
         on:dblclick
     >
+        <!-- Invisible hit area circle - ensures consistent clickable area for all planets -->
+        <circle
+            r={radius + 8}
+            fill="transparent"
+            stroke="none"
+            class="hit-area"
+        />
+
         <!-- Movable indicator - shows when player can move ships from this planet -->
         {#if canMove && !isSelected}
             <circle
@@ -127,6 +135,10 @@
 
     .planet.canMove:not(.selected) {
         cursor: pointer;
+    }
+
+    .hit-area {
+        pointer-events: all;
     }
 
     .ship-count {
