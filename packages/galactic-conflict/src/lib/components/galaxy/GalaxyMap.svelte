@@ -138,12 +138,19 @@
     function updateDragPosition(event: MouseEvent) {
         if (!svgElement) return;
         
-        const rect = svgElement.getBoundingClientRect();
-        const scaleX = width / rect.width;
-        const scaleY = height / rect.height;
+        // Use SVG's built-in coordinate transformation to handle viewBox and preserveAspectRatio correctly
+        const point = svgElement.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
         
-        dragCurrentX = (event.clientX - rect.left) * scaleX;
-        dragCurrentY = (event.clientY - rect.top) * scaleY;
+        // Transform from screen coordinates to SVG coordinates
+        const screenCTM = svgElement.getScreenCTM();
+        if (!screenCTM) return;
+        
+        const svgPoint = point.matrixTransform(screenCTM.inverse());
+        
+        dragCurrentX = svgPoint.x;
+        dragCurrentY = svgPoint.y;
     }
 
     function findPlanetAtPosition(x: number, y: number): PlanetType | undefined {
