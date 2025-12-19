@@ -145,7 +145,10 @@
         const currentPlayer = get(currentPlayerId);
         const currentState = get(gameState);
 
-        if (currentPlayer === null || !currentState) return;
+        if (currentPlayer === null || !currentState || hasResigned) return;
+        
+        // Check if player is eliminated (resigned or defeated)
+        if (currentState.eliminatedPlayers?.includes(currentPlayer)) return;
 
         // Resolve planets from current gameState to ensure fresh references
         const freshSourcePlanet = currentState.planets.find(p => p.id === source.id);
@@ -164,7 +167,10 @@
         const currentPlayer = get(currentPlayerId);
         const currentState = get(gameState);
 
-        if (currentPlayer === null || !currentState) return;
+        if (currentPlayer === null || !currentState || hasResigned) return;
+        
+        // Check if player is eliminated (resigned or defeated)
+        if (currentState.eliminatedPlayers?.includes(currentPlayer)) return;
 
         // Resolve planet from current gameState to ensure fresh reference
         const freshPlanet = currentState.planets.find(p => p.id === planet.id);
@@ -344,6 +350,7 @@
                     gameState={$gameState}
                     currentPlayerId={$currentPlayerId}
                     selectedPlanetId={$selectedPlanetId}
+                    {hasResigned}
                     onPlanetClick={handlePlanetClick}
                     on:dragSend={handleDragSend}
                     on:doubleClick={handlePlanetDoubleClick}

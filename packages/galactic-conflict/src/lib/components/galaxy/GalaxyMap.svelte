@@ -15,6 +15,7 @@
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
     export let selectedPlanetId: number | null = null;
+    export let hasResigned: boolean = false;
     export let onPlanetClick: (planet: PlanetType) => void = () => {};
 
     const dispatch = createEventDispatcher<{
@@ -93,6 +94,14 @@
     }
 
     function handlePlanetMouseDown(planet: PlanetType, event: MouseEvent) {
+        // Don't allow dragging if player has resigned
+        if (hasResigned) {
+            return;
+        }
+        // Don't allow dragging if player is eliminated (resigned or defeated)
+        if (currentPlayerId !== null && gameState.eliminatedPlayers?.includes(currentPlayerId)) {
+            return;
+        }
         // Only allow dragging from owned planets with ships
         if (planet.ownerId !== currentPlayerId || planet.ships <= 0) {
             return;
@@ -225,6 +234,15 @@
     }
 
     function handlePlanetDoubleClick(planet: PlanetType) {
+        // Don't allow building if player has resigned
+        if (hasResigned) {
+            return;
+        }
+        // Don't allow building if player is eliminated (resigned or defeated)
+        if (currentPlayerId !== null && gameState.eliminatedPlayers?.includes(currentPlayerId)) {
+            return;
+        }
+        
         // Cancel any pending drag start or active drag when double-clicking
         if (dragStartTimeout) {
             clearTimeout(dragStartTimeout);
