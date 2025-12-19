@@ -8,6 +8,7 @@
 import { writable, get, type Writable } from 'svelte/store';
 import type { BattleReplay, BattleReplayRound } from '$lib/game/entities/gameTypes';
 import { audioSystem, SOUNDS } from '$lib/client/audio';
+import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 /**
  * Animation state for displaying a battle
@@ -87,7 +88,7 @@ async function playBattleAnimation(replayId: string): Promise<void> {
     audioSystem.playSound(SOUNDS.BATTLE_ALARM);
 
     // Initial pause to show the battle starting
-    await delay(600);
+    await delay(600 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED);
 
     // Play each round
     for (let i = 0; i < replay.rounds.length; i++) {
@@ -104,7 +105,7 @@ async function playBattleAnimation(replayId: string): Promise<void> {
     await showOutcome(replayId);
 
     // Keep outcome visible for a bit, then clean up
-    await delay(2500);
+    await delay(2500 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED);
     removeBattleAnimation(replayId);
 }
 
@@ -128,7 +129,7 @@ async function playRound(replayId: string, round: BattleReplayRound, roundIndex:
     });
 
     // Wait for dice to appear
-    await delay(400);
+    await delay(400 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED);
 
     // Show casualties and update ship counts
     battleAnimations.update(map => {
@@ -149,15 +150,16 @@ async function playRound(replayId: string, round: BattleReplayRound, roundIndex:
     if (totalCasualties > 0) {
         // Play up to 3 destruction sounds, staggered
         const soundCount = Math.min(totalCasualties, 3);
+        const soundDelay = 80 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED;
         for (let i = 0; i < soundCount; i++) {
             setTimeout(() => {
                 audioSystem.playSound(SOUNDS.SHIP_DESTROYED);
-            }, i * 80);
+            }, i * soundDelay);
         }
     }
 
     // Pause between rounds
-    await delay(500);
+    await delay(500 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED);
 }
 
 /**

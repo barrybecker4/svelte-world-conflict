@@ -125,6 +125,8 @@ export const GALACTIC_CONSTANTS = {
     BATTLE_ANIMATION_DURATION_MS: 500,
     /** Duration for planet selection glow (ms) */
     SELECTION_GLOW_DURATION_MS: 200,
+    /** Speed multiplier for battle replay animations (1.0 = normal speed, 2.0 = 2x faster, 0.5 = 2x slower) */
+    BATTLE_REPLAY_SPEED: 1.0,
 
     // ==================== SPECIAL VALUES ====================
 
