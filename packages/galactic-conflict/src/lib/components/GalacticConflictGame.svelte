@@ -267,8 +267,11 @@
             }
 
             showBuildShipsModal = false;
+            sourcePlanet = null;
         } catch (error) {
             logger.error('Failed to build ships:', error);
+            showBuildShipsModal = false;
+            sourcePlanet = null;
         }
     }
 
@@ -374,7 +377,10 @@
         currentPlayerId={$currentPlayerId}
         playerResources={$currentPlayerId !== null ? ($gameState.resourcesByPlayer?.[$currentPlayerId] ?? 0) : 0}
         on:build={handleBuildShips}
-        on:close={() => showBuildShipsModal = false}
+        on:close={() => {
+            showBuildShipsModal = false;
+            sourcePlanet = null;
+        }}
     />
 {/if}
 

@@ -31,6 +31,9 @@
     let dragCurrentX = 0;
     let dragCurrentY = 0;
     let svgElement: SVGSVGElement;
+    let dragStartTimeout: ReturnType<typeof setTimeout> | null = null;
+    let mouseDownX = 0;
+    let mouseDownY = 0;
 
     // Floating text messages
     interface FloatingText {
@@ -76,6 +79,11 @@
         if (animationFrame) {
             cancelAnimationFrame(animationFrame);
         }
+        // Clean up drag timeout
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+        }
+        cleanupDrag();
         // Clean up battle animations
         clearAllBattleAnimations();
     });
@@ -90,13 +98,49 @@
             return;
         }
 
-        isDragging = true;
+        // Store initial mouse position
+        mouseDownX = event.clientX;
+        mouseDownY = event.clientY;
+
+        // Delay drag start to allow double-click to be detected first
+        // If user moves mouse significantly before timeout, start drag immediately
+        dragStartTimeout = setTimeout(() => {
+            if (dragSourcePlanetId === planet.id) {
+                isDragging = true;
+                updateDragPosition(event);
+                document.addEventListener('mousemove', handleDocumentMouseMove);
+                document.addEventListener('mouseup', handleDocumentMouseUp);
+            }
+        }, 100); // delay to allow double-click detection
+
         dragSourcePlanetId = planet.id;
         updateDragPosition(event);
         
-        // Add document-level listeners for drag
-        document.addEventListener('mousemove', handleDocumentMouseMove);
+        // Add document-level listeners for mouse move/up to detect actual drag
+        document.addEventListener('mousemove', handleDocumentMouseMoveCheck);
         document.addEventListener('mouseup', handleDocumentMouseUp);
+    }
+
+    function handleDocumentMouseMoveCheck(event: MouseEvent) {
+        // Check if mouse has moved significantly (indicating a drag, not a click)
+        const moveThreshold = 5; // pixels
+        const dx = Math.abs(event.clientX - mouseDownX);
+        const dy = Math.abs(event.clientY - mouseDownY);
+        
+        if (dx > moveThreshold || dy > moveThreshold) {
+            // Mouse moved significantly - this is a drag, start it immediately
+            if (dragStartTimeout) {
+                clearTimeout(dragStartTimeout);
+                dragStartTimeout = null;
+            }
+            
+            if (!isDragging && dragSourcePlanetId !== null) {
+                isDragging = true;
+                updateDragPosition(event);
+                document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
+                document.addEventListener('mousemove', handleDocumentMouseMove);
+            }
+        }
     }
 
     function handleDocumentMouseMove(event: MouseEvent) {
@@ -105,6 +149,15 @@
     }
 
     function handleDocumentMouseUp(event: MouseEvent) {
+        // Clear the drag start timeout if it's still pending
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+        }
+
+        // Remove the move check listener
+        document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
+
         if (!isDragging || dragSourcePlanetId === null) {
             cleanupDrag();
             return;
@@ -132,9 +185,14 @@
     }
 
     function cleanupDrag() {
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+        }
         isDragging = false;
         dragSourcePlanetId = null;
         document.removeEventListener('mousemove', handleDocumentMouseMove);
+        document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
         document.removeEventListener('mouseup', handleDocumentMouseUp);
     }
 
@@ -167,6 +225,15 @@
     }
 
     function handlePlanetDoubleClick(planet: PlanetType) {
+        // Cancel any pending drag start or active drag when double-clicking
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+        }
+        if (isDragging) {
+            cleanupDrag();
+        }
+        
         if (planet.ownerId === currentPlayerId) {
             dispatch('doubleClick', { planet });
         }
