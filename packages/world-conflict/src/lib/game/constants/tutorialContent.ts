@@ -14,7 +14,7 @@ export interface TutorialCard {
  */
 export const TUTORIAL_CARDS: TutorialCard[] = [
   {
-    title: "Overview (1/7)",
+    title: "Overview (1/8)",
     icon: "🌍",
     content: [
       "This is a <strong>strategy game</strong> for up to <strong>4 human or AI players</strong>.",
@@ -23,7 +23,7 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
     image: "/gameplay_zoom.png"
   },
   {
-    title: "How to win (2/7)",
+    title: "How to win (2/8)",
     icon: "♛",
     content: [
       `The standard game lasts <strong>${GAME_CONSTANTS.STANDARD_MAX_TURNS} turns</strong>.`,
@@ -33,7 +33,7 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
     ]
   },
   {
-    title: "Temples (3/7)",
+    title: "Temples (3/8)",
     icon: "🏛️",
     content: [
       "Each player <strong>starts with one temple</strong> under their control.",
@@ -44,7 +44,28 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
     ]
   },
   {
-    title: "Soldiers (4/7)",
+    title: "Upgrades (4/8)",
+    icon: "✨",
+    content: [
+      `<strong>Elemental upgrades</strong> are purchased with <strong>faith</strong> (${SYMBOLS.FAITH}).`,
+      "There are <strong>2 levels</strong> of each temple upgrade type.",
+      "Instead of upgrading, you can use faith to <strong>recruit soldiers</strong>.",
+      "Each soldier you recruit in a turn gets <strong>more expensive</strong>.",
+      "If a region with an upgraded temple is defeated, the <strong>upgrade is lost with it</strong>."
+    ]
+  },
+  {
+    title: "Temple Elemental Upgrades (5/8)",
+    icon: "✨",
+    content: [
+      `<strong>Water</strong> - generates <strong>20% more</strong> ${SYMBOLS.FAITH} each turn (40% when level 2).`,
+      "<strong>Fire</strong> - always kills <strong>1</strong> defender (2 when level 2).",
+      "<strong>Earth</strong> - always kills <strong>1</strong> invader (2 when level 2).",
+      "<strong>Air</strong> - <strong>extra move</strong> per turn (2 extra moves when level 2)."
+    ]
+  },
+  {
+    title: "Soldiers (6/8)",
     icon: "⚔️",
     content: [
       "You have <strong>3 moves</strong> per turn.",
@@ -55,7 +76,7 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
     ]
   },
   {
-    title: "Combat (5/7)",
+    title: "Combat (7/8)",
     icon: "🎲",
     content: [
       "Combat is resolved with <strong>dice rolls</strong>.",
@@ -66,7 +87,7 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
     ]
   },
   {
-    title: "Income (6/7)",
+    title: "Income (8/8)",
     icon: "💰",
     content: [
       `Once you end your turn, new <strong>faith</strong>(${SYMBOLS.FAITH}) is generated.`,
@@ -74,17 +95,6 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
       "You gain 1 when you <strong>kill an enemy soldier</strong>, and 1 when your <strong>soldier dies defending</strong>."
     ]
   },
-  {
-    title: "Upgrades (7/7)",
-    icon: "✨",
-    content: [
-      `<strong>Elemental upgrades</strong> are purchased with <strong>faith</strong> (${SYMBOLS.FAITH}).`,
-      "There are <strong>2 levels</strong> of each upgrade type.",
-      "Instead of upgrading, you can use faith to <strong>recruit soldiers</strong>.",
-      "Each soldier you recruit in a turn gets <strong>more expensive</strong>.",
-      "If a region with an upgraded temple is defeated, the <strong>upgrade is lost with it</strong>."
-    ]
-  }
 ];
 
 export const TOTAL_TUTORIAL_CARDS = TUTORIAL_CARDS.length;
