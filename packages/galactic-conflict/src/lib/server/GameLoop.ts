@@ -73,11 +73,6 @@ export class GameLoop {
                 this.processArmadaArrival(event.payload as ArmadaArrivalPayload);
                 break;
 
-            case 'battle_round':
-                // Battle rounds are no longer scheduled - battles resolve immediately on armada arrival
-                logger.debug('Ignoring deprecated battle_round event');
-                break;
-
             case 'resource_tick':
                 this.processResourceTick(currentTime);
                 break;

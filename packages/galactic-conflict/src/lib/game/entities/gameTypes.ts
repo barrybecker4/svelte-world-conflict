@@ -62,36 +62,6 @@ export interface Armada {
     arrivalTime: number;
 }
 
-// ==================== BATTLE ====================
-
-export interface BattleParticipant {
-    playerId: number;
-    ships: number;
-    isDefender: boolean;
-    arrivedAt: number;
-}
-
-export interface BattleRoundResult {
-    attackerPlayerId: number;
-    defenderPlayerId: number;
-    attackerLosses: number;
-    defenderLosses: number;
-    attackerRolls: number[];
-    defenderRolls: number[];
-    timestamp: number;
-}
-
-export interface Battle {
-    id: string;
-    planetId: number;
-    participants: BattleParticipant[];
-    rounds: BattleRoundResult[];
-    status: 'active' | 'resolved';
-    startTime: number;
-    resolvedTime?: number;
-    winnerId?: number | null; // null if planet becomes neutral
-}
-
 // ==================== BATTLE REPLAY (for client animation) ====================
 
 /**
@@ -184,7 +154,6 @@ export interface PlayerEliminationEvent {
 
 export type GameEventType = 
     | 'armada_arrival'
-    | 'battle_round'
     | 'resource_tick'
     | 'game_end';
 
@@ -193,15 +162,11 @@ export interface GameEvent {
     type: GameEventType;
     /** Unix timestamp when this event should be processed */
     scheduledTime: number;
-    payload: ArmadaArrivalPayload | BattleRoundPayload | ResourceTickPayload | GameEndPayload;
+    payload: ArmadaArrivalPayload | ResourceTickPayload | GameEndPayload;
 }
 
 export interface ArmadaArrivalPayload {
     armadaId: string;
-}
-
-export interface BattleRoundPayload {
-    battleId: string;
 }
 
 export interface ResourceTickPayload {
@@ -233,8 +198,6 @@ export interface GalacticGameStateData {
     players: Player[];
     /** All in-transit armadas */
     armadas: Armada[];
-    /** All active battles */
-    activeBattles: Battle[];
     /** Scheduled future events */
     eventQueue: GameEvent[];
     
@@ -329,7 +292,6 @@ export interface StateUpdate {
     gameTime: number; // Elapsed time in milliseconds
     planets: PlanetUpdate[];
     armadas: Armada[];
-    activeBattles: Battle[];
     recentEvents: GameEvent[];
     eliminatedPlayers: number[];
     endResult?: Player | 'DRAWN_GAME' | null;

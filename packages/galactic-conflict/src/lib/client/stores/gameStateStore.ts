@@ -3,7 +3,7 @@
  */
 
 import { writable, derived, type Writable, type Readable } from 'svelte/store';
-import type { GalacticGameStateData, Planet, Armada, Battle, Player } from '$lib/game/entities/gameTypes';
+import type { GalacticGameStateData, Planet, Armada, Player } from '$lib/game/entities/gameTypes';
 
 /**
  * Main game state store
@@ -100,17 +100,6 @@ export const myArmadas: Readable<Armada[]> = derived(
     ([$gameState, $currentPlayerId]) => {
         if (!$gameState || $currentPlayerId === null) return [];
         return $gameState.armadas.filter(a => a.ownerId === $currentPlayerId);
-    }
-);
-
-/**
- * Active battles
- */
-export const activeBattles: Readable<Battle[]> = derived(
-    gameState,
-    ($gameState) => {
-        if (!$gameState) return [];
-        return $gameState.activeBattles.filter(b => b.status === 'active');
     }
 );
 

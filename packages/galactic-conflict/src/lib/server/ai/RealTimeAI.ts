@@ -98,9 +98,6 @@ export class RealTimeAI {
 
         for (const target of allPlanets) {
             if (target.ownerId === player.slotIndex) continue;
-            
-            // Skip if battle already in progress
-            if (this.gameState.getBattleAtPlanet(target.id)) continue;
 
             // Calculate score based on:
             // - Lower enemy ships = higher score

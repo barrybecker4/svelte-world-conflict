@@ -7,7 +7,6 @@ import type {
     Planet,
     Player,
     Armada,
-    Battle,
     BattleReplay,
     ReinforcementEvent,
     ConquestEvent,
@@ -35,7 +34,6 @@ export class GalacticGameState {
         if (!this.state.planets) this.state.planets = [];
         if (!this.state.players) this.state.players = [];
         if (!this.state.armadas) this.state.armadas = [];
-        if (!this.state.activeBattles) this.state.activeBattles = [];
         if (!this.state.eventQueue) this.state.eventQueue = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
         if (!this.state.recentBattleReplays) this.state.recentBattleReplays = [];
@@ -103,7 +101,6 @@ export class GalacticGameState {
             planets,
             players,
             armadas: [],
-            activeBattles: [],
             eventQueue: [],
             resourcesByPlayer,
             recentBattleReplays: [],
@@ -164,7 +161,6 @@ export class GalacticGameState {
     get planets(): Planet[] { return [...this.state.planets]; }
     get players(): Player[] { return [...this.state.players]; }
     get armadas(): Armada[] { return [...this.state.armadas]; }
-    get activeBattles(): Battle[] { return [...this.state.activeBattles]; }
     get eventQueue(): GameEvent[] { return [...this.state.eventQueue]; }
     get eliminatedPlayers(): number[] { return [...this.state.eliminatedPlayers]; }
     get recentBattleReplays(): BattleReplay[] { return [...this.state.recentBattleReplays]; }
@@ -327,30 +323,6 @@ export class GalacticGameState {
 
     getArmadasForPlayer(slotIndex: number): Armada[] {
         return this.state.armadas.filter(a => a.ownerId === slotIndex);
-    }
-
-    // ==================== BATTLE MANAGEMENT ====================
-
-    addBattle(battle: Battle): void {
-        // Note: Battles are now resolved immediately by BattleManager
-        // This method is kept for compatibility but battles are no longer scheduled
-        this.state.activeBattles.push(battle);
-    }
-
-    getBattle(battleId: string): Battle | undefined {
-        return this.state.activeBattles.find(b => b.id === battleId);
-    }
-
-    getBattleAtPlanet(planetId: number): Battle | undefined {
-        return this.state.activeBattles.find(b => b.planetId === planetId && b.status === 'active');
-    }
-
-    removeBattle(battleId: string): Battle | undefined {
-        const index = this.state.activeBattles.findIndex(b => b.id === battleId);
-        if (index >= 0) {
-            return this.state.activeBattles.splice(index, 1)[0];
-        }
-        return undefined;
     }
 
     // ==================== BATTLE REPLAYS ====================
@@ -535,7 +507,6 @@ export class GalacticGameState {
             gameTime: now - this.state.startTime,
             planets: planetUpdates,
             armadas: [...this.state.armadas],
-            activeBattles: [...this.state.activeBattles],
             recentEvents,
             eliminatedPlayers: [...this.state.eliminatedPlayers],
             endResult: this.state.endResult,
@@ -552,11 +523,6 @@ export class GalacticGameState {
             planets: this.state.planets.map(p => ({ ...p })),
             players: this.state.players.map(p => ({ ...p })),
             armadas: this.state.armadas.map(a => ({ ...a })),
-            activeBattles: this.state.activeBattles.map(b => ({
-                ...b,
-                participants: b.participants.map(p => ({ ...p })),
-                rounds: b.rounds.map(r => ({ ...r })),
-            })),
             eventQueue: this.state.eventQueue.map(e => ({ ...e })),
             resourcesByPlayer: { ...this.state.resourcesByPlayer },
             recentBattleReplays: this.state.recentBattleReplays.map(r => ({

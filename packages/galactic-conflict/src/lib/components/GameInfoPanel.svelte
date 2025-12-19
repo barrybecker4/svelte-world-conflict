@@ -126,22 +126,6 @@
         </div>
     </div>
 
-    <!-- Active battles -->
-    {#if gameState.activeBattles.length > 0}
-        <div class="battles-section">
-            <h3>Active Battles</h3>
-            {#each gameState.activeBattles as battle}
-                {@const planet = gameState.planets.find(p => p.id === battle.planetId)}
-                <div class="battle-item">
-                    <span class="battle-location">{planet?.name || `Planet ${battle.planetId}`}</span>
-                    <span class="battle-participants">
-                        {battle.participants.filter(p => p.ships > 0).length} combatants
-                    </span>
-                </div>
-            {/each}
-        </div>
-    {/if}
-
     <!-- Game result -->
     {#if gameState.status === 'COMPLETED'}
         <div class="game-result">
@@ -318,25 +302,6 @@
     .player-stats {
         color: #9ca3af;
         font-size: 0.8rem;
-    }
-
-    .battles-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .battle-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem;
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        border-radius: 4px;
-        margin-bottom: 0.5rem;
-        font-size: 0.85rem;
-    }
-
-    .battle-location {
-        color: #fca5a5;
     }
 
     .game-result {
