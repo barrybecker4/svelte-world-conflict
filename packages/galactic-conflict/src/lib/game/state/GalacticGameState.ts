@@ -9,6 +9,8 @@ import type {
     Armada,
     Battle,
     BattleReplay,
+    ReinforcementEvent,
+    ConquestEvent,
     GameEvent,
     PlayerSlot,
     GameSettings,
@@ -36,6 +38,8 @@ export class GalacticGameState {
         if (!this.state.eventQueue) this.state.eventQueue = [];
         if (!this.state.eliminatedPlayers) this.state.eliminatedPlayers = [];
         if (!this.state.recentBattleReplays) this.state.recentBattleReplays = [];
+        if (!this.state.recentReinforcementEvents) this.state.recentReinforcementEvents = [];
+        if (!this.state.recentConquestEvents) this.state.recentConquestEvents = [];
         if (!this.state.resourcesByPlayer) this.state.resourcesByPlayer = {};
 
         // Initialize or restore RNG
@@ -101,6 +105,8 @@ export class GalacticGameState {
             eventQueue: [],
             resourcesByPlayer,
             recentBattleReplays: [],
+            recentReinforcementEvents: [],
+            recentConquestEvents: [],
             eliminatedPlayers: [],
             rngSeed: seed || `galactic-${gameId}`,
             lastUpdateTime: now,
@@ -159,6 +165,8 @@ export class GalacticGameState {
     get eventQueue(): GameEvent[] { return [...this.state.eventQueue]; }
     get eliminatedPlayers(): number[] { return [...this.state.eliminatedPlayers]; }
     get recentBattleReplays(): BattleReplay[] { return [...this.state.recentBattleReplays]; }
+    get recentReinforcementEvents(): ReinforcementEvent[] { return [...this.state.recentReinforcementEvents]; }
+    get recentConquestEvents(): ConquestEvent[] { return [...this.state.recentConquestEvents]; }
 
     get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
@@ -366,6 +374,40 @@ export class GalacticGameState {
         return [...this.state.recentBattleReplays];
     }
 
+    // ==================== REINFORCEMENT AND CONQUEST EVENTS ====================
+
+    /**
+     * Add a reinforcement event for client display
+     */
+    addReinforcementEvent(event: ReinforcementEvent): void {
+        this.state.recentReinforcementEvents.push(event);
+        logger.debug(`[GalacticGameState] Added reinforcement event ${event.id} for planet ${event.planetName}`);
+    }
+
+    /**
+     * Add a conquest event for client display
+     */
+    addConquestEvent(event: ConquestEvent): void {
+        this.state.recentConquestEvents.push(event);
+        logger.debug(`[GalacticGameState] Added conquest event ${event.id} for planet ${event.planetName}`);
+    }
+
+    /**
+     * Clear reinforcement events that have been sent to clients
+     * Called after state broadcast
+     */
+    clearReinforcementEvents(): void {
+        this.state.recentReinforcementEvents = [];
+    }
+
+    /**
+     * Clear conquest events that have been sent to clients
+     * Called after state broadcast
+     */
+    clearConquestEvents(): void {
+        this.state.recentConquestEvents = [];
+    }
+
     // ==================== EVENT QUEUE ====================
 
     scheduleEvent(event: GameEvent): void {
@@ -501,6 +543,8 @@ export class GalacticGameState {
                 ...r,
                 rounds: r.rounds.map(round => ({ ...round })),
             })),
+            recentReinforcementEvents: this.state.recentReinforcementEvents.map(e => ({ ...e })),
+            recentConquestEvents: this.state.recentConquestEvents.map(e => ({ ...e })),
             eliminatedPlayers: [...this.state.eliminatedPlayers],
             rngSeed: rngState.seed,
             rngState: rngState.state,

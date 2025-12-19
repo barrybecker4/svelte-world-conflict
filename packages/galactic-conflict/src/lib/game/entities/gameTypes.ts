@@ -137,6 +137,36 @@ export interface BattleReplayRound {
     defenderShipsAfter: number;
 }
 
+// ==================== REINFORCEMENT AND CONQUEST EVENTS ====================
+
+/**
+ * Event when reinforcements arrive at an owned planet
+ */
+export interface ReinforcementEvent {
+    id: string;
+    planetId: number;
+    planetName: string;
+    playerId: number;
+    playerName: string;
+    playerColor: string;
+    ships: number;
+    timestamp: number;
+}
+
+/**
+ * Event when a planet is conquered without battle (no defenses)
+ */
+export interface ConquestEvent {
+    id: string;
+    planetId: number;
+    planetName: string;
+    attackerPlayerId: number;
+    attackerName: string;
+    attackerColor: string;
+    ships: number;
+    timestamp: number;
+}
+
 // ==================== EVENTS ====================
 
 export type GameEventType = 
@@ -206,6 +236,18 @@ export interface GalacticGameStateData {
      * Cleared after being sent to clients
      */
     recentBattleReplays: BattleReplay[];
+    
+    /**
+     * Recent reinforcement events for client display
+     * Cleared after being sent to clients
+     */
+    recentReinforcementEvents: ReinforcementEvent[];
+    
+    /**
+     * Recent conquest events for client display
+     * Cleared after being sent to clients
+     */
+    recentConquestEvents: ConquestEvent[];
     
     /** Result when game ends */
     endResult?: Player | 'DRAWN_GAME' | null;

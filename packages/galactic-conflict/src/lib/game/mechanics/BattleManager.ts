@@ -10,7 +10,7 @@
  * - Continue until one player remains
  */
 
-import type { Planet, BattleReplay, BattleReplayRound } from '$lib/game/entities/gameTypes';
+import type { Planet, BattleReplay, BattleReplayRound, ReinforcementEvent, ConquestEvent } from '$lib/game/entities/gameTypes';
 import { BattleRound } from './BattleRound';
 import type { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { GALACTIC_CONSTANTS, getPlayerColor, NEUTRAL_COLOR } from '$lib/game/constants/gameConstants';
@@ -59,6 +59,22 @@ export class BattleManager {
     private handleReinforcement(planet: Planet, ships: number): void {
         logger.debug(`Reinforcing planet ${planet.id} with ${ships} ships`);
         this.gameState.addPlanetShips(planet.id, ships);
+        
+        // Create reinforcement event for client display
+        const player = this.gameState.getPlayer(planet.ownerId!);
+        if (player) {
+            const event: ReinforcementEvent = {
+                id: uuidv4(),
+                planetId: planet.id,
+                planetName: planet.name,
+                playerId: planet.ownerId!,
+                playerName: player.name,
+                playerColor: player.color,
+                ships: ships,
+                timestamp: Date.now(),
+            };
+            this.gameState.addReinforcementEvent(event);
+        }
     }
 
     /**
@@ -73,6 +89,23 @@ export class BattleManager {
         // If planet has no defenders, just conquer it (no battle animation needed)
         if (defenderShips <= 0) {
             logger.debug(`Planet ${planet.name} has no defenders - immediate conquest`);
+            
+            // Create conquest event for client display
+            const attackerPlayer = this.gameState.getPlayer(attackerId);
+            if (attackerPlayer) {
+                const event: ConquestEvent = {
+                    id: uuidv4(),
+                    planetId: planet.id,
+                    planetName: planet.name,
+                    attackerPlayerId: attackerId,
+                    attackerName: attackerPlayer.name,
+                    attackerColor: attackerPlayer.color,
+                    ships: attackerShips,
+                    timestamp: Date.now(),
+                };
+                this.gameState.addConquestEvent(event);
+            }
+            
             this.gameState.setPlanetOwner(planet.id, attackerId);
             this.gameState.setPlanetShips(planet.id, attackerShips);
             this.checkPlayerEliminations();

@@ -1,10 +1,11 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-    import type { GalacticGameStateData, Planet as PlanetType } from '$lib/game/entities/gameTypes';
+    import type { GalacticGameStateData, Planet as PlanetType, ReinforcementEvent, ConquestEvent } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import Planet from './Planet.svelte';
     import Armada from './Armada.svelte';
     import BattleAnimationOverlay from './BattleAnimationOverlay.svelte';
+    import FloatingTextMessage from './FloatingTextMessage.svelte';
     import {
         battleAnimations,
         processNewBattleReplays,
@@ -30,6 +31,17 @@
     let dragCurrentX = 0;
     let dragCurrentY = 0;
     let svgElement: SVGSVGElement;
+
+    // Floating text messages
+    interface FloatingText {
+        id: string;
+        x: number;
+        y: number;
+        text: string;
+        color: string;
+    }
+    let floatingTexts: FloatingText[] = [];
+    const processedEventIds = new Set<string>();
 
     // Helper to get drag source planet from current gameState
     function getDragSourcePlanet(): PlanetType | null {
@@ -191,6 +203,68 @@
         }
     }
 
+    // Process reinforcement and conquest events
+    function getScreenCoords(planet: PlanetType): { x: number; y: number } {
+        if (!svgElement) return { x: 0, y: 0 };
+        
+        const svgRect = svgElement.getBoundingClientRect();
+        const viewBox = svgElement.viewBox.baseVal;
+        const scaleX = svgRect.width / viewBox.width;
+        const scaleY = svgRect.height / viewBox.height;
+        
+        return {
+            x: svgRect.left + (planet.position.x * scaleX),
+            y: svgRect.top + (planet.position.y * scaleY),
+        };
+    }
+
+    function showFloatingText(event: ReinforcementEvent | ConquestEvent, text: string, color: string): void {
+        const planet = gameState.planets.find(p => p.id === event.planetId);
+        if (!planet) return;
+        
+        const coords = getScreenCoords(planet);
+        floatingTexts = [...floatingTexts, {
+            id: event.id,
+            x: coords.x,
+            y: coords.y,
+            text,
+            color,
+        }];
+        
+        // Remove after animation completes
+        setTimeout(() => {
+            floatingTexts = floatingTexts.filter(ft => ft.id !== event.id);
+        }, 3000);
+    }
+
+    $: {
+        // Process reinforcement events
+        const reinforcementEvents = gameState.recentReinforcementEvents ?? [];
+        for (const event of reinforcementEvents) {
+            if (!processedEventIds.has(event.id)) {
+                processedEventIds.add(event.id);
+                showFloatingText(
+                    event,
+                    `+${event.ships} Reinforcements`,
+                    event.playerColor
+                );
+            }
+        }
+
+        // Process conquest events
+        const conquestEvents = gameState.recentConquestEvents ?? [];
+        for (const event of conquestEvents) {
+            if (!processedEventIds.has(event.id)) {
+                processedEventIds.add(event.id);
+                showFloatingText(
+                    event,
+                    'Conquered!',
+                    event.attackerColor
+                );
+            }
+        }
+    }
+
     $: width = GALACTIC_CONSTANTS.GALAXY_WIDTH;
     $: height = GALACTIC_CONSTANTS.GALAXY_HEIGHT;
 </script>
@@ -301,6 +375,16 @@
         {/if}
     </svg>
 </div>
+
+<!-- Floating Text Messages (outside SVG for fixed positioning) -->
+{#each floatingTexts as floatingText (floatingText.id)}
+    <FloatingTextMessage
+        x={floatingText.x}
+        y={floatingText.y}
+        text={floatingText.text}
+        color={floatingText.color}
+    />
+{/each}
 
 <style>
     .galaxy-container {

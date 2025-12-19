@@ -17,6 +17,7 @@ export const SOUNDS = {
     SHIP_LAUNCH: 'launch',
     SHIP_BUILT: 'build',
     ARMADA_ARRIVES: 'arrive',
+    REINFORCEMENT_ARRIVED: 'reinforcement',
 
     // Battle sounds
     BATTLE_ALARM: 'alarm',
@@ -141,6 +142,16 @@ export const SOUND_CONFIGS: Partial<Record<SoundType, SoundConfig>> = {
         volume: EFFECT_VOLUME,
         length: 0.2
     },
+    [SOUNDS.REINFORCEMENT_ARRIVED]: {
+        type: 'note',
+        frequencies: [
+            { t: 0, p: 523, d: 1.2 },    // C5 - friendly arrival
+            { t: 0.08, p: 659, d: 1.5 },  // E5 - ascending
+            { t: 0.16, p: 784, d: 1.8 }  // G5 - confirmation chime
+        ],
+        volume: EFFECT_VOLUME * 0.9,
+        length: 0.35
+    },
 
     // Battle Sounds
     [SOUNDS.BATTLE_ALARM]: {
@@ -192,6 +203,7 @@ export const SOUND_ICONS: Record<string, string> = {
     SHIP_LAUNCH: '🛸',
     SHIP_BUILT: '🔧',
     ARMADA_ARRIVES: '📍',
+    REINFORCEMENT_ARRIVED: '✅',
     BATTLE_ALARM: '🚨',
     SHIP_DESTROYED: '💥',
     PLANET_CONQUERED: '🌍',

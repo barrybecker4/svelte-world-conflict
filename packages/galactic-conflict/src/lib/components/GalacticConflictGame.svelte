@@ -35,6 +35,7 @@
     let hasResigned = false;
     let gameEndSoundPlayed = false;
     let devEventProcessingInterval: ReturnType<typeof setInterval> | null = null;
+    const processedEventIds = new Set<string>();
 
     // Track game completion and play appropriate sound
     $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed) {
@@ -48,6 +49,29 @@
             audioSystem.playSound(SOUNDS.GAME_WON);
         } else if (winnerId !== undefined) {
             audioSystem.playSound(SOUNDS.GAME_LOST);
+        }
+    }
+
+    // Play sounds for reinforcement and conquest events
+    $: if ($gameState && $currentPlayerId !== null) {
+        const myPlayerId = $currentPlayerId;
+
+        // Process reinforcement events
+        const reinforcementEvents = $gameState.recentReinforcementEvents ?? [];
+        for (const event of reinforcementEvents) {
+            if (!processedEventIds.has(event.id) && event.playerId === myPlayerId) {
+                processedEventIds.add(event.id);
+                audioSystem.playSound(SOUNDS.REINFORCEMENT_ARRIVED);
+            }
+        }
+
+        // Process conquest events
+        const conquestEvents = $gameState.recentConquestEvents ?? [];
+        for (const event of conquestEvents) {
+            if (!processedEventIds.has(event.id) && event.attackerPlayerId === myPlayerId) {
+                processedEventIds.add(event.id);
+                audioSystem.playSound(SOUNDS.PLANET_CONQUERED);
+            }
         }
     }
     onMount(async () => {
