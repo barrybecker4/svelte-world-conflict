@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-    import type { GalacticGameStateData, Planet as PlanetType, ReinforcementEvent, ConquestEvent } from '$lib/game/entities/gameTypes';
+    import type { GalacticGameStateData, Planet as PlanetType, ReinforcementEvent, ConquestEvent, PlayerEliminationEvent } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import Planet from './Planet.svelte';
     import Armada from './Armada.svelte';
@@ -42,6 +42,9 @@
     }
     let floatingTexts: FloatingText[] = [];
     const processedEventIds = new Set<string>();
+    
+    // Track battle animations to show elimination text after battles
+    const pendingEliminationTexts = new Map<number, PlayerEliminationEvent>(); // planetId -> event
 
     // Helper to get drag source planet from current gameState
     function getDragSourcePlanet(): PlanetType | null {
@@ -209,6 +212,24 @@
             lastReplayIds = [];
         }
     }
+    
+    // Watch for battle animations closing - show elimination text if pending
+    $: {
+        const activeAnimations = [...$battleAnimations.values()];
+        const activePlanetIds = new Set(activeAnimations.map(a => a.replay.planetId));
+        
+        // Check for elimination events at planets that no longer have active battles
+        for (const [planetId, event] of pendingEliminationTexts.entries()) {
+            if (!activePlanetIds.has(planetId)) {
+                // Battle is done, show elimination text
+                const planet = gameState.planets.find(p => p.id === planetId);
+                if (planet) {
+                    showEliminationText(event, planet);
+                    pendingEliminationTexts.delete(planetId);
+                }
+            }
+        }
+    }
 
     // Process reinforcement and conquest events
     function getScreenCoords(planet: PlanetType): { x: number; y: number } {
@@ -243,6 +264,22 @@
             floatingTexts = floatingTexts.filter(ft => ft.id !== event.id);
         }, 3000);
     }
+    
+    function showEliminationText(event: PlayerEliminationEvent, planet: PlanetType): void {
+        const coords = getScreenCoords(planet);
+        floatingTexts = [...floatingTexts, {
+            id: event.id,
+            x: coords.x,
+            y: coords.y - 30, // Offset slightly above planet
+            text: `${event.playerName} has been eliminated!`,
+            color: event.playerColor,
+        }];
+        
+        // Remove after animation completes
+        setTimeout(() => {
+            floatingTexts = floatingTexts.filter(ft => ft.id !== event.id);
+        }, 3000);
+    }
 
     $: {
         // Process reinforcement events
@@ -268,6 +305,55 @@
                     'Conquered!',
                     event.attackerColor
                 );
+                
+                // Check if there's an elimination event for this planet (no battle case)
+                // Show elimination text after a short delay
+                const eliminationEvent = gameState.recentPlayerEliminationEvents?.find(
+                    e => e.planetId === event.planetId
+                );
+                if (eliminationEvent && !processedEventIds.has(eliminationEvent.id)) {
+                    processedEventIds.add(eliminationEvent.id);
+                    const planet = gameState.planets.find(p => p.id === event.planetId);
+                    if (planet) {
+                        // Show elimination text after "Conquered!" text (with delay)
+                        setTimeout(() => {
+                            showEliminationText(eliminationEvent, planet);
+                        }, 1500);
+                    }
+                }
+            }
+        }
+        
+        // Process elimination events (for battles - will be shown after battle dialog closes)
+        const eliminationEvents = gameState.recentPlayerEliminationEvents ?? [];
+        for (const event of eliminationEvents) {
+            if (!processedEventIds.has(event.id)) {
+                // Check if there's an active battle animation or a battle replay at this planet
+                const hasActiveBattle = [...$battleAnimations.values()].some(
+                    a => a.replay.planetId === event.planetId
+                );
+                const hasBattleReplay = gameState.recentBattleReplays?.some(
+                    r => r.planetId === event.planetId
+                );
+                
+                if (hasActiveBattle || hasBattleReplay) {
+                    // Battle exists or is active - queue elimination text for after battle
+                    pendingEliminationTexts.set(event.planetId, event);
+                    processedEventIds.add(event.id);
+                } else {
+                    // No battle - check if there's a conquest event (handled above)
+                    // If not, show immediately (shouldn't happen normally, but handle it)
+                    const hasConquestEvent = gameState.recentConquestEvents?.some(
+                        e => e.planetId === event.planetId
+                    );
+                    if (!hasConquestEvent) {
+                        processedEventIds.add(event.id);
+                        const planet = gameState.planets.find(p => p.id === event.planetId);
+                        if (planet) {
+                            showEliminationText(event, planet);
+                        }
+                    }
+                }
             }
         }
     }

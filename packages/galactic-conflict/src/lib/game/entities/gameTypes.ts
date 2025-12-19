@@ -167,6 +167,19 @@ export interface ConquestEvent {
     timestamp: number;
 }
 
+/**
+ * Event when a player is eliminated (loses their last planet)
+ */
+export interface PlayerEliminationEvent {
+    id: string;
+    planetId: number;
+    planetName: string;
+    playerId: number;
+    playerName: string;
+    playerColor: string;
+    timestamp: number;
+}
+
 // ==================== EVENTS ====================
 
 export type GameEventType = 
@@ -248,6 +261,12 @@ export interface GalacticGameStateData {
      * Cleared after being sent to clients
      */
     recentConquestEvents: ConquestEvent[];
+    
+    /**
+     * Recent player elimination events for client display
+     * Cleared after being sent to clients
+     */
+    recentPlayerEliminationEvents: PlayerEliminationEvent[];
     
     /** Result when game ends */
     endResult?: Player | 'DRAWN_GAME' | null;

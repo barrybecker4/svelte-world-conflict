@@ -38,6 +38,7 @@ export async function processGameEvents(
         const replaysBefore = gameState.recentBattleReplays.length;
         const reinforcementsBefore = gameState.recentReinforcementEvents.length;
         const conquestsBefore = gameState.recentConquestEvents.length;
+        const eliminationsBefore = gameState.recentPlayerEliminationEvents.length;
         const armadasBefore = gameState.armadas.length;
         const statusBefore = gameState.state.status;
         const lastUpdateBefore = gameState.state.lastUpdateTime;
@@ -49,19 +50,21 @@ export async function processGameEvents(
         const replaysAfter = gameState.recentBattleReplays.length;
         const reinforcementsAfter = gameState.recentReinforcementEvents.length;
         const conquestsAfter = gameState.recentConquestEvents.length;
+        const eliminationsAfter = gameState.recentPlayerEliminationEvents.length;
         const armadasAfter = gameState.armadas.length;
         const statusAfter = gameState.state.status;
         const lastUpdateAfter = gameState.state.lastUpdateTime;
         
         // Consider it changed if:
         // - Battle replays were added
-        // - Reinforcement or conquest events were added
+        // - Reinforcement, conquest, or elimination events were added
         // - Armadas changed (arrived or removed)
         // - Status changed (game ended)
         // - lastUpdateTime changed (events were processed, even if just resource ticks)
         const hasChanges = replaysAfter > replaysBefore || 
                           reinforcementsAfter > reinforcementsBefore ||
                           conquestsAfter > conquestsBefore ||
+                          eliminationsAfter > eliminationsBefore ||
                           armadasAfter !== armadasBefore || 
                           statusAfter !== statusBefore ||
                           lastUpdateAfter !== lastUpdateBefore;
@@ -79,6 +82,7 @@ export async function processGameEvents(
             gameState.clearBattleReplays();
             gameState.clearReinforcementEvents();
             gameState.clearConquestEvents();
+            gameState.clearPlayerEliminationEvents();
             
             // Save state again after clearing events
             gameRecord.gameState = gameState.toJSON();

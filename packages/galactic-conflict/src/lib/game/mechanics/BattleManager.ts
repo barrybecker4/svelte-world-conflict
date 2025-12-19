@@ -10,7 +10,7 @@
  * - Continue until one player remains
  */
 
-import type { Planet, BattleReplay, BattleReplayRound, ReinforcementEvent, ConquestEvent } from '$lib/game/entities/gameTypes';
+import type { Planet, BattleReplay, BattleReplayRound, ReinforcementEvent, ConquestEvent, PlayerEliminationEvent } from '$lib/game/entities/gameTypes';
 import { BattleRound } from './BattleRound';
 import type { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { GALACTIC_CONSTANTS, getPlayerColor, NEUTRAL_COLOR } from '$lib/game/constants/gameConstants';
@@ -108,7 +108,7 @@ export class BattleManager {
             
             this.gameState.setPlanetOwner(planet.id, attackerId);
             this.gameState.setPlanetShips(planet.id, attackerShips);
-            this.checkPlayerEliminations();
+            this.checkPlayerEliminations(planet);
             return;
         }
 
@@ -215,18 +215,31 @@ export class BattleManager {
         });
 
         // Check for player eliminations
-        this.checkPlayerEliminations();
+        this.checkPlayerEliminations(planet);
     }
 
     /**
      * Check if any players have been eliminated
+     * @param planet The planet that was just conquered (where elimination may have occurred)
      */
-    private checkPlayerEliminations(): void {
+    private checkPlayerEliminations(planet: Planet): void {
         for (const player of this.gameState.players) {
             if (!this.gameState.isPlayerEliminated(player.slotIndex)) {
                 if (!this.gameState.isPlayerAlive(player.slotIndex)) {
                     logger.debug(`Player ${player.name} (${player.slotIndex}) has been eliminated`);
                     this.gameState.eliminatePlayer(player.slotIndex);
+                    
+                    // Create elimination event for client display
+                    const event: PlayerEliminationEvent = {
+                        id: uuidv4(),
+                        planetId: planet.id,
+                        planetName: planet.name,
+                        playerId: player.slotIndex,
+                        playerName: player.name,
+                        playerColor: player.color,
+                        timestamp: Date.now(),
+                    };
+                    this.gameState.addPlayerEliminationEvent(event);
                 }
             }
         }
