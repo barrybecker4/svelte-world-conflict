@@ -2,9 +2,14 @@
     import { onMount, onDestroy } from 'svelte';
     import type { BattleAnimationState } from '$lib/client/stores/battleAnimationStore';
     import type { Planet } from '$lib/game/entities/gameTypes';
+    import { removeBattleAnimation } from '$lib/client/stores/battleAnimationStore';
 
     export let animationState: BattleAnimationState;
     export let planet: Planet;
+
+    function handleClose() {
+        removeBattleAnimation(animationState.replay.id);
+    }
 
     // Get info from replay
     $: replay = animationState.replay;
@@ -19,7 +24,7 @@
 
     // Position offset from planet center - handle edge cases
     const overlayWidth = 260;
-    const overlayHeight = 180;
+    const overlayHeight = 140;
     
     // Adjust position so overlay stays on-screen
     $: rawOverlayX = planet.position.x - overlayWidth / 2;
@@ -92,21 +97,15 @@
         font-weight="bold"
         class="battle-title"
     >
-        ⚔️ BATTLE AT {replay.planetName.toUpperCase()} ⚔️
+        Battle at {replay.planetName}
     </text>
 
-    <!-- Round indicator -->
-    {#if animationState.phase === 'round'}
-        <text
-            x={overlayWidth / 2}
-            y="38"
-            text-anchor="middle"
-            fill="#9ca3af"
-            font-size="10"
-        >
-            Round {animationState.currentRoundIndex + 1} of {replay.rounds.length}
-        </text>
-    {/if}
+    <!-- Close button -->
+    <g class="close-button" on:click={handleClose} on:keydown={(e) => e.key === 'Enter' && handleClose()}>
+        <circle cx={overlayWidth - 15} cy="15" r="10" fill="rgba(0, 0, 0, 0.5)" stroke="#ef4444" stroke-width="1.5" />
+        <line x1={overlayWidth - 20} y1="10" x2={overlayWidth - 10} y2="20" stroke="#ef4444" stroke-width="2" />
+        <line x1={overlayWidth - 10} y1="10" x2={overlayWidth - 20} y2="20" stroke="#ef4444" stroke-width="2" />
+    </g>
     
     <!-- Attacker side (left) -->
     <g transform="translate(15, 48)">
@@ -114,21 +113,23 @@
             {attackerName}
         </text>
         
-        <!-- Ship icon and count -->
-        <g transform="translate(40, 18)">
-            <polygon
-                points="15,0 30,22 0,22"
-                fill={attackerColor}
-                class="ship-icon"
-            />
-            <text x="15" y="45" text-anchor="middle" fill="white" font-size="20" font-weight="bold" class="ship-count">
+        <!-- Ship count and casualties -->
+        <g>
+            <text x="50" y="35" text-anchor="middle" fill="white" font-size="20" font-weight="bold" class="ship-count">
                 {animationState.displayedAttackerShips}
             </text>
+            
+            <!-- Casualties to the right of ship count -->
+            {#if animationState.lastRoundResult && animationState.lastRoundResult.attackerLost > 0}
+                <text x="60" y="35" text-anchor="start" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
+                    -{animationState.lastRoundResult.attackerLost} 💥
+                </text>
+            {/if}
         </g>
         
         <!-- Dice display -->
         {#if attackerDice.length > 0}
-            <g transform="translate(5, 72)">
+            <g transform="translate(5, 50)">
                 {#each attackerDice as die, i}
                     <g transform="translate({i * 28 + 15}, 0)" class="die">
                         <rect
@@ -146,18 +147,11 @@
                 {/each}
             </g>
         {/if}
-        
-        <!-- Casualties -->
-        {#if animationState.lastRoundResult && animationState.lastRoundResult.attackerLost > 0}
-            <text x="55" y="115" text-anchor="middle" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
-                -{animationState.lastRoundResult.attackerLost} 💥
-            </text>
-        {/if}
     </g>
     
     <!-- VS divider -->
-    <line x1={overlayWidth / 2} y1="55" x2={overlayWidth / 2} y2="150" stroke="#374151" stroke-width="2" stroke-dasharray="6 3" />
-    <text x={overlayWidth / 2} y="105" text-anchor="middle" fill="#6b7280" font-size="12" font-weight="bold">VS</text>
+    <line x1={overlayWidth / 2} y1="55" x2={overlayWidth / 2} y2="110" stroke="#374151" stroke-width="2" stroke-dasharray="6 3" />
+    <text x={overlayWidth / 2} y="82" text-anchor="middle" fill="#6b7280" font-size="12" font-weight="bold">VS</text>
     
     <!-- Defender side (right) -->
     <g transform="translate({overlayWidth / 2 + 15}, 48)">
@@ -165,21 +159,23 @@
             {defenderName}
         </text>
         
-        <!-- Ship icon and count -->
-        <g transform="translate(40, 18)">
-            <polygon
-                points="15,0 30,22 0,22"
-                fill={defenderColor}
-                class="ship-icon"
-            />
-            <text x="15" y="45" text-anchor="middle" fill="white" font-size="20" font-weight="bold" class="ship-count">
+        <!-- Ship count and casualties -->
+        <g>
+            <text x="50" y="35" text-anchor="middle" fill="white" font-size="20" font-weight="bold" class="ship-count">
                 {animationState.displayedDefenderShips}
             </text>
+            
+            <!-- Casualties to the right of ship count -->
+            {#if animationState.lastRoundResult && animationState.lastRoundResult.defenderLost > 0}
+                <text x="60" y="35" text-anchor="start" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
+                    -{animationState.lastRoundResult.defenderLost} 💥
+                </text>
+            {/if}
         </g>
         
         <!-- Dice display -->
         {#if defenderDice.length > 0}
-            <g transform="translate(20, 72)">
+            <g transform="translate(20, 50)">
                 {#each defenderDice as die, i}
                     <g transform="translate({i * 28}, 0)" class="die">
                         <rect
@@ -196,13 +192,6 @@
                     </g>
                 {/each}
             </g>
-        {/if}
-        
-        <!-- Casualties -->
-        {#if animationState.lastRoundResult && animationState.lastRoundResult.defenderLost > 0}
-            <text x="55" y="115" text-anchor="middle" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
-                -{animationState.lastRoundResult.defenderLost} 💥
-            </text>
         {/if}
     </g>
     
@@ -250,7 +239,15 @@
 
 <style>
     .battle-overlay {
-        pointer-events: none;
+        pointer-events: all;
+    }
+    
+    .close-button {
+        cursor: pointer;
+    }
+    
+    .close-button:hover circle {
+        fill: rgba(0, 0, 0, 0.7);
     }
     
     .panel-bg {
@@ -263,10 +260,6 @@
     
     .die {
         animation: roll-in 0.3s ease-out;
-    }
-    
-    .ship-icon {
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
     }
     
     .ship-count {
