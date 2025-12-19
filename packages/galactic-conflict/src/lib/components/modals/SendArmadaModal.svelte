@@ -16,6 +16,7 @@
     let shipCount = 1;
     let selectedDestinationId: number | null = preselectedDestination?.id ?? null;
     let initialShips: number | null = null;
+    let isSending = false;
 
     // Track initial ships on mount to detect if all ships were sent
     onMount(() => {
@@ -55,7 +56,9 @@
     $: travelTimeSeconds = Math.round(travelTimeMs / 1000);
 
     function handleSend() {
+        if (isSending) return; // Prevent multiple clicks
         if (selectedDestinationId !== null && shipCount > 0 && shipCount <= maxShips) {
+            isSending = true;
             audioSystem.playSound(SOUNDS.SHIP_LAUNCH);
             dispatch('send', { 
                 shipCount, 
@@ -65,6 +68,7 @@
     }
 
     function handleClose() {
+        isSending = false;
         dispatch('close');
     }
 
@@ -166,9 +170,9 @@
             <button
                 class="send-btn"
                 on:click={handleSend}
-                disabled={!stillOwned || selectedDestinationId === null || shipCount < 1 || maxShips < 1}
+                disabled={isSending || !stillOwned || selectedDestinationId === null || shipCount < 1 || maxShips < 1}
             >
-                {stillOwned ? 'Send Armada' : 'Planet Lost'}
+                {isSending ? 'Sending...' : stillOwned ? 'Send Armada' : 'Planet Lost'}
             </button>
         </footer>
     </div>

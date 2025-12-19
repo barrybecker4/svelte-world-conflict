@@ -190,10 +190,18 @@
                 shipCount
             );
 
-            // Count updated by websocket.
+            // Optimistically add armada, but check for duplicates first
+            // The WebSocket will also update the state, so we need to avoid duplicates
             if (response.success && response.armada) {
                 gameState.update(state => {
                     if (!state) return state;
+
+                    // Check if armada already exists to prevent duplicates
+                    const armadaExists = state.armadas.some(a => a.id === response.armada.id);
+                    if (armadaExists) {
+                        // WebSocket already updated, don't add duplicate
+                        return state;
+                    }
 
                     return {
                         ...state,
@@ -202,13 +210,16 @@
                 });
             }
 
-            // Close the modal after successful send
+            // Close the modal after send attempt (success or failure)
             showSendArmadaModal = false;
             destinationPlanet = null;
             selectedPlanetId.set(null);
         } catch (error) {
-            // Modal will show updated state - user can see what changed and close it
+            // Close modal even on error - user can reopen if needed
             logger.error('Failed to send armada:', error);
+            showSendArmadaModal = false;
+            destinationPlanet = null;
+            selectedPlanetId.set(null);
         }
     }
 
