@@ -20,6 +20,7 @@
     } from '$lib/client/stores/gameStateStore';
     import { logger } from 'multiplayer-framework/shared';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
+    import { battleAnimations } from '$lib/client/stores/battleAnimationStore';
 
     export let gameId: string;
     export let initialState: GalacticGameStateData;
@@ -36,6 +37,10 @@
     let gameEndSoundPlayed = false;
     let devEventProcessingInterval: ReturnType<typeof setInterval> | null = null;
     const processedEventIds = new Set<string>();
+    
+    // Track when to show game end announcement (after battle animations complete)
+    // Don't check hasUnprocessedReplays - just wait for animations to finish
+    $: shouldShowGameEndAnnouncement = $gameState?.status === 'COMPLETED' && $battleAnimations.size === 0;
 
     // Track game completion and play appropriate sound
     $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed) {
@@ -128,8 +133,12 @@
 
     function handlePlanetClick(planet: Planet) {
         const currentPlayer = get(currentPlayerId);
+        const currentState = get(gameState);
 
         if (currentPlayer === null) return;
+        
+        // Disable interactions if game is completed
+        if (currentState?.status === 'COMPLETED') return;
 
         // Simply select the planet when clicked
         if (planet.ownerId === currentPlayer) {
@@ -146,6 +155,9 @@
         const currentState = get(gameState);
 
         if (currentPlayer === null || !currentState || hasResigned) return;
+        
+        // Disable interactions if game is completed
+        if (currentState.status === 'COMPLETED') return;
         
         // Check if player is eliminated (resigned or defeated)
         if (currentState.eliminatedPlayers?.includes(currentPlayer)) return;
@@ -168,6 +180,9 @@
         const currentState = get(gameState);
 
         if (currentPlayer === null || !currentState || hasResigned) return;
+        
+        // Disable interactions if game is completed
+        if (currentState.status === 'COMPLETED') return;
         
         // Check if player is eliminated (resigned or defeated)
         if (currentState.eliminatedPlayers?.includes(currentPlayer)) return;

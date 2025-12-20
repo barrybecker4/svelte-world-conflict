@@ -56,7 +56,7 @@ export const GALACTIC_CONSTANTS = {
     /** Minimum armada speed (units per minute) */
     ARMADA_SPEED_MIN: 10,
     /** Maximum armada speed (units per minute) */
-    ARMADA_SPEED_MAX: 1000,
+    ARMADA_SPEED_MAX: 2000,
     /** Default armada speed */
     DEFAULT_ARMADA_SPEED: 700,
 

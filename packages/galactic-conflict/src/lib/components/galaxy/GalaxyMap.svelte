@@ -94,6 +94,10 @@
     }
 
     function handlePlanetMouseDown(planet: PlanetType, event: MouseEvent) {
+        // Don't allow dragging if game is completed
+        if (gameState.status === 'COMPLETED') {
+            return;
+        }
         // Don't allow dragging if player has resigned
         if (hasResigned) {
             return;
@@ -234,6 +238,10 @@
     }
 
     function handlePlanetDoubleClick(planet: PlanetType) {
+        // Don't allow building if game is completed
+        if (gameState.status === 'COMPLETED') {
+            return;
+        }
         // Don't allow building if player has resigned
         if (hasResigned) {
             return;
@@ -278,8 +286,8 @@
             if (anim.replay.planetId === planet.id && anim.preBattlePlanetState) {
                 // Once outcome is shown, reveal the actual battle result
                 // The overlay can stay visible, but planet should update immediately
-                // Also update immediately if game has ended (status === 'COMPLETED')
-                if (anim.phase === 'outcome' || anim.phase === 'done' || gameState.status === 'COMPLETED') {
+                // Update when animation phase is 'outcome' or 'done'
+                if (anim.phase === 'outcome' || anim.phase === 'done') {
                     // Show post-battle state (actual planet state from gameState)
                     return planet;
                 }
@@ -291,7 +299,8 @@
                 };
             }
         }
-        // No active animation, return planet as-is
+        // No active animation - always show actual planet state
+        // (This handles the case where the animation was removed and the planet should show the final state)
         return planet;
     }
     
@@ -530,19 +539,21 @@
 
         <!-- Planets -->
         {#each gameState.planets as planet (planet.id)}
-            {@const displayPlanet = getDisplayPlanet(planet)}
-            {@const isOwned = displayPlanet.ownerId === currentPlayerId}
-            {@const canMovePlanet = isOwned && displayPlanet.ships > 0}
-            <Planet
-                planet={displayPlanet}
-                isSelected={selectedPlanetId === planet.id}
-                {isOwned}
-                canMove={canMovePlanet}
-                hasBattle={hasAnimationAtPlanet(planet.id)}
-                on:click={() => handlePlanetClick(planet)}
-                on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
-                on:dblclick={() => handlePlanetDoubleClick(planet)}
-            />
+            {#key $battleAnimations}
+                {@const displayPlanet = getDisplayPlanet(planet)}
+                {@const isOwned = displayPlanet.ownerId === currentPlayerId}
+                {@const canMovePlanet = isOwned && displayPlanet.ships > 0}
+                <Planet
+                    planet={displayPlanet}
+                    isSelected={selectedPlanetId === planet.id}
+                    {isOwned}
+                    canMove={canMovePlanet}
+                    hasBattle={hasAnimationAtPlanet(planet.id)}
+                    on:click={() => handlePlanetClick(planet)}
+                    on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
+                    on:dblclick={() => handlePlanetDoubleClick(planet)}
+                />
+            {/key}
         {/each}
 
         <!-- Battle Animations -->

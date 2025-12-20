@@ -210,7 +210,7 @@ async function showOutcome(replayId: string): Promise<void> {
         outcomeMessage = `${replay.planetName} defended!`;
     }
 
-    console.log(`[BattleAnimation] Showing outcome for ${replay.planetName}: ${outcomeMessage}`);
+    console.log(`[BattleAnimation] Showing outcome for ${replay.planetName}: ${outcomeMessage}, winnerId: ${replay.winnerId}`);
 
     battleAnimations.update(map => {
         const state = map.get(replayId);
@@ -218,7 +218,7 @@ async function showOutcome(replayId: string): Promise<void> {
             state.phase = 'outcome';
             state.currentDiceRolls = null;
             state.outcomeMessage = outcomeMessage;
-            console.log(`[BattleAnimation] Updated animation state - phase: ${state.phase}, message: ${state.outcomeMessage}`);
+            console.log(`[BattleAnimation] Updated animation state - planetId: ${replay.planetId}, phase: ${state.phase}, message: ${state.outcomeMessage}`);
         } else {
             console.warn(`[BattleAnimation] State not found when updating outcome for ${replayId}`);
         }

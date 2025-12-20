@@ -61,9 +61,12 @@
     });
 
     // Delay showing game over until all battle animations complete
-    // Also check if there are any unprocessed battle replays that need to be animated
-    $: hasUnprocessedReplays = (gameState.recentBattleReplays?.length ?? 0) > 0;
-    $: shouldShowGameOver = gameState.status === 'COMPLETED' && $battleAnimations.size === 0 && !hasUnprocessedReplays;
+    // Don't check hasUnprocessedReplays - just wait for animations to finish
+    // (Replays get cleared from state after being sent, but animations continue)
+    $: shouldShowGameOver = gameState.status === 'COMPLETED' && $battleAnimations.size === 0;
+    
+    // Delay showing eliminated/resigned message until battle animations complete
+    $: shouldShowEliminatedMessage = (isEliminated || hasResigned) && $battleAnimations.size === 0;
 </script>
 
 <div class="panel">
@@ -134,13 +137,30 @@
 
     <!-- Game result -->
     {#if shouldShowGameOver}
-        <div class="game-result">
-            <h3>Game Over</h3>
-            {#if gameState.endResult === 'DRAWN_GAME'}
-                <p class="result-text draw">Draw!</p>
-            {:else if gameState.endResult}
-                <p class="result-text winner">
-                    {gameState.endResult.name} wins!
+        {@const isWinner = gameState.endResult !== 'DRAWN_GAME' && 
+                           gameState.endResult !== null &&
+                           typeof gameState.endResult === 'object' &&
+                           gameState.endResult.slotIndex === currentPlayerId}
+        {@const isDraw = gameState.endResult === 'DRAWN_GAME'}
+        <div class="game-result" class:victory={isWinner} class:defeat={!isWinner && !isDraw}>
+            <h3>
+                {#if isDraw}
+                    🎯 Draw!
+                {:else if isWinner}
+                    🏆 Victory!
+                {:else}
+                    💀 Defeat
+                {/if}
+            </h3>
+            {#if isDraw}
+                <p class="result-text draw">The game ended in a draw!</p>
+            {:else if isWinner}
+                <p class="result-text winner">Congratulations! You have conquered the galaxy!</p>
+            {:else if gameState.endResult && typeof gameState.endResult === 'object'}
+                <p class="result-text loser">
+                    <span class="winner-name" style="color: {gameState.endResult.color}">
+                        {gameState.endResult.name}
+                    </span> has conquered the galaxy!
                 </p>
             {/if}
             {#if onNewGame}
@@ -154,16 +174,20 @@
     <!-- Resign/Leave section -->
     {#if !shouldShowGameOver}
         <div class="action-section">
-            {#if isEliminated || hasResigned}
+            {#if shouldShowEliminatedMessage}
                 <div class="resigned-notice">
-                    <p>You have resigned. You can continue watching.</p>
+                    {#if hasResigned}
+                        <p>You have resigned. You can continue watching.</p>
+                    {:else if isEliminated}
+                        <p>You have been defeated. You can continue watching.</p>
+                    {/if}
                     {#if onLeave}
                         <button class="leave-btn" on:click={onLeave}>
                             Leave Game
                         </button>
                     {/if}
                 </div>
-            {:else if onResign}
+            {:else if onResign && !isEliminated && !hasResigned && gameState.status !== 'COMPLETED'}
                 <button class="resign-btn" on:click={onResign}>
                     Resign
                 </button>
@@ -312,24 +336,63 @@
 
     .game-result {
         text-align: center;
-        padding: 1rem;
+        padding: 1.5rem;
         background: rgba(168, 85, 247, 0.2);
         border: 1px solid rgba(168, 85, 247, 0.4);
         border-radius: 8px;
+        animation: slideIn 0.5s ease-out;
+    }
+    
+    .game-result.victory {
+        background: rgba(34, 197, 94, 0.15);
+        border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    
+    .game-result.defeat {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+    
+    @keyframes slideIn {
+        0% {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .game-result h3 {
+        font-size: 1.75rem;
+        margin: 0 0 0.75rem 0;
+        color: #e5e7eb;
     }
 
     .result-text {
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin: 0.5rem 0;
+        font-size: 1rem;
+        font-weight: normal;
+        margin: 0.5rem 0 1rem 0;
+        line-height: 1.5;
+        color: #d1d5db;
     }
 
     .result-text.winner {
         color: #22c55e;
     }
+    
+    .result-text.loser {
+        color: #e5e7eb;
+    }
 
     .result-text.draw {
         color: #fbbf24;
+    }
+    
+    .winner-name {
+        font-weight: bold;
+        text-shadow: 0 0 8px currentColor;
     }
 
     .new-game-btn {
