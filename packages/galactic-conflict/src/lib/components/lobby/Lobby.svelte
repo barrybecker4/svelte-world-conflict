@@ -4,6 +4,7 @@
     import { loadPlayerName, savePlayerName, saveGameCreator } from '$lib/client/stores/clientStorage';
     import { goto } from '$app/navigation';
     import { logger } from 'multiplayer-framework/shared';
+    import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -13,6 +14,7 @@
     let playerName = '';
     let showNameInput = true;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let showStats = false;
 
     onMount(async () => {
         const storedName = loadPlayerName();
@@ -164,6 +166,12 @@
                         <p class="no-games-subtitle">Waiting for open games... Create one to get started!</p>
                     </div>
                 {/if}
+
+                <div class="stats-button-container">
+                    <button class="stats-btn" on:click={() => showStats = true}>
+                        📊 Historical Statistics
+                    </button>
+                </div>
             </div>
 
             <footer>
@@ -174,6 +182,8 @@
         </div>
     {/if}
 </div>
+
+<HistoricalStatsModal bind:isOpen={showStats} />
 
 <style>
     .lobby-overlay {
@@ -379,6 +389,31 @@
 
     .new-game-btn:hover {
         background: linear-gradient(135deg, #6d28d9, #9333ea);
+    }
+
+    .stats-button-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(71, 85, 105, 0.3);
+    }
+
+    .stats-btn {
+        padding: 0.5rem 1rem;
+        background: transparent;
+        border: 1px solid #4b5563;
+        border-radius: 8px;
+        color: #9ca3af;
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .stats-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: #6b7280;
+        color: #e5e7eb;
     }
 </style>
 

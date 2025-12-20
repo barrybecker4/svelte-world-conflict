@@ -4,6 +4,7 @@
 
 import type { GalacticGameStateData, Player, PendingGameConfiguration } from '$lib/game/entities/gameTypes';
 import { KVStorage } from './KVStorage';
+import { GameStatsService } from './GameStatsService';
 import { logger } from 'multiplayer-framework/shared';
 
 const GAME_KEY_PREFIX = 'gc_game:';
@@ -34,9 +35,11 @@ export interface GameRecord {
 
 export class GameStorage {
     private storage: KVStorage;
+    private platform: App.Platform;
 
     constructor(platform: App.Platform) {
         this.storage = new KVStorage(platform);
+        this.platform = platform;
     }
 
     static create(platform: App.Platform): GameStorage {
@@ -44,10 +47,25 @@ export class GameStorage {
     }
 
     /**
+     * Get the stats service instance
+     */
+    private getStatsService(): GameStatsService | null {
+        if (!this.platform) {
+            return null;
+        }
+        return GameStatsService.create(this.platform);
+    }
+
+    /**
      * Save a game record
      */
     async saveGame(game: GameRecord): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${game.gameId}`;
+        
+        // Check if status changed to COMPLETED
+        const existingGame = await this.loadGame(game.gameId);
+        const statusChanged = existingGame && existingGame.status !== game.status;
+        
         game.lastUpdateAt = Date.now();
         await this.storage.put(key, game);
         
@@ -56,6 +74,17 @@ export class GameStorage {
             await this.updateOpenGamesCache(game);
         } else {
             await this.removeFromOpenGamesCache(game.gameId);
+        }
+
+        // Record game completion statistics
+        if (game.status === 'COMPLETED' && statusChanged) {
+            logger.info(`Game ${game.gameId} completed - recording stats. endResult: ${JSON.stringify(game.gameState?.endResult)}`);
+            const statsService = this.getStatsService();
+            if (statsService) {
+                await statsService.recordGameCompleted(game);
+            } else {
+                logger.warn(`No stats service available for game ${game.gameId}`);
+            }
         }
     }
     
