@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount, onDestroy, derived } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
     import AudioButton from './configuration/AudioButton.svelte';
