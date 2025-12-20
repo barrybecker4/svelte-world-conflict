@@ -270,6 +270,29 @@
         }
         return false;
     }
+
+    // Get the display planet state (uses pre-battle state if animation is active)
+    function getDisplayPlanet(planet: PlanetType): PlanetType {
+        // Check if there's an active battle animation for this planet
+        for (const anim of $battleAnimations.values()) {
+            if (anim.replay.planetId === planet.id && anim.preBattlePlanetState) {
+                // Once outcome is shown, reveal the actual battle result
+                // The overlay can stay visible, but planet should update immediately
+                if (anim.phase === 'outcome' || anim.phase === 'done') {
+                    // Show post-battle state (actual planet state from gameState)
+                    return planet;
+                }
+                // Return planet with pre-battle state to preserve suspense during animation
+                return {
+                    ...planet,
+                    ownerId: anim.preBattlePlanetState.ownerId,
+                    ships: anim.preBattlePlanetState.ships,
+                };
+            }
+        }
+        // No active animation, return planet as-is
+        return planet;
+    }
     
     // Process battle replays whenever they change
     // Track the replay IDs to detect new ones even if array reference doesn't change
@@ -503,10 +526,11 @@
 
         <!-- Planets -->
         {#each gameState.planets as planet (planet.id)}
-            {@const isOwned = planet.ownerId === currentPlayerId}
-            {@const canMovePlanet = isOwned && planet.ships > 0}
+            {@const displayPlanet = getDisplayPlanet(planet)}
+            {@const isOwned = displayPlanet.ownerId === currentPlayerId}
+            {@const canMovePlanet = isOwned && displayPlanet.ships > 0}
             <Planet
-                {planet}
+                planet={displayPlanet}
                 isSelected={selectedPlanetId === planet.id}
                 {isOwned}
                 canMove={canMovePlanet}

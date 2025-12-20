@@ -1,8 +1,9 @@
 <script lang="ts">
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, derived } from 'svelte';
     import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
     import AudioButton from './configuration/AudioButton.svelte';
+    import { battleAnimations } from '$lib/client/stores/battleAnimationStore';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
@@ -58,6 +59,11 @@
         if (aStats.planets !== bStats.planets) return bStats.planets - aStats.planets;
         return bStats.ships - aStats.ships;
     });
+
+    // Delay showing game over until all battle animations complete
+    // Also check if there are any unprocessed battle replays that need to be animated
+    $: hasUnprocessedReplays = (gameState.recentBattleReplays?.length ?? 0) > 0;
+    $: shouldShowGameOver = gameState.status === 'COMPLETED' && $battleAnimations.size === 0 && !hasUnprocessedReplays;
 </script>
 
 <div class="panel">
@@ -127,7 +133,7 @@
     </div>
 
     <!-- Game result -->
-    {#if gameState.status === 'COMPLETED'}
+    {#if shouldShowGameOver}
         <div class="game-result">
             <h3>Game Over</h3>
             {#if gameState.endResult === 'DRAWN_GAME'}
@@ -146,7 +152,7 @@
     {/if}
 
     <!-- Resign/Leave section -->
-    {#if gameState.status !== 'COMPLETED'}
+    {#if !shouldShowGameOver}
         <div class="action-section">
             {#if isEliminated || hasResigned}
                 <div class="resigned-notice">

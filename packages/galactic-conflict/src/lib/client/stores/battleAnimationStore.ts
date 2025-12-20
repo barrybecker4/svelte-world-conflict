@@ -28,6 +28,11 @@ export interface BattleAnimationState {
     } | null;
     phase: 'starting' | 'round' | 'outcome' | 'done';
     outcomeMessage: string | null;
+    /** Pre-battle planet state (ownerId, ships) to preserve suspense during animation */
+    preBattlePlanetState: {
+        ownerId: number | null;
+        ships: number;
+    } | null;
 }
 
 /**
@@ -52,6 +57,14 @@ export function queueBattleReplay(replay: BattleReplay): void {
 
     console.log(`[BattleAnimation] Queueing replay for ${replay.planetName}: ${replay.attackerInitialShips} vs ${replay.defenderInitialShips}`);
 
+    // Capture pre-battle planet state from replay data
+    // This preserves the suspense by showing the planet as it was before the battle
+    // The planet in gameState has already been updated with the battle outcome
+    const preBattlePlanetState: { ownerId: number | null; ships: number } = {
+        ownerId: replay.defenderPlayerId === -1 ? null : replay.defenderPlayerId,
+        ships: replay.defenderInitialShips,
+    };
+
     const state: BattleAnimationState = {
         replay,
         currentRoundIndex: -1,
@@ -61,6 +74,7 @@ export function queueBattleReplay(replay: BattleReplay): void {
         lastRoundResult: null,
         phase: 'starting',
         outcomeMessage: null,
+        preBattlePlanetState: preBattlePlanetState,
     };
 
     battleAnimations.update(map => {
