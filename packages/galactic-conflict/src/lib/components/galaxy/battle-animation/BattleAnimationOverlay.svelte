@@ -26,11 +26,11 @@
 
     // Position offset from planet center - handle edge cases
     const overlayWidth = 260;
-    const overlayHeight = 140;
+    const overlayHeight = 130;
     
     // Adjust position so overlay stays on-screen
     $: rawOverlayX = planet.position.x - overlayWidth / 2;
-    $: rawOverlayY = planet.position.y - overlayHeight - 40;
+    $: rawOverlayY = planet.position.y - overlayHeight - 30;
     
     // Clamp to stay within bounds (galaxy is 1200x800)
     $: overlayX = Math.max(10, Math.min(rawOverlayX, 1200 - overlayWidth - 10));
@@ -73,7 +73,7 @@
         width={overlayWidth}
         height={overlayHeight}
         rx="10"
-        fill="rgba(5, 5, 15, 0.97)"
+        fill="rgba(5, 5, 15, 0.5)"
         stroke="#ef4444"
         stroke-width="3"
         class="panel-bg"
@@ -85,7 +85,7 @@
         y="22"
         text-anchor="middle"
         fill="#ef4444"
-        font-size="14"
+        font-size="12"
         font-weight="bold"
         class="battle-title"
     >
@@ -100,7 +100,7 @@
     </g>
     
     <!-- Attacker side (left) -->
-    <g transform="translate(15, 48)">
+    <g transform="translate(15, 38)">
         <text x="55" y="12" text-anchor="middle" fill={attackerColor} font-size="11" font-weight="bold">
             {attackerName}
         </text>
@@ -116,11 +116,11 @@
     </g>
     
     <!-- VS divider -->
-    <line x1={overlayWidth / 2} y1="55" x2={overlayWidth / 2} y2="110" stroke="#374151" stroke-width="2" stroke-dasharray="6 3" />
-    <text x={overlayWidth / 2} y="82" text-anchor="middle" fill="#6b7280" font-size="12" font-weight="bold">VS</text>
+    <line x1={overlayWidth / 2} y1="45" x2={overlayWidth / 2} y2="100" stroke="#374151" stroke-width="2" stroke-dasharray="6 3" />
+    <text x={overlayWidth / 2} y="72" text-anchor="middle" fill="#6b7280" font-size="12" font-weight="bold">VS</text>
     
     <!-- Defender side (right) -->
-    <g transform="translate({overlayWidth / 2 + 15}, 48)">
+    <g transform="translate({overlayWidth / 2 + 15}, 38)">
         <text x="55" y="12" text-anchor="middle" fill={defenderColor} font-size="11" font-weight="bold">
             {defenderName}
         </text>
@@ -140,18 +140,19 @@
         <g class="outcome-message">
             <rect
                 x="15"
-                y={overlayHeight - 35}
+                y={overlayHeight - 32}
                 width={overlayWidth - 30}
-                height="26"
+                height="24"
                 rx="6"
                 fill={outcomeIsAttackerWin ? attackerColor : defenderColor}
+                opacity=0.7
             />
             <text
                 x={overlayWidth / 2}
-                y={overlayHeight - 16}
+                y={overlayHeight - 14}
                 text-anchor="middle"
                 fill="white"
-                font-size="13"
+                font-size="12"
                 font-weight="bold"
             >
                 {animationState.outcomeMessage}
