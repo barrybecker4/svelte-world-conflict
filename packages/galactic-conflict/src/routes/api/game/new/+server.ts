@@ -116,6 +116,7 @@ function createDefaultSlots(players: Player[], includeOpenSlots: boolean = false
         type: p.isAI ? 'AI' : 'Set',
         name: p.name,
         personality: p.personality,
+        difficulty: p.difficulty,
     }));
 
     // Add open slots for multiplayer pending games
@@ -177,7 +178,7 @@ function determineGameAttributes(
                         creatorAdded = true;
                     }
                 } else if (slot.type === 'AI') {
-                    players.push(createPlayer(slot.name || `AI ${slot.slotIndex + 1}`, slot.slotIndex, true, aiDifficulty));
+                    players.push(createPlayer(slot.name || `AI ${slot.slotIndex + 1}`, slot.slotIndex, true, aiDifficulty, slot.difficulty || 'easy'));
                 }
                 // Skip 'Open' slots - they'll be filled when players join
             }
@@ -190,7 +191,7 @@ function determineGameAttributes(
     } else {
         // Default: 2-player AI game
         const humanPlayer = createPlayer(playerName.trim(), 0, false);
-        const aiPlayer = createPlayer('AI Player', 1, true, aiDifficulty);
+        const aiPlayer = createPlayer('AI Player', 1, true, aiDifficulty, 'easy');
         players.push(humanPlayer, aiPlayer);
         gameStatus = 'ACTIVE';
         finalGameType = 'AI';

@@ -116,7 +116,7 @@
     {:else}
         <div class="lobby-container">
             <header>
-                <h1>🌌 Galactic Conflict</h1>
+                <h1>Galactic Conflict</h1>
                 <p class="subtitle">Select a game to join or create a new one</p>
             </header>
 
@@ -160,7 +160,7 @@
                     </div>
                 {:else}
                     <div class="no-games">
-                        <p class="no-games-title">🌌 No games available</p>
+                        <p class="no-games-title">No games available</p>
                         <p class="no-games-subtitle">Waiting for open games... Create one to get started!</p>
                     </div>
                 {/if}

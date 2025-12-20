@@ -4,7 +4,7 @@
 
 import { json } from '@sveltejs/kit';
 import { v4 as uuidv4 } from 'uuid';
-import type { Player } from '$lib/game/entities/gameTypes';
+import type { Player, AiDifficulty } from '$lib/game/entities/gameTypes';
 import { getPlayerColor } from '$lib/game/constants/gameConstants';
 import { getPlayerDefaultName } from '$lib/game/constants/playerConfigs';
 import { logger } from 'multiplayer-framework/shared';
@@ -23,7 +23,8 @@ export function createPlayer(
     name: string,
     slotIndex: number,
     isAI: boolean,
-    personality?: string
+    personality?: string,
+    difficulty?: AiDifficulty
 ): Player {
     return {
         slotIndex,
@@ -31,6 +32,7 @@ export function createPlayer(
         color: getPlayerColor(slotIndex),
         isAI,
         personality,
+        difficulty,
     };
 }
 

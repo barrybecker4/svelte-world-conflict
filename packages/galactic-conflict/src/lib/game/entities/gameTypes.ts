@@ -4,6 +4,10 @@
 
 import type { GameStatus } from '$lib/game/constants/gameConstants';
 
+// ==================== AI DIFFICULTY ====================
+
+export type AiDifficulty = 'easy' | 'medium' | 'hard';
+
 // ==================== POSITION AND GEOMETRY ====================
 
 export interface Position {
@@ -19,6 +23,7 @@ export interface Player {
     color: string;
     isAI: boolean;
     personality?: string; // AI personality type if AI player
+    difficulty?: AiDifficulty; // AI difficulty level
 }
 
 export interface PlayerSlot {
@@ -26,6 +31,7 @@ export interface PlayerSlot {
     type: 'Set' | 'AI' | 'Open' | 'Disabled';
     name?: string;
     personality?: string; // AI personality
+    difficulty?: AiDifficulty; // AI difficulty level
 }
 
 // ==================== PLANET ====================

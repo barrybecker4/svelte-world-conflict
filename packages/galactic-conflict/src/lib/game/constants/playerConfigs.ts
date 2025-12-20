@@ -214,15 +214,18 @@ export function getPlayerDefaultName(playerSlotIndex: number): string {
   return getPlayerConfig(playerSlotIndex).defaultName;
 }
 
+import type { AiDifficulty } from '$lib/game/entities/gameTypes';
+
 // For creating Player objects with consistent colors
-export function createPlayerWithColors(name: string, slotIndex: number, isAI: boolean = false): Player {
+export function createPlayerWithColors(name: string, slotIndex: number, isAI: boolean = false, difficulty?: AiDifficulty): Player {
   const config = getPlayerConfig(slotIndex);
 
   return {
     slotIndex,
     name: name.trim() || config.defaultName,
     color: config.colorStart,
-    isAI
+    isAI,
+    difficulty
   };
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
-    import type { PlayerSlot, GameSettings } from '$lib/game/entities/gameTypes';
+    import type { PlayerSlot, GameSettings, AiDifficulty } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerDefaultName, getPlayerColor } from '$lib/game/constants/playerConfigs';
     import { loadPlayerName } from '$lib/client/stores/clientStorage';
@@ -38,6 +38,7 @@
                 slotIndex: 1,
                 type: 'AI',
                 name: getPlayerDefaultName(1),
+                difficulty: 'easy',
             }
         ];
         nextSlotIndex = 2;
@@ -74,7 +75,17 @@
             slotIndex,
             type: 'AI',
             name: getPlayerDefaultName(slotIndex),
+            difficulty: 'easy', // Default difficulty
         }];
+    }
+
+    // Update difficulty for an AI slot
+    function updateDifficulty(slotIndex: number, difficulty: AiDifficulty) {
+        playerSlots = playerSlots.map(slot => 
+            slot.slotIndex === slotIndex 
+                ? { ...slot, difficulty }
+                : slot
+        );
     }
 
     // Remove a player slot (cannot remove creator at index 0)
@@ -262,6 +273,11 @@
                             ></div>
                             <div class="slot-info">
                                 <span class="slot-name">
+                                    <span class="slot-icon">
+                                        {slot.type === 'Set' ? '👤' : 
+                                         slot.type === 'AI' ? '🤖' : 
+                                         '🔓'}
+                                    </span>
                                     {#if slot.type === 'Set'}
                                         {slot.name || 'You'}
                                     {:else if slot.type === 'AI'}
@@ -270,11 +286,18 @@
                                         &lt;Open&gt;
                                     {/if}
                                 </span>
-                                <span class="slot-type">
-                                    {slot.type === 'Set' ? '👤 Human' : 
-                                     slot.type === 'AI' ? '🤖 AI' : 
-                                     '🔓 Open'}
-                                </span>
+                                {#if slot.type === 'AI'}
+                                    <select
+                                        class="difficulty-select"
+                                        value={slot.difficulty || 'easy'}
+                                        on:change={(e) => updateDifficulty(slot.slotIndex, e.target.value)}
+                                        on:click|stopPropagation
+                                    >
+                                        <option value="easy">Easy</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="hard">Hard</option>
+                                    </select>
+                                {/if}
                             </div>
                             {#if slot.slotIndex !== 0}
                                 <button
@@ -559,17 +582,39 @@
     }
 
     .slot-name {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         font-weight: 500;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    .slot-type {
-        display: block;
+    .slot-icon {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .difficulty-select {
+        margin-top: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #4b5563;
+        border-radius: 4px;
+        color: #e5e7eb;
         font-size: 0.75rem;
-        color: #9ca3af;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    .difficulty-select:hover {
+        border-color: #6b7280;
+    }
+
+    .difficulty-select:focus {
+        outline: none;
+        border-color: #a855f7;
     }
 
     .remove-btn {

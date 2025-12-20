@@ -144,6 +144,7 @@ export class GalacticGameState {
                 color: getPlayerColor(slot.slotIndex),
                 isAI: slot.type === 'AI',
                 personality: slot.personality,
+                difficulty: slot.difficulty,
             }));
     }
 
