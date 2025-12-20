@@ -69,6 +69,9 @@ export const GALACTIC_CONSTANTS = {
     /** Default game duration */
     DEFAULT_GAME_DURATION_MINUTES: 5,
 
+    /** Timeout for stale open games (milliseconds) - games not joined within this time are removed */
+    STALE_GAME_TIMEOUT_MS: 30 * 60 * 1000, // 30 minutes
+
     /** How often to broadcast state updates (configurable range) */
     STATE_BROADCAST_INTERVAL_MIN_MS: 1000,
     STATE_BROADCAST_INTERVAL_MAX_MS: 10000,

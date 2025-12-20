@@ -45,6 +45,10 @@ export const GAME_CONSTANTS = {
     ERROR_MESSAGE_TIMEOUT_MS: 3000, // Auto-dismiss error messages
     LOBBY_POLL_INTERVAL_MS: 10000, // Lobby refresh interval
 
+    // Game lifecycle
+    // Timeout for stale open games (30 minutes) - games not joined within this time are removed
+    STALE_GAME_TIMEOUT_MS: 30 * 60 * 1000,
+
     // Battle/Combat timing
     BATTLE_TIMEOUT_MS: 3000, // Default battle timeout to prevent stuck battles
 

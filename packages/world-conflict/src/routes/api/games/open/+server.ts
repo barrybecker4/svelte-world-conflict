@@ -4,9 +4,6 @@ import { GameStorage, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 
-const TWENTY_MINUTES = 30 * 60 * 1000;
-const OLD_GAMES_THRESHOLD = TWENTY_MINUTES;
-
 export const GET: RequestHandler = async ({ platform }) => {
 
     const gameStorage = GameStorage.create(platform!);
@@ -16,11 +13,11 @@ export const GET: RequestHandler = async ({ platform }) => {
 
         const now = Date.now();
         const validGames = waitingGames.filter(game =>
-            (now - game.createdAt) < OLD_GAMES_THRESHOLD
+            (now - game.createdAt) < GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS
         );
 
         const expiredGames = waitingGames.filter(game =>
-          (now - game.createdAt) >= OLD_GAMES_THRESHOLD
+          (now - game.createdAt) >= GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS
         );
 
         cleanupOldGames(expiredGames, gameStorage);
@@ -50,7 +47,7 @@ function getOpenGames(validGames: GameRecord[], now: number) {
        maxPlayers: GAME_CONSTANTS.MAX_PLAYERS,
        createdAt: game.createdAt,
        gameType: game.gameType || 'MULTIPLAYER',
-       timeRemaining: Math.max(0, OLD_GAMES_THRESHOLD - (now - game.createdAt)), // Time until expiration
+       timeRemaining: Math.max(0, GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS - (now - game.createdAt)), // Time until expiration
        pendingConfiguration: game.pendingConfiguration,
        players: game.players
   }));

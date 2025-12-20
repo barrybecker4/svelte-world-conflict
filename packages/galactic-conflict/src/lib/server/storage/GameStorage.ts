@@ -5,6 +5,7 @@
 import type { GalacticGameStateData, Player, PendingGameConfiguration } from '$lib/game/entities/gameTypes';
 import { KVStorage } from './KVStorage';
 import { GameStatsService } from './GameStatsService';
+import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 
 const GAME_KEY_PREFIX = 'gc_game:';
@@ -195,8 +196,13 @@ export class GameStorage {
     /**
      * Get list of open games (PENDING status with open slots)
      * Uses cached list to reduce KV reads
+     * Automatically removes stale games (not joined within STALE_GAME_TIMEOUT_MS)
      */
     async getOpenGames(): Promise<GameRecord[]> {
+        const now = Date.now();
+        const staleThreshold = now - GALACTIC_CONSTANTS.STALE_GAME_TIMEOUT_MS;
+        const staleGameIds: string[] = [];
+
         try {
             // Try to get cached open games list first
             const cachedList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY);
@@ -209,10 +215,29 @@ export class GameStorage {
                 for (const gameInfo of cachedList.games) {
                     const fullGame = await this.loadGame(gameInfo.gameId);
                     if (fullGame && fullGame.status === 'PENDING') {
+                        // Check if game is stale (created too long ago)
+                        if (fullGame.createdAt < staleThreshold) {
+                            logger.debug(`Game ${fullGame.gameId} is stale (created ${now - fullGame.createdAt}ms ago)`);
+                            staleGameIds.push(fullGame.gameId);
+                            continue;
+                        }
+
                         // Check if still has open slots
                         if (fullGame.pendingConfiguration?.playerSlots?.some(slot => slot.type === 'Open')) {
                             validGames.push(fullGame);
                             gamesStillOpen.push(gameInfo);
+                        }
+                    }
+                }
+
+                // Delete stale games
+                if (staleGameIds.length > 0) {
+                    logger.info(`Removing ${staleGameIds.length} stale game(s) from storage`);
+                    for (const gameId of staleGameIds) {
+                        try {
+                            await this.deleteGame(gameId);
+                        } catch (error) {
+                            logger.error(`Failed to delete stale game ${gameId}:`, error);
                         }
                     }
                 }
@@ -238,8 +263,27 @@ export class GameStorage {
         for (const key of result.keys) {
             const game = await this.storage.get<GameRecord>(key.name);
             if (game && game.status === 'PENDING' && game.pendingConfiguration?.playerSlots) {
+                // Check if game is stale
+                if (game.createdAt < staleThreshold) {
+                    logger.debug(`Game ${game.gameId} is stale (created ${now - game.createdAt}ms ago)`);
+                    staleGameIds.push(game.gameId);
+                    continue;
+                }
+
                 if (game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open')) {
                     openGames.push(game);
+                }
+            }
+        }
+
+        // Delete stale games found during full scan
+        if (staleGameIds.length > 0) {
+            logger.info(`Removing ${staleGameIds.length} stale game(s) from storage`);
+            for (const gameId of staleGameIds) {
+                try {
+                    await this.deleteGame(gameId);
+                } catch (error) {
+                    logger.error(`Failed to delete stale game ${gameId}:`, error);
                 }
             }
         }
