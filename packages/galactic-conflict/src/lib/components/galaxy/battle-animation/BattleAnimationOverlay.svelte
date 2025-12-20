@@ -74,8 +74,8 @@
         height={overlayHeight}
         rx="10"
         fill="rgba(5, 5, 15, 0.5)"
-        stroke="#ef4444"
-        stroke-width="3"
+        stroke="#ef4444ee"
+        stroke-width="1"
         class="panel-bg"
     />
     
@@ -94,7 +94,7 @@
 
     <!-- Close button -->
     <g class="close-button" on:click={handleClose} on:keydown={(e) => e.key === 'Enter' && handleClose()}>
-        <circle cx={overlayWidth - 15} cy="15" r="10" fill="rgba(0, 0, 0, 0.5)" stroke="#ef4444" stroke-width="1.5" />
+        <circle cx={overlayWidth - 15} cy="15" r="10" fill="rgba(0, 0, 0, 0.5)" stroke="#ef4444" stroke-width="1" />
         <line x1={overlayWidth - 20} y1="10" x2={overlayWidth - 10} y2="20" stroke="#ef4444" stroke-width="2" />
         <line x1={overlayWidth - 10} y1="10" x2={overlayWidth - 20} y2="20" stroke="#ef4444" stroke-width="2" />
     </g>
@@ -192,11 +192,11 @@
     }
     
     .panel-bg {
-        animation: pulse-border 0.8s ease-in-out infinite;
+        animation: pulse-border 1.8s ease-in-out infinite;
     }
     
     .battle-title {
-        animation: flash-title 0.6s ease-in-out infinite alternate;
+        animation: flash-title 2.0s ease-in-out infinite alternate;
     }
     
     .outcome-message {
