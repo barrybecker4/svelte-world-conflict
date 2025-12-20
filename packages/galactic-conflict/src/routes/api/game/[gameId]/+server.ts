@@ -44,6 +44,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             const eliminationsBefore = gameState.recentPlayerEliminationEvents.length;
             const armadasBefore = gameState.armadas.length;
             const statusBefore = gameState.state.status;
+            const endResultBefore = gameState.state.endResult;
             const lastUpdateBefore = gameState.state.lastUpdateTime;
             
             // Process any pending events (this may create battle replays, remove arrived armadas, etc.)
@@ -56,7 +57,19 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             const eliminationsAfter = gameState.recentPlayerEliminationEvents.length;
             const armadasAfter = gameState.armadas.length;
             const statusAfter = gameState.state.status;
+            const endResultAfter = gameState.state.endResult;
             const lastUpdateAfter = gameState.state.lastUpdateTime;
+            
+            // Helper to compare endResult (handles object equality)
+            const endResultChanged = (() => {
+                if (endResultBefore === endResultAfter) return false;
+                if (endResultBefore === null || endResultAfter === null) return true;
+                if (endResultBefore === 'DRAWN_GAME' || endResultAfter === 'DRAWN_GAME') {
+                    return endResultBefore !== endResultAfter;
+                }
+                // Both are Player objects - compare slotIndex
+                return (endResultBefore as any).slotIndex !== (endResultAfter as any).slotIndex;
+            })();
             
             const hasChanges = replaysAfter > replaysBefore || 
                               reinforcementsAfter > reinforcementsBefore ||
@@ -64,6 +77,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
                               eliminationsAfter > eliminationsBefore ||
                               armadasAfter !== armadasBefore || 
                               statusAfter !== statusBefore ||
+                              endResultChanged ||
                               lastUpdateAfter !== lastUpdateBefore;
 
             // Only write to KV if state actually changed
@@ -73,10 +87,17 @@ export const GET: RequestHandler = async ({ params, platform }) => {
                 gameRecord.status = statusAfter;
                 await gameStorage.saveGame(gameRecord);
                 
-                // If new battle replays were created, broadcast to all clients
+                // Broadcast if:
+                // - New battle replays were created
+                // - Game status changed to COMPLETED
+                // - endResult changed (game ended)
                 const replaysAdded = replaysAfter - replaysBefore;
-                if (replaysAdded > 0) {
-                    logger.debug(`[GET /game] Broadcasting ${replaysAdded} new battle replays`);
+                const shouldBroadcast = replaysAdded > 0 || 
+                                       statusAfter === 'COMPLETED' || 
+                                       endResultChanged;
+                
+                if (shouldBroadcast) {
+                    logger.debug(`[GET /game] Broadcasting update: ${replaysAdded} new replays, status: ${statusBefore} -> ${statusAfter}, endResult changed: ${endResultChanged}`);
                     await notifyGameUpdate(gameId, gameRecord.gameState);
                 }
             }

@@ -278,7 +278,8 @@
             if (anim.replay.planetId === planet.id && anim.preBattlePlanetState) {
                 // Once outcome is shown, reveal the actual battle result
                 // The overlay can stay visible, but planet should update immediately
-                if (anim.phase === 'outcome' || anim.phase === 'done') {
+                // Also update immediately if game has ended (status === 'COMPLETED')
+                if (anim.phase === 'outcome' || anim.phase === 'done' || gameState.status === 'COMPLETED') {
                     // Show post-battle state (actual planet state from gameState)
                     return planet;
                 }
@@ -296,6 +297,7 @@
     
     // Process battle replays whenever they change
     // Track the replay IDs to detect new ones even if array reference doesn't change
+    // Don't clear animations when replays are cleared from state - animations continue independently
     let lastReplayIds: string[] = [];
     $: {
         const replays = gameState.recentBattleReplays ?? [];
@@ -315,8 +317,10 @@
             console.log(`[GalaxyMap] Processing ${replays.length} battle replays (${replays.length - lastReplayIds.length} new)`);
             processNewBattleReplays(replays);
             lastReplayIds = currentReplayIds;
-        } else if (replays.length === 0) {
-            // Reset when replays are cleared
+        } else if (replays.length === 0 && lastReplayIds.length > 0) {
+            // Replays were cleared from state, but don't interrupt ongoing animations
+            // The animations will complete on their own
+            console.log(`[GalaxyMap] Battle replays cleared from state, but animations continue`);
             lastReplayIds = [];
         }
     }

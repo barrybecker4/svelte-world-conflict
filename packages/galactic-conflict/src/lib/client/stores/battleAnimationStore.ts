@@ -118,6 +118,15 @@ async function playBattleAnimation(replayId: string): Promise<void> {
     // Show outcome
     await showOutcome(replayId);
 
+    // Mark as done so planet ownership updates immediately
+    battleAnimations.update(map => {
+        const state = map.get(replayId);
+        if (state) {
+            state.phase = 'done';
+        }
+        return new Map(map);
+    });
+
     // Keep outcome visible for a bit, then clean up
     await delay(2500 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED);
     removeBattleAnimation(replayId);
@@ -181,7 +190,10 @@ async function playRound(replayId: string, round: BattleReplayRound, roundIndex:
  */
 async function showOutcome(replayId: string): Promise<void> {
     const state = get(battleAnimations).get(replayId);
-    if (!state) return;
+    if (!state) {
+        console.warn(`[BattleAnimation] Cannot show outcome - animation ${replayId} not found`);
+        return;
+    }
 
     const { replay } = state;
 
@@ -198,15 +210,23 @@ async function showOutcome(replayId: string): Promise<void> {
         outcomeMessage = `${replay.planetName} defended!`;
     }
 
+    console.log(`[BattleAnimation] Showing outcome for ${replay.planetName}: ${outcomeMessage}`);
+
     battleAnimations.update(map => {
         const state = map.get(replayId);
         if (state) {
             state.phase = 'outcome';
             state.currentDiceRolls = null;
             state.outcomeMessage = outcomeMessage;
+            console.log(`[BattleAnimation] Updated animation state - phase: ${state.phase}, message: ${state.outcomeMessage}`);
+        } else {
+            console.warn(`[BattleAnimation] State not found when updating outcome for ${replayId}`);
         }
         return new Map(map);
     });
+    
+    // Small delay to ensure the UI updates before continuing
+    await delay(100);
 }
 
 /**

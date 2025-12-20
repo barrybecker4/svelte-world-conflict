@@ -41,9 +41,11 @@ export async function processGameEvents(
         const eliminationsBefore = gameState.recentPlayerEliminationEvents.length;
         const armadasBefore = gameState.armadas.length;
         const statusBefore = gameState.state.status;
+        const endResultBefore = gameState.state.endResult;
         const lastUpdateBefore = gameState.state.lastUpdateTime;
         
         // Process any pending events (this may create battle replays, remove arrived armadas, etc.)
+        // Even if game is already COMPLETED, we need to process any remaining events (like final battles)
         processGameState(gameState);
 
         // Check if anything changed
@@ -53,13 +55,56 @@ export async function processGameEvents(
         const eliminationsAfter = gameState.recentPlayerEliminationEvents.length;
         const armadasAfter = gameState.armadas.length;
         const statusAfter = gameState.state.status;
+        const endResultAfter = gameState.state.endResult;
         const lastUpdateAfter = gameState.state.lastUpdateTime;
+        
+        // Helper to compare endResult (handles object equality after JSON serialization)
+        // Note: We compare by value, not reference, since JSON serialization creates new objects
+        const endResultChanged = (() => {
+            try {
+                // Same reference (shouldn't happen after JSON, but check anyway)
+                if (endResultBefore === endResultAfter) return false;
+                
+                // Both null or undefined
+                if ((!endResultBefore || endResultBefore === null) && (!endResultAfter || endResultAfter === null)) {
+                    return false;
+                }
+                
+                // One is null/undefined, other is not
+                if (!endResultBefore || !endResultAfter) return true;
+                
+                // Check for DRAWN_GAME string
+                if (endResultBefore === 'DRAWN_GAME' || endResultAfter === 'DRAWN_GAME') {
+                    return endResultBefore !== endResultAfter;
+                }
+                
+                // Both should be Player objects - compare slotIndex (handles JSON deserialization)
+                const beforeSlot = typeof endResultBefore === 'object' && endResultBefore !== null 
+                    ? (endResultBefore as any).slotIndex 
+                    : undefined;
+                const afterSlot = typeof endResultAfter === 'object' && endResultAfter !== null
+                    ? (endResultAfter as any).slotIndex
+                    : undefined;
+                    
+                if (beforeSlot !== undefined && afterSlot !== undefined) {
+                    return beforeSlot !== afterSlot;
+                }
+                
+                // If we can't determine, they're different objects so assume changed
+                return true;
+            } catch (error) {
+                // If comparison fails, log and assume changed (safer to broadcast)
+                logger.warn(`[EventProcessor] Error comparing endResult, assuming changed:`, error);
+                return true;
+            }
+        })();
         
         // Consider it changed if:
         // - Battle replays were added
         // - Reinforcement, conquest, or elimination events were added
         // - Armadas changed (arrived or removed)
         // - Status changed (game ended)
+        // - endResult changed (game ended with winner determined)
         // - lastUpdateTime changed (events were processed, even if just resource ticks)
         const hasChanges = replaysAfter > replaysBefore || 
                           reinforcementsAfter > reinforcementsBefore ||
@@ -67,11 +112,13 @@ export async function processGameEvents(
                           eliminationsAfter > eliminationsBefore ||
                           armadasAfter !== armadasBefore || 
                           statusAfter !== statusBefore ||
+                          endResultChanged ||
                           lastUpdateAfter !== lastUpdateBefore;
 
         if (hasChanges) {
             // Broadcast updates to all clients via websocket (before clearing events)
             // Include events in the broadcast so clients can process them
+            // Broadcast BEFORE saving, so clients get the update with battle replays
             gameRecord.gameState = gameState.toJSON();
             gameRecord.status = statusAfter;
             await notifyGameUpdate(gameId, gameRecord.gameState);
@@ -88,7 +135,12 @@ export async function processGameEvents(
             
             const replaysAdded = replaysAfter - replaysBefore;
             const armadasArrived = armadasBefore - armadasAfter;
-            logger.info(`[EventProcessor] Processed events for game ${gameId}: ${replaysAdded} new replays, ${armadasArrived} armadas arrived, status: ${statusBefore} -> ${statusAfter}, lastUpdate: ${lastUpdateBefore} -> ${lastUpdateAfter}`);
+            const endResultStr = (result: any) => {
+                if (result === null) return 'null';
+                if (result === 'DRAWN_GAME') return 'DRAWN_GAME';
+                return `Player ${(result as any).slotIndex} (${(result as any).name})`;
+            };
+            logger.info(`[EventProcessor] Processed events for game ${gameId}: ${replaysAdded} new replays, ${armadasArrived} armadas arrived, status: ${statusBefore} -> ${statusAfter}, endResult: ${endResultStr(endResultBefore)} -> ${endResultStr(endResultAfter)}, lastUpdate: ${lastUpdateBefore} -> ${lastUpdateAfter}`);
             return true;
         } else {
             logger.debug(`[EventProcessor] No changes detected for game ${gameId} (replays: ${replaysBefore}, armadas: ${armadasBefore}, status: ${statusBefore})`);
