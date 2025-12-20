@@ -143,7 +143,9 @@
 
     .ship-count {
         pointer-events: none;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        text-shadow:
+          1px 1px 4px black,
+          1px -2px 4px black;
     }
 
     .planet-name {
