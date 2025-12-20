@@ -9,6 +9,18 @@ import { logger } from 'multiplayer-framework/shared';
 const GAME_KEY_PREFIX = 'gc_game:';
 const OPEN_GAMES_KEY = 'gc_open_games';
 
+interface OpenGamesList {
+    games: Array<{
+        gameId: string;
+        status: 'PENDING';
+        createdAt: number;
+        playerCount: number;
+        maxPlayers: number;
+        gameType: 'MULTIPLAYER' | 'AI';
+    }>;
+    lastUpdated: number;
+}
+
 export interface GameRecord {
     gameId: string;
     status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
@@ -38,6 +50,74 @@ export class GameStorage {
         const key = `${GAME_KEY_PREFIX}${game.gameId}`;
         game.lastUpdateAt = Date.now();
         await this.storage.put(key, game);
+        
+        // Update open games cache if status changed
+        if (game.status === 'PENDING') {
+            await this.updateOpenGamesCache(game);
+        } else {
+            await this.removeFromOpenGamesCache(game.gameId);
+        }
+    }
+    
+    /**
+     * Update the cached open games list when a game is added or modified
+     */
+    private async updateOpenGamesCache(game: GameRecord): Promise<void> {
+        if (game.status !== 'PENDING' || !game.pendingConfiguration?.playerSlots) {
+            return;
+        }
+        
+        // Check if game has open slots
+        const hasOpenSlots = game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open');
+        if (!hasOpenSlots) {
+            await this.removeFromOpenGamesCache(game.gameId);
+            return;
+        }
+        
+        try {
+            const currentList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY) || {
+                games: [],
+                lastUpdated: Date.now()
+            };
+            
+            const gameInfo = {
+                gameId: game.gameId,
+                status: 'PENDING' as const,
+                createdAt: game.createdAt,
+                playerCount: game.players.length,
+                maxPlayers: game.pendingConfiguration.playerSlots.length,
+                gameType: game.gameType
+            };
+            
+            const existingIndex = currentList.games.findIndex(g => g.gameId === game.gameId);
+            if (existingIndex >= 0) {
+                currentList.games[existingIndex] = gameInfo;
+            } else {
+                currentList.games.push(gameInfo);
+            }
+            
+            currentList.lastUpdated = Date.now();
+            await this.storage.put(OPEN_GAMES_KEY, currentList);
+        } catch (error) {
+            logger.warn(`Error updating open games cache for game ${game.gameId}:`, error);
+        }
+    }
+    
+    /**
+     * Remove a game from the cached open games list
+     */
+    private async removeFromOpenGamesCache(gameId: string): Promise<void> {
+        try {
+            const currentList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY);
+            if (!currentList) return;
+            
+            currentList.games = currentList.games.filter(g => g.gameId !== gameId);
+            currentList.lastUpdated = Date.now();
+            
+            await this.storage.put(OPEN_GAMES_KEY, currentList);
+        } catch (error) {
+            logger.warn(`Error removing game ${gameId} from open games cache:`, error);
+        }
     }
 
     /**
@@ -54,12 +134,22 @@ export class GameStorage {
     async deleteGame(gameId: string): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${gameId}`;
         await this.storage.delete(key);
+        await this.removeFromOpenGamesCache(gameId);
     }
 
     /**
      * List all games (with optional status filter)
+     * Optimized to reduce KV reads when possible
      */
     async listGames(status?: 'PENDING' | 'ACTIVE' | 'COMPLETED'): Promise<GameRecord[]> {
+        // For PENDING games, use cached open games list if available
+        if (status === 'PENDING') {
+            const openGames = await this.getOpenGames();
+            return openGames;
+        }
+
+        // For other statuses, we need to list all keys and read each game
+        // This is necessary for ACTIVE games used by event processing
         const result = await this.storage.list(GAME_KEY_PREFIX);
         const games: GameRecord[] = [];
 
@@ -75,15 +165,72 @@ export class GameStorage {
 
     /**
      * Get list of open games (PENDING status with open slots)
+     * Uses cached list to reduce KV reads
      */
     async getOpenGames(): Promise<GameRecord[]> {
-        const pendingGames = await this.listGames('PENDING');
-        
-        // Filter to games that have open slots
-        return pendingGames.filter(game => {
-            if (!game.pendingConfiguration?.playerSlots) return false;
-            return game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open');
-        });
+        try {
+            // Try to get cached open games list first
+            const cachedList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY);
+            
+            if (cachedList && cachedList.games.length > 0) {
+                // Validate cached entries and fetch full game records
+                const validGames: GameRecord[] = [];
+                const gamesStillOpen: typeof cachedList.games = [];
+
+                for (const gameInfo of cachedList.games) {
+                    const fullGame = await this.loadGame(gameInfo.gameId);
+                    if (fullGame && fullGame.status === 'PENDING') {
+                        // Check if still has open slots
+                        if (fullGame.pendingConfiguration?.playerSlots?.some(slot => slot.type === 'Open')) {
+                            validGames.push(fullGame);
+                            gamesStillOpen.push(gameInfo);
+                        }
+                    }
+                }
+
+                // Update cache if entries changed
+                if (gamesStillOpen.length !== cachedList.games.length) {
+                    await this.storage.put(OPEN_GAMES_KEY, {
+                        games: gamesStillOpen,
+                        lastUpdated: Date.now()
+                    });
+                }
+
+                return validGames;
+            }
+        } catch (error) {
+            logger.warn('Error reading cached open games list, falling back to full scan:', error);
+        }
+
+        // Fallback: scan all games (less efficient but reliable)
+        const result = await this.storage.list(GAME_KEY_PREFIX);
+        const openGames: GameRecord[] = [];
+
+        for (const key of result.keys) {
+            const game = await this.storage.get<GameRecord>(key.name);
+            if (game && game.status === 'PENDING' && game.pendingConfiguration?.playerSlots) {
+                if (game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open')) {
+                    openGames.push(game);
+                }
+            }
+        }
+
+        // Cache the results for next time
+        if (openGames.length > 0) {
+            await this.storage.put(OPEN_GAMES_KEY, {
+                games: openGames.map(g => ({
+                    gameId: g.gameId,
+                    status: 'PENDING' as const,
+                    createdAt: g.createdAt,
+                    playerCount: g.players.length,
+                    maxPlayers: g.pendingConfiguration?.playerSlots?.length || 0,
+                    gameType: g.gameType
+                })),
+                lastUpdated: Date.now()
+            });
+        }
+
+        return openGames;
     }
 
     /**

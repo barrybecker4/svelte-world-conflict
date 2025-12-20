@@ -70,12 +70,10 @@ export async function processGameEvents(
                           lastUpdateAfter !== lastUpdateBefore;
 
         if (hasChanges) {
-            // Save updated state
+            // Broadcast updates to all clients via websocket (before clearing events)
+            // Include events in the broadcast so clients can process them
             gameRecord.gameState = gameState.toJSON();
             gameRecord.status = statusAfter;
-            await gameStorage.saveGame(gameRecord);
-
-            // Broadcast updates to all clients via websocket
             await notifyGameUpdate(gameId, gameRecord.gameState);
             
             // Clear events after broadcasting (similar to battle replays)
@@ -84,7 +82,7 @@ export async function processGameEvents(
             gameState.clearConquestEvents();
             gameState.clearPlayerEliminationEvents();
             
-            // Save state again after clearing events
+            // Save state once after clearing events (single KV write)
             gameRecord.gameState = gameState.toJSON();
             await gameStorage.saveGame(gameRecord);
             
