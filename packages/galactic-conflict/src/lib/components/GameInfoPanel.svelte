@@ -1,9 +1,12 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
     import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
-    import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+    import { isGameCompleted, isPlayerEliminated } from '$lib/client/utils/gameStateChecks';
     import AudioButton from './configuration/AudioButton.svelte';
     import { battleAnimations } from '$lib/client/stores/battleAnimationStore';
+    import PlayerStatsDisplay from './info-panel/PlayerStatsDisplay.svelte';
+    import Leaderboard from './info-panel/Leaderboard.svelte';
+    import GameResultDisplay from './info-panel/GameResultDisplay.svelte';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
@@ -14,7 +17,7 @@
     export let hasResigned: boolean = false;
 
     // Check if current player is eliminated (resigned or defeated)
-    $: isEliminated = gameState.eliminatedPlayers?.includes(currentPlayerId ?? -1) ?? false;
+    $: isEliminated = isPlayerEliminated(gameState, currentPlayerId);
 
     // Time tracking with interval for live updates
     let currentTime = Date.now();
@@ -61,9 +64,7 @@
     });
 
     // Delay showing game over until all battle animations complete
-    // Don't check hasUnprocessedReplays - just wait for animations to finish
-    // (Replays get cleared from state after being sent, but animations continue)
-    $: shouldShowGameOver = gameState.status === 'COMPLETED' && $battleAnimations.size === 0;
+    $: shouldShowGameOver = isGameCompleted(gameState) && $battleAnimations.size === 0;
     
     // Delay showing eliminated/resigned message until battle animations complete
     $: shouldShowEliminatedMessage = (isEliminated || hasResigned) && $battleAnimations.size === 0;
@@ -86,89 +87,28 @@
 
     <!-- Current player stats -->
     {#if currentPlayer}
-        <div class="my-stats">
-            <h3>Your Empire</h3>
-            <div class="stat-grid">
-                <div class="stat">
-                    <span class="stat-label">Planets</span>
-                    <span class="stat-value">{myPlanets.length}</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Ships</span>
-                    <span class="stat-value">{totalShips}</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Resources</span>
-                    <span class="stat-value">{Math.floor(totalResources)}</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Armadas</span>
-                    <span class="stat-value">{gameState.armadas.filter(a => a.ownerId === currentPlayerId).length}</span>
-                </div>
-            </div>
-        </div>
+        <PlayerStatsDisplay
+            myPlanets={myPlanets.length}
+            {totalShips}
+            {totalResources}
+            armadaCount={gameState.armadas.filter(a => a.ownerId === currentPlayerId).length}
+        />
     {/if}
 
     <!-- Leaderboard -->
-    <div class="leaderboard">
-        <h3>Leaderboard</h3>
-        <div class="player-list">
-            {#each sortedPlayers as player, index}
-                {@const stats = getPlayerStats(player)}
-                {@const isEliminated = gameState.eliminatedPlayers.includes(player.slotIndex)}
-                <div
-                    class="player-row"
-                    class:current={player.slotIndex === currentPlayerId}
-                    class:eliminated={isEliminated}
-                >
-                    <span class="rank">#{index + 1}</span>
-                    <span
-                        class="player-color"
-                        style="background-color: {getPlayerColor(player.slotIndex)}"
-                    ></span>
-                    <span class="player-name">{player.name}</span>
-                    <span class="player-stats">
-                        {stats.planets}🪐 {stats.ships}🚀
-                    </span>
-                </div>
-            {/each}
-        </div>
-    </div>
+    <Leaderboard
+        sortedPlayers={sortedPlayers.map(p => ({ ...p, ...getPlayerStats(p) }))}
+        {currentPlayerId}
+        eliminatedPlayers={gameState.eliminatedPlayers}
+    />
 
     <!-- Game result -->
     {#if shouldShowGameOver}
-        {@const isWinner = gameState.endResult !== 'DRAWN_GAME' && 
-                           gameState.endResult !== null &&
-                           typeof gameState.endResult === 'object' &&
-                           gameState.endResult.slotIndex === currentPlayerId}
-        {@const isDraw = gameState.endResult === 'DRAWN_GAME'}
-        <div class="game-result" class:victory={isWinner} class:defeat={!isWinner && !isDraw}>
-            <h3>
-                {#if isDraw}
-                    🎯 Draw!
-                {:else if isWinner}
-                    🏆 Victory!
-                {:else}
-                    💀 Defeat
-                {/if}
-            </h3>
-            {#if isDraw}
-                <p class="result-text draw">The game ended in a draw!</p>
-            {:else if isWinner}
-                <p class="result-text winner">Congratulations! You have conquered the galaxy!</p>
-            {:else if gameState.endResult && typeof gameState.endResult === 'object'}
-                <p class="result-text loser">
-                    <span class="winner-name" style="color: {gameState.endResult.color}">
-                        {gameState.endResult.name}
-                    </span> has conquered the galaxy!
-                </p>
-            {/if}
-            {#if onNewGame}
-                <button class="new-game-btn" on:click={onNewGame}>
-                    New Game
-                </button>
-            {/if}
-        </div>
+        <GameResultDisplay
+            {gameState}
+            {currentPlayerId}
+            {onNewGame}
+        />
     {/if}
 
     <!-- Resign/Leave section -->
@@ -250,168 +190,6 @@
         font-family: monospace;
     }
 
-    .my-stats {
-        background: rgba(168, 85, 247, 0.1);
-        border: 1px solid rgba(168, 85, 247, 0.3);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .stat-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-    }
-
-    .stat {
-        text-align: center;
-    }
-
-    .stat-label {
-        display: block;
-        font-size: 0.75rem;
-        color: #9ca3af;
-    }
-
-    .stat-value {
-        display: block;
-        font-size: 1.25rem;
-        font-weight: bold;
-        color: #e5e7eb;
-    }
-
-    .leaderboard {
-        margin-bottom: 1.5rem;
-    }
-
-    .player-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .player-row {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 4px;
-        font-size: 0.85rem;
-    }
-
-    .player-row.current {
-        background: rgba(168, 85, 247, 0.2);
-        border: 1px solid rgba(168, 85, 247, 0.4);
-    }
-
-    .player-row.eliminated {
-        opacity: 0.5;
-        text-decoration: line-through;
-    }
-
-    .rank {
-        color: #9ca3af;
-        width: 24px;
-    }
-
-    .player-color {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-    }
-
-    .player-name {
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .player-stats {
-        color: #9ca3af;
-        font-size: 0.8rem;
-    }
-
-    .game-result {
-        text-align: center;
-        padding: 1.5rem;
-        background: rgba(168, 85, 247, 0.2);
-        border: 1px solid rgba(168, 85, 247, 0.4);
-        border-radius: 8px;
-        animation: slideIn 0.5s ease-out;
-    }
-    
-    .game-result.victory {
-        background: rgba(34, 197, 94, 0.15);
-        border: 1px solid rgba(34, 197, 94, 0.4);
-    }
-    
-    .game-result.defeat {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.4);
-    }
-    
-    @keyframes slideIn {
-        0% {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        100% {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .game-result h3 {
-        font-size: 1.75rem;
-        margin: 0 0 0.75rem 0;
-        color: #e5e7eb;
-    }
-
-    .result-text {
-        font-size: 1rem;
-        font-weight: normal;
-        margin: 0.5rem 0 1rem 0;
-        line-height: 1.5;
-        color: #d1d5db;
-    }
-
-    .result-text.winner {
-        color: #22c55e;
-    }
-    
-    .result-text.loser {
-        color: #e5e7eb;
-    }
-
-    .result-text.draw {
-        color: #fbbf24;
-    }
-    
-    .winner-name {
-        font-weight: bold;
-        text-shadow: 0 0 8px currentColor;
-    }
-
-    .new-game-btn {
-        margin-top: 1rem;
-        padding: 0.75rem 2rem;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: transform 0.2s, background 0.2s;
-    }
-
-    .new-game-btn:hover {
-        background: linear-gradient(135deg, #6d28d9, #9333ea);
-        transform: scale(1.05);
-    }
 
     /* Action section */
     .action-section {

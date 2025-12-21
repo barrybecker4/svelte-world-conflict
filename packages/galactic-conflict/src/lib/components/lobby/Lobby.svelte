@@ -5,6 +5,8 @@
     import { goto } from '$app/navigation';
     import { logger } from 'multiplayer-framework/shared';
     import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
+    import NameInputForm from './NameInputForm.svelte';
+    import GameCard from './GameCard.svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -60,15 +62,6 @@
         }
     }
 
-    function handleNameSubmit() {
-        if (playerName.trim()) {
-            savePlayerName(playerName.trim());
-            showNameInput = false;
-            loadGames();
-            startPolling();
-        }
-    }
-
     async function handleJoinGame(gameId: string, slotIndex: number) {
         try {
             stopPolling();
@@ -93,28 +86,27 @@
         dispatch('close');
     }
 
-    function getOpenSlots(game: any) {
-        return game.playerSlots?.filter((s: any) => s.type === 'Open') || [];
+    function handleNameSubmit(event: CustomEvent<{ playerName: string }>) {
+        const { playerName: name } = event.detail;
+        playerName = name;
+        savePlayerName(name);
+        showNameInput = false;
+        loadGames();
+        startPolling();
+    }
+
+    async function handleGameJoin(event: CustomEvent<{ gameId: string; slotIndex: number }>) {
+        const { gameId, slotIndex } = event.detail;
+        await handleJoinGame(gameId, slotIndex);
     }
 </script>
 
 <div class="lobby-overlay">
     {#if showNameInput}
-        <div class="name-input-container">
-            <h2>Enter Your Name</h2>
-            <form on:submit|preventDefault={handleNameSubmit}>
-                <input
-                    type="text"
-                    bind:value={playerName}
-                    placeholder="Commander name..."
-                    maxlength="20"
-                    autofocus
-                />
-                <button type="submit" disabled={!playerName.trim()}>
-                    Continue
-                </button>
-            </form>
-        </div>
+        <NameInputForm
+            {playerName}
+            on:submit={handleNameSubmit}
+        />
     {:else}
         <div class="lobby-container">
             <header>
@@ -133,31 +125,10 @@
                     <div class="games-list">
                         <h3>Open Games ({games.length})</h3>
                         {#each games as game}
-                            {@const playerCount = game.players?.length || game.playerSlots?.length || 0}
-                            {@const neutralPlanets = game.settings?.neutralPlanetCount ?? (game.settings?.planetCount ? game.settings.planetCount - playerCount : 8)}
-                            {@const totalPlanets = playerCount + neutralPlanets}
-                            <div class="game-card">
-                                <div class="game-info">
-                                    <span class="game-id">Game: {game.gameId}</span>
-                                    <span class="player-count">
-                                        {game.players?.length || 0}/{game.playerSlots?.length || 0} players
-                                    </span>
-                                </div>
-                                <div class="settings-preview">
-                                    <span>🪐 {totalPlanets} planets ({neutralPlanets} neutral)</span>
-                                    <span>⏱️ {game.settings?.gameDuration || 15}min</span>
-                                </div>
-                                <div class="slots">
-                                    {#each getOpenSlots(game) as slot}
-                                        <button
-                                            class="slot-btn"
-                                            on:click={() => handleJoinGame(game.gameId, slot.slotIndex)}
-                                        >
-                                            Join Slot {slot.slotIndex + 1}
-                                        </button>
-                                    {/each}
-                                </div>
-                            </div>
+                            <GameCard
+                                {game}
+                                on:join={handleGameJoin}
+                            />
                         {/each}
                     </div>
                 {:else}
@@ -200,50 +171,6 @@
         padding: 1rem;
     }
 
-    .name-input-container {
-        background: linear-gradient(145deg, #1e1e2e, #2a2a3e);
-        border: 2px solid #4c1d95;
-        border-radius: 16px;
-        padding: 2rem;
-        text-align: center;
-        color: #e5e7eb;
-    }
-
-    .name-input-container h2 {
-        margin: 0 0 1.5rem;
-        color: #a78bfa;
-    }
-
-    .name-input-container form {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .name-input-container input {
-        padding: 0.75rem 1rem;
-        font-size: 1.1rem;
-        background: #1f1f2e;
-        border: 1px solid #374151;
-        border-radius: 8px;
-        color: #e5e7eb;
-        text-align: center;
-    }
-
-    .name-input-container button {
-        padding: 0.75rem 2rem;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .name-input-container button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
 
     .lobby-container {
         background: linear-gradient(145deg, #1e1e2e, #2a2a3e);
@@ -321,54 +248,6 @@
         gap: 1rem;
     }
 
-    .game-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid #374151;
-        border-radius: 8px;
-        padding: 1rem;
-    }
-
-    .game-info {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5rem;
-    }
-
-    .game-id {
-        font-weight: 500;
-    }
-
-    .player-count {
-        color: #9ca3af;
-    }
-
-    .settings-preview {
-        display: flex;
-        gap: 1rem;
-        font-size: 0.85rem;
-        color: #9ca3af;
-        margin-bottom: 0.75rem;
-    }
-
-    .slots {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .slot-btn {
-        padding: 0.5rem 1rem;
-        background: #374151;
-        border: none;
-        border-radius: 4px;
-        color: #e5e7eb;
-        cursor: pointer;
-        font-size: 0.85rem;
-    }
-
-    .slot-btn:hover {
-        background: #4b5563;
-    }
 
     footer {
         padding: 1.5rem;

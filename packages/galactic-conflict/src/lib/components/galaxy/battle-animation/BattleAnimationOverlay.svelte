@@ -93,7 +93,7 @@
     </text>
 
     <!-- Close button -->
-    <g class="close-button" on:click={handleClose} on:keydown={(e) => e.key === 'Enter' && handleClose()}>
+    <g class="close-button" role="button" tabindex="0" on:click={handleClose} on:keydown={(e) => e.key === 'Enter' && handleClose()}>
         <circle cx={overlayWidth - 15} cy="15" r="10" fill="rgba(0, 0, 0, 0.5)" stroke="#ef4444" stroke-width="1" />
         <line x1={overlayWidth - 20} y1="10" x2={overlayWidth - 10} y2="20" stroke="#ef4444" stroke-width="2" />
         <line x1={overlayWidth - 10} y1="10" x2={overlayWidth - 20} y2="20" stroke="#ef4444" stroke-width="2" />

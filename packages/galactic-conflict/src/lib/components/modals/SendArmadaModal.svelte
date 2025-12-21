@@ -3,8 +3,9 @@
     import type { Planet } from '$lib/game/entities/gameTypes';
     import { calculateTravelTime } from '$lib/game/entities/Armada';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
-    import { getPlayerColor } from '$lib/game/constants/playerConfigs';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
+    import ShipCountSelector from './send-armada/ShipCountSelector.svelte';
+    import DestinationPlanetList from './send-armada/DestinationPlanetList.svelte';
 
     export let sourcePlanet: Planet;
     export let planets: Planet[];
@@ -96,60 +97,20 @@
                 <span class="ships">({currentSourcePlanet.ships} ships available)</span>
             </div>
 
-            <div class="ship-selection">
-                <label for="ship-count">Ships to send:</label>
-                {#if maxShips <= 0}
-                    <div class="no-ships-warning">No ships available to send!</div>
-                {:else}
-                    <div class="ship-input">
-                        <input
-                            type="range"
-                            id="ship-count"
-                            bind:value={shipCount}
-                            min={sliderMin}
-                            max={sliderMax}
-                        />
-                        <input
-                            type="number"
-                            bind:value={shipCount}
-                            min={sliderMin}
-                            max={sliderMax}
-                            class="number-input"
-                        />
-                    </div>
-                    <div class="quick-buttons">
-                        <button on:click={() => shipCount = 1}>1</button>
-                        <button on:click={() => shipCount = Math.max(1, Math.floor(maxShips / 4))}>25%</button>
-                        <button on:click={() => shipCount = Math.max(1, Math.floor(maxShips / 2))}>50%</button>
-                        <button on:click={() => shipCount = maxShips}>All</button>
-                    </div>
-                {/if}
-            </div>
+            <ShipCountSelector
+                bind:shipCount
+                {maxShips}
+                {sliderMin}
+                {sliderMax}
+            />
 
-            <div class="destination-selection">
-                <label>Select destination:</label>
-                <div class="planet-list">
-                    {#each availablePlanets as planet}
-                        {@const isOwned = planet.ownerId === currentPlayerId}
-                        {@const isNeutral = planet.ownerId === null}
-                        <button
-                            class="planet-option"
-                            class:selected={selectedDestinationId === planet.id}
-                            class:owned={isOwned}
-                            class:neutral={isNeutral}
-                            class:enemy={!isOwned && !isNeutral}
-                            on:click={() => selectDestination(planet.id)}
-                        >
-                            <span 
-                                class="planet-color"
-                                style="background-color: {getPlayerColor(planet.ownerId)}"
-                            ></span>
-                            <span class="planet-name">{planet.name}</span>
-                            <span class="planet-ships">{planet.ships}🚀</span>
-                        </button>
-                    {/each}
-                </div>
-            </div>
+            <DestinationPlanetList
+                planets={availablePlanets}
+                sourcePlanetId={sourcePlanet.id}
+                {currentPlayerId}
+                {selectedDestinationId}
+                onSelect={selectDestination}
+            />
 
             {#if selectedDestination}
                 <div class="travel-info">
@@ -274,121 +235,6 @@
         margin-left: 0.5rem;
     }
 
-    .ship-selection {
-        margin-bottom: 1.5rem;
-    }
-
-    .ship-selection label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: #9ca3af;
-    }
-
-    .no-ships-warning {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.4);
-        color: #fca5a5;
-        padding: 0.75rem;
-        border-radius: 6px;
-        text-align: center;
-        font-size: 0.9rem;
-    }
-
-    .ship-input {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-
-    .ship-input input[type="range"] {
-        flex: 1;
-        accent-color: #a78bfa;
-    }
-
-    .number-input {
-        width: 60px;
-        padding: 0.5rem;
-        background: #1f1f2e;
-        border: 1px solid #374151;
-        border-radius: 4px;
-        color: #e5e7eb;
-        text-align: center;
-    }
-
-    .quick-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .quick-buttons button {
-        flex: 1;
-        padding: 0.5rem;
-        background: #374151;
-        border: none;
-        border-radius: 4px;
-        color: #e5e7eb;
-        cursor: pointer;
-    }
-
-    .quick-buttons button:hover {
-        background: #4b5563;
-    }
-
-    .destination-selection {
-        margin-bottom: 1.5rem;
-    }
-
-    .destination-selection label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: #9ca3af;
-    }
-
-    .planet-list {
-        max-height: 200px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .planet-option {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid transparent;
-        border-radius: 4px;
-        cursor: pointer;
-        color: #e5e7eb;
-        text-align: left;
-    }
-
-    .planet-option:hover {
-        background: rgba(255, 255, 255, 0.1);
-    }
-
-    .planet-option.selected {
-        border-color: #a78bfa;
-        background: rgba(168, 85, 247, 0.2);
-    }
-
-    .planet-color {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-    }
-
-    .planet-option .planet-name {
-        flex: 1;
-        margin-left: 0;
-    }
-
-    .planet-ships {
-        color: #9ca3af;
-    }
 
     .travel-info {
         background: rgba(255, 255, 255, 0.05);

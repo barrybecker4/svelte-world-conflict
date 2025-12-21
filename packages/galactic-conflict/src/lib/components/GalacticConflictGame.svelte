@@ -7,6 +7,8 @@
     import GameInfoPanel from './GameInfoPanel.svelte';
     import SendArmadaModal from './modals/SendArmadaModal.svelte';
     import BuildShipsModal from './modals/BuildShipsModal.svelte';
+    import ResignConfirmModal from './modals/ResignConfirmModal.svelte';
+    import ConnectionError from './ConnectionError.svelte';
     import { getWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
     import { loadGameCreator } from '$lib/client/stores/clientStorage';
@@ -337,16 +339,7 @@
 
 <div class="game-container">
     {#if connectionError}
-        <div class="connection-error">
-            <h2>Connection Failed</h2>
-            <p>{connectionError}</p>
-            <div class="error-instructions">
-                <p>To start the WebSocket worker, run in a separate terminal:</p>
-                <code>npm run dev:websocket</code>
-                <p>Then refresh this page.</p>
-            </div>
-            <button on:click={() => window.location.reload()}>Retry Connection</button>
-        </div>
+        <ConnectionError errorMessage={connectionError} />
     {:else if $gameState}
         <div class="game-layout">
             <div class="side-panel">
@@ -407,21 +400,10 @@
 {/if}
 
 {#if showResignConfirmModal}
-    <div class="modal-overlay" on:click={handleCancelResign} on:keydown={(e) => e.key === 'Escape' && handleCancelResign()} role="button" tabindex="0">
-        <div class="resign-modal" on:click|stopPropagation on:keydown|stopPropagation role="dialog" aria-modal="true" aria-labelledby="resign-modal-title" tabindex="-1">
-            <h2 id="resign-modal-title">Resign from Game?</h2>
-            <p>Are you sure you want to resign? Your planets will become neutral and your fleets will be disbanded.</p>
-            <p class="spectate-note">You'll still be able to watch the rest of the game.</p>
-            <div class="modal-buttons">
-                <button class="cancel-btn" on:click={handleCancelResign}>
-                    Cancel
-                </button>
-                <button class="confirm-resign-btn" on:click={handleConfirmResign}>
-                    Resign
-                </button>
-            </div>
-        </div>
-    </div>
+    <ResignConfirmModal
+        on:confirm={handleConfirmResign}
+        on:cancel={handleCancelResign}
+    />
 {/if}
 
 <style>
@@ -461,60 +443,6 @@
         font-size: 1.5rem;
     }
 
-    .connection-error {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: #e5e7eb;
-        text-align: center;
-        padding: 2rem;
-    }
-
-    .connection-error h2 {
-        color: #ef4444;
-        font-size: 1.75rem;
-        margin-bottom: 1rem;
-    }
-
-    .connection-error p {
-        color: #9ca3af;
-        margin: 0.5rem 0;
-    }
-
-    .error-instructions {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid #374151;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
-    }
-
-    .error-instructions code {
-        display: block;
-        background: #1f1f2e;
-        padding: 0.75rem 1rem;
-        border-radius: 4px;
-        font-family: monospace;
-        color: #a78bfa;
-        margin: 0.75rem 0;
-    }
-
-    .connection-error button {
-        padding: 0.75rem 2rem;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 1rem;
-    }
-
-    .connection-error button:hover {
-        background: linear-gradient(135deg, #6d28d9, #9333ea);
-    }
 
     @media (max-width: 768px) {
         .game-layout {
@@ -528,88 +456,5 @@
         }
     }
 
-    /* Resign confirmation modal */
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
-
-    .resign-modal {
-        background: linear-gradient(145deg, #1a1a2e, #16162a);
-        border: 1px solid #374151;
-        border-radius: 16px;
-        padding: 2rem;
-        max-width: 400px;
-        width: 90%;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    }
-
-    .resign-modal h2 {
-        color: #f87171;
-        font-size: 1.5rem;
-        margin: 0 0 1rem 0;
-        text-align: center;
-    }
-
-    .resign-modal p {
-        color: #e5e7eb;
-        margin: 0 0 0.75rem 0;
-        text-align: center;
-        line-height: 1.5;
-    }
-
-    .resign-modal .spectate-note {
-        color: #9ca3af;
-        font-size: 0.9rem;
-        font-style: italic;
-    }
-
-    .modal-buttons {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1.5rem;
-        justify-content: center;
-    }
-
-    .cancel-btn {
-        padding: 0.75rem 1.5rem;
-        background: transparent;
-        border: 1px solid #4b5563;
-        border-radius: 8px;
-        color: #9ca3af;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .cancel-btn:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: #6b7280;
-        color: #e5e7eb;
-    }
-
-    .confirm-resign-btn {
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #dc2626, #b91c1c);
-        border: none;
-        border-radius: 8px;
-        color: white;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .confirm-resign-btn:hover {
-        background: linear-gradient(135deg, #ef4444, #dc2626);
-        transform: scale(1.05);
-    }
 </style>
 

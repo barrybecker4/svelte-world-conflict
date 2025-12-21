@@ -129,57 +129,18 @@
         {/if}
 
         <div class="content">
-            <section class="players-section">
-                <h2>Players ({filledSlots}/{playerSlots.length})</h2>
-                <div class="player-grid">
-                    {#each playerSlots as slot}
-                        <div 
-                            class="player-slot"
-                            class:filled={slot.type === 'Set' || slot.type === 'AI'}
-                            class:open={slot.type === 'Open'}
-                            class:current={slot.slotIndex === currentPlayerId}
-                        >
-                            <div 
-                                class="slot-color"
-                                style="background-color: {slot.type !== 'Open' ? getPlayerColor(slot.slotIndex) : '#374151'}"
-                            ></div>
-                            <div class="slot-info">
-                                {#if slot.type === 'Set'}
-                                    <span class="slot-name">{slot.name || `Player ${slot.slotIndex + 1}`}</span>
-                                    <span class="slot-type">Human</span>
-                                {:else if slot.type === 'AI'}
-                                    <span class="slot-name">{slot.name || `AI ${slot.slotIndex + 1}`}</span>
-                                    <span class="slot-type">AI</span>
-                                {:else}
-                                    <span class="slot-name">Waiting...</span>
-                                    <span class="slot-type">Open Slot</span>
-                                {/if}
-                            </div>
-                            {#if slot.slotIndex === currentPlayerId}
-                                <span class="you-badge">YOU</span>
-                            {/if}
-                        </div>
-                    {/each}
-                </div>
-            </section>
+            <PlayerSlotsList
+                {playerSlots}
+                {currentPlayerId}
+                {filledSlots}
+            />
 
-            <section class="settings-section">
-                <h2>Game Settings</h2>
-                <div class="settings-grid">
-                    <div class="setting">
-                        <span class="setting-label">Planets</span>
-                        <span class="setting-value">{totalPlanets} ({neutralPlanets} neutral)</span>
-                    </div>
-                    <div class="setting">
-                        <span class="setting-label">Duration</span>
-                        <span class="setting-value">{game?.pendingConfiguration?.settings?.gameDuration || 15} min</span>
-                    </div>
-                    <div class="setting">
-                        <span class="setting-label">Armada Speed</span>
-                        <span class="setting-value">{game?.pendingConfiguration?.settings?.armadaSpeed || 100} u/min</span>
-                    </div>
-                </div>
-            </section>
+            <GameSettingsDisplay
+                settings={game?.pendingConfiguration?.settings || {}}
+                {activePlayerCount}
+                {neutralPlanets}
+                {totalPlanets}
+            />
 
             <div class="status-message">
                 {#if openSlots > 0}
@@ -281,101 +242,6 @@
         padding: 1.5rem;
     }
 
-    .players-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .player-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 0.75rem;
-    }
-
-    .player-slot {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid #374151;
-        border-radius: 8px;
-        position: relative;
-    }
-
-    .player-slot.filled {
-        border-color: #4c1d95;
-    }
-
-    .player-slot.current {
-        border-color: #a855f7;
-        background: rgba(168, 85, 247, 0.1);
-    }
-
-    .player-slot.open {
-        border-style: dashed;
-    }
-
-    .slot-color {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-    }
-
-    .slot-info {
-        flex: 1;
-    }
-
-    .slot-name {
-        display: block;
-        font-weight: 500;
-    }
-
-    .slot-type {
-        display: block;
-        font-size: 0.75rem;
-        color: #9ca3af;
-    }
-
-    .you-badge {
-        position: absolute;
-        top: -8px;
-        right: 8px;
-        background: #a855f7;
-        color: white;
-        padding: 0.125rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        font-weight: bold;
-    }
-
-    .settings-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .settings-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-    }
-
-    .setting {
-        text-align: center;
-        padding: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-    }
-
-    .setting-label {
-        display: block;
-        font-size: 0.75rem;
-        color: #9ca3af;
-        margin-bottom: 0.25rem;
-    }
-
-    .setting-value {
-        font-size: 1.1rem;
-        font-weight: bold;
-    }
 
     .status-message {
         text-align: center;
@@ -443,14 +309,5 @@
         background: #4b5563;
     }
 
-    @media (max-width: 640px) {
-        .player-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .settings-grid {
-            grid-template-columns: 1fr;
-        }
-    }
 </style>
 

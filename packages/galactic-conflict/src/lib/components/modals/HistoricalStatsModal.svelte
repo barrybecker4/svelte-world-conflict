@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import LineChart from '$lib/components/charts/LineChart.svelte';
   import type { DailyGameStats } from '$lib/server/storage/types';
+  import StatsChartsGrid from '$lib/components/charts/StatsChartsGrid.svelte';
+  import PlayerHistoryTable from '$lib/components/charts/PlayerHistoryTable.svelte';
 
   interface Props {
     isOpen?: boolean;
@@ -62,24 +63,6 @@
     return `${date.getMonth() + 1}/${date.getDate()}`;
   }));
 
-  const gamesPlayedDatasets = $derived([
-    { label: 'Games Started', data: stats.map(s => s.gamesStarted), color: CHART_COLORS.blue },
-    { label: 'Completed', data: stats.map(s => s.completedGames), color: CHART_COLORS.green },
-    { label: 'Incomplete', data: stats.map(s => s.incompleteGames), color: CHART_COLORS.red },
-    { label: 'Multi-Human', data: stats.map(s => s.gamesWithMultipleHumans), color: CHART_COLORS.purple }
-  ]);
-
-  const durationDatasets = $derived([
-    { label: 'Min Duration (min)', data: stats.map(s => s.minDurationMinutes === Infinity || s.minDurationMinutes === null ? 0 : Math.round(s.minDurationMinutes)), color: CHART_COLORS.cyan },
-    { label: 'Max Duration (min)', data: stats.map(s => Math.round(s.maxDurationMinutes)), color: CHART_COLORS.orange },
-    { label: 'Avg Duration (min)', data: stats.map(s => s.completedGames > 0 ? Math.round(s.totalDurationMinutes / s.completedGames) : 0), color: CHART_COLORS.yellow }
-  ]);
-
-  const endReasonsDatasets = $derived([
-    { label: 'Elimination', data: stats.map(s => s.endReasons?.elimination ?? 0), color: CHART_COLORS.red },
-    { label: 'Time Limit', data: stats.map(s => s.endReasons?.timeLimit ?? 0), color: CHART_COLORS.yellow },
-    { label: 'Resignation', data: stats.map(s => s.endReasons?.resignation ?? 0), color: CHART_COLORS.purple }
-  ]);
 
   // Fetch when modal opens
   $effect(() => {
@@ -114,62 +97,12 @@
           <p class="hint">Play some games to start collecting data!</p>
         </div>
       {:else}
-        <div class="charts-grid">
-          <div class="chart-cell">
-            <LineChart
-              title="Games Played"
-              labels={dateLabels}
-              datasets={gamesPlayedDatasets}
-              height="220px"
-            />
-          </div>
-          
-          <div class="chart-cell">
-            <LineChart
-              title="Game Duration (minutes)"
-              labels={dateLabels}
-              datasets={durationDatasets}
-              height="220px"
-            />
-          </div>
-          
-          <div class="chart-cell">
-            <LineChart
-              title="Game End Reasons"
-              labels={dateLabels}
-              datasets={endReasonsDatasets}
-              height="220px"
-            />
-          </div>
-          
-          <div class="table-cell">
-            <h3>Who Played</h3>
-            <div class="player-table-wrapper">
-              <table class="player-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Players</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each stats as stat}
-                    <tr>
-                      <td class="date-cell">{stat.date}</td>
-                      <td class="players-cell">
-                        {#if stat.uniquePlayerNames && stat.uniquePlayerNames.length > 0}
-                          {stat.uniquePlayerNames.join(', ')}
-                        {:else}
-                          <span class="no-players">-</span>
-                        {/if}
-                      </td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <StatsChartsGrid
+          {stats}
+          {dateLabels}
+          {CHART_COLORS}
+        />
+        <PlayerHistoryTable {stats} />
       {/if}
     </div>
 
