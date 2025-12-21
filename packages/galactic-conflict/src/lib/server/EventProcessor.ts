@@ -136,7 +136,7 @@ export async function processGameEvents(
             const replaysAdded = replaysAfter - replaysBefore;
             const armadasArrived = armadasBefore - armadasAfter;
             const endResultStr = (result: any) => {
-                if (result === null) return 'null';
+                if (result === null || result === undefined) return 'null';
                 if (result === 'DRAWN_GAME') return 'DRAWN_GAME';
                 return `Player ${(result as any).slotIndex} (${(result as any).name})`;
             };
