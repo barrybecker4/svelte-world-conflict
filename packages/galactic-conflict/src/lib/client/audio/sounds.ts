@@ -211,4 +211,3 @@ export const SOUND_ICONS: Record<string, string> = {
     HOVER: '🔘',
     ERROR: '❌'
 };
-

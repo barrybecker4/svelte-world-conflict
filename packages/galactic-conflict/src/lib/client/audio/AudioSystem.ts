@@ -72,4 +72,3 @@ export class AudioSystem extends BaseAudioSystem {
 }
 
 export const audioSystem = new AudioSystem();
-
