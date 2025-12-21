@@ -4,8 +4,9 @@
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
     import { getWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
     import { loadGameCreator } from '$lib/client/stores/clientStorage';
-    import { getPlayerColor } from '$lib/game/constants/playerConfigs';
     import { logger } from 'multiplayer-framework/shared';
+    import PlayerSlotsList from './PlayerSlotsList.svelte';
+    import GameSettingsDisplay from './GameSettingsDisplay.svelte';
 
     const dispatch = createEventDispatcher();
 

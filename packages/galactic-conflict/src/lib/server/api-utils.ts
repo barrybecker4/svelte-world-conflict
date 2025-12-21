@@ -5,8 +5,7 @@
 import { json } from '@sveltejs/kit';
 import { v4 as uuidv4 } from 'uuid';
 import type { Player, AiDifficulty } from '$lib/game/entities/gameTypes';
-import { getPlayerColor } from '$lib/game/constants/gameConstants';
-import { getPlayerDefaultName } from '$lib/game/constants/playerConfigs';
+import { getPlayerColor, getPlayerDefaultName } from '$lib/game/constants/playerConfigs';
 import { logger } from 'multiplayer-framework/shared';
 
 /**

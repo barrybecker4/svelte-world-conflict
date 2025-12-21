@@ -13,7 +13,8 @@
 import type { Planet, BattleReplay, BattleReplayRound, ReinforcementEvent, ConquestEvent, PlayerEliminationEvent } from '$lib/game/entities/gameTypes';
 import { BattleRound } from './BattleRound';
 import type { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import { GALACTIC_CONSTANTS, getPlayerColor, NEUTRAL_COLOR } from '$lib/game/constants/gameConstants';
+import { GALACTIC_CONSTANTS, NEUTRAL_COLOR } from '$lib/game/constants/gameConstants';
+import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 import { logger } from 'multiplayer-framework/shared';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -88,36 +89,72 @@ export class BattleManager {
 
         // If planet has no defenders, just conquer it (no battle animation needed)
         if (defenderShips <= 0) {
-            logger.debug(`Planet ${planet.name} has no defenders - immediate conquest`);
-            
-            // Create conquest event for client display
-            const attackerPlayer = this.gameState.getPlayer(attackerId);
-            if (attackerPlayer) {
-                const event: ConquestEvent = {
-                    id: uuidv4(),
-                    planetId: planet.id,
-                    planetName: planet.name,
-                    attackerPlayerId: attackerId,
-                    attackerName: attackerPlayer.name,
-                    attackerColor: attackerPlayer.color,
-                    ships: attackerShips,
-                    timestamp: Date.now(),
-                };
-                this.gameState.addConquestEvent(event);
-            }
-            
-            this.gameState.setPlanetOwner(planet.id, attackerId);
-            this.gameState.setPlanetShips(planet.id, attackerShips);
-            this.checkPlayerEliminations(planet);
+            this.handleUndefendedConquest(planet, attackerId, attackerShips);
             return;
         }
 
-        // Get player info for replay
+        // Execute the battle
+        const replay = this.createBattleReplay(planet, attackerId, attackerShips, defenderId, defenderShips);
+        const battleResult = this.runBattleToCompletion(replay, attackerShips, defenderShips);
+        this.applyBattleResult(planet, attackerId, defenderId, battleResult, replay);
+        
+        // Add replay to game state for client to consume
+        this.gameState.addBattleReplay(replay);
+        
+        console.log(`[BattleManager] Battle replay created:`, {
+            replayId: replay.id,
+            planetName: replay.planetName,
+            rounds: replay.rounds.length,
+            winner: replay.winnerId === attackerId ? 'attacker' : 'defender',
+            winnerShips: replay.winnerShipsRemaining,
+            totalReplaysNow: this.gameState.recentBattleReplays.length
+        });
+
+        // Check for player eliminations
+        this.checkPlayerEliminations(planet);
+    }
+
+    /**
+     * Handle conquest of an undefended planet
+     */
+    private handleUndefendedConquest(planet: Planet, attackerId: number, attackerShips: number): void {
+        logger.debug(`Planet ${planet.name} has no defenders - immediate conquest`);
+        
+        // Create conquest event for client display
+        const attackerPlayer = this.gameState.getPlayer(attackerId);
+        if (attackerPlayer) {
+            const event: ConquestEvent = {
+                id: uuidv4(),
+                planetId: planet.id,
+                planetName: planet.name,
+                attackerPlayerId: attackerId,
+                attackerName: attackerPlayer.name,
+                attackerColor: attackerPlayer.color,
+                ships: attackerShips,
+                timestamp: Date.now(),
+            };
+            this.gameState.addConquestEvent(event);
+        }
+        
+        this.gameState.setPlanetOwner(planet.id, attackerId);
+        this.gameState.setPlanetShips(planet.id, attackerShips);
+        this.checkPlayerEliminations(planet);
+    }
+
+    /**
+     * Create a battle replay object with initial state
+     */
+    private createBattleReplay(
+        planet: Planet,
+        attackerId: number,
+        attackerShips: number,
+        defenderId: number | null,
+        defenderShips: number
+    ): BattleReplay {
         const attackerPlayer = this.gameState.getPlayer(attackerId);
         const defenderPlayer = defenderId !== null ? this.gameState.getPlayer(defenderId) : null;
 
-        // Initialize replay
-        const replay: BattleReplay = {
+        return {
             id: uuidv4(),
             planetId: planet.id,
             planetName: planet.name,
@@ -134,8 +171,16 @@ export class BattleManager {
             winnerShipsRemaining: 0,
             timestamp: Date.now(),
         };
+    }
 
-        // Run the battle to completion
+    /**
+     * Run battle rounds until completion and return final ship counts
+     */
+    private runBattleToCompletion(
+        replay: BattleReplay,
+        attackerShips: number,
+        defenderShips: number
+    ): { attackerShips: number; defenderShips: number } {
         let currentAttackerShips = attackerShips;
         let currentDefenderShips = defenderShips;
         let roundNumber = 0;
@@ -171,25 +216,39 @@ export class BattleManager {
             }
         }
 
-        // Determine winner and update planet
-        if (currentAttackerShips > 0) {
+        return { attackerShips: currentAttackerShips, defenderShips: currentDefenderShips };
+    }
+
+    /**
+     * Apply battle result to planet and update replay
+     */
+    private applyBattleResult(
+        planet: Planet,
+        attackerId: number,
+        defenderId: number | null,
+        battleResult: { attackerShips: number; defenderShips: number },
+        replay: BattleReplay
+    ): void {
+        const { attackerShips, defenderShips } = battleResult;
+
+        if (attackerShips > 0) {
             // Attacker wins
             replay.winnerId = attackerId;
-            replay.winnerShipsRemaining = currentAttackerShips;
+            replay.winnerShipsRemaining = attackerShips;
 
             this.gameState.setPlanetOwner(planet.id, attackerId);
-            this.gameState.setPlanetShips(planet.id, currentAttackerShips);
+            this.gameState.setPlanetShips(planet.id, attackerShips);
 
-            logger.debug(`Battle result: Attacker wins with ${currentAttackerShips} ships`);
-        } else if (currentDefenderShips > 0) {
+            logger.debug(`Battle result: Attacker wins with ${attackerShips} ships`);
+        } else if (defenderShips > 0) {
             // Defender wins
             replay.winnerId = defenderId ?? null; // null for neutral
-            replay.winnerShipsRemaining = currentDefenderShips;
+            replay.winnerShipsRemaining = defenderShips;
 
             // Planet stays with defender (no change to owner)
-            this.gameState.setPlanetShips(planet.id, currentDefenderShips);
+            this.gameState.setPlanetShips(planet.id, defenderShips);
 
-            logger.debug(`Battle result: Defender wins with ${currentDefenderShips} ships`);
+            logger.debug(`Battle result: Defender wins with ${defenderShips} ships`);
         } else {
             // Mutual destruction
             replay.winnerId = null;
@@ -201,21 +260,6 @@ export class BattleManager {
 
             logger.debug(`Battle result: Mutual destruction`);
         }
-
-        // Add replay to game state for client to consume
-        this.gameState.addBattleReplay(replay);
-        
-        console.log(`[BattleManager] Battle replay created:`, {
-            replayId: replay.id,
-            planetName: replay.planetName,
-            rounds: replay.rounds.length,
-            winner: replay.winnerId === attackerId ? 'attacker' : 'defender',
-            winnerShips: replay.winnerShipsRemaining,
-            totalReplaysNow: this.gameState.recentBattleReplays.length
-        });
-
-        // Check for player eliminations
-        this.checkPlayerEliminations(planet);
     }
 
     /**

@@ -8,7 +8,8 @@
     export let onRemove: (() => void) | null = null;
     export let onDifficultyChange: ((difficulty: string) => void) | null = null;
 
-    $: slotColor = slot.type !== 'Open' ? getPlayerColor(slot.slotIndex) : '#374151';
+    // Always show the player's assigned color based on slotIndex
+    $: slotColor = getPlayerColor(slot.slotIndex);
 </script>
 
 <div

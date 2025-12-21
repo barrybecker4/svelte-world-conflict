@@ -143,32 +143,6 @@ export const GALACTIC_CONSTANTS = {
     NEUTRAL_PLAYER_ID: -1,
 } as const;
 
-/**
- * Player color palette for up to 20 players
- */
-export const PLAYER_COLORS: readonly string[] = [
-    '#ef4444', // Red
-    '#3b82f6', // Blue
-    '#22c55e', // Green
-    '#eab308', // Yellow
-    '#a855f7', // Purple
-    '#ec4899', // Pink
-    '#06b6d4', // Cyan
-    '#f97316', // Orange
-    '#14b8a6', // Teal
-    '#8b5cf6', // Violet
-    '#f43f5e', // Rose
-    '#0ea5e9', // Sky
-    '#84cc16', // Lime
-    '#d946ef', // Fuchsia
-    '#fbbf24', // Amber
-    '#10b981', // Emerald
-    '#6366f1', // Indigo
-    '#fb923c', // Orange light
-    '#2dd4bf', // Teal light
-    '#c084fc', // Purple light
-] as const;
-
 /** Color for neutral planets */
 export const NEUTRAL_COLOR = '#6b7280';
 
@@ -193,14 +167,4 @@ export const GAME_STATUS = {
 } as const;
 
 export type GameStatus = typeof GAME_STATUS[keyof typeof GAME_STATUS];
-
-/**
- * Get color for a player by slot index
- */
-export function getPlayerColor(slotIndex: number | null): string {
-    if (slotIndex === null || slotIndex < 0) {
-        return NEUTRAL_COLOR;
-    }
-    return PLAYER_COLORS[slotIndex % PLAYER_COLORS.length];
-}
 

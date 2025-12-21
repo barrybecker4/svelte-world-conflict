@@ -17,15 +17,26 @@ import type {
     StateUpdate,
     PlanetUpdate,
 } from '$lib/game/entities/gameTypes';
-import { GALACTIC_CONSTANTS, GAME_STATUS, getPlayerColor } from '$lib/game/constants/gameConstants';
+import { GALACTIC_CONSTANTS, GAME_STATUS } from '$lib/game/constants/gameConstants';
+import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 import { GalaxyGenerator } from '$lib/game/map/GalaxyGenerator';
 import { RandomNumberGenerator } from 'multiplayer-framework/shared';
 import { logger } from 'multiplayer-framework/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { PlanetManager } from './PlanetManager';
+import { PlayerManager } from './PlayerManager';
+import { ArmadaManager } from './ArmadaManager';
+import { EventManager } from './EventManager';
 
 export class GalacticGameState {
     public state: GalacticGameStateData;
     public rng: RandomNumberGenerator;
+    
+    // Manager instances
+    private planetManager: PlanetManager;
+    private playerManager: PlayerManager;
+    private armadaManager: ArmadaManager;
+    private eventManager: EventManager;
 
     constructor(data: GalacticGameStateData) {
         this.state = { ...data };
@@ -51,6 +62,25 @@ export class GalacticGameState {
             this.state.rngSeed = `galactic-${Date.now()}`;
             this.rng = new RandomNumberGenerator(this.state.rngSeed);
         }
+
+        // Initialize managers
+        this.planetManager = new PlanetManager(this.state.planets);
+        this.playerManager = new PlayerManager(
+            this.state.players,
+            this.state.eliminatedPlayers,
+            this.state.resourcesByPlayer
+        );
+        this.armadaManager = new ArmadaManager(
+            this.state.armadas,
+            (event) => this.eventManager.scheduleEvent(event)
+        );
+        this.eventManager = new EventManager(
+            this.state.eventQueue,
+            this.state.recentBattleReplays,
+            this.state.recentReinforcementEvents,
+            this.state.recentConquestEvents,
+            this.state.recentPlayerEliminationEvents
+        );
     }
 
     /**
@@ -165,118 +195,87 @@ export class GalacticGameState {
     get planets(): Planet[] { return [...this.state.planets]; }
     get players(): Player[] { return [...this.state.players]; }
     get armadas(): Armada[] { return [...this.state.armadas]; }
-    get eventQueue(): GameEvent[] { return [...this.state.eventQueue]; }
-    get eliminatedPlayers(): number[] { return [...this.state.eliminatedPlayers]; }
-    get recentBattleReplays(): BattleReplay[] { return [...this.state.recentBattleReplays]; }
-    get recentReinforcementEvents(): ReinforcementEvent[] { return [...this.state.recentReinforcementEvents]; }
-    get recentConquestEvents(): ConquestEvent[] { return [...this.state.recentConquestEvents]; }
-    get recentPlayerEliminationEvents(): PlayerEliminationEvent[] { return [...this.state.recentPlayerEliminationEvents]; }
+    get eventQueue(): GameEvent[] { return [...this.eventManager.getEventQueue()]; }
+    get eliminatedPlayers(): number[] { return [...this.playerManager.getEliminatedPlayers()]; }
+    get recentBattleReplays(): BattleReplay[] { return [...this.eventManager.getBattleReplays()]; }
+    get recentReinforcementEvents(): ReinforcementEvent[] { return [...this.eventManager.getReinforcementEvents()]; }
+    get recentConquestEvents(): ConquestEvent[] { return [...this.eventManager.getConquestEvents()]; }
+    get recentPlayerEliminationEvents(): PlayerEliminationEvent[] { return [...this.eventManager.getPlayerEliminationEvents()]; }
 
     get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
-    get resourcesByPlayer(): Record<number, number> { return { ...this.state.resourcesByPlayer }; }
+    get resourcesByPlayer(): Record<number, number> { return { ...this.playerManager.getResourcesByPlayer() }; }
 
     // ==================== PLANET MANAGEMENT ====================
 
     getPlanet(planetId: number): Planet | undefined {
-        return this.state.planets.find(p => p.id === planetId);
+        return this.planetManager.getPlanet(planetId);
     }
 
     getPlanetsOwnedBy(playerId: number): Planet[] {
-        return this.state.planets.filter(p => p.ownerId === playerId);
+        return this.planetManager.getPlanetsOwnedBy(playerId);
     }
 
     setPlanetOwner(planetId: number, ownerId: number | null): void {
-        const planet = this.getPlanet(planetId);
-        if (planet) {
-            planet.ownerId = ownerId;
-        }
+        this.planetManager.setPlanetOwner(planetId, ownerId);
     }
 
     setPlanetShips(planetId: number, ships: number): void {
-        const planet = this.getPlanet(planetId);
-        if (planet) {
-            planet.ships = Math.max(0, ships);
-        }
+        this.planetManager.setPlanetShips(planetId, ships);
     }
 
     addPlanetShips(planetId: number, ships: number): void {
-        const planet = this.getPlanet(planetId);
-        if (planet) {
-            planet.ships = Math.max(0, planet.ships + ships);
-        }
+        this.planetManager.addPlanetShips(planetId, ships);
     }
 
     addPlanetResources(planetId: number, resources: number): void {
-        const planet = this.getPlanet(planetId);
-        if (planet) {
-            planet.resources = Math.max(0, planet.resources + resources);
-        }
+        this.planetManager.addPlanetResources(planetId, resources);
     }
 
     spendPlanetResources(planetId: number, amount: number): boolean {
-        const planet = this.getPlanet(planetId);
-        if (planet && planet.resources >= amount) {
-            planet.resources -= amount;
-            return true;
-        }
-        return false;
+        return this.planetManager.spendPlanetResources(planetId, amount);
     }
 
     // ==================== PLAYER MANAGEMENT ====================
 
     getPlayer(slotIndex: number): Player | undefined {
-        return this.state.players.find(p => p.slotIndex === slotIndex);
+        return this.playerManager.getPlayer(slotIndex);
     }
 
     isPlayerEliminated(slotIndex: number): boolean {
-        return this.state.eliminatedPlayers.includes(slotIndex);
+        return this.playerManager.isPlayerEliminated(slotIndex);
     }
 
     eliminatePlayer(slotIndex: number): void {
-        if (!this.isPlayerEliminated(slotIndex)) {
-            this.state.eliminatedPlayers.push(slotIndex);
-        }
+        this.playerManager.eliminatePlayer(slotIndex);
     }
 
     /**
      * Check if a player has any planets or ships (armadas)
      */
     isPlayerAlive(slotIndex: number): boolean {
-        const hasPlanets = this.state.planets.some(p => p.ownerId === slotIndex);
-        const hasShips = this.state.armadas.some(a => a.ownerId === slotIndex);
-        const hasPlanetShips = this.state.planets.some(p => p.ownerId === slotIndex && p.ships > 0);
-        return hasPlanets || hasShips || hasPlanetShips;
+        return this.playerManager.isPlayerAlive(slotIndex, this.state.planets, this.state.armadas);
     }
 
     /**
      * Get total ships for a player (on planets + in armadas)
      */
     getTotalShips(slotIndex: number): number {
-        const planetShips = this.state.planets
-            .filter(p => p.ownerId === slotIndex)
-            .reduce((sum, p) => sum + p.ships, 0);
-        const armadaShips = this.state.armadas
-            .filter(a => a.ownerId === slotIndex)
-            .reduce((sum, a) => sum + a.ships, 0);
-        return planetShips + armadaShips;
+        return this.playerManager.getTotalShips(slotIndex, this.state.planets, this.state.armadas);
     }
 
     /**
      * Get player's global resources
      */
     getPlayerResources(slotIndex: number): number {
-        return this.state.resourcesByPlayer[slotIndex] ?? 0;
+        return this.playerManager.getPlayerResources(slotIndex);
     }
 
     /**
      * Add resources to a player's global pool
      */
     addPlayerResources(slotIndex: number, amount: number): void {
-        if (!this.state.resourcesByPlayer[slotIndex]) {
-            this.state.resourcesByPlayer[slotIndex] = 0;
-        }
-        this.state.resourcesByPlayer[slotIndex] += amount;
+        this.playerManager.addPlayerResources(slotIndex, amount);
     }
 
     /**
@@ -284,49 +283,32 @@ export class GalacticGameState {
      * Returns true if successful, false if not enough resources
      */
     spendPlayerResources(slotIndex: number, amount: number): boolean {
-        const currentResources = this.getPlayerResources(slotIndex);
-        if (currentResources >= amount) {
-            this.state.resourcesByPlayer[slotIndex] = currentResources - amount;
-            return true;
-        }
-        return false;
+        return this.playerManager.spendPlayerResources(slotIndex, amount);
     }
 
     /**
      * Get total resources for a player (alias for getPlayerResources for compatibility)
      */
     getTotalResources(slotIndex: number): number {
-        return this.getPlayerResources(slotIndex);
+        return this.playerManager.getTotalResources(slotIndex);
     }
 
     // ==================== ARMADA MANAGEMENT ====================
 
     addArmada(armada: Armada): void {
-        this.state.armadas.push(armada);
-
-        // Schedule arrival event
-        this.scheduleEvent({
-            id: uuidv4(),
-            type: 'armada_arrival',
-            scheduledTime: armada.arrivalTime,
-            payload: { armadaId: armada.id },
-        });
+        this.armadaManager.addArmada(armada);
     }
 
     removeArmada(armadaId: string): Armada | undefined {
-        const index = this.state.armadas.findIndex(a => a.id === armadaId);
-        if (index >= 0) {
-            return this.state.armadas.splice(index, 1)[0];
-        }
-        return undefined;
+        return this.armadaManager.removeArmada(armadaId);
     }
 
     getArmada(armadaId: string): Armada | undefined {
-        return this.state.armadas.find(a => a.id === armadaId);
+        return this.armadaManager.getArmada(armadaId);
     }
 
     getArmadasForPlayer(slotIndex: number): Armada[] {
-        return this.state.armadas.filter(a => a.ownerId === slotIndex);
+        return this.armadaManager.getArmadasForPlayer(slotIndex);
     }
 
     // ==================== BATTLE REPLAYS ====================
@@ -335,8 +317,7 @@ export class GalacticGameState {
      * Add a battle replay for client animation
      */
     addBattleReplay(replay: BattleReplay): void {
-        this.state.recentBattleReplays.push(replay);
-        console.log(`[GalacticGameState] Added battle replay ${replay.id} for planet ${replay.planetName}, total replays: ${this.state.recentBattleReplays.length}`);
+        this.eventManager.addBattleReplay(replay);
     }
 
     /**
@@ -344,14 +325,14 @@ export class GalacticGameState {
      * Called after state broadcast
      */
     clearBattleReplays(): void {
-        this.state.recentBattleReplays = [];
+        this.eventManager.clearBattleReplays();
     }
 
     /**
      * Get pending battle replays
      */
     getPendingReplays(): BattleReplay[] {
-        return [...this.state.recentBattleReplays];
+        return this.eventManager.getPendingReplays();
     }
 
     // ==================== REINFORCEMENT AND CONQUEST EVENTS ====================
@@ -360,16 +341,14 @@ export class GalacticGameState {
      * Add a reinforcement event for client display
      */
     addReinforcementEvent(event: ReinforcementEvent): void {
-        this.state.recentReinforcementEvents.push(event);
-        logger.debug(`[GalacticGameState] Added reinforcement event ${event.id} for planet ${event.planetName}`);
+        this.eventManager.addReinforcementEvent(event);
     }
 
     /**
      * Add a conquest event for client display
      */
     addConquestEvent(event: ConquestEvent): void {
-        this.state.recentConquestEvents.push(event);
-        logger.debug(`[GalacticGameState] Added conquest event ${event.id} for planet ${event.planetName}`);
+        this.eventManager.addConquestEvent(event);
     }
 
     /**
@@ -377,7 +356,7 @@ export class GalacticGameState {
      * Called after state broadcast
      */
     clearReinforcementEvents(): void {
-        this.state.recentReinforcementEvents = [];
+        this.eventManager.clearReinforcementEvents();
     }
 
     /**
@@ -385,15 +364,14 @@ export class GalacticGameState {
      * Called after state broadcast
      */
     clearConquestEvents(): void {
-        this.state.recentConquestEvents = [];
+        this.eventManager.clearConquestEvents();
     }
 
     /**
      * Add a player elimination event for client display
      */
     addPlayerEliminationEvent(event: PlayerEliminationEvent): void {
-        this.state.recentPlayerEliminationEvents.push(event);
-        logger.debug(`[GalacticGameState] Added player elimination event ${event.id} for player ${event.playerName} at planet ${event.planetName}`);
+        this.eventManager.addPlayerEliminationEvent(event);
     }
 
     /**
@@ -401,39 +379,29 @@ export class GalacticGameState {
      * Called after state broadcast
      */
     clearPlayerEliminationEvents(): void {
-        this.state.recentPlayerEliminationEvents = [];
+        this.eventManager.clearPlayerEliminationEvents();
     }
 
     // ==================== EVENT QUEUE ====================
 
     scheduleEvent(event: GameEvent): void {
-        this.state.eventQueue.push(event);
-        // Keep queue sorted by scheduled time
-        this.state.eventQueue.sort((a, b) => a.scheduledTime - b.scheduledTime);
+        this.eventManager.scheduleEvent(event);
     }
 
     getNextEvent(): GameEvent | undefined {
-        return this.state.eventQueue[0];
+        return this.eventManager.getNextEvent();
     }
 
     popNextEvent(): GameEvent | undefined {
-        return this.state.eventQueue.shift();
+        return this.eventManager.popNextEvent();
     }
 
     removeEvent(eventId: string): void {
-        const index = this.state.eventQueue.findIndex(e => e.id === eventId);
-        if (index >= 0) {
-            this.state.eventQueue.splice(index, 1);
-        }
+        this.eventManager.removeEvent(eventId);
     }
 
     scheduleResourceTick(time: number): void {
-        this.scheduleEvent({
-            id: uuidv4(),
-            type: 'resource_tick',
-            scheduledTime: time,
-            payload: {},
-        });
+        this.eventManager.scheduleResourceTick(time);
     }
 
     // ==================== GAME STATE ====================
