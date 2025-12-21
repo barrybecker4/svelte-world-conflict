@@ -46,6 +46,22 @@ export const battleAnimations: Writable<Map<string, BattleAnimationState>> = wri
 const processedReplayIds = new Set<string>();
 
 /**
+ * Helper function to update a battle animation state
+ */
+function updateBattleAnimation(
+    replayId: string,
+    updater: (state: BattleAnimationState) => void
+): void {
+    battleAnimations.update(map => {
+        const state = map.get(replayId);
+        if (state) {
+            updater(state);
+        }
+        return new Map(map);
+    });
+}
+
+/**
  * Queue a battle replay for animation
  */
 export function queueBattleReplay(replay: BattleReplay): void {
@@ -119,12 +135,8 @@ async function playBattleAnimation(replayId: string): Promise<void> {
     await showOutcome(replayId);
 
     // Mark as done so planet ownership updates immediately
-    battleAnimations.update(map => {
-        const state = map.get(replayId);
-        if (state) {
-            state.phase = 'done';
-        }
-        return new Map(map);
+    updateBattleAnimation(replayId, state => {
+        state.phase = 'done';
     });
 
     // Keep outcome visible for a bit, then clean up
@@ -137,35 +149,27 @@ async function playBattleAnimation(replayId: string): Promise<void> {
  */
 async function playRound(replayId: string, round: BattleReplayRound, roundIndex: number): Promise<void> {
     // Show dice rolls
-    battleAnimations.update(map => {
-        const state = map.get(replayId);
-        if (state) {
-            state.phase = 'round';
-            state.currentRoundIndex = roundIndex;
-            state.currentDiceRolls = {
-                attacker: round.attackerDice,
-                defender: round.defenderDice,
-            };
-            state.lastRoundResult = null;
-        }
-        return new Map(map);
+    updateBattleAnimation(replayId, state => {
+        state.phase = 'round';
+        state.currentRoundIndex = roundIndex;
+        state.currentDiceRolls = {
+            attacker: round.attackerDice,
+            defender: round.defenderDice,
+        };
+        state.lastRoundResult = null;
     });
 
     // Wait for dice to appear
     await delay(400 / GALACTIC_CONSTANTS.BATTLE_REPLAY_SPEED);
 
     // Show casualties and update ship counts
-    battleAnimations.update(map => {
-        const state = map.get(replayId);
-        if (state) {
-            state.lastRoundResult = {
-                attackerLost: round.attackerLosses,
-                defenderLost: round.defenderLosses,
-            };
-            state.displayedAttackerShips = round.attackerShipsAfter;
-            state.displayedDefenderShips = round.defenderShipsAfter;
-        }
-        return new Map(map);
+    updateBattleAnimation(replayId, state => {
+        state.lastRoundResult = {
+            attackerLost: round.attackerLosses,
+            defenderLost: round.defenderLosses,
+        };
+        state.displayedAttackerShips = round.attackerShipsAfter;
+        state.displayedDefenderShips = round.defenderShipsAfter;
     });
 
     // Play destruction sounds for casualties (staggered)
@@ -212,17 +216,11 @@ async function showOutcome(replayId: string): Promise<void> {
 
     console.log(`[BattleAnimation] Showing outcome for ${replay.planetName}: ${outcomeMessage}, winnerId: ${replay.winnerId}`);
 
-    battleAnimations.update(map => {
-        const state = map.get(replayId);
-        if (state) {
-            state.phase = 'outcome';
-            state.currentDiceRolls = null;
-            state.outcomeMessage = outcomeMessage;
-            console.log(`[BattleAnimation] Updated animation state - planetId: ${replay.planetId}, phase: ${state.phase}, message: ${state.outcomeMessage}`);
-        } else {
-            console.warn(`[BattleAnimation] State not found when updating outcome for ${replayId}`);
-        }
-        return new Map(map);
+    updateBattleAnimation(replayId, state => {
+        state.phase = 'outcome';
+        state.currentDiceRolls = null;
+        state.outcomeMessage = outcomeMessage;
+        console.log(`[BattleAnimation] Updated animation state - planetId: ${replay.planetId}, phase: ${state.phase}, message: ${state.outcomeMessage}`);
     });
     
     // Small delay to ensure the UI updates before continuing

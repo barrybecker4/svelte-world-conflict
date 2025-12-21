@@ -165,8 +165,7 @@ export class GameApiClient {
     }
 
     /**
-     * Trigger event processing (dev-only, for local development)
-     * In production, events are processed automatically via cron triggers
+     * Trigger event processing on the server.
      */
     static async processEvents(): Promise<any> {
         const response = await fetch('/api/admin/process-events', {
