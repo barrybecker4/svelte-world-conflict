@@ -111,6 +111,12 @@
             return;
         }
 
+        // Clear any existing drag timeout to avoid interference with double-clicks
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+        }
+
         // Store initial mouse position
         mouseDownX = event.clientX;
         mouseDownY = event.clientY;
@@ -124,7 +130,7 @@
                 document.addEventListener('mousemove', handleDocumentMouseMove);
                 document.addEventListener('mouseup', handleDocumentMouseUp);
             }
-        }, 100); // delay to allow double-click detection
+        }, 200); // increased delay to allow double-click detection
 
         dragSourcePlanetId = planet.id;
         updateDragPosition(event);
@@ -172,7 +178,19 @@
         document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
 
         if (!isDragging || dragSourcePlanetId === null) {
-            cleanupDrag();
+            // Important: Don't reset dragSourcePlanetId here yet, as the double-click
+            // event may still be pending. Only clear after a short delay or when
+            // the double-click handler runs. However, we should cleanup listeners.
+            document.removeEventListener('mousemove', handleDocumentMouseMove);
+            document.removeEventListener('mouseup', handleDocumentMouseUp);
+            
+            // Reset drag state after a brief delay to allow double-click to fire
+            // This prevents the second mousedown from seeing stale state
+            setTimeout(() => {
+                if (!isDragging) {
+                    dragSourcePlanetId = null;
+                }
+            }, 50);
             return;
         }
 
@@ -256,9 +274,9 @@
             clearTimeout(dragStartTimeout);
             dragStartTimeout = null;
         }
-        if (isDragging) {
-            cleanupDrag();
-        }
+        
+        // Always cleanup drag state on double-click, even if not currently dragging
+        cleanupDrag();
         
         if (planet.ownerId === currentPlayerId) {
             dispatch('doubleClick', { planet });
