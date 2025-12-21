@@ -105,26 +105,22 @@ export class GameStorage {
             const openGamesList = await this.kv.get<OpenGamesList>('wc_games:open');
             if (!openGamesList) return [];
 
-            const validGames: GameRecord[] = [];
-            const gamesStillOpen: OpenGameInfo[] = [];
+            // OPTIMIZATION: Return game records from the cached list instead of fetching each full game.
+            // This reduces KV reads from (1 + N games) to just 1 read per lobby poll.
+            // The list now contains all the info needed for the lobby display (players, pendingConfiguration).
+            const minimalGames: GameRecord[] = openGamesList.games.map(gameInfo => ({
+                gameId: gameInfo.gameId,
+                status: gameInfo.status as 'PENDING' | 'ACTIVE' | 'COMPLETED',
+                createdAt: gameInfo.createdAt,
+                lastMoveAt: gameInfo.createdAt, // Use createdAt as fallback
+                players: gameInfo.players || [], // Now included in the cached list
+                worldConflictState: {} as any, // Not needed for lobby list
+                gameType: gameInfo.gameType,
+                currentPlayerSlot: 0, // Not relevant for pending games
+                pendingConfiguration: gameInfo.pendingConfiguration // Now included in the cached list
+            }));
 
-            for (const gameInfo of openGamesList.games) {
-                const fullGame = await this.getGame(gameInfo.gameId);
-                if (fullGame && fullGame.status === 'PENDING') {
-                    validGames.push(fullGame);
-                    gamesStillOpen.push(gameInfo);
-                }
-            }
-
-            // Update the open games list to remove invalid entries
-            if (gamesStillOpen.length !== openGamesList.games.length) {
-                await this.kv.put('wc_games:open', {
-                    games: gamesStillOpen,
-                    lastUpdated: Date.now()
-                });
-            }
-
-            return validGames;
+            return minimalGames;
         } catch (error) {
             logger.error('Error getting open World Conflict games:', error);
             return [];
@@ -168,7 +164,10 @@ export class GameStorage {
                 createdAt: game.createdAt,
                 playerCount: game.players.length,
                 maxPlayers: 4,
-                gameType: game.gameType
+                gameType: game.gameType,
+                // Include player data and config to avoid fetching full game later
+                players: game.players,
+                pendingConfiguration: game.pendingConfiguration
             };
 
             // Check if already exists

@@ -60,6 +60,9 @@ export interface OpenGameInfo {
     playerCount: number;
     maxPlayers: number;
     gameType: 'MULTIPLAYER' | 'AI';
+    // Include minimal player data to avoid fetching full game records
+    players?: Player[];
+    pendingConfiguration?: GameRecord['pendingConfiguration'];
 }
 
 /** List of open games for matchmaking */

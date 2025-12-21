@@ -19,6 +19,9 @@ interface OpenGamesList {
         playerCount: number;
         maxPlayers: number;
         gameType: 'MULTIPLAYER' | 'AI';
+        // Include player data to avoid fetching full game records
+        players?: Player[];
+        pendingConfiguration?: PendingGameConfiguration;
     }>;
     lastUpdated: number;
 }
@@ -116,7 +119,10 @@ export class GameStorage {
                 createdAt: game.createdAt,
                 playerCount: game.players.length,
                 maxPlayers: game.pendingConfiguration.playerSlots.length,
-                gameType: game.gameType
+                gameType: game.gameType,
+                // Include player data and config to avoid fetching full game later
+                players: game.players,
+                pendingConfiguration: game.pendingConfiguration
             };
             
             const existingIndex = currentList.games.findIndex(g => g.gameId === game.gameId);
@@ -208,25 +214,33 @@ export class GameStorage {
             const cachedList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY);
             
             if (cachedList && cachedList.games.length > 0) {
-                // Validate cached entries and fetch full game records
+                // OPTIMIZATION: Use cached game info instead of fetching each full game
+                // This reduces KV reads from (1 + N games) to just 1 read per lobby poll
                 const validGames: GameRecord[] = [];
                 const gamesStillOpen: typeof cachedList.games = [];
 
                 for (const gameInfo of cachedList.games) {
-                    const fullGame = await this.loadGame(gameInfo.gameId);
-                    if (fullGame && fullGame.status === 'PENDING') {
-                        // Check if game is stale (created too long ago)
-                        if (fullGame.createdAt < staleThreshold) {
-                            logger.debug(`Game ${fullGame.gameId} is stale (created ${now - fullGame.createdAt}ms ago)`);
-                            staleGameIds.push(fullGame.gameId);
-                            continue;
-                        }
+                    // Check if game is stale (created too long ago)
+                    if (gameInfo.createdAt < staleThreshold) {
+                        logger.debug(`Game ${gameInfo.gameId} is stale (created ${now - gameInfo.createdAt}ms ago)`);
+                        staleGameIds.push(gameInfo.gameId);
+                        continue;
+                    }
 
-                        // Check if still has open slots
-                        if (fullGame.pendingConfiguration?.playerSlots?.some(slot => slot.type === 'Open')) {
-                            validGames.push(fullGame);
-                            gamesStillOpen.push(gameInfo);
-                        }
+                    // Check if still has open slots (data now in cached list)
+                    if (gameInfo.pendingConfiguration?.playerSlots?.some(slot => slot.type === 'Open')) {
+                        // Create minimal GameRecord from cached info
+                        const minimalGame: GameRecord = {
+                            gameId: gameInfo.gameId,
+                            status: 'PENDING',
+                            createdAt: gameInfo.createdAt,
+                            lastUpdateAt: gameInfo.createdAt,
+                            players: gameInfo.players || [],
+                            gameType: gameInfo.gameType,
+                            pendingConfiguration: gameInfo.pendingConfiguration
+                        };
+                        validGames.push(minimalGame);
+                        gamesStillOpen.push(gameInfo);
                     }
                 }
 
@@ -297,7 +311,10 @@ export class GameStorage {
                     createdAt: g.createdAt,
                     playerCount: g.players.length,
                     maxPlayers: g.pendingConfiguration?.playerSlots?.length || 0,
-                    gameType: g.gameType
+                    gameType: g.gameType,
+                    // Include player data and config to avoid fetching full game later
+                    players: g.players,
+                    pendingConfiguration: g.pendingConfiguration
                 })),
                 lastUpdated: Date.now()
             });
