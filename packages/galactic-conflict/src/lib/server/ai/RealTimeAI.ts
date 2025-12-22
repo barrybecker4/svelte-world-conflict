@@ -9,6 +9,7 @@ import { createArmada } from '$lib/game/entities/Armada';
 import { getDistanceBetweenPlanets } from '$lib/game/entities/Planet';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
+import { getAIDifficultyConfig } from './aiDifficultyConfig';
 
 export interface AIDecision {
     type: 'send_armada' | 'build_ships' | 'wait';
@@ -37,12 +38,7 @@ export class RealTimeAI {
      * Get cooldown time based on difficulty
      */
     private getCooldownForDifficulty(difficulty: AiDifficulty): number {
-        switch (difficulty) {
-            case 'easy': return 30000; // infrequent
-            case 'medium': return 9000; // moderate
-            case 'hard': return 3000; //  aggressive
-            default: return 9000;
-        }
+        return getAIDifficultyConfig(difficulty).cooldown;
     }
 
     /**
@@ -104,11 +100,12 @@ export class RealTimeAI {
      */
     private findAttackOpportunity(player: Player, myPlanets: Planet[], difficulty: AiDifficulty): AIDecision | null {
         const allPlanets = this.gameState.planets;
+        const config = getAIDifficultyConfig(difficulty);
         
         // Get difficulty-based thresholds
-        const minSourceShips = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 5 : 3;
-        const minAdvantage = difficulty === 'easy' ? 4 : difficulty === 'medium' ? 2 : 1;
-        const minShipsToSend = difficulty === 'easy' ? 5 : difficulty === 'medium' ? 4 : 3;
+        const minSourceShips = config.attack.minSourceShips;
+        const minAdvantage = config.attack.minAdvantage;
+        const minShipsToSend = config.attack.minShipsToSend;
 
         // Find planets with excess ships (threshold varies by difficulty)
         const sourcePlanets = myPlanets.filter(p => p.ships >= minSourceShips);
@@ -160,8 +157,7 @@ export class RealTimeAI {
 
         if (bestTarget) {
             // Send enough ships to win, but keep some defense
-            // Hard AI is more aggressive and sends more ships
-            const defenseBuffer = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 2 : 1;
+            const defenseBuffer = config.attack.defenseBuffer;
             const shipsToSend = Math.min(
                 source.ships - defenseBuffer,
                 Math.max(minShipsToSend, Math.floor(bestTarget.ships * 1.5) + minAdvantage)
@@ -186,17 +182,16 @@ export class RealTimeAI {
     private findBuildOpportunity(player: Player, myPlanets: Planet[], difficulty: AiDifficulty): AIDecision | null {
         // Check global player resources (resources are stored per player, not per planet)
         const playerResources = this.gameState.getPlayerResources(player.slotIndex);
+        const config = getAIDifficultyConfig(difficulty);
         
-        // Difficulty-based resource threshold (hard AI builds more aggressively)
-        const resourceMultiplier = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 1.5 : 1;
-        const minResources = GALACTIC_CONSTANTS.SHIP_COST * resourceMultiplier;
+        // Difficulty-based resource threshold
+        const minResources = GALACTIC_CONSTANTS.SHIP_COST * config.build.resourceMultiplier;
         
         // Check if player has enough resources
         if (playerResources < minResources) return null;
 
         // Find planets to build at - prioritize vulnerable planets (fewer ships)
-        // Hard AI is more aggressive and builds at any planet, easy AI is more selective
-        const minShipsOnPlanet = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 2 : 0;
+        const minShipsOnPlanet = config.build.minShipsOnPlanet;
         const candidatePlanets = myPlanets.filter(p => p.ships <= minShipsOnPlanet || myPlanets.length === 1);
         
         if (candidatePlanets.length === 0) {
@@ -210,8 +205,7 @@ export class RealTimeAI {
 
         // Calculate how many ships to build based on available resources
         const maxShipsFromResources = Math.floor(playerResources / GALACTIC_CONSTANTS.SHIP_COST);
-        // Hard AI builds more ships at once, easy AI is more conservative
-        const maxBuildAtOnce = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 5 : 10;
+        const maxBuildAtOnce = config.build.maxBuildAtOnce;
         const shipsToBuild = Math.min(maxShipsFromResources, maxBuildAtOnce);
 
         if (shipsToBuild >= 1) {

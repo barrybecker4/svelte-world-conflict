@@ -7,24 +7,11 @@ import { KVStorage } from './KVStorage';
 import { GameStatsService } from './GameStatsService';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
+import { deleteStaleGames } from './deleteStaleGames';
+import { updateOpenGamesCache, removeFromOpenGamesCache, getOpenGamesCache, saveOpenGamesCache, OPEN_GAMES_KEY, type OpenGamesList } from './OpenGamesCache';
+import { addPlayerToGame as addPlayerToGameOp, removePlayerFromGame as removePlayerFromGameOp, canGameStart as canGameStartOp } from './GameRecordOperations';
 
 const GAME_KEY_PREFIX = 'gc_game:';
-const OPEN_GAMES_KEY = 'gc_open_games';
-
-interface OpenGamesList {
-    games: Array<{
-        gameId: string;
-        status: 'PENDING';
-        createdAt: number;
-        playerCount: number;
-        maxPlayers: number;
-        gameType: 'MULTIPLAYER' | 'AI';
-        // Include player data to avoid fetching full game records
-        players?: Player[];
-        pendingConfiguration?: PendingGameConfiguration;
-    }>;
-    lastUpdated: number;
-}
 
 export interface GameRecord {
     gameId: string;
@@ -75,9 +62,9 @@ export class GameStorage {
         
         // Update open games cache if status changed
         if (game.status === 'PENDING') {
-            await this.updateOpenGamesCache(game);
+            await updateOpenGamesCache(game, this.storage);
         } else {
-            await this.removeFromOpenGamesCache(game.gameId);
+            await removeFromOpenGamesCache(game.gameId, this.storage);
         }
 
         // Record game completion statistics
@@ -92,69 +79,6 @@ export class GameStorage {
         }
     }
     
-    /**
-     * Update the cached open games list when a game is added or modified
-     */
-    private async updateOpenGamesCache(game: GameRecord): Promise<void> {
-        if (game.status !== 'PENDING' || !game.pendingConfiguration?.playerSlots) {
-            return;
-        }
-        
-        // Check if game has open slots
-        const hasOpenSlots = game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open');
-        if (!hasOpenSlots) {
-            await this.removeFromOpenGamesCache(game.gameId);
-            return;
-        }
-        
-        try {
-            const currentList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY) || {
-                games: [],
-                lastUpdated: Date.now()
-            };
-            
-            const gameInfo = {
-                gameId: game.gameId,
-                status: 'PENDING' as const,
-                createdAt: game.createdAt,
-                playerCount: game.players.length,
-                maxPlayers: game.pendingConfiguration.playerSlots.length,
-                gameType: game.gameType,
-                // Include player data and config to avoid fetching full game later
-                players: game.players,
-                pendingConfiguration: game.pendingConfiguration
-            };
-            
-            const existingIndex = currentList.games.findIndex(g => g.gameId === game.gameId);
-            if (existingIndex >= 0) {
-                currentList.games[existingIndex] = gameInfo;
-            } else {
-                currentList.games.push(gameInfo);
-            }
-            
-            currentList.lastUpdated = Date.now();
-            await this.storage.put(OPEN_GAMES_KEY, currentList);
-        } catch (error) {
-            logger.warn(`Error updating open games cache for game ${game.gameId}:`, error);
-        }
-    }
-    
-    /**
-     * Remove a game from the cached open games list
-     */
-    private async removeFromOpenGamesCache(gameId: string): Promise<void> {
-        try {
-            const currentList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY);
-            if (!currentList) return;
-            
-            currentList.games = currentList.games.filter(g => g.gameId !== gameId);
-            currentList.lastUpdated = Date.now();
-            
-            await this.storage.put(OPEN_GAMES_KEY, currentList);
-        } catch (error) {
-            logger.warn(`Error removing game ${gameId} from open games cache:`, error);
-        }
-    }
 
     /**
      * Load a game record
@@ -170,7 +94,7 @@ export class GameStorage {
     async deleteGame(gameId: string): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${gameId}`;
         await this.storage.delete(key);
-        await this.removeFromOpenGamesCache(gameId);
+        await removeFromOpenGamesCache(gameId, this.storage);
     }
 
     /**
@@ -200,6 +124,119 @@ export class GameStorage {
     }
 
     /**
+     * Check if a game is stale (created too long ago)
+     */
+    private isGameStale(createdAt: number, staleThreshold: number): boolean {
+        return createdAt < staleThreshold;
+    }
+
+    /**
+     * Check if a game has open slots
+     */
+    private hasOpenSlots(game: GameRecord | OpenGamesList['games'][0]): boolean {
+        const config = 'pendingConfiguration' in game ? game.pendingConfiguration : game.pendingConfiguration;
+        return config?.playerSlots?.some(slot => slot.type === 'Open') ?? false;
+    }
+
+    /**
+     * Create minimal GameRecord from cached game info
+     */
+    private createGameRecordFromCache(gameInfo: OpenGamesList['games'][0]): GameRecord {
+        return {
+            gameId: gameInfo.gameId,
+            status: 'PENDING',
+            createdAt: gameInfo.createdAt,
+            lastUpdateAt: gameInfo.createdAt,
+            players: gameInfo.players || [],
+            gameType: gameInfo.gameType,
+            pendingConfiguration: gameInfo.pendingConfiguration
+        };
+    }
+
+    /**
+     * Get open games from cache
+     */
+    private async getOpenGamesFromCache(staleThreshold: number): Promise<GameRecord[] | null> {
+        try {
+            const cachedList = await getOpenGamesCache(this.storage);
+            
+            if (!cachedList || cachedList.games.length === 0) {
+                return null;
+            }
+
+            const now = Date.now();
+            const validGames: GameRecord[] = [];
+            const gamesStillOpen: typeof cachedList.games = [];
+            const staleGameIds: string[] = [];
+
+            for (const gameInfo of cachedList.games) {
+                // Check if game is stale (created too long ago)
+                if (this.isGameStale(gameInfo.createdAt, staleThreshold)) {
+                    logger.debug(`Game ${gameInfo.gameId} is stale (created ${now - gameInfo.createdAt}ms ago)`);
+                    staleGameIds.push(gameInfo.gameId);
+                    continue;
+                }
+
+                // Check if still has open slots (data now in cached list)
+                if (this.hasOpenSlots(gameInfo)) {
+                    validGames.push(this.createGameRecordFromCache(gameInfo));
+                    gamesStillOpen.push(gameInfo);
+                }
+            }
+
+            // Delete stale games
+            await deleteStaleGames(staleGameIds, this);
+
+            // Update cache if entries changed
+            if (gamesStillOpen.length !== cachedList.games.length) {
+                await this.storage.put(OPEN_GAMES_KEY, {
+                    games: gamesStillOpen,
+                    lastUpdated: Date.now()
+                });
+            }
+
+            return validGames;
+        } catch (error) {
+            logger.warn('Error reading cached open games list, falling back to full scan:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get open games from full scan (fallback)
+     */
+    private async getOpenGamesFromFullScan(staleThreshold: number): Promise<GameRecord[]> {
+        const now = Date.now();
+        const result = await this.storage.list(GAME_KEY_PREFIX);
+        const openGames: GameRecord[] = [];
+        const staleGameIds: string[] = [];
+
+        for (const key of result.keys) {
+            const game = await this.storage.get<GameRecord>(key.name);
+            if (game && game.status === 'PENDING' && game.pendingConfiguration?.playerSlots) {
+                // Check if game is stale
+                if (this.isGameStale(game.createdAt, staleThreshold)) {
+                    logger.debug(`Game ${game.gameId} is stale (created ${now - game.createdAt}ms ago)`);
+                    staleGameIds.push(game.gameId);
+                    continue;
+                }
+
+                if (this.hasOpenSlots(game)) {
+                    openGames.push(game);
+                }
+            }
+        }
+
+        // Delete stale games found during full scan
+        await deleteStaleGames(staleGameIds, this);
+
+        // Cache the results for next time
+        await saveOpenGamesCache(openGames, this.storage);
+
+        return openGames;
+    }
+
+    /**
      * Get list of open games (PENDING status with open slots)
      * Uses cached list to reduce KV reads
      * Automatically removes stale games (not joined within STALE_GAME_TIMEOUT_MS)
@@ -207,120 +244,15 @@ export class GameStorage {
     async getOpenGames(): Promise<GameRecord[]> {
         const now = Date.now();
         const staleThreshold = now - GALACTIC_CONSTANTS.STALE_GAME_TIMEOUT_MS;
-        const staleGameIds: string[] = [];
 
-        try {
-            // Try to get cached open games list first
-            const cachedList = await this.storage.get<OpenGamesList>(OPEN_GAMES_KEY);
-            
-            if (cachedList && cachedList.games.length > 0) {
-                // OPTIMIZATION: Use cached game info instead of fetching each full game
-                // This reduces KV reads from (1 + N games) to just 1 read per lobby poll
-                const validGames: GameRecord[] = [];
-                const gamesStillOpen: typeof cachedList.games = [];
-
-                for (const gameInfo of cachedList.games) {
-                    // Check if game is stale (created too long ago)
-                    if (gameInfo.createdAt < staleThreshold) {
-                        logger.debug(`Game ${gameInfo.gameId} is stale (created ${now - gameInfo.createdAt}ms ago)`);
-                        staleGameIds.push(gameInfo.gameId);
-                        continue;
-                    }
-
-                    // Check if still has open slots (data now in cached list)
-                    if (gameInfo.pendingConfiguration?.playerSlots?.some(slot => slot.type === 'Open')) {
-                        // Create minimal GameRecord from cached info
-                        const minimalGame: GameRecord = {
-                            gameId: gameInfo.gameId,
-                            status: 'PENDING',
-                            createdAt: gameInfo.createdAt,
-                            lastUpdateAt: gameInfo.createdAt,
-                            players: gameInfo.players || [],
-                            gameType: gameInfo.gameType,
-                            pendingConfiguration: gameInfo.pendingConfiguration
-                        };
-                        validGames.push(minimalGame);
-                        gamesStillOpen.push(gameInfo);
-                    }
-                }
-
-                // Delete stale games
-                if (staleGameIds.length > 0) {
-                    logger.info(`Removing ${staleGameIds.length} stale game(s) from storage`);
-                    for (const gameId of staleGameIds) {
-                        try {
-                            await this.deleteGame(gameId);
-                        } catch (error) {
-                            logger.error(`Failed to delete stale game ${gameId}:`, error);
-                        }
-                    }
-                }
-
-                // Update cache if entries changed
-                if (gamesStillOpen.length !== cachedList.games.length) {
-                    await this.storage.put(OPEN_GAMES_KEY, {
-                        games: gamesStillOpen,
-                        lastUpdated: Date.now()
-                    });
-                }
-
-                return validGames;
-            }
-        } catch (error) {
-            logger.warn('Error reading cached open games list, falling back to full scan:', error);
+        // Try to get from cache first
+        const cachedGames = await this.getOpenGamesFromCache(staleThreshold);
+        if (cachedGames !== null) {
+            return cachedGames;
         }
 
-        // Fallback: scan all games (less efficient but reliable)
-        const result = await this.storage.list(GAME_KEY_PREFIX);
-        const openGames: GameRecord[] = [];
-
-        for (const key of result.keys) {
-            const game = await this.storage.get<GameRecord>(key.name);
-            if (game && game.status === 'PENDING' && game.pendingConfiguration?.playerSlots) {
-                // Check if game is stale
-                if (game.createdAt < staleThreshold) {
-                    logger.debug(`Game ${game.gameId} is stale (created ${now - game.createdAt}ms ago)`);
-                    staleGameIds.push(game.gameId);
-                    continue;
-                }
-
-                if (game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open')) {
-                    openGames.push(game);
-                }
-            }
-        }
-
-        // Delete stale games found during full scan
-        if (staleGameIds.length > 0) {
-            logger.info(`Removing ${staleGameIds.length} stale game(s) from storage`);
-            for (const gameId of staleGameIds) {
-                try {
-                    await this.deleteGame(gameId);
-                } catch (error) {
-                    logger.error(`Failed to delete stale game ${gameId}:`, error);
-                }
-            }
-        }
-
-        // Cache the results for next time
-        if (openGames.length > 0) {
-            await this.storage.put(OPEN_GAMES_KEY, {
-                games: openGames.map(g => ({
-                    gameId: g.gameId,
-                    status: 'PENDING' as const,
-                    createdAt: g.createdAt,
-                    playerCount: g.players.length,
-                    maxPlayers: g.pendingConfiguration?.playerSlots?.length || 0,
-                    gameType: g.gameType,
-                    // Include player data and config to avoid fetching full game later
-                    players: g.players,
-                    pendingConfiguration: g.pendingConfiguration
-                })),
-                lastUpdated: Date.now()
-            });
-        }
-
-        return openGames;
+        // Fallback to full scan
+        return await this.getOpenGamesFromFullScan(staleThreshold);
     }
 
     /**
@@ -340,34 +272,12 @@ export class GameStorage {
     async addPlayerToGame(gameId: string, player: Player, slotIndex: number): Promise<boolean> {
         const game = await this.loadGame(gameId);
         
-        if (!game || game.status !== 'PENDING') {
-            logger.warn(`Cannot add player to game ${gameId}: game not found or not pending`);
+        if (!game) {
+            logger.warn(`Cannot add player to game ${gameId}: game not found`);
             return false;
         }
 
-        if (!game.pendingConfiguration?.playerSlots) {
-            logger.warn(`Cannot add player to game ${gameId}: no pending configuration`);
-            return false;
-        }
-
-        // Find the slot and verify it's open
-        const slot = game.pendingConfiguration.playerSlots.find(s => s.slotIndex === slotIndex);
-        if (!slot || slot.type !== 'Open') {
-            logger.warn(`Cannot add player to slot ${slotIndex}: slot not found or not open`);
-            return false;
-        }
-
-        // Update slot to Set (human player)
-        slot.type = 'Set';
-        slot.name = player.name;
-
-        // Add player to players array
-        game.players.push(player);
-
-        await this.saveGame(game);
-        logger.debug(`Added player ${player.name} to game ${gameId} at slot ${slotIndex}`);
-        
-        return true;
+        return await addPlayerToGameOp(game, player, slotIndex, (g) => this.saveGame(g));
     }
 
     /**
@@ -376,29 +286,11 @@ export class GameStorage {
     async removePlayerFromGame(gameId: string, slotIndex: number): Promise<boolean> {
         const game = await this.loadGame(gameId);
         
-        if (!game || game.status !== 'PENDING') {
+        if (!game) {
             return false;
         }
 
-        if (!game.pendingConfiguration?.playerSlots) {
-            return false;
-        }
-
-        // Find the slot
-        const slot = game.pendingConfiguration.playerSlots.find(s => s.slotIndex === slotIndex);
-        if (!slot || slot.type !== 'Set') {
-            return false;
-        }
-
-        // Reset slot to Open
-        slot.type = 'Open';
-        delete slot.name;
-
-        // Remove player from players array
-        game.players = game.players.filter(p => p.slotIndex !== slotIndex);
-
-        await this.saveGame(game);
-        return true;
+        return await removePlayerFromGameOp(game, slotIndex, (g) => this.saveGame(g));
     }
 
     /**
@@ -407,16 +299,11 @@ export class GameStorage {
     async canGameStart(gameId: string): Promise<boolean> {
         const game = await this.loadGame(gameId);
         
-        if (!game || game.status !== 'PENDING') {
+        if (!game) {
             return false;
         }
 
-        if (!game.pendingConfiguration?.playerSlots) {
-            return false;
-        }
-
-        // Check if any slots are still Open
-        return !game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open');
+        return canGameStartOp(game);
     }
 }
 

@@ -4,11 +4,95 @@
  */
 
 import { GameStorage } from './storage/GameStorage';
+import type { GameRecord } from './storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
+import type { GalacticGameStateData } from '$lib/game/entities/gameTypes';
 import { processGameState } from './GameLoop';
 import { getWorkerHttpUrl } from '$lib/websocket-config';
 import { isLocalDevelopment } from 'multiplayer-framework/shared';
 import { logger } from 'multiplayer-framework/shared';
+import { captureGameStateBefore, captureGameStateAfter, detectGameStateChanges, type GameStateSnapshot } from './utils/detectGameStateChanges';
+import { formatEndResult } from './utils/gameStateFormatters';
+
+/**
+ * Load and validate game record
+ * @returns game record and state if valid, null otherwise
+ */
+async function loadAndValidateGame(
+    gameId: string,
+    gameStorage: GameStorage
+): Promise<{ gameRecord: GameRecord; gameState: GalacticGameState } | null> {
+    const gameRecord = await gameStorage.loadGame(gameId);
+
+    if (!gameRecord) {
+        logger.warn(`[EventProcessor] Game ${gameId} not found`);
+        return null;
+    }
+
+    if (gameRecord.status !== 'ACTIVE' || !gameRecord.gameState) {
+        // Game is not active, no events to process
+        return null;
+    }
+
+    const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
+    return { gameRecord, gameState };
+}
+
+/**
+ * Process game state and detect changes
+ * @returns state snapshots and whether changes were detected
+ */
+function processAndDetectChanges(gameState: GalacticGameState): {
+    stateBefore: GameStateSnapshot;
+    stateAfter: GameStateSnapshot;
+    hasChanges: boolean;
+} {
+    // Track state before processing
+    const stateBefore = captureGameStateBefore(gameState);
+    
+    // Process any pending events (this may create battle replays, remove arrived armadas, etc.)
+    // Even if game is already COMPLETED, we need to process any remaining events (like final battles)
+    processGameState(gameState);
+
+    // Check if anything changed
+    const stateAfter = captureGameStateAfter(gameState);
+    const hasChanges = detectGameStateChanges(stateBefore, stateAfter);
+
+    return { stateBefore, stateAfter, hasChanges };
+}
+
+/**
+ * Broadcast updates and save game state
+ */
+async function broadcastAndSaveChanges(
+    gameId: string,
+    gameRecord: GameRecord,
+    gameState: GalacticGameState,
+    stateBefore: GameStateSnapshot,
+    stateAfter: GameStateSnapshot,
+    gameStorage: GameStorage
+): Promise<void> {
+    // Broadcast updates to all clients via websocket (before clearing events)
+    // Include events in the broadcast so clients can process them
+    // Broadcast BEFORE saving, so clients get the update with battle replays
+    gameRecord.gameState = gameState.toJSON();
+    gameRecord.status = stateAfter.status as 'PENDING' | 'ACTIVE' | 'COMPLETED';
+    await notifyGameUpdate(gameId, gameRecord.gameState);
+    
+    // Clear events after broadcasting (similar to battle replays)
+    gameState.clearBattleReplays();
+    gameState.clearReinforcementEvents();
+    gameState.clearConquestEvents();
+    gameState.clearPlayerEliminationEvents();
+    
+    // Save state once after clearing events (single KV write)
+    gameRecord.gameState = gameState.toJSON();
+    await gameStorage.saveGame(gameRecord);
+    
+    const replaysAdded = stateAfter.replays - stateBefore.replays;
+    const armadasArrived = stateBefore.armadas - stateAfter.armadas;
+    logger.info(`[EventProcessor] Processed events for game ${gameId}: ${replaysAdded} new replays, ${armadasArrived} armadas arrived, status: ${stateBefore.status} -> ${stateAfter.status}, endResult: ${formatEndResult(stateBefore.endResult)} -> ${formatEndResult(stateAfter.endResult)}, lastUpdate: ${stateBefore.lastUpdateTime} -> ${stateAfter.lastUpdateTime}`);
+}
 
 /**
  * Process events for a single game and broadcast updates if changes occurred
@@ -20,130 +104,19 @@ export async function processGameEvents(
     platform: App.Platform
 ): Promise<boolean> {
     try {
-        const gameRecord = await gameStorage.loadGame(gameId);
-
-        if (!gameRecord) {
-            logger.warn(`[EventProcessor] Game ${gameId} not found`);
+        const loaded = await loadAndValidateGame(gameId, gameStorage);
+        if (!loaded) {
             return false;
         }
 
-        if (gameRecord.status !== 'ACTIVE' || !gameRecord.gameState) {
-            // Game is not active, no events to process
-            return false;
-        }
-
-        const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
-        
-        // Track state before processing
-        const replaysBefore = gameState.recentBattleReplays.length;
-        const reinforcementsBefore = gameState.recentReinforcementEvents.length;
-        const conquestsBefore = gameState.recentConquestEvents.length;
-        const eliminationsBefore = gameState.recentPlayerEliminationEvents.length;
-        const armadasBefore = gameState.armadas.length;
-        const statusBefore = gameState.state.status;
-        const endResultBefore = gameState.state.endResult;
-        const lastUpdateBefore = gameState.state.lastUpdateTime;
-        
-        // Process any pending events (this may create battle replays, remove arrived armadas, etc.)
-        // Even if game is already COMPLETED, we need to process any remaining events (like final battles)
-        processGameState(gameState);
-
-        // Check if anything changed
-        const replaysAfter = gameState.recentBattleReplays.length;
-        const reinforcementsAfter = gameState.recentReinforcementEvents.length;
-        const conquestsAfter = gameState.recentConquestEvents.length;
-        const eliminationsAfter = gameState.recentPlayerEliminationEvents.length;
-        const armadasAfter = gameState.armadas.length;
-        const statusAfter = gameState.state.status;
-        const endResultAfter = gameState.state.endResult;
-        const lastUpdateAfter = gameState.state.lastUpdateTime;
-        
-        // Helper to compare endResult (handles object equality after JSON serialization)
-        // Note: We compare by value, not reference, since JSON serialization creates new objects
-        const endResultChanged = (() => {
-            try {
-                // Same reference (shouldn't happen after JSON, but check anyway)
-                if (endResultBefore === endResultAfter) return false;
-                
-                // Both null or undefined
-                if ((!endResultBefore || endResultBefore === null) && (!endResultAfter || endResultAfter === null)) {
-                    return false;
-                }
-                
-                // One is null/undefined, other is not
-                if (!endResultBefore || !endResultAfter) return true;
-                
-                // Check for DRAWN_GAME string
-                if (endResultBefore === 'DRAWN_GAME' || endResultAfter === 'DRAWN_GAME') {
-                    return endResultBefore !== endResultAfter;
-                }
-                
-                // Both should be Player objects - compare slotIndex (handles JSON deserialization)
-                const beforeSlot = typeof endResultBefore === 'object' && endResultBefore !== null 
-                    ? (endResultBefore as any).slotIndex 
-                    : undefined;
-                const afterSlot = typeof endResultAfter === 'object' && endResultAfter !== null
-                    ? (endResultAfter as any).slotIndex
-                    : undefined;
-                    
-                if (beforeSlot !== undefined && afterSlot !== undefined) {
-                    return beforeSlot !== afterSlot;
-                }
-                
-                // If we can't determine, they're different objects so assume changed
-                return true;
-            } catch (error) {
-                // If comparison fails, log and assume changed (safer to broadcast)
-                logger.warn(`[EventProcessor] Error comparing endResult, assuming changed:`, error);
-                return true;
-            }
-        })();
-        
-        // Consider it changed if:
-        // - Battle replays were added
-        // - Reinforcement, conquest, or elimination events were added
-        // - Armadas changed (arrived or removed)
-        // - Status changed (game ended)
-        // - endResult changed (game ended with winner determined)
-        // - lastUpdateTime changed (events were processed, even if just resource ticks)
-        const hasChanges = replaysAfter > replaysBefore || 
-                          reinforcementsAfter > reinforcementsBefore ||
-                          conquestsAfter > conquestsBefore ||
-                          eliminationsAfter > eliminationsBefore ||
-                          armadasAfter !== armadasBefore || 
-                          statusAfter !== statusBefore ||
-                          endResultChanged ||
-                          lastUpdateAfter !== lastUpdateBefore;
+        const { gameRecord, gameState } = loaded;
+        const { stateBefore, stateAfter, hasChanges } = processAndDetectChanges(gameState);
 
         if (hasChanges) {
-            // Broadcast updates to all clients via websocket (before clearing events)
-            // Include events in the broadcast so clients can process them
-            // Broadcast BEFORE saving, so clients get the update with battle replays
-            gameRecord.gameState = gameState.toJSON();
-            gameRecord.status = statusAfter;
-            await notifyGameUpdate(gameId, gameRecord.gameState);
-            
-            // Clear events after broadcasting (similar to battle replays)
-            gameState.clearBattleReplays();
-            gameState.clearReinforcementEvents();
-            gameState.clearConquestEvents();
-            gameState.clearPlayerEliminationEvents();
-            
-            // Save state once after clearing events (single KV write)
-            gameRecord.gameState = gameState.toJSON();
-            await gameStorage.saveGame(gameRecord);
-            
-            const replaysAdded = replaysAfter - replaysBefore;
-            const armadasArrived = armadasBefore - armadasAfter;
-            const endResultStr = (result: any) => {
-                if (result === null || result === undefined) return 'null';
-                if (result === 'DRAWN_GAME') return 'DRAWN_GAME';
-                return `Player ${(result as any).slotIndex} (${(result as any).name})`;
-            };
-            logger.info(`[EventProcessor] Processed events for game ${gameId}: ${replaysAdded} new replays, ${armadasArrived} armadas arrived, status: ${statusBefore} -> ${statusAfter}, endResult: ${endResultStr(endResultBefore)} -> ${endResultStr(endResultAfter)}, lastUpdate: ${lastUpdateBefore} -> ${lastUpdateAfter}`);
+            await broadcastAndSaveChanges(gameId, gameRecord, gameState, stateBefore, stateAfter, gameStorage);
             return true;
         } else {
-            logger.debug(`[EventProcessor] No changes detected for game ${gameId} (replays: ${replaysBefore}, armadas: ${armadasBefore}, status: ${statusBefore})`);
+            logger.debug(`[EventProcessor] No changes detected for game ${gameId} (replays: ${stateBefore.replays}, armadas: ${stateBefore.armadas}, status: ${stateBefore.status})`);
         }
 
         return false;
@@ -156,11 +129,16 @@ export async function processGameEvents(
 /**
  * Broadcast game state update to all connected clients via websocket
  */
-async function notifyGameUpdate(gameId: string, gameState: any): Promise<void> {
+async function notifyGameUpdate(gameId: string, gameState: GalacticGameStateData): Promise<void> {
     try {
         // In server context, check import.meta.env.DEV (Vite/SvelteKit) or NODE_ENV
         // isLocalDevelopment() doesn't work in server context without a URL
-        const isLocal = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV === true;
+        interface ImportMeta {
+            env?: {
+                DEV?: boolean;
+            };
+        }
+        const isLocal = typeof import.meta !== 'undefined' && (import.meta as unknown as ImportMeta).env?.DEV === true;
         const workerUrl = getWorkerHttpUrl(isLocal);
 
         const replaysCount = gameState?.recentBattleReplays?.length ?? 0;

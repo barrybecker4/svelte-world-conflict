@@ -4,6 +4,7 @@
 import { KVStorage } from './KVStorage';
 import type { DailyGameStats, StatsError, GameRecord } from './types';
 import { logger } from 'multiplayer-framework/shared';
+import { normalizeStats, prepareStatsForStorage } from './statsHelpers';
 
 const STATS_KEY_PREFIX = 'gc_stats:';
 
@@ -201,11 +202,7 @@ export class GameStatsService {
         const existing = await this.kv.get<DailyGameStats>(key);
 
         if (existing) {
-            // Handle legacy data where minDurationMinutes might be Infinity (stored as null in JSON)
-            if (existing.minDurationMinutes === null || existing.minDurationMinutes === undefined) {
-                existing.minDurationMinutes = Infinity;
-            }
-            return existing;
+            return normalizeStats(existing);
         }
 
         return createEmptyStats(date);
@@ -216,11 +213,7 @@ export class GameStatsService {
      */
     private async saveStats(stats: DailyGameStats): Promise<void> {
         const key = this.getStatsKey(stats.date);
-        // JSON doesn't support Infinity, so we need to handle it
-        const toSave = {
-            ...stats,
-            minDurationMinutes: stats.minDurationMinutes === Infinity ? null : stats.minDurationMinutes
-        };
+        const toSave = prepareStatsForStorage(stats);
         await this.kv.put(key, toSave);
     }
 
@@ -328,13 +321,10 @@ export class GameStatsService {
             const stats = await this.kv.get<DailyGameStats>(key);
 
             if (stats) {
-                // Handle legacy data where minDurationMinutes might be null
-                if (stats.minDurationMinutes === null || stats.minDurationMinutes === undefined) {
-                    stats.minDurationMinutes = Infinity;
-                }
+                return normalizeStats(stats);
             }
 
-            return stats;
+            return null;
         } catch (error) {
             logger.error(`Error getting daily stats for ${date}:`, error);
             return null;

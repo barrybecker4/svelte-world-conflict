@@ -55,9 +55,17 @@ export function handleApiError(
 /**
  * Validate required fields in a request
  */
-export function validateRequired(body: any, fields: string[]): string | null {
+export function validateRequired<T extends Record<string, unknown>>(
+    body: T | null | undefined,
+    fields: string[]
+): string | null {
+    if (!body || typeof body !== 'object') {
+        return 'Request body is required';
+    }
+
     for (const field of fields) {
-        if (body[field] === undefined || body[field] === null || body[field] === '') {
+        const value = body[field];
+        if (value === undefined || value === null || value === '') {
             return `Missing required field: ${field}`;
         }
     }
