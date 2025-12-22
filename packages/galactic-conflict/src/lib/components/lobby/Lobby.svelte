@@ -17,6 +17,9 @@
     let showNameInput = true;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let showStats = false;
+    let isEditingName = false;
+    let editingName = '';
+    let nameInputElement: HTMLInputElement;
 
     onMount(async () => {
         const storedName = loadPlayerName();
@@ -99,6 +102,37 @@
         const { gameId, slotIndex } = event.detail;
         await handleJoinGame(gameId, slotIndex);
     }
+
+    function startEditingName() {
+        isEditingName = true;
+        editingName = playerName;
+        setTimeout(() => nameInputElement?.focus(), 0);
+    }
+
+    function cancelEditingName() {
+        isEditingName = false;
+        editingName = '';
+    }
+
+    function saveNameEdit() {
+        const trimmedName = editingName.trim();
+        if (trimmedName && trimmedName !== playerName) {
+            playerName = trimmedName;
+            savePlayerName(trimmedName);
+        }
+        isEditingName = false;
+        editingName = '';
+    }
+
+    function handleNameKeydown(event: KeyboardEvent) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            saveNameEdit();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            cancelEditingName();
+        }
+    }
 </script>
 
 <div class="lobby-overlay">
@@ -111,7 +145,31 @@
         <div class="lobby-container">
             <header>
                 <h1>Galactic Conflict</h1>
-                <p class="subtitle">Select a game to join or create a new one</p>
+                <p class="subtitle">
+                    {#if isEditingName}
+                        <input
+                            bind:this={nameInputElement}
+                            bind:value={editingName}
+                            on:blur={saveNameEdit}
+                            on:keydown={handleNameKeydown}
+                            class="name-edit-input"
+                            type="text"
+                            maxlength="30"
+                            placeholder="Enter your name"
+                        />
+                    {:else}
+                        <span
+                            class="player-name-display"
+                            on:click={startEditingName}
+                            on:keydown={(e) => e.key === 'Enter' && startEditingName()}
+                            role="button"
+                            tabindex="0"
+                            title="Click to edit your name"
+                        >
+                            {playerName}
+                        </span>
+                    {/if}, select a game to join or create a new one
+                </p>
             </header>
 
             <div class="content">
@@ -198,6 +256,43 @@
     .subtitle {
         margin: 0.5rem 0 0;
         color: #9ca3af;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .player-name-display {
+        color: #a78bfa;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 2px 0;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        display: inline-block;
+    }
+
+    .player-name-display:hover {
+        background: rgba(168, 85, 247, 0.2);
+    }
+
+    .name-edit-input {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #a855f7;
+        border-radius: 4px;
+        color: #e5e7eb;
+        padding: 4px 8px;
+        font-size: inherit;
+        font-family: inherit;
+        min-width: 100px;
+        text-align: center;
+    }
+
+    .name-edit-input:focus {
+        outline: none;
+        border-color: #c084fc;
+        background: rgba(0, 0, 0, 0.4);
     }
 
     .content {
