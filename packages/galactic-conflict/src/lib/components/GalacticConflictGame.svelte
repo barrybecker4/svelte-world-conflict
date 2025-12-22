@@ -394,6 +394,7 @@
     <SendArmadaModal
         {sourcePlanet}
         planets={$gameState.planets}
+        players={$gameState.players}
         currentPlayerId={$currentPlayerId}
         preselectedDestination={destinationPlanet}
         on:send={handleSendArmada}

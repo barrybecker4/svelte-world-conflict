@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
-    import type { Planet } from '$lib/game/entities/gameTypes';
+    import type { Planet, Player } from '$lib/game/entities/gameTypes';
     import { calculateTravelTime } from '$lib/game/entities/Armada';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
@@ -8,6 +8,7 @@
 
     export let sourcePlanet: Planet;
     export let planets: Planet[];
+    export let players: Player[];
     export let currentPlayerId: number | null = null;
     export let preselectedDestination: Planet | null = null;
 
@@ -29,6 +30,10 @@
     $: maxShips = currentSourcePlanet.ships;
     $: stillOwned = currentSourcePlanet.ownerId === currentPlayerId;
     $: selectedDestination = planets.find(p => p.id === selectedDestinationId);
+    
+    // Get player colors for the source and destination planets
+    $: sourcePlayer = players.find(p => p.slotIndex === currentSourcePlanet.ownerId);
+    $: destinationPlayer = selectedDestination ? players.find(p => p.slotIndex === selectedDestination.ownerId) : null;
     
     // Auto-close if all ships were sent (ships went from >0 to 0 while still owned)
     $: if (initialShips !== null && initialShips > 0 && maxShips === 0 && stillOwned) {
@@ -87,7 +92,7 @@
             {/if}
             <div class="source-info" class:lost={!stillOwned}>
                 <span class="label">From:</span>
-                <span class="planet-name">{currentSourcePlanet.name}</span>
+                <span class="planet-name" style="color: {sourcePlayer?.color || '#e5e7eb'}">{currentSourcePlanet.name}</span>
                 <span class="ships">({currentSourcePlanet.ships} ships available)</span>
             </div>
 
@@ -97,7 +102,7 @@
                      class:neutral={selectedDestination.ownerId === null}
                      class:enemy={selectedDestination.ownerId !== null && selectedDestination.ownerId !== currentPlayerId}>
                     <span class="label">To:</span>
-                    <span class="planet-name">{selectedDestination.name}</span>
+                    <span class="planet-name" style="color: {destinationPlayer?.color || '#e5e7eb'}">{selectedDestination.name}</span>
                     {#if selectedDestination.ownerId === currentPlayerId}
                         <span class="ships">(reinforcing)</span>
                     {:else}
