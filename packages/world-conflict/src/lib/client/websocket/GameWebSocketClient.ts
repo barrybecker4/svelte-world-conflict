@@ -3,9 +3,9 @@
  * Provides full type safety for game state and messages
  */
 import { WebSocketClient } from 'multiplayer-framework/client';
-import type { WebSocketConfig, BaseMessage } from 'multiplayer-framework/shared';
+import type { BaseMessage } from 'multiplayer-framework/shared';
 import type { GameStateData } from '$lib/game/entities/gameTypes';
-import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
+import { WEBSOCKET_CONFIG } from '$lib/websocket-config';
 
 /**
  * Game-specific outgoing message types
@@ -19,10 +19,6 @@ export type WorldConflictMessage = BaseMessage;
  */
 export class GameWebSocketClient extends WebSocketClient<GameStateData, WorldConflictMessage> {
   constructor(playerId?: string) {
-    const config: WebSocketConfig = {
-      workerUrl: WEBSOCKET_WORKER_URL,
-      localHost: 'localhost:8787'
-    };
-    super(config, playerId);
+    super(WEBSOCKET_CONFIG, playerId);
   }
 }

@@ -1,8 +1,8 @@
 import type { Player, GameStateData } from '$lib/game/state/GameState';
 import type { GameRecord } from '../storage/GameStorage';
-import { getWorkerHttpUrl } from '$lib/websocket-config';
+import { getWorkerHttpUrl, logger } from 'multiplayer-framework/shared';
 import type { NotificationResponse } from 'multiplayer-framework/shared';
-import { logger } from 'multiplayer-framework/shared';
+import { WEBSOCKET_CONFIG } from '$lib/websocket-config';
 
 /** Payload for game state updates with battle replay data */
 interface GameUpdatePayload extends GameStateData {
@@ -105,7 +105,7 @@ class WebSocketNotifier {
                       process.env.NODE_ENV === 'dev') && 
                       process.env.NODE_ENV !== undefined;
 
-        this.workerUrl = getWorkerHttpUrl(isDev);
+        this.workerUrl = getWorkerHttpUrl(WEBSOCKET_CONFIG, isDev);
         return this.workerUrl;
     }
 }

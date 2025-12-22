@@ -4,8 +4,8 @@
  */
 
 import { WebSocketClient } from 'multiplayer-framework/client';
-import type { WebSocketConfig, BaseMessage } from 'multiplayer-framework/shared';
-import { WEBSOCKET_WORKER_URL } from '$lib/websocket-config';
+import type { BaseMessage } from 'multiplayer-framework/shared';
+import { WEBSOCKET_CONFIG } from '$lib/websocket-config';
 import { updateGameState, isConnected } from '$lib/client/stores/gameStateStore';
 import type { GalacticGameStateData } from '$lib/game/entities/gameTypes';
 import { logger } from 'multiplayer-framework/shared';
@@ -21,12 +21,7 @@ export class GameWebSocketClient {
     private gameId: string | null = null;
 
     constructor() {
-        const config: WebSocketConfig = {
-            workerUrl: WEBSOCKET_WORKER_URL,
-            localHost: 'localhost:8787',
-        };
-
-        this.client = new WebSocketClient<GalacticGameStateData, GalacticConflictMessage>(config);
+        this.client = new WebSocketClient<GalacticGameStateData, GalacticConflictMessage>(WEBSOCKET_CONFIG);
         this.setupEventHandlers();
     }
 

@@ -4,8 +4,8 @@
  */
 
 import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
-import { getWorkerHttpUrl } from '$lib/websocket-config';
-import { isLocalDevelopment, logger } from 'multiplayer-framework/shared';
+import { getWorkerHttpUrl, isLocalDevelopment, logger } from 'multiplayer-framework/shared';
+import { WEBSOCKET_CONFIG } from '$lib/websocket-config';
 
 class WebSocketNotifier {
     private readonly timeout = 3000;
@@ -84,7 +84,7 @@ class WebSocketNotifier {
         // In dev mode (vite dev), use localhost. In production (Cloudflare Pages), use production URL
         const isLocal = import.meta.env.DEV ?? false;
         
-        this.workerUrl = getWorkerHttpUrl(isLocal);
+        this.workerUrl = getWorkerHttpUrl(WEBSOCKET_CONFIG, isLocal);
         return this.workerUrl;
     }
 }
