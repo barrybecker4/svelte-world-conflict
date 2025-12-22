@@ -222,11 +222,8 @@ export function useDragAndDrop(options: DragAndDropOptions): {
 
     // Touch event handlers
     function handleTouchStart(planet: Planet, event: TouchEvent) {
-        if (!canDrag(planet.id)) {
-            return;
-        }
-
-        // Check for double-tap
+        // Check for double-tap BEFORE checking canDrag
+        // This allows double-tap to work on planets that can't be dragged (e.g., home world with 0 ships)
         const now = Date.now();
         const timeSinceLastTap = now - lastTapTime;
         
@@ -245,6 +242,11 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         
         lastTapTime = now;
         lastTapPlanetId = planet.id;
+
+        // Check if planet can be dragged (requires ships)
+        if (!canDrag(planet.id)) {
+            return;
+        }
 
         // Clear any existing drag timeout
         if (dragStartTimeout) {
