@@ -1,9 +1,7 @@
 <script lang="ts">
+import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
   import { onMount, createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import LoadingState from '$lib/components/ui/LoadingState.svelte';
-  import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
-  import PlayerSlotCard from './PlayerSlotCard.svelte';
+        import PlayerSlotCard from './PlayerSlotCard.svelte';
   import GameSettingsDisplay from './GameSettingsDisplay.svelte';
   import { WaitingRoomManager } from './WaitingRoomManager';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';

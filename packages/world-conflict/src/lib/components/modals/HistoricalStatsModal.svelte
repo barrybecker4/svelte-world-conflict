@@ -1,9 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Spinner from '$lib/components/ui/Spinner.svelte';
-  import LineChart from '$lib/components/charts/LineChart.svelte';
+  import { Modal, Button, Spinner, LineChart } from 'shared-ui';
   import type { DailyGameStats } from '$lib/server/storage/types';
 
   interface Props {

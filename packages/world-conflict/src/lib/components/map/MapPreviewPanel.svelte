@@ -1,11 +1,10 @@
 <script lang="ts">
+import { Button, LoadingState } from 'shared-ui';
   import { onMount } from 'svelte';
   import { MapGenerator } from '$lib/game/map/MapGenerator';
   import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
   import GameMap from '$lib/components/map/GameMap.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import LoadingState from '$lib/components/ui/LoadingState.svelte';
-  import type { Region } from '$lib/game/entities/Region';
+      import type { Region } from '$lib/game/entities/Region';
   import type { GameStateData, Player, PlayerSlot } from '$lib/game/entities/gameTypes';
   import { logger } from 'multiplayer-framework/shared';
 

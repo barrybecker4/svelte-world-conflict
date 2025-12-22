@@ -1,0 +1,27 @@
+{
+  "name": "shared-ui",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "check": "svelte-check --tsconfig tsconfig.json"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0",
+    "multiplayer-framework": "*"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1"
+  },
+  "devDependencies": {
+    "@sveltejs/kit": "^2.16.0",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+

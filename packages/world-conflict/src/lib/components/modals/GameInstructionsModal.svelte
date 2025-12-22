@@ -1,9 +1,7 @@
 <script lang="ts">
+import { Button, IconButton, Modal } from 'shared-ui';
   import { onMount } from 'svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import IconButton from '$lib/components/ui/IconButton.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import { TUTORIAL_CARDS, TOTAL_TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
+        import { TUTORIAL_CARDS, TOTAL_TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
   import { loadPlayerName } from '$lib/client/stores/clientStorage';
   import { VERSION } from '$lib/version';
   import { logger } from 'multiplayer-framework/shared';

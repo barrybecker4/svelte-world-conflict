@@ -2,7 +2,8 @@
     import { onMount, onDestroy } from 'svelte';
     import type { GalacticGameStateData, Player } from '$lib/game/entities/gameTypes';
     import { isGameCompleted, isPlayerEliminated } from '$lib/client/utils/gameStateChecks';
-    import AudioButton from './configuration/AudioButton.svelte';
+    import { AudioButton } from 'shared-ui';
+    import { audioSystem, SOUNDS } from '$lib/client/audio';
     import { battleAnimations } from '$lib/client/stores/battleAnimationStore';
     import PlayerStatsDisplay from './info-panel/PlayerStatsDisplay.svelte';
     import Leaderboard from './info-panel/Leaderboard.svelte';
@@ -137,7 +138,7 @@
 
     <!-- Icon buttons row -->
     <div class="icon-buttons">
-        <AudioButton />
+        <AudioButton {audioSystem} testSound={SOUNDS.CLICK} />
     </div>
 </div>
 

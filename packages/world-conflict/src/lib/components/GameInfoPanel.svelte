@@ -1,12 +1,10 @@
 <script lang="ts">
+import { Button, IconButton, Panel, Section, AudioButton } from 'shared-ui';
   import type { GameStateData, Player } from '$lib/game/state/GameState';
-  import Button from '$lib/components/ui/Button.svelte';
-  import IconButton from '$lib/components/ui/IconButton.svelte';
-  import Panel from '$lib/components/ui/Panel.svelte';
-  import Section from '$lib/components/ui/Section.svelte';
-  import TurnTimer from '$lib/components/TurnTimer.svelte';
+          import TurnTimer from '$lib/components/TurnTimer.svelte';
   import { getPlayerConfig, getPlayerColor, getPlayerEndColor } from '$lib/game/constants/playerConfigs';
-  import AudioButton from '$lib/components/configuration/AudioButton.svelte';
+  import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS } from '$lib/client/audio/sounds';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { SYMBOLS } from '$lib/game/constants/symbols';
   import { IDLE, SELECT_SOURCE, ADJUST_SOLDIERS, SELECT_TARGET, BUILD } from '$lib/game/mechanics/moveConstants';
@@ -155,7 +153,7 @@
   <!-- Bottom Actions -->
   <Section title="" borderBottom={false}>
     <div class="icon-actions">
-      <AudioButton/>
+      <AudioButton {audioSystem} testSound={SOUNDS.CLICK} />
       <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
       <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
       {#if import.meta.env.DEV}

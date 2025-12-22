@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Button from '$lib/components/ui/Button.svelte';
+  import Button from 'shared-ui';
   import type { OpenGamesManager, GameSlotInfo, OpenGame } from './OpenGamesManager';
   import { getSlotButtonVariant, formatTimeAgo } from '$lib/client/slots/slotUtils';
 

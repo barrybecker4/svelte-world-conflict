@@ -1,5 +1,5 @@
 <script lang="ts">
-    import LineChart from './LineChart.svelte';
+    import { LineChart } from 'shared-ui';
     import PlayerHistoryTable from './PlayerHistoryTable.svelte';
     import type { DailyGameStats } from '$lib/server/storage/types';
 

@@ -1,11 +1,20 @@
 <script lang="ts">
-  import { audioSystem } from '$lib/client/audio/AudioSystem';
-  import { SOUNDS } from '$lib/client/audio/sounds';
   import { onMount } from 'svelte';
-  import IconButton from '$lib/components/ui/IconButton.svelte';
+  import IconButton from '../ui/IconButton.svelte';
 
-  let isEnabled = false;
-  let isInitialized = false;
+  interface Props {
+    audioSystem: {
+      isAudioEnabled: () => boolean;
+      toggle: () => Promise<boolean>;
+      playSound: (sound: string) => Promise<void>;
+    };
+    testSound?: string;
+  }
+
+  let { audioSystem, testSound }: Props = $props();
+
+  let isEnabled = $state(false);
+  let isInitialized = $state(false);
 
   onMount(async () => {
     isEnabled = audioSystem.isAudioEnabled();
@@ -17,9 +26,9 @@
       isEnabled = await audioSystem.toggle();
 
       // Play a test sound when enabling
-      if (isEnabled) {
+      if (isEnabled && testSound) {
         setTimeout(async () => {
-          await audioSystem.playSound(SOUNDS.CLICK);
+          await audioSystem.playSound(testSound);
         }, 100);
       }
     } catch (error) {
@@ -31,3 +40,4 @@
 <IconButton title="Toggle Audio" on:click={toggleAudio} disabled={!isInitialized}>
     {#if isEnabled}🔊{:else}🔇{/if}
 </IconButton>
+

@@ -1,19 +1,20 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import { LoadingState, SoundTestModal } from 'shared-ui';
+  import Banner from './ui/Banner.svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import GameSummaryPanel from './GameSummaryPanel.svelte';
   import TempleUpgradePanel from './TempleUpgradePanel.svelte';
   import GameMap from './map/GameMap.svelte';
   import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
   import GameInstructions from './modals/GameInstructionsModal.svelte';
-  import SoundTestModal from './modals/SoundTestModal.svelte';
-  import LoadingState from './ui/LoadingState.svelte';
-  import Banner from './ui/Banner.svelte';
   import { createGameStateStore } from '$lib/client/stores/gameStateStore';
   import { GameController } from '$lib/client/gameController/GameController';
   import type { Player } from '$lib/game/state/GameState';
   import { BUILD } from '$lib/game/mechanics/moveConstants';
   import { logger } from 'multiplayer-framework/shared';
+  import { audioSystem } from '$lib/client/audio/AudioSystem';
+  import { SOUNDS, SOUND_ICONS } from '$lib/client/audio/sounds';
 
   export let gameId: string;
   export let playerId: string;
@@ -47,6 +48,26 @@
   let showGameSummary = false;
   let gameWinner: Player | 'DRAWN_GAME' | null = null;
   let showSoundTestModal = false;
+
+  // Convert SNAKE_CASE to Title Case for sound names
+  function formatSoundName(key: string): string {
+    return key
+      .split('_')
+      .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  // Generate sound list from SOUNDS constant
+  $: soundList = Object.keys(SOUNDS).map(key => ({
+    key,
+    name: formatSoundName(key),
+    icon: SOUND_ICONS[key as keyof typeof SOUND_ICONS] || '🔊'
+  }));
+
+  async function handlePlaySound(soundKey: string) {
+    const soundType = SOUNDS[soundKey as keyof typeof SOUNDS];
+    await audioSystem.playSound(soundType);
+  }
 
   $: selectedRegion = $moveState.sourceRegion !== null
     ? $regions.find(r => r.index === $moveState.sourceRegion) || null
@@ -222,7 +243,12 @@
     {/if}
 
     {#if showSoundTestModal}
-      <SoundTestModal isOpen={showSoundTestModal} onclose={() => showSoundTestModal = false} />
+      <SoundTestModal 
+        isOpen={showSoundTestModal} 
+        onclose={() => showSoundTestModal = false}
+        {soundList}
+        onPlaySound={handlePlaySound}
+      />
     {/if}
   </div>
 {/if}

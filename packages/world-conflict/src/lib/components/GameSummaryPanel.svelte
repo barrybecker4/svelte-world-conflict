@@ -1,9 +1,7 @@
 <script lang="ts">
+import { Button, Panel, Section } from 'shared-ui';
   import type { GameStateData, Player } from '$lib/game/state/GameState';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Panel from '$lib/components/ui/Panel.svelte';
-  import Section from '$lib/components/ui/Section.svelte';
-  import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
+        import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { SYMBOLS } from '$lib/game/constants/symbols';
   import { PlayerStatisticsCalculator } from '$lib/game/mechanics/PlayerStatisticsCalculator';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';

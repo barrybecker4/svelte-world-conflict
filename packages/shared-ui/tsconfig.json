@@ -1,5 +1,4 @@
 {
-  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
@@ -11,11 +10,6 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["@cloudflare/workers-types"],
-    "paths": {
-      "shared-ui": ["../shared-ui/src"],
-      "shared-ui/*": ["../shared-ui/src/*"]
-    },
     
     // Enable important strict checks but relax others
     "noImplicitReturns": true,
@@ -28,5 +22,7 @@
     "noImplicitAny": false,
     "strictPropertyInitialization": false,
     "noImplicitThis": false
-  }
+  },
+  "include": ["src/**/*"]
 }
+

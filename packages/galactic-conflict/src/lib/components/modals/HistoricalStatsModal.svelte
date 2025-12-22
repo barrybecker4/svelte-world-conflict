@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Modal, Button, Spinner } from 'shared-ui';
   import type { DailyGameStats } from '$lib/server/storage/types';
   import StatsChartsGrid from '$lib/components/charts/StatsChartsGrid.svelte';
 
@@ -71,110 +72,45 @@
   });
 </script>
 
-{#if isOpen}
-<div class="modal-overlay" on:click={handleClose} role="button" tabindex="-1" on:keydown={(e) => e.key === 'Escape' && handleClose()}>
-  <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="stats-modal-title">
-    <header>
-      <h2 id="stats-modal-title">Historical Statistics</h2>
-      <button class="close-btn" on:click={handleClose}>×</button>
-    </header>
-
-    <div class="content">
-      {#if loading}
-        <div class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading statistics...</p>
-        </div>
-      {:else if error}
-        <div class="error-state">
-          <p>⚠️ {error}</p>
-          <button class="retry-btn" on:click={fetchStats}>Retry</button>
-        </div>
-      {:else if stats.length === 0}
-        <div class="empty-state">
-          <p>No statistics available yet.</p>
-          <p class="hint">Play some games to start collecting data!</p>
-        </div>
-      {:else}
-        <StatsChartsGrid
-          {stats}
-          {dateLabels}
-          {CHART_COLORS}
-        />
-      {/if}
-    </div>
-
-    <footer>
-      <button class="close-button" on:click={handleClose}>Close</button>
-    </footer>
+<Modal
+  {isOpen}
+  title="Historical Statistics"
+  width="900px"
+  height="85vh"
+  on:close={handleClose}
+>
+  <div class="stats-container">
+    {#if loading}
+      <div class="loading-state">
+        <Spinner size="lg" />
+        <p>Loading statistics...</p>
+      </div>
+    {:else if error}
+      <div class="error-state">
+        <p>⚠️ {error}</p>
+        <Button variant="secondary" on:click={fetchStats}>Retry</Button>
+      </div>
+    {:else if stats.length === 0}
+      <div class="empty-state">
+        <p>No statistics available yet.</p>
+        <p class="hint">Play some games to start collecting data!</p>
+      </div>
+    {:else}
+      <StatsChartsGrid
+        {stats}
+        {dateLabels}
+        {CHART_COLORS}
+      />
+    {/if}
   </div>
-</div>
-{/if}
+
+  <svelte:fragment slot="footer">
+    <Button variant="secondary" on:click={handleClose}>Close</Button>
+  </svelte:fragment>
+</Modal>
 
 <style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(4px);
-  }
-
-  .modal {
-    background: linear-gradient(145deg, #1a1a2e, #16162a);
-    border: 1px solid #374151;
-    border-radius: 16px;
-    max-width: 900px;
-    width: 90%;
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
-  }
-
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid #374151;
-  }
-
-  h2 {
-    margin: 0;
-    color: #a78bfa;
-    font-size: 1.5rem;
-  }
-
-  .close-btn {
-    background: none;
-    border: none;
-    color: #9ca3af;
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-
-  .close-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e5e7eb;
-  }
-
-  .content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.5rem;
+  .stats-container {
     min-height: 400px;
   }
 
@@ -190,63 +126,13 @@
     color: #94a3b8;
   }
 
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(167, 139, 250, 0.2);
-    border-top-color: #a78bfa;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
   .error-state p {
     color: #fca5a5;
-  }
-
-  .retry-btn {
-    padding: 0.5rem 1rem;
-    background: #374151;
-    border: 1px solid #4b5563;
-    border-radius: 8px;
-    color: #e5e7eb;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-
-  .retry-btn:hover {
-    background: #4b5563;
   }
 
   .empty-state .hint {
     font-size: 0.875rem;
     opacity: 0.7;
-  }
-
-  footer {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #374151;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .close-button {
-    padding: 0.5rem 1.5rem;
-    background: #374151;
-    border: 1px solid #4b5563;
-    border-radius: 8px;
-    color: #e5e7eb;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-
-  .close-button:hover {
-    background: #4b5563;
   }
 </style>
 

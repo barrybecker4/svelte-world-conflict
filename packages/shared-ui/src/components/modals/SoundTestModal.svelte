@@ -1,59 +1,28 @@
 <script lang="ts">
-  import Modal from '$lib/components/ui/Modal.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import { audioSystem } from '$lib/client/audio/AudioSystem';
-  import { SOUNDS } from '$lib/client/audio/sounds';
-  import { logger } from 'multiplayer-framework/shared';
+  import Modal from '../ui/Modal.svelte';
+  import Button from '../ui/Button.svelte';
+
+  interface SoundItem {
+    key: string;
+    name: string;
+    icon: string;
+  }
 
   interface Props {
     isOpen?: boolean;
     onclose?: () => void;
+    soundList: SoundItem[];
+    onPlaySound: (soundKey: string) => Promise<void>;
   }
 
-  let { isOpen = true, onclose }: Props = $props();
-
-  // Icon mapping for each sound key
-  const SOUND_ICONS: Record<string, string> = {
-    GAME_CREATED: '🎮',
-    GAME_STARTED: '🚀',
-    GAME_WON: '🏆',
-    GAME_LOST: '💀',
-    SOLDIERS_MOVE: '👣',
-    SOLDIERS_RECRUITED: '🪖',
-    ATTACK: '⚔️',
-    COMBAT: '⚡',
-    REGION_CONQUERED: '🏴',
-    TEMPLE_UPGRADED: '✨',
-    INCOME: '💰',
-    OUT_OF_TIME: '⏰',
-    ALMOST_OUT_OF_TIME: '⏱️',
-    CLICK: '👆',
-    HOVER: '🔘',
-    ERROR: '❌'
-  };
-
-  // Convert SNAKE_CASE to Title Case
-  function formatSoundName(key: string): string {
-    return key
-      .split('_')
-      .map(word => word.charAt(0) + word.slice(1).toLowerCase())
-      .join(' ');
-  }
-
-  // Generate sound list from SOUNDS constant
-  const soundList = Object.keys(SOUNDS).map(key => ({
-    key,
-    name: formatSoundName(key),
-    icon: SOUND_ICONS[key] || '🔊'
-  }));
+  let { isOpen = true, onclose, soundList, onPlaySound }: Props = $props();
 
   let playingSound = $state<string | null>(null);
 
   async function playSound(soundKey: string) {
     try {
       playingSound = soundKey;
-      const soundType = SOUNDS[soundKey as keyof typeof SOUNDS];
-      await audioSystem.playSound(soundType);
+      await onPlaySound(soundKey);
       // Clear the playing state after a brief delay
       setTimeout(() => {
         if (playingSound === soundKey) {
@@ -61,7 +30,7 @@
         }
       }, 500);
     } catch (error) {
-      logger.error(`Failed to play sound ${soundKey}:`, error);
+      console.error(`Failed to play sound ${soundKey}:`, error);
       playingSound = null;
     }
   }

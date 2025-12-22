@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { GameState, Player } from '$lib/game/state/GameState';
-  import Button from '$lib/components/ui/Button.svelte';
+  import Button from 'shared-ui';
 
   // gameState.currentPlayerSlot = Whose turn it is (slot)
   export let gameState: GameState | null = null;

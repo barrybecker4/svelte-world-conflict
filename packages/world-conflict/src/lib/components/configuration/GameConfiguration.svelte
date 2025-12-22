@@ -1,13 +1,11 @@
 <script lang="ts">
+import { Button, Panel, Section } from 'shared-ui';
   import { createEventDispatcher, onMount } from 'svelte';
   import PlayerNameInput from './PlayerNameInput.svelte';
   import PlayerSlots from './PlayerSlots.svelte';
   import GameSettingsPanel from './GameSettingsPanel.svelte';
   import MapPreviewPanel from '$lib/components/map/MapPreviewPanel.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Panel from '$lib/components/ui/Panel.svelte';
-  import Section from '$lib/components/ui/Section.svelte';
-  import { loadPlayerName, savePlayerName, loadGameConfiguration, saveGameConfiguration } from '$lib/client/stores/clientStorage';
+        import { loadPlayerName, savePlayerName, loadGameConfiguration, saveGameConfiguration } from '$lib/client/stores/clientStorage';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import { AI_DIFFICULTY_OPTIONS, AiDifficulty } from '$lib/game/entities/aiPersonalities';

@@ -15,6 +15,17 @@ A minimal WebSocket framework for building real-time multiplayer games.
 - Type-safe and extensible
 - Generic - works with any turn-based or real-time game
 
+### [`shared-ui`](./packages/shared-ui)
+
+Shared Svelte UI components used across all games.
+
+**Features:**
+- Reusable UI components (Button, Modal, Panel, Spinner, etc.)
+- Chart components (LineChart with Chart.js)
+- Audio components (AudioButton, SoundTestModal)
+- Consistent styling and behavior
+- Source-level sharing (no build step required)
+
 ### [`world-conflict`](./packages/world-conflict)
 
 The World Conflict strategy game - a modernized port from Google Apps Script.
@@ -115,6 +126,8 @@ npm run build -w world-conflict
 npm run build -w galactic-conflict
 ```
 
+**Note:** The `shared-ui` package doesn't require a separate build step. Its components are compiled as part of each game's build process through Vite's alias configuration.
+
 ## 🏗️ Monorepo Structure
 
 ```
@@ -128,6 +141,18 @@ svelte-world-conflict/
 │   │   │   └── shared/                 # Shared types and utilities
 │   │   ├── package.json
 │   │   └── README.md
+│   │
+│   ├── shared-ui/                      # Shared UI components
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   │   ├── ui/                 # Base UI components
+│   │   │   │   ├── charts/             # Chart components
+│   │   │   │   ├── audio/              # Audio components
+│   │   │   │   └── modals/             # Modal components
+│   │   │   ├── index.ts                # Barrel exports
+│   │   │   └── types.ts                # Shared types
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   │
 │   ├── world-conflict/                 # World Conflict game
 │   │   ├── src/                        # Game source code
@@ -232,6 +257,7 @@ The deployment guide covers both initial setup and updates. See individual game 
 ## 📚 Documentation
 
 - [Framework Documentation](./packages/multiplayer-framework/README.md) - How to use the multiplayer framework
+- [Shared UI Components](./packages/shared-ui/) - Reusable UI components for games
 - [World Conflict Documentation](./packages/world-conflict/README.md) - World Conflict game documentation
 - [Galactic Conflict Documentation](./packages/galactic-conflict/README.md) - Galactic Conflict game documentation
 - [Architecture Guide](./ARCHITECTURE.md) - System architecture and design

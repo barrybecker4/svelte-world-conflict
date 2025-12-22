@@ -4,14 +4,34 @@
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerDefaultName } from '$lib/game/constants/playerConfigs';
     import { loadPlayerName } from '$lib/client/stores/clientStorage';
-    import AudioButton from './AudioButton.svelte';
-    import SoundTestModal from '../modals/SoundTestModal.svelte';
+    import { AudioButton, SoundTestModal } from 'shared-ui';
+    import { audioSystem, SOUNDS, SOUND_ICONS } from '$lib/client/audio';
     import GalaxySettingsPanel from './GalaxySettingsPanel.svelte';
     import PlayerSlotsManager from './PlayerSlotsManager.svelte';
 
     const dispatch = createEventDispatcher();
 
     let showSoundTestModal = false;
+
+    // Convert SNAKE_CASE to Title Case
+    function formatSoundName(key: string): string {
+        return key
+            .split('_')
+            .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+            .join(' ');
+    }
+
+    // Generate sound list from SOUNDS constant
+    $: soundList = Object.keys(SOUNDS).map(key => ({
+        key,
+        name: formatSoundName(key),
+        icon: SOUND_ICONS[key] || '🔊'
+    }));
+
+    async function handlePlaySound(soundKey: string) {
+        const soundType = SOUNDS[soundKey as keyof typeof SOUNDS];
+        await audioSystem.playSound(soundType);
+    }
 
     // Game settings
     let neutralPlanetCount = GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT;
@@ -162,7 +182,7 @@
             <section class="audio-section">
                 <h2>Audio</h2>
                 <div class="audio-controls">
-                    <AudioButton />
+                    <AudioButton {audioSystem} testSound={SOUNDS.CLICK} />
                     {#if import.meta.env.DEV}
                         <button 
                             class="test-sounds-btn" 
@@ -194,7 +214,9 @@
 {#if import.meta.env.DEV && showSoundTestModal}
     <SoundTestModal 
         isOpen={showSoundTestModal} 
-        onClose={() => showSoundTestModal = false} 
+        onclose={() => showSoundTestModal = false}
+        {soundList}
+        onPlaySound={handlePlaySound}
     />
 {/if}
 

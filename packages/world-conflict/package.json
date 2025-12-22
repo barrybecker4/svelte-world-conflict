@@ -52,6 +52,7 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250614.0",
     "multiplayer-framework": "*",
+    "shared-ui": "*",
     "@sveltejs/adapter-cloudflare": "^7.0.4",
     "@types/seedrandom": "^3.0.8",
     "@types/uuid": "^10.0.0",

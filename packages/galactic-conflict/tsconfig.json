@@ -12,6 +12,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": ["@cloudflare/workers-types"],
+    "paths": {
+      "shared-ui": ["../shared-ui/src"],
+      "shared-ui/*": ["../shared-ui/src/*"]
+    },
     
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,

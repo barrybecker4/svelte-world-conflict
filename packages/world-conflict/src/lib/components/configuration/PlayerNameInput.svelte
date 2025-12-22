@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import Button from '$lib/components/ui/Button.svelte';
+  import Button from 'shared-ui';
 
   export let initialName = '';
   export let error: string | null | undefined = '';

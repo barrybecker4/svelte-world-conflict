@@ -1,9 +1,7 @@
 <script lang="ts">
+import { Button, Panel, Section } from 'shared-ui';
   import type { GameStateData, Player } from '$lib/game/state/GameState';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Panel from '$lib/components/ui/Panel.svelte';
-  import Section from '$lib/components/ui/Section.svelte';
-  import { Temple } from '$lib/game/entities/Temple';
+        import { Temple } from '$lib/game/entities/Temple';
   import { TEMPLE_UPGRADES_BY_NAME, type TempleUpgradeDefinition } from '$lib/game/constants/templeUpgradeDefinitions';
   import { SYMBOLS } from '$lib/game/constants/symbols';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';

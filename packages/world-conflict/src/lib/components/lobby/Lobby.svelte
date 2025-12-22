@@ -1,9 +1,7 @@
 <script lang="ts">
+import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import LoadingState from '$lib/components/ui/LoadingState.svelte';
-  import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
-  import PlayerNameInput from '$lib/components/configuration/PlayerNameInput.svelte';
+        import PlayerNameInput from '$lib/components/configuration/PlayerNameInput.svelte';
   import OpenGameRow from './OpenGameRow.svelte';
   import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
   import { OpenGamesManager, type OpenGame } from './OpenGamesManager';

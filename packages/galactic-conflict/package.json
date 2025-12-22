@@ -50,9 +50,11 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250614.0",
     "multiplayer-framework": "*",
+    "shared-ui": "*",
     "@sveltejs/adapter-cloudflare": "^7.0.4",
     "@types/seedrandom": "^3.0.8",
     "@types/uuid": "^10.0.0",
+    "chart.js": "^4.5.1",
     "seedrandom": "^3.0.5",
     "uuid": "^11.1.0",
     "wrangler": "^4.20.0"

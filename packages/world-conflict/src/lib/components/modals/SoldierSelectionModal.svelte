@@ -1,7 +1,6 @@
 <script lang="ts">
-  import Button from '$lib/components/ui/Button.svelte';
-  import Modal from '$lib/components/ui/Modal.svelte';
-
+import { Button, Modal } from 'shared-ui';
+    
   interface Props {
     maxSoldiers: number;
     currentSelection: number;
