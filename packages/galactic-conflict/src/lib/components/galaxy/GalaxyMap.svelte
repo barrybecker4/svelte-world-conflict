@@ -1,18 +1,18 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-    import type { GalacticGameStateData, Planet as PlanetType, PlayerEliminationEvent } from '$lib/game/entities/gameTypes';
+    import type { GalacticGameStateData, Planet as PlanetType } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { isGameCompleted, canPlayerInteract } from '$lib/client/utils/gameStateChecks';
-    import { extractReplayIds, hasNewReplays } from '$lib/client/utils/eventProcessing';
+    import { clearAllBattleAnimations } from '$lib/client/stores/battleAnimationStore';
+    import { useAnimationTime } from '$lib/client/hooks/useAnimationTime';
+    import { useDragAndDrop } from '$lib/client/interactions/useDragAndDrop';
+    import { useBattleCoordinator } from '$lib/client/hooks/useBattleCoordinator';
     import Planet from './Planet.svelte';
     import Armada from './Armada.svelte';
     import BattleAnimationOverlay from './battle-animation/BattleAnimationOverlay.svelte';
     import FloatingTextManager from './FloatingTextManager.svelte';
-    import {
-        battleAnimations,
-        processNewBattleReplays,
-        clearAllBattleAnimations,
-    } from '$lib/client/stores/battleAnimationStore';
+    import GalaxySVGDefinitions from './GalaxySVGDefinitions.svelte';
+    import DragVisualization from './DragVisualization.svelte';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
@@ -25,356 +25,63 @@
         doubleClick: { planet: PlanetType };
     }>();
 
-    let currentTime = Date.now();
-    let animationFrame: number;
-
-    // Drag state - store planet ID instead of object to survive re-renders
-    let isDragging = false;
-    let dragSourcePlanetId: number | null = null;
-    let dragCurrentX = 0;
-    let dragCurrentY = 0;
     let svgElement: SVGSVGElement;
-    let dragStartTimeout: ReturnType<typeof setTimeout> | null = null;
-    let mouseDownX = 0;
-    let mouseDownY = 0;
-
-    // Track battle animations to show elimination text after battles
-    const pendingEliminationTexts = new Map<number, PlayerEliminationEvent>(); // planetId -> event
     let floatingTextManager: FloatingTextManager;
 
-    // Helper to get drag source planet from current gameState
-    function getDragSourcePlanet(): PlanetType | null {
-        if (dragSourcePlanetId === null) return null;
-        return gameState.planets.find(p => p.id === dragSourcePlanetId) || null;
-    }
+    // Use animation time hook
+    const currentTime = useAnimationTime(() => !isGameCompleted(gameState));
 
-    // Update time for armada positions (only when game is active)
-    function updateTime() {
-        // Stop updating time when game is complete - this freezes armadas in place
-        if (isGameCompleted(gameState)) {
-            return;
+    // Use drag and drop hook
+    const { dragState, handlers } = useDragAndDrop({
+        svgElement: () => svgElement,
+        planets: () => gameState.planets,
+        canDrag: (planetId: number) => {
+            if (!canPlayerInteract(gameState, currentPlayerId, hasResigned)) {
+                return false;
+            }
+            const planet = gameState.planets.find(p => p.id === planetId);
+            return planet?.ownerId === currentPlayerId && (planet?.ships ?? 0) > 0;
+        },
+        onDragComplete: (sourcePlanet: PlanetType, destinationPlanet: PlanetType) => {
+            dispatch('dragSend', { sourcePlanet, destinationPlanet });
         }
-        currentTime = Date.now();
-        animationFrame = requestAnimationFrame(updateTime);
-    }
+    });
+
+    // Use battle coordinator hook (doesn't need a reactive gameState parameter)
+    const { 
+        battleAnimations, 
+        hasAnimationAtPlanet, 
+        getDisplayPlanet, 
+        processReplays,
+        pendingEliminationTexts 
+    } = useBattleCoordinator({ subscribe: (fn) => { fn(gameState); return () => {}; } });
 
     onMount(() => {
-        updateTime();
-        
         // Process any existing battle replays when component mounts
         if (gameState.recentBattleReplays?.length > 0) {
             console.log(`[GalaxyMap] Mount: ${gameState.recentBattleReplays.length} battle replays to play`);
-            processNewBattleReplays(gameState.recentBattleReplays);
+            processReplays(gameState);
         }
     });
 
     onDestroy(() => {
-        if (animationFrame) {
-            cancelAnimationFrame(animationFrame);
-        }
-        // Clean up drag timeout
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-        }
-        cleanupDrag();
         // Clean up battle animations
         clearAllBattleAnimations();
     });
+
+    // Process battle replays reactively
+    $: processReplays(gameState);
 
     function handlePlanetClick(planet: PlanetType) {
         onPlanetClick(planet);
     }
 
     function handlePlanetMouseDown(planet: PlanetType, event: MouseEvent) {
-        // Check if player can interact
-        if (!canPlayerInteract(gameState, currentPlayerId, hasResigned)) {
-            return;
-        }
-        // Only allow dragging from owned planets with ships
-        if (planet.ownerId !== currentPlayerId || planet.ships <= 0) {
-            return;
-        }
-
-        // Clear any existing drag timeout to avoid interference with double-clicks
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-
-        // Store initial mouse position
-        mouseDownX = event.clientX;
-        mouseDownY = event.clientY;
-
-        // Delay drag start to allow double-click to be detected first
-        // If user moves mouse significantly before timeout, start drag immediately
-        dragStartTimeout = setTimeout(() => {
-            if (dragSourcePlanetId === planet.id) {
-                isDragging = true;
-                updateDragPosition(event);
-                document.addEventListener('mousemove', handleDocumentMouseMove);
-                document.addEventListener('mouseup', handleDocumentMouseUp);
-            }
-        }, 200); // increased delay to allow double-click detection
-
-        dragSourcePlanetId = planet.id;
-        updateDragPosition(event);
-        
-        // Add document-level listeners for mouse move/up to detect actual drag
-        document.addEventListener('mousemove', handleDocumentMouseMoveCheck);
-        document.addEventListener('mouseup', handleDocumentMouseUp);
+        handlers.handleMouseDown(planet, event);
     }
 
-    function handleDocumentMouseMoveCheck(event: MouseEvent) {
-        // Check if mouse has moved significantly (indicating a drag, not a click)
-        const moveThreshold = 5; // pixels
-        const dx = Math.abs(event.clientX - mouseDownX);
-        const dy = Math.abs(event.clientY - mouseDownY);
-        
-        if (dx > moveThreshold || dy > moveThreshold) {
-            // Mouse moved significantly - this is a drag, start it immediately
-            if (dragStartTimeout) {
-                clearTimeout(dragStartTimeout);
-                dragStartTimeout = null;
-            }
-            
-            if (!isDragging && dragSourcePlanetId !== null) {
-                isDragging = true;
-                updateDragPosition(event);
-                document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
-                document.addEventListener('mousemove', handleDocumentMouseMove);
-            }
-        }
-    }
-
-    function handleDocumentMouseMove(event: MouseEvent) {
-        if (!isDragging) return;
-        updateDragPosition(event);
-    }
-
-    function handleDocumentMouseUp(event: MouseEvent) {
-        // Clear the drag start timeout if it's still pending
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-
-        // Remove the move check listener
-        document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
-
-        if (!isDragging || dragSourcePlanetId === null) {
-            // Important: Don't reset dragSourcePlanetId here yet, as the double-click
-            // event may still be pending. Only clear after a short delay or when
-            // the double-click handler runs. However, we should cleanup listeners.
-            document.removeEventListener('mousemove', handleDocumentMouseMove);
-            document.removeEventListener('mouseup', handleDocumentMouseUp);
-            
-            // Reset drag state after a brief delay to allow double-click to fire
-            // This prevents the second mousedown from seeing stale state
-            setTimeout(() => {
-                if (!isDragging) {
-                    dragSourcePlanetId = null;
-                }
-            }, 50);
-            return;
-        }
-
-        // Look up source planet from current gameState (always fresh)
-        const sourcePlanet = getDragSourcePlanet();
-        if (!sourcePlanet) {
-            cleanupDrag();
-            return;
-        }
-
-        // Find if we're over a planet
-        const targetPlanet = findPlanetAtPosition(dragCurrentX, dragCurrentY);
-        
-        if (targetPlanet && targetPlanet.id !== sourcePlanet.id) {
-            // Dispatch drag send event
-            dispatch('dragSend', {
-                sourcePlanet: sourcePlanet,
-                destinationPlanet: targetPlanet
-            });
-        }
-
-        cleanupDrag();
-    }
-
-    // Touch event handlers - mirror mouse event handlers
     function handlePlanetTouchStart(planet: PlanetType, event: TouchEvent) {
-        // Check if player can interact
-        if (!canPlayerInteract(gameState, currentPlayerId, hasResigned)) {
-            return;
-        }
-        // Only allow dragging from owned planets with ships
-        if (planet.ownerId !== currentPlayerId || planet.ships <= 0) {
-            return;
-        }
-
-        // Clear any existing drag timeout to avoid interference with double-taps
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-
-        // Store initial touch position
-        const coords = getEventCoordinates(event);
-        mouseDownX = coords.clientX;
-        mouseDownY = coords.clientY;
-
-        // Delay drag start to allow double-tap to be detected first
-        dragStartTimeout = setTimeout(() => {
-            if (dragSourcePlanetId === planet.id) {
-                isDragging = true;
-                updateDragPosition(event);
-                document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
-                document.addEventListener('touchend', handleDocumentTouchEnd);
-                document.addEventListener('touchcancel', handleDocumentTouchEnd);
-            }
-        }, 200);
-
-        dragSourcePlanetId = planet.id;
-        updateDragPosition(event);
-        
-        // Add document-level listeners for touch move/end to detect actual drag
-        document.addEventListener('touchmove', handleDocumentTouchMoveCheck, { passive: false });
-        document.addEventListener('touchend', handleDocumentTouchEnd);
-        document.addEventListener('touchcancel', handleDocumentTouchEnd);
-    }
-
-    function handleDocumentTouchMoveCheck(event: TouchEvent) {
-        const moveThreshold = 5; // pixels
-        const coords = getEventCoordinates(event);
-        const dx = Math.abs(coords.clientX - mouseDownX);
-        const dy = Math.abs(coords.clientY - mouseDownY);
-        
-        if (dx > moveThreshold || dy > moveThreshold) {
-            // Touch moved significantly - this is a drag, start it immediately
-            if (dragStartTimeout) {
-                clearTimeout(dragStartTimeout);
-                dragStartTimeout = null;
-            }
-            
-            if (!isDragging && dragSourcePlanetId !== null) {
-                isDragging = true;
-                // Prevent default scrolling behavior
-                event.preventDefault();
-                updateDragPosition(event);
-                document.removeEventListener('touchmove', handleDocumentTouchMoveCheck);
-                document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
-            }
-        }
-    }
-
-    function handleDocumentTouchMove(event: TouchEvent) {
-        if (!isDragging) return;
-        // Prevent default scrolling behavior during drag
-        event.preventDefault();
-        updateDragPosition(event);
-    }
-
-    function handleDocumentTouchEnd(event: TouchEvent) {
-        // Clear the drag start timeout if it's still pending
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-
-        // Remove the move check listener
-        document.removeEventListener('touchmove', handleDocumentTouchMoveCheck);
-
-        if (!isDragging || dragSourcePlanetId === null) {
-            document.removeEventListener('touchmove', handleDocumentTouchMove);
-            document.removeEventListener('touchend', handleDocumentTouchEnd);
-            document.removeEventListener('touchcancel', handleDocumentTouchEnd);
-            
-            // Reset drag state after a brief delay to allow double-tap to fire
-            setTimeout(() => {
-                if (!isDragging) {
-                    dragSourcePlanetId = null;
-                }
-            }, 50);
-            return;
-        }
-
-        // Look up source planet from current gameState (always fresh)
-        const sourcePlanet = getDragSourcePlanet();
-        if (!sourcePlanet) {
-            cleanupDrag();
-            return;
-        }
-
-        // Find if we're over a planet
-        const targetPlanet = findPlanetAtPosition(dragCurrentX, dragCurrentY);
-        
-        if (targetPlanet && targetPlanet.id !== sourcePlanet.id) {
-            // Dispatch drag send event
-            dispatch('dragSend', {
-                sourcePlanet: sourcePlanet,
-                destinationPlanet: targetPlanet
-            });
-        }
-
-        cleanupDrag();
-    }
-
-    function cleanupDrag() {
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-        isDragging = false;
-        dragSourcePlanetId = null;
-        document.removeEventListener('mousemove', handleDocumentMouseMove);
-        document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
-        document.removeEventListener('mouseup', handleDocumentMouseUp);
-        document.removeEventListener('touchmove', handleDocumentTouchMove);
-        document.removeEventListener('touchmove', handleDocumentTouchMoveCheck);
-        document.removeEventListener('touchend', handleDocumentTouchEnd);
-        document.removeEventListener('touchcancel', handleDocumentTouchEnd);
-    }
-
-    // Helper to extract coordinates from mouse or touch events
-    function getEventCoordinates(event: MouseEvent | TouchEvent): { clientX: number; clientY: number } {
-        if ('touches' in event && event.touches.length > 0) {
-            return {
-                clientX: event.touches[0].clientX,
-                clientY: event.touches[0].clientY
-            };
-        }
-        return {
-            clientX: (event as MouseEvent).clientX,
-            clientY: (event as MouseEvent).clientY
-        };
-    }
-
-    function updateDragPosition(event: MouseEvent | TouchEvent) {
-        if (!svgElement) return;
-        
-        const coords = getEventCoordinates(event);
-        
-        // Use SVG's built-in coordinate transformation to handle viewBox and preserveAspectRatio correctly
-        const point = svgElement.createSVGPoint();
-        point.x = coords.clientX;
-        point.y = coords.clientY;
-        
-        // Transform from screen coordinates to SVG coordinates
-        const screenCTM = svgElement.getScreenCTM();
-        if (!screenCTM) return;
-        
-        const svgPoint = point.matrixTransform(screenCTM.inverse());
-        
-        dragCurrentX = svgPoint.x;
-        dragCurrentY = svgPoint.y;
-    }
-
-    function findPlanetAtPosition(x: number, y: number): PlanetType | undefined {
-        // Find planet within click radius
-        const clickRadius = 30;
-        return gameState.planets.find(planet => {
-            const dx = planet.position.x - x;
-            const dy = planet.position.y - y;
-            return Math.sqrt(dx * dx + dy * dy) < clickRadius;
-        });
+        handlers.handleTouchStart(planet, event);
     }
 
     function handlePlanetDoubleClick(planet: PlanetType) {
@@ -383,14 +90,7 @@
             return;
         }
         
-        // Cancel any pending drag start or active drag when double-clicking
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-        
-        // Always cleanup drag state on double-click, even if not currently dragging
-        cleanupDrag();
+        handlers.handleDoubleClick(planet);
         
         if (planet.ownerId === currentPlayerId) {
             dispatch('doubleClick', { planet });
@@ -399,67 +99,6 @@
 
     function getPlanetById(id: number): PlanetType | undefined {
         return gameState.planets.find(p => p.id === id);
-    }
-
-    // Check if there's an active animation at a planet
-    function hasAnimationAtPlanet(planetId: number): boolean {
-        for (const anim of $battleAnimations.values()) {
-            if (anim.replay.planetId === planetId) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Get the display planet state (uses pre-battle state if animation is active)
-    function getDisplayPlanet(planet: PlanetType): PlanetType {
-        // Check if there's an active battle animation for this planet
-        for (const anim of $battleAnimations.values()) {
-            if (anim.replay.planetId === planet.id && anim.preBattlePlanetState) {
-                // Once outcome is shown, reveal the actual battle result
-                // The overlay can stay visible, but planet should update immediately
-                // Update when animation phase is 'outcome' or 'done'
-                if (anim.phase === 'outcome' || anim.phase === 'done') {
-                    // Show post-battle state (actual planet state from gameState)
-                    return planet;
-                }
-                // Return planet with pre-battle state to preserve suspense during animation
-                return {
-                    ...planet,
-                    ownerId: anim.preBattlePlanetState.ownerId,
-                    ships: anim.preBattlePlanetState.ships,
-                };
-            }
-        }
-        // No active animation - always show actual planet state
-        // (This handles the case where the animation was removed and the planet should show the final state)
-        return planet;
-    }
-    
-    // Process battle replays whenever they change
-    let lastReplayIds: string[] = [];
-    $: {
-        const replays = gameState.recentBattleReplays ?? [];
-        const currentReplayIds = extractReplayIds(replays);
-        const hasNew = hasNewReplays(currentReplayIds, lastReplayIds);
-        
-        console.log(`[GalaxyMap] Checking battle replays:`, {
-            count: replays.length,
-            planetNames: replays.map(r => r.planetName),
-            replayIds: currentReplayIds,
-            lastReplayIds: lastReplayIds,
-            hasNewReplays: hasNew,
-            gameStateReference: gameState,
-        });
-        
-        if (replays.length > 0 && hasNew) {
-            console.log(`[GalaxyMap] Processing ${replays.length} battle replays (${replays.length - lastReplayIds.length} new)`);
-            processNewBattleReplays(replays);
-            lastReplayIds = currentReplayIds;
-        } else if (replays.length === 0 && lastReplayIds.length > 0) {
-            console.log(`[GalaxyMap] Battle replays cleared from state, but animations continue`);
-            lastReplayIds = [];
-        }
     }
 
     $: width = GALACTIC_CONSTANTS.GALAXY_WIDTH;
@@ -473,38 +112,8 @@
         preserveAspectRatio="xMidYMid meet"
         class="galaxy-map"
     >
-        <!-- Definitions -->
-        <defs>
-            <!-- Planet gradient for 3D effect -->
-            <radialGradient id="planet-gradient" cx="30%" cy="30%" r="70%">
-                <stop offset="0%" stop-color="white" />
-                <stop offset="100%" stop-color="transparent" />
-            </radialGradient>
-
-            <!-- Star field pattern -->
-            <pattern id="stars" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                <circle cx="10" cy="10" r="0.5" fill="white" opacity="0.5" />
-                <circle cx="50" cy="30" r="0.3" fill="white" opacity="0.3" />
-                <circle cx="80" cy="60" r="0.4" fill="white" opacity="0.4" />
-                <circle cx="30" cy="80" r="0.3" fill="white" opacity="0.3" />
-                <circle cx="70" cy="90" r="0.5" fill="white" opacity="0.5" />
-                <circle cx="90" cy="20" r="0.3" fill="white" opacity="0.4" />
-                <circle cx="20" cy="50" r="0.4" fill="white" opacity="0.3" />
-            </pattern>
-
-            <!-- Glow filter -->
-            <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                </feMerge>
-            </filter>
-        </defs>
-
-        <!-- Background -->
-        <rect width="100%" height="100%" fill="#0a0a14" />
-        <rect width="100%" height="100%" fill="url(#stars)" />
+        <!-- SVG Definitions and Background -->
+        <GalaxySVGDefinitions />
 
         <!-- Armadas (draw first so they appear behind planets) -->
         {#each gameState.armadas as armada (armada.id)}
@@ -515,7 +124,7 @@
                     {armada}
                     {sourcePlanet}
                     destinationPlanet={destPlanet}
-                    {currentTime}
+                    currentTime={$currentTime}
                 />
             {/if}
         {/each}
@@ -523,7 +132,7 @@
         <!-- Planets -->
         {#each gameState.planets as planet (planet.id)}
             {#key $battleAnimations}
-                {@const displayPlanet = getDisplayPlanet(planet)}
+                {@const displayPlanet = getDisplayPlanet(planet, $battleAnimations)}
                 {@const isOwned = displayPlanet.ownerId === currentPlayerId}
                 {@const canMovePlanet = isOwned && displayPlanet.ships > 0}
                 <Planet
@@ -531,7 +140,7 @@
                     isSelected={selectedPlanetId === planet.id}
                     {isOwned}
                     canMove={canMovePlanet}
-                    hasBattle={hasAnimationAtPlanet(planet.id)}
+                    hasBattle={hasAnimationAtPlanet(planet.id, $battleAnimations)}
                     on:click={() => handlePlanetClick(planet)}
                     on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
                     on:touchstart={(e) => handlePlanetTouchStart(planet, e)}
@@ -551,29 +160,13 @@
             {/if}
         {/each}
 
-        <!-- Drag line visualization -->
-        {#if isDragging && dragSourcePlanetId !== null}
-            {@const sourcePlanet = getDragSourcePlanet()}
-            {#if sourcePlanet}
-                <line
-                    x1={sourcePlanet.position.x}
-                    y1={sourcePlanet.position.y}
-                    x2={dragCurrentX}
-                    y2={dragCurrentY}
-                    stroke="#a78bfa"
-                    stroke-width="3"
-                    stroke-dasharray="8 4"
-                    opacity="0.8"
-                />
-                <circle
-                    cx={dragCurrentX}
-                    cy={dragCurrentY}
-                    r="8"
-                    fill="#a78bfa"
-                    opacity="0.6"
-                />
-            {/if}
-        {/if}
+        <!-- Drag Visualization -->
+        <DragVisualization
+            isDragging={$dragState.isDragging}
+            sourcePlanet={$dragState.sourcePlanet}
+            currentX={$dragState.currentX}
+            currentY={$dragState.currentY}
+        />
     </svg>
 </div>
 
@@ -581,7 +174,7 @@
 <FloatingTextManager
     bind:this={floatingTextManager}
     {gameState}
-    svgElement={svgElement}
+    {svgElement}
     battleAnimations={$battleAnimations}
     {pendingEliminationTexts}
 />
