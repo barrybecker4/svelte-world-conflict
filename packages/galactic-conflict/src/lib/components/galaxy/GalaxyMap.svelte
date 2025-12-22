@@ -199,6 +199,124 @@
         cleanupDrag();
     }
 
+    // Touch event handlers - mirror mouse event handlers
+    function handlePlanetTouchStart(planet: PlanetType, event: TouchEvent) {
+        // Check if player can interact
+        if (!canPlayerInteract(gameState, currentPlayerId, hasResigned)) {
+            return;
+        }
+        // Only allow dragging from owned planets with ships
+        if (planet.ownerId !== currentPlayerId || planet.ships <= 0) {
+            return;
+        }
+
+        // Clear any existing drag timeout to avoid interference with double-taps
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+        }
+
+        // Store initial touch position
+        const coords = getEventCoordinates(event);
+        mouseDownX = coords.clientX;
+        mouseDownY = coords.clientY;
+
+        // Delay drag start to allow double-tap to be detected first
+        dragStartTimeout = setTimeout(() => {
+            if (dragSourcePlanetId === planet.id) {
+                isDragging = true;
+                updateDragPosition(event);
+                document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+                document.addEventListener('touchend', handleDocumentTouchEnd);
+                document.addEventListener('touchcancel', handleDocumentTouchEnd);
+            }
+        }, 200);
+
+        dragSourcePlanetId = planet.id;
+        updateDragPosition(event);
+        
+        // Add document-level listeners for touch move/end to detect actual drag
+        document.addEventListener('touchmove', handleDocumentTouchMoveCheck, { passive: false });
+        document.addEventListener('touchend', handleDocumentTouchEnd);
+        document.addEventListener('touchcancel', handleDocumentTouchEnd);
+    }
+
+    function handleDocumentTouchMoveCheck(event: TouchEvent) {
+        const moveThreshold = 5; // pixels
+        const coords = getEventCoordinates(event);
+        const dx = Math.abs(coords.clientX - mouseDownX);
+        const dy = Math.abs(coords.clientY - mouseDownY);
+        
+        if (dx > moveThreshold || dy > moveThreshold) {
+            // Touch moved significantly - this is a drag, start it immediately
+            if (dragStartTimeout) {
+                clearTimeout(dragStartTimeout);
+                dragStartTimeout = null;
+            }
+            
+            if (!isDragging && dragSourcePlanetId !== null) {
+                isDragging = true;
+                // Prevent default scrolling behavior
+                event.preventDefault();
+                updateDragPosition(event);
+                document.removeEventListener('touchmove', handleDocumentTouchMoveCheck);
+                document.addEventListener('touchmove', handleDocumentTouchMove, { passive: false });
+            }
+        }
+    }
+
+    function handleDocumentTouchMove(event: TouchEvent) {
+        if (!isDragging) return;
+        // Prevent default scrolling behavior during drag
+        event.preventDefault();
+        updateDragPosition(event);
+    }
+
+    function handleDocumentTouchEnd(event: TouchEvent) {
+        // Clear the drag start timeout if it's still pending
+        if (dragStartTimeout) {
+            clearTimeout(dragStartTimeout);
+            dragStartTimeout = null;
+        }
+
+        // Remove the move check listener
+        document.removeEventListener('touchmove', handleDocumentTouchMoveCheck);
+
+        if (!isDragging || dragSourcePlanetId === null) {
+            document.removeEventListener('touchmove', handleDocumentTouchMove);
+            document.removeEventListener('touchend', handleDocumentTouchEnd);
+            document.removeEventListener('touchcancel', handleDocumentTouchEnd);
+            
+            // Reset drag state after a brief delay to allow double-tap to fire
+            setTimeout(() => {
+                if (!isDragging) {
+                    dragSourcePlanetId = null;
+                }
+            }, 50);
+            return;
+        }
+
+        // Look up source planet from current gameState (always fresh)
+        const sourcePlanet = getDragSourcePlanet();
+        if (!sourcePlanet) {
+            cleanupDrag();
+            return;
+        }
+
+        // Find if we're over a planet
+        const targetPlanet = findPlanetAtPosition(dragCurrentX, dragCurrentY);
+        
+        if (targetPlanet && targetPlanet.id !== sourcePlanet.id) {
+            // Dispatch drag send event
+            dispatch('dragSend', {
+                sourcePlanet: sourcePlanet,
+                destinationPlanet: targetPlanet
+            });
+        }
+
+        cleanupDrag();
+    }
+
     function cleanupDrag() {
         if (dragStartTimeout) {
             clearTimeout(dragStartTimeout);
@@ -209,15 +327,35 @@
         document.removeEventListener('mousemove', handleDocumentMouseMove);
         document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
         document.removeEventListener('mouseup', handleDocumentMouseUp);
+        document.removeEventListener('touchmove', handleDocumentTouchMove);
+        document.removeEventListener('touchmove', handleDocumentTouchMoveCheck);
+        document.removeEventListener('touchend', handleDocumentTouchEnd);
+        document.removeEventListener('touchcancel', handleDocumentTouchEnd);
     }
 
-    function updateDragPosition(event: MouseEvent) {
+    // Helper to extract coordinates from mouse or touch events
+    function getEventCoordinates(event: MouseEvent | TouchEvent): { clientX: number; clientY: number } {
+        if ('touches' in event && event.touches.length > 0) {
+            return {
+                clientX: event.touches[0].clientX,
+                clientY: event.touches[0].clientY
+            };
+        }
+        return {
+            clientX: (event as MouseEvent).clientX,
+            clientY: (event as MouseEvent).clientY
+        };
+    }
+
+    function updateDragPosition(event: MouseEvent | TouchEvent) {
         if (!svgElement) return;
+        
+        const coords = getEventCoordinates(event);
         
         // Use SVG's built-in coordinate transformation to handle viewBox and preserveAspectRatio correctly
         const point = svgElement.createSVGPoint();
-        point.x = event.clientX;
-        point.y = event.clientY;
+        point.x = coords.clientX;
+        point.y = coords.clientY;
         
         // Transform from screen coordinates to SVG coordinates
         const screenCTM = svgElement.getScreenCTM();
@@ -396,6 +534,7 @@
                     hasBattle={hasAnimationAtPlanet(planet.id)}
                     on:click={() => handlePlanetClick(planet)}
                     on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
+                    on:touchstart={(e) => handlePlanetTouchStart(planet, e)}
                     on:dblclick={() => handlePlanetDoubleClick(planet)}
                 />
             {/key}
@@ -462,5 +601,7 @@
         width: 100%;
         height: 100%;
         user-select: none;
+        touch-action: none;
+        -webkit-user-select: none;
     }
 </style>

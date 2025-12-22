@@ -28,6 +28,7 @@
         on:click
         on:keydown
         on:mousedown
+        on:touchstart
         on:dblclick
     >
         <!-- Invisible hit area circle - ensures consistent clickable area for all planets -->
