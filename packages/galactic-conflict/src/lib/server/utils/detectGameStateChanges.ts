@@ -3,7 +3,7 @@
  */
 
 import type { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import { compareEndResult } from './compareEndResult';
+import { compareEndResult, type EndResult } from './compareEndResult';
 
 export interface GameStateSnapshot {
     replays: number;
@@ -12,7 +12,7 @@ export interface GameStateSnapshot {
     eliminations: number;
     armadas: number;
     status: string;
-    endResult: unknown;
+    endResult: EndResult;
     lastUpdateTime: number;
 }
 
@@ -50,11 +50,11 @@ export function detectGameStateChanges(before: GameStateSnapshot, after: GameSta
     // - Status changed (game ended)
     // - endResult changed (game ended with winner determined)
     // - lastUpdateTime changed (events were processed, even if just resource ticks)
-    return after.replays > before.replays || 
+    return after.replays > before.replays ||
            after.reinforcements > before.reinforcements ||
            after.conquests > before.conquests ||
            after.eliminations > before.eliminations ||
-           after.armadas !== before.armadas || 
+           after.armadas !== before.armadas ||
            after.status !== before.status ||
            compareEndResult(before.endResult, after.endResult) ||
            after.lastUpdateTime !== before.lastUpdateTime;

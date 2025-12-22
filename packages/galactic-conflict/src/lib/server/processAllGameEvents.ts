@@ -1,6 +1,5 @@
 /**
  * Shared function to process events for all active games
- * Used by both cron triggers (production) and manual triggers (local dev)
  */
 
 import { GameStorage } from './storage/GameStorage';

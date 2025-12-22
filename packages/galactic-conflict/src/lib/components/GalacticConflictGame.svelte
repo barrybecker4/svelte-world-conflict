@@ -81,6 +81,35 @@
             }
         }
     }
+
+    /**
+     * Start periodic event processing on the server.
+     * Automatically stops when the game is completed.
+     */
+    function startEventProcessing() {
+        logger.debug('Starting event processing interval');
+        devEventProcessingInterval = setInterval(async () => {
+            // Stop polling if game is completed
+            const currentState = get(gameState);
+            if (currentState?.status === 'COMPLETED') {
+                if (devEventProcessingInterval) {
+                    logger.debug('Game completed - stopping event processing interval');
+                    clearInterval(devEventProcessingInterval);
+                    devEventProcessingInterval = null;
+                }
+                return;
+            }
+
+            try {
+                await GameApiClient.processEvents();
+            } catch (error) {
+                // Silently fail - this is just triggering server-side processing
+                // Errors are logged server-side
+                logger.debug('Event processing trigger failed (non-critical):', error);
+            }
+        }, 2000); // Every 2 seconds
+    }
+
     onMount(async () => {
         // Initialize state
         updateGameState(initialState);
@@ -112,18 +141,8 @@
             return;
         }
 
-        // Trigger event processing periodically
-        // This ensures game events (armada arrivals, battles, etc.) are processed server-side
-        logger.debug('Starting event processing interval');
-        devEventProcessingInterval = setInterval(async () => {
-            try {
-                await GameApiClient.processEvents();
-            } catch (error) {
-                // Silently fail - this is just triggering server-side processing
-                // Errors are logged server-side
-                logger.debug('Event processing trigger failed (non-critical):', error);
-            }
-        }, 2000); // Every 2 seconds
+        // Start periodic event processing
+        startEventProcessing();
     });
 
     onDestroy(() => {
@@ -143,6 +162,7 @@
         if (currentState?.status === 'COMPLETED') return;
 
         // Simply select the planet when clicked
+        
         if (planet.ownerId === currentPlayer) {
             selectedPlanetId.set(planet.id);
         } else {

@@ -1,6 +1,6 @@
 /**
  * Manual event processing endpoint for local development
- * In production, events are processed automatically via cron triggers
+
  * This endpoint allows manual triggering for local testing
  */
 

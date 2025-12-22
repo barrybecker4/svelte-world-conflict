@@ -15,6 +15,7 @@ export const WEBSOCKET_WORKER_URL = 'https://multiplayer-games-websocket.barrybe
  */
 export function buildWebSocketUrl(gameId: string): string {
     if (typeof window === 'undefined') {
+        console.log('[buildWebSocketUrl] Window is undefined, returning empty string');
         return '';
     }
 

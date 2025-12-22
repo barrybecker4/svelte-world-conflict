@@ -9,14 +9,13 @@ import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from '$lib/server/GameLoop';
 import { createArmada } from '$lib/game/entities/Armada';
 import { handleApiError } from '$lib/server/api-utils';
-import { getWorkerHttpUrl } from '$lib/websocket-config';
-import { isLocalDevelopment } from 'multiplayer-framework/shared';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
-        const body = await request.json();
+        const body = await request.json() as { playerId?: number; sourcePlanetId?: number; destinationPlanetId?: number; shipCount?: number };
         const { playerId, sourcePlanetId, destinationPlanetId, shipCount } = body;
 
         // Validate required fields
@@ -88,7 +87,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(gameRecord);
 
         // Notify other players
-        await notifyGameUpdate(gameId, gameRecord.gameState);
+        await WebSocketNotifications.gameUpdate(gameId, gameRecord.gameState);
 
         logger.debug(`Armada sent: ${shipCount} ships from planet ${sourcePlanetId} to ${destinationPlanetId}`);
 
@@ -102,26 +101,4 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return handleApiError(error, 'sending armada', { platform });
     }
 };
-
-async function notifyGameUpdate(gameId: string, gameState: any): Promise<void> {
-    try {
-        const isLocal = isLocalDevelopment();
-        const workerUrl = getWorkerHttpUrl(isLocal);
-
-        await fetch(`${workerUrl}/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                message: {
-                    type: 'gameUpdate',
-                    gameId,
-                    gameState,
-                },
-            }),
-        });
-    } catch (error) {
-        logger.warn('Failed to notify game update:', error);
-    }
-}
 

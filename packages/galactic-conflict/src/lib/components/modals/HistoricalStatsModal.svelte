@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import type { DailyGameStats } from '$lib/server/storage/types';
   import StatsChartsGrid from '$lib/components/charts/StatsChartsGrid.svelte';
-  import PlayerHistoryTable from '$lib/components/charts/PlayerHistoryTable.svelte';
 
   interface Props {
     isOpen?: boolean;
@@ -102,7 +101,6 @@
           {dateLabels}
           {CHART_COLORS}
         />
-        <PlayerHistoryTable {stats} />
       {/if}
     </div>
 
@@ -229,80 +227,6 @@
     opacity: 0.7;
   }
 
-  .charts-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  .chart-cell {
-    min-height: 220px;
-  }
-
-  .table-cell {
-    grid-column: span 2;
-    background: rgba(15, 23, 42, 0.6);
-    border-radius: 8px;
-    padding: 12px;
-    border: 1px solid rgba(71, 85, 105, 0.5);
-  }
-
-  .table-cell h3 {
-    margin: 0 0 12px 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #f8fafc;
-    text-align: center;
-  }
-
-  .player-table-wrapper {
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .player-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-  }
-
-  .player-table th {
-    position: sticky;
-    top: 0;
-    background: rgba(30, 41, 59, 0.95);
-    color: #94a3b8;
-    font-weight: 600;
-    text-align: left;
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(71, 85, 105, 0.5);
-  }
-
-  .player-table td {
-    padding: 6px 12px;
-    border-bottom: 1px solid rgba(71, 85, 105, 0.2);
-    color: #cbd5e1;
-  }
-
-  .player-table tr:hover td {
-    background: rgba(59, 130, 246, 0.1);
-  }
-
-  .date-cell {
-    white-space: nowrap;
-    font-family: monospace;
-    color: #94a3b8;
-    width: 100px;
-  }
-
-  .players-cell {
-    word-break: break-word;
-  }
-
-  .no-players {
-    color: #64748b;
-    font-style: italic;
-  }
-
   footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid #374151;
@@ -323,16 +247,6 @@
 
   .close-button:hover {
     background: #4b5563;
-  }
-
-  @media (max-width: 768px) {
-    .charts-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .table-cell {
-      grid-column: span 1;
-    }
   }
 </style>
 

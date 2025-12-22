@@ -1,5 +1,6 @@
 <script lang="ts">
     import LineChart from './LineChart.svelte';
+    import PlayerHistoryTable from './PlayerHistoryTable.svelte';
     import type { DailyGameStats } from '$lib/server/storage/types';
 
     export let stats: DailyGameStats[];
@@ -53,6 +54,8 @@
             height="220px"
         />
     </div>
+
+    <PlayerHistoryTable {stats} />
 </div>
 
 <style>

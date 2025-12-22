@@ -7,14 +7,13 @@ import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { createPlayer, handleApiError } from '$lib/server/api-utils';
-import { getWorkerHttpUrl, buildWebSocketUrl } from '$lib/websocket-config';
-import { isLocalDevelopment } from 'multiplayer-framework/shared';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
-        const body = await request.json();
+        const body = await request.json() as { playerName?: string; slotIndex?: number };
         const { playerName, slotIndex } = body;
 
         if (!playerName?.trim()) {
@@ -48,13 +47,13 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const canStart = await gameStorage.canGameStart(gameId);
 
         // Notify other players via WebSocket
-        await notifyPlayerJoined(gameId, player);
+        await WebSocketNotifications.playerJoined(gameId, player);
 
         // Auto-start the game if all slots are filled
         if (canStart) {
             logger.info(`All slots filled - auto-starting game ${gameId}`);
             const startResult = await autoStartGame(gameId, gameStorage);
-            
+
             if (startResult.success) {
                 return json({
                     success: true,
@@ -82,7 +81,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 async function autoStartGame(gameId: string, gameStorage: GameStorage): Promise<{ success: boolean; gameState?: any }> {
     try {
         const gameRecord = await gameStorage.loadGame(gameId);
-        
+
         if (!gameRecord || gameRecord.status !== 'PENDING' || !gameRecord.pendingConfiguration) {
             return { success: false };
         }
@@ -104,7 +103,7 @@ async function autoStartGame(gameId: string, gameStorage: GameStorage): Promise<
         await gameStorage.saveGame(gameRecord);
 
         // Notify all players via WebSocket
-        await notifyGameStarted(gameId, gameRecord.gameState);
+        await WebSocketNotifications.gameStarted(gameId, gameRecord.gameState);
 
         logger.info(`Game ${gameId} auto-started with ${gameRecord.players.length} players`);
 
@@ -112,50 +111,6 @@ async function autoStartGame(gameId: string, gameStorage: GameStorage): Promise<
     } catch (error) {
         logger.error(`Failed to auto-start game ${gameId}:`, error);
         return { success: false };
-    }
-}
-
-async function notifyPlayerJoined(gameId: string, player: any): Promise<void> {
-    try {
-        const isLocal = isLocalDevelopment();
-        const workerUrl = getWorkerHttpUrl(isLocal);
-
-        await fetch(`${workerUrl}/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                message: {
-                    type: 'playerJoined',
-                    gameId,
-                    player,
-                },
-            }),
-        });
-    } catch (error) {
-        logger.warn('Failed to notify player joined:', error);
-    }
-}
-
-async function notifyGameStarted(gameId: string, gameState: any): Promise<void> {
-    try {
-        const isLocal = isLocalDevelopment();
-        const workerUrl = getWorkerHttpUrl(isLocal);
-
-        await fetch(`${workerUrl}/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                message: {
-                    type: 'gameStarted',
-                    gameId,
-                    gameState,
-                },
-            }),
-        });
-    } catch (error) {
-        logger.warn('Failed to notify game started:', error);
     }
 }
 

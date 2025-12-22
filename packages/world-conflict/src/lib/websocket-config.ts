@@ -14,8 +14,6 @@ export const WEBSOCKET_WORKER_URL = 'https://multiplayer-games-websocket.barrybe
  * @returns WebSocket URL (ws:// for local, wss:// for production)
  */
 export function buildWebSocketUrl(gameId: string): string {
-    console.log('[buildWebSocketUrl] Called with gameId:', gameId, 'type:', typeof gameId);
-
     if (typeof window === 'undefined') {
         console.log('[buildWebSocketUrl] Window is undefined, returning empty string');
         return '';
@@ -36,8 +34,6 @@ export function buildWebSocketUrl(gameId: string): string {
         : WEBSOCKET_WORKER_URL.replace('https://', '').replace('http://', '');
 
     const url = `${protocol}//${host}/websocket?gameId=${encodeURIComponent(gameId)}`;
-
-    console.log('[buildWebSocketUrl] Built URL:', url);
     return url;
 }
 

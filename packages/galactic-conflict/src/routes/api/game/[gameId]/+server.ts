@@ -8,8 +8,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from '$lib/server/GameLoop';
 import { handleApiError } from '$lib/server/api-utils';
-import { getWorkerHttpUrl } from '$lib/websocket-config';
-import { isLocalDevelopment } from 'multiplayer-framework/shared';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -98,7 +97,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
                 
                 if (shouldBroadcast) {
                     logger.debug(`[GET /game] Broadcasting update: ${replaysAdded} new replays, status: ${statusBefore} -> ${statusAfter}, endResult changed: ${endResultChanged}`);
-                    await notifyGameUpdate(gameId, gameRecord.gameState);
+                    await WebSocketNotifications.gameUpdate(gameId, gameRecord.gameState);
                 }
             }
 
@@ -121,26 +120,4 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         return handleApiError(error, 'getting game', { platform });
     }
 };
-
-async function notifyGameUpdate(gameId: string, gameState: any): Promise<void> {
-    try {
-        const isLocal = isLocalDevelopment();
-        const workerUrl = getWorkerHttpUrl(isLocal);
-
-        await fetch(`${workerUrl}/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                message: {
-                    type: 'gameUpdate',
-                    gameId,
-                    gameState,
-                },
-            }),
-        });
-    } catch (error) {
-        logger.warn('Failed to notify game update:', error);
-    }
-}
 

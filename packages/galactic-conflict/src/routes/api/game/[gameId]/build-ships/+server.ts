@@ -9,8 +9,7 @@ import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from '$lib/server/GameLoop';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { handleApiError } from '$lib/server/api-utils';
-import { getWorkerHttpUrl } from '$lib/websocket-config';
-import { isLocalDevelopment } from 'multiplayer-framework/shared';
+import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';
 
 interface BuildShipsRequest {
@@ -82,7 +81,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         await gameStorage.saveGame(gameRecord);
 
         // Notify other players
-        await notifyGameUpdate(gameId, gameRecord.gameState);
+        await WebSocketNotifications.gameUpdate(gameId, gameRecord.gameState);
 
         const updatedPlanet = gameState.getPlanet(planetId);
         const newPlayerResources = gameState.getPlayerResources(playerId);
@@ -99,26 +98,4 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return handleApiError(error, 'building ships', { platform });
     }
 };
-
-async function notifyGameUpdate(gameId: string, gameState: any): Promise<void> {
-    try {
-        const isLocal = isLocalDevelopment();
-        const workerUrl = getWorkerHttpUrl(isLocal);
-
-        await fetch(`${workerUrl}/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gameId,
-                message: {
-                    type: 'gameUpdate',
-                    gameId,
-                    gameState,
-                },
-            }),
-        });
-    } catch (error) {
-        logger.warn('Failed to notify game update:', error);
-    }
-}
 
