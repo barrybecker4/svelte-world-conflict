@@ -5,7 +5,6 @@
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
     import ShipCountSelector from './send-armada/ShipCountSelector.svelte';
-    import DestinationPlanetList from './send-armada/DestinationPlanetList.svelte';
 
     export let sourcePlanet: Planet;
     export let planets: Planet[];
@@ -29,7 +28,6 @@
     $: currentSourcePlanet = planets.find(p => p.id === sourcePlanet.id) ?? sourcePlanet;
     $: maxShips = currentSourcePlanet.ships;
     $: stillOwned = currentSourcePlanet.ownerId === currentPlayerId;
-    $: availablePlanets = planets.filter(p => p.id !== sourcePlanet.id);
     $: selectedDestination = planets.find(p => p.id === selectedDestinationId);
     
     // Auto-close if all ships were sent (ships went from >0 to 0 while still owned)
@@ -72,10 +70,6 @@
         isSending = false;
         dispatch('close');
     }
-
-    function selectDestination(planetId: number) {
-        selectedDestinationId = planetId;
-    }
 </script>
 
 <div class="modal-overlay" on:click={handleClose} role="button" tabindex="-1" on:keydown>
@@ -97,6 +91,21 @@
                 <span class="ships">({currentSourcePlanet.ships} ships available)</span>
             </div>
 
+            {#if selectedDestination}
+                <div class="destination-info"
+                     class:friendly={selectedDestination.ownerId === currentPlayerId}
+                     class:neutral={selectedDestination.ownerId === null}
+                     class:enemy={selectedDestination.ownerId !== null && selectedDestination.ownerId !== currentPlayerId}>
+                    <span class="label">To:</span>
+                    <span class="planet-name">{selectedDestination.name}</span>
+                    {#if selectedDestination.ownerId === currentPlayerId}
+                        <span class="ships">(reinforcing)</span>
+                    {:else}
+                        <span class="ships">({selectedDestination.ships} defending ships)</span>
+                    {/if}
+                </div>
+            {/if}
+
             <ShipCountSelector
                 bind:shipCount
                 {maxShips}
@@ -104,24 +113,9 @@
                 {sliderMax}
             />
 
-            <DestinationPlanetList
-                planets={availablePlanets}
-                sourcePlanetId={sourcePlanet.id}
-                {currentPlayerId}
-                {selectedDestinationId}
-                onSelect={selectDestination}
-            />
-
             {#if selectedDestination}
                 <div class="travel-info">
                     <p>Travel time: <strong>{travelTimeSeconds}s</strong></p>
-                    {#if selectedDestination.ownerId === currentPlayerId}
-                        <p class="info-text friendly">Reinforcing friendly planet</p>
-                    {:else if selectedDestination.ownerId === null}
-                        <p class="info-text neutral">Attacking neutral planet ({selectedDestination.ships} defenders)</p>
-                    {:else}
-                        <p class="info-text enemy">Attacking enemy planet ({selectedDestination.ships} defenders)</p>
-                    {/if}
                 </div>
             {/if}
         </div>
@@ -235,6 +229,27 @@
         margin-left: 0.5rem;
     }
 
+    .destination-info {
+        background: rgba(168, 85, 247, 0.1);
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .destination-info.friendly {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .destination-info.neutral {
+        background: rgba(156, 163, 175, 0.1);
+        border: 1px solid rgba(156, 163, 175, 0.3);
+    }
+
+    .destination-info.enemy {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
 
     .travel-info {
         background: rgba(255, 255, 255, 0.05);

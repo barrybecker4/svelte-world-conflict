@@ -54,11 +54,11 @@
                 <div class="stats">
                     <div class="stat">
                         <span class="stat-label">Ships on Planet</span>
-                        <span class="stat-value">{currentPlanet.ships}</span>
+                        <span class="stat-value">{currentPlanet.ships} → <span class="result-value">{currentPlanet.ships + shipCount}</span></span>
                     </div>
                     <div class="stat">
                         <span class="stat-label">Your Resources</span>
-                        <span class="stat-value">{Math.floor(playerResources)}</span>
+                        <span class="stat-value">{Math.floor(playerResources)} → <span class="result-value">{Math.floor(playerResources) - totalCost}</span></span>
                     </div>
                 </div>
             </div>
@@ -87,25 +87,6 @@
                             class="number-input"
                         />
                     </div>
-                    <div class="quick-buttons">
-                        <button on:click={() => shipCount = 1}>1</button>
-                        <button on:click={() => shipCount = Math.max(1, Math.floor(maxAffordable / 4))}>25%</button>
-                        <button on:click={() => shipCount = Math.max(1, Math.floor(maxAffordable / 2))}>50%</button>
-                        <button on:click={() => shipCount = Math.max(1, maxAffordable)}>Max</button>
-                    </div>
-                </div>
-
-                <div class="total-cost" class:cannot-afford={!canAfford}>
-                    <span>Total cost:</span>
-                    <span class="total-value">{totalCost} resources</span>
-                    {#if !canAfford}
-                        <span class="warning">Not enough resources!</span>
-                    {/if}
-                </div>
-
-                <div class="result-preview">
-                    <span>After building:</span>
-                    <span class="preview-value">{currentPlanet.ships + shipCount} ships</span>
                 </div>
             </div>
         </div>
@@ -227,6 +208,10 @@
         font-weight: bold;
     }
 
+    .result-value {
+        color: #22c55e;
+    }
+
     .build-section {
         display: flex;
         flex-direction: column;
@@ -270,60 +255,6 @@
         border-radius: 4px;
         color: #e5e7eb;
         text-align: center;
-    }
-
-    .quick-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .quick-buttons button {
-        flex: 1;
-        padding: 0.5rem;
-        background: #374151;
-        border: none;
-        border-radius: 4px;
-        color: #e5e7eb;
-        cursor: pointer;
-    }
-
-    .quick-buttons button:hover {
-        background: #4b5563;
-    }
-
-    .total-cost {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-    }
-
-    .total-cost.cannot-afford {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-
-    .total-value {
-        font-weight: bold;
-        color: #fbbf24;
-    }
-
-    .warning {
-        color: #ef4444;
-        font-size: 0.85rem;
-    }
-
-    .result-preview {
-        display: flex;
-        justify-content: space-between;
-        color: #9ca3af;
-    }
-
-    .preview-value {
-        color: #22c55e;
-        font-weight: bold;
     }
 
     footer {

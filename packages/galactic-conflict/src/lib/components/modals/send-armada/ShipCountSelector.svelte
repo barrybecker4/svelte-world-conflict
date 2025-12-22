@@ -26,12 +26,6 @@
                 class="number-input"
             />
         </div>
-        <div class="quick-buttons">
-            <button on:click={() => shipCount = 1}>1</button>
-            <button on:click={() => shipCount = Math.max(1, Math.floor(maxShips / 4))}>25%</button>
-            <button on:click={() => shipCount = Math.max(1, Math.floor(maxShips / 2))}>50%</button>
-            <button on:click={() => shipCount = maxShips}>All</button>
-        </div>
     {/if}
 </div>
 
@@ -60,7 +54,6 @@
         display: flex;
         gap: 1rem;
         align-items: center;
-        margin-bottom: 0.5rem;
     }
 
     .ship-input input[type="range"] {
@@ -76,25 +69,6 @@
         border-radius: 4px;
         color: #e5e7eb;
         text-align: center;
-    }
-
-    .quick-buttons {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .quick-buttons button {
-        flex: 1;
-        padding: 0.5rem;
-        background: #374151;
-        border: none;
-        border-radius: 4px;
-        color: #e5e7eb;
-        cursor: pointer;
-    }
-
-    .quick-buttons button:hover {
-        background: #4b5563;
     }
 </style>
 
