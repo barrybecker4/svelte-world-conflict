@@ -10,7 +10,11 @@ const config = {
                 include: ['/*'],
                 exclude: ['<all>']
             }
-        })
+        }),
+        alias: {
+            'shared-ui': '../shared-ui/src',
+            'shared-ui/*': '../shared-ui/src/*'
+        }
     }
 };
 
