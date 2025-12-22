@@ -44,6 +44,12 @@
         },
         onDragComplete: (sourcePlanet: PlanetType, destinationPlanet: PlanetType) => {
             dispatch('dragSend', { sourcePlanet, destinationPlanet });
+        },
+        onDoubleClick: (planet: PlanetType) => {
+            // Dispatch double-click event to open build dialog
+            if (planet.ownerId === currentPlayerId) {
+                dispatch('doubleClick', { planet });
+            }
         }
     });
 

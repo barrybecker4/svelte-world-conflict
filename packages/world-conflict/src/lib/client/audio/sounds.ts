@@ -200,3 +200,25 @@ export const SOUND_CONFIGS: Partial<Record<SoundType, SoundConfig>> = {
         length: 0.5
     }
 };
+
+/**
+ * Icon mapping for sound test modal
+ */
+export const SOUND_ICONS: Record<string, string> = {
+    GAME_CREATED: '🎮',
+    GAME_STARTED: '🚀',
+    GAME_WON: '🏆',
+    GAME_LOST: '💀',
+    SOLDIERS_MOVE: '🚶',
+    SOLDIERS_RECRUITED: '⚔️',
+    ATTACK: '🗡️',
+    COMBAT: '⚔️',
+    REGION_CONQUERED: '🏰',
+    TEMPLE_UPGRADED: '🏛️',
+    INCOME: '💰',
+    OUT_OF_TIME: '⏰',
+    ALMOST_OUT_OF_TIME: '⏱️',
+    CLICK: '👆',
+    HOVER: '🔘',
+    ERROR: '❌'
+};

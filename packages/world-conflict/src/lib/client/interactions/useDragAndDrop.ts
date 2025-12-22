@@ -1,58 +1,57 @@
 import { writable, type Readable } from 'svelte/store';
 import { onDestroy } from 'svelte';
-import type { Planet } from '$lib/game/entities/gameTypes';
-import { screenToSVGCoordinates, findPlanetAtPosition } from '$lib/client/utils/svgCoordinates';
+import type { Region } from '$lib/game/entities/gameTypes';
+import { screenToSVGCoordinates, findRegionAtPosition } from '$lib/client/utils/svgCoordinates';
 
 export interface DragState {
     isDragging: boolean;
-    sourcePlanet: Planet | null;
+    sourceRegion: Region | null;
     currentX: number;
     currentY: number;
 }
 
 export interface DragAndDropOptions {
     svgElement: () => SVGSVGElement | null;
-    planets: () => Planet[];
-    canDrag: (planetId: number) => boolean;
-    onDragComplete: (sourcePlanet: Planet, destinationPlanet: Planet) => void;
-    onDoubleClick?: (planet: Planet) => void;
+    regions: () => Region[];
+    canDrag: (regionIndex: number) => boolean;
+    onDragComplete: (sourceRegion: Region, destinationRegion: Region) => void;
+    onDoubleClick: (region: Region) => void;
 }
 
 export interface DragAndDropHandlers {
-    handleMouseDown: (planet: Planet, event: MouseEvent) => void;
-    handleTouchStart: (planet: Planet, event: TouchEvent) => void;
-    handleDoubleClick: (planet: Planet) => void;
+    handleMouseDown: (region: Region, event: MouseEvent) => void;
+    handleTouchStart: (region: Region, event: TouchEvent) => void;
 }
 
 /**
- * Hook that provides drag and drop functionality for planets
+ * Hook that provides drag and drop functionality for regions
  * Handles both mouse and touch events, with support for double-click/tap detection
  */
 export function useDragAndDrop(options: DragAndDropOptions): {
     dragState: Readable<DragState>;
     handlers: DragAndDropHandlers;
 } {
-    const { svgElement, planets, canDrag, onDragComplete, onDoubleClick } = options;
+    const { svgElement, regions, canDrag, onDragComplete, onDoubleClick } = options;
 
     // Internal state
     const dragState = writable<DragState>({
         isDragging: false,
-        sourcePlanet: null,
+        sourceRegion: null,
         currentX: 0,
         currentY: 0
     });
 
-    let dragSourcePlanetId: number | null = null;
+    let dragSourceRegionIndex: number | null = null;
     let dragStartTimeout: ReturnType<typeof setTimeout> | null = null;
     let mouseDownX = 0;
     let mouseDownY = 0;
-    let lastTapTime = 0;
-    let lastTapPlanetId: number | null = null;
+    let lastClickTime = 0;
+    let lastClickRegionIndex: number | null = null;
 
-    // Helper to get drag source planet from current planets array
-    function getDragSourcePlanet(): Planet | null {
-        if (dragSourcePlanetId === null) return null;
-        return planets().find(p => p.id === dragSourcePlanetId) || null;
+    // Helper to get drag source region from current regions array
+    function getDragSourceRegion(): Region | null {
+        if (dragSourceRegionIndex === null) return null;
+        return regions().find(r => r.index === dragSourceRegionIndex) || null;
     }
 
     // Update drag position in SVG coordinates
@@ -76,11 +75,11 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             clearTimeout(dragStartTimeout);
             dragStartTimeout = null;
         }
-        dragSourcePlanetId = null;
+        dragSourceRegionIndex = null;
         
         dragState.set({
             isDragging: false,
-            sourcePlanet: null,
+            sourceRegion: null,
             currentX: 0,
             currentY: 0
         });
@@ -95,10 +94,23 @@ export function useDragAndDrop(options: DragAndDropOptions): {
     }
 
     // Mouse event handlers
-    function handleMouseDown(planet: Planet, event: MouseEvent) {
-        if (!canDrag(planet.id)) {
+    function handleMouseDown(region: Region, event: MouseEvent) {
+        if (!canDrag(region.index)) {
             return;
         }
+
+        // Check for double-click
+        const now = Date.now();
+        if (lastClickRegionIndex === region.index && now - lastClickTime < 300) {
+            // Double-click detected
+            lastClickTime = 0;
+            lastClickRegionIndex = null;
+            cleanupDrag();
+            onDoubleClick(region);
+            return;
+        }
+        lastClickTime = now;
+        lastClickRegionIndex = region.index;
 
         // Clear any existing drag timeout
         if (dragStartTimeout) {
@@ -110,18 +122,18 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         mouseDownX = event.clientX;
         mouseDownY = event.clientY;
 
-        dragSourcePlanetId = planet.id;
+        dragSourceRegionIndex = region.index;
         updateDragPosition(event);
 
         // Delay drag start to allow double-click detection
         dragStartTimeout = setTimeout(() => {
-            if (dragSourcePlanetId === planet.id) {
-                const sourcePlanet = getDragSourcePlanet();
-                if (sourcePlanet) {
+            if (dragSourceRegionIndex === region.index) {
+                const sourceRegion = getDragSourceRegion();
+                if (sourceRegion) {
                     dragState.update(state => ({
                         ...state,
                         isDragging: true,
-                        sourcePlanet
+                        sourceRegion
                     }));
                 }
                 updateDragPosition(event);
@@ -147,13 +159,13 @@ export function useDragAndDrop(options: DragAndDropOptions): {
                 dragStartTimeout = null;
             }
 
-            if (dragSourcePlanetId !== null) {
-                const sourcePlanet = getDragSourcePlanet();
-                if (sourcePlanet) {
+            if (dragSourceRegionIndex !== null) {
+                const sourceRegion = getDragSourceRegion();
+                if (sourceRegion) {
                     dragState.update(state => ({
                         ...state,
                         isDragging: true,
-                        sourcePlanet
+                        sourceRegion
                     }));
                 }
                 updateDragPosition(event);
@@ -183,7 +195,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         });
         unsubscribe();
 
-        if (!currentDragState!.isDragging || dragSourcePlanetId === null) {
+        if (!currentDragState!.isDragging || dragSourceRegionIndex === null) {
             document.removeEventListener('mousemove', handleDocumentMouseMove);
             document.removeEventListener('mouseup', handleDocumentMouseUp);
 
@@ -191,7 +203,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             setTimeout(() => {
                 dragState.update(state => {
                     if (!state.isDragging) {
-                        dragSourcePlanetId = null;
+                        dragSourceRegionIndex = null;
                     }
                     return state;
                 });
@@ -199,52 +211,46 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             return;
         }
 
-        // Look up source planet from current state
-        const sourcePlanet = getDragSourcePlanet();
-        if (!sourcePlanet) {
+        // Look up source region from current state
+        const sourceRegion = getDragSourceRegion();
+        if (!sourceRegion) {
             cleanupDrag();
             return;
         }
 
-        // Find if we're over a planet
-        const targetPlanet = findPlanetAtPosition(
-            planets(),
+        // Find if we're over a region
+        const targetRegion = findRegionAtPosition(
+            regions(),
             currentDragState!.currentX,
             currentDragState!.currentY
         );
 
-        if (targetPlanet && targetPlanet.id !== sourcePlanet.id) {
-            onDragComplete(sourcePlanet, targetPlanet);
+        if (targetRegion && targetRegion.index !== sourceRegion.index) {
+            onDragComplete(sourceRegion, targetRegion);
         }
 
         cleanupDrag();
     }
 
     // Touch event handlers
-    function handleTouchStart(planet: Planet, event: TouchEvent) {
-        if (!canDrag(planet.id)) {
+    function handleTouchStart(region: Region, event: TouchEvent) {
+        if (!canDrag(region.index)) {
             return;
         }
 
         // Check for double-tap
         const now = Date.now();
-        const timeSinceLastTap = now - lastTapTime;
-        
-        if (lastTapPlanetId === planet.id && timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+        if (lastClickRegionIndex === region.index && now - lastClickTime < 300) {
             // Double-tap detected
-            event.preventDefault();
-            event.stopPropagation();
-            lastTapTime = 0;
-            lastTapPlanetId = null;
+            lastClickTime = 0;
+            lastClickRegionIndex = null;
             cleanupDrag();
-            if (onDoubleClick) {
-                onDoubleClick(planet);
-            }
+            onDoubleClick(region);
+            event.preventDefault();
             return;
         }
-        
-        lastTapTime = now;
-        lastTapPlanetId = planet.id;
+        lastClickTime = now;
+        lastClickRegionIndex = region.index;
 
         // Clear any existing drag timeout
         if (dragStartTimeout) {
@@ -258,18 +264,18 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             mouseDownY = event.touches[0].clientY;
         }
 
-        dragSourcePlanetId = planet.id;
+        dragSourceRegionIndex = region.index;
         updateDragPosition(event);
 
         // Delay drag start to allow double-tap detection
         dragStartTimeout = setTimeout(() => {
-            if (dragSourcePlanetId === planet.id) {
-                const sourcePlanet = getDragSourcePlanet();
-                if (sourcePlanet) {
+            if (dragSourceRegionIndex === region.index) {
+                const sourceRegion = getDragSourceRegion();
+                if (sourceRegion) {
                     dragState.update(state => ({
                         ...state,
                         isDragging: true,
-                        sourcePlanet
+                        sourceRegion
                     }));
                 }
                 updateDragPosition(event);
@@ -299,13 +305,13 @@ export function useDragAndDrop(options: DragAndDropOptions): {
                 dragStartTimeout = null;
             }
 
-            if (dragSourcePlanetId !== null) {
-                const sourcePlanet = getDragSourcePlanet();
-                if (sourcePlanet) {
+            if (dragSourceRegionIndex !== null) {
+                const sourceRegion = getDragSourceRegion();
+                if (sourceRegion) {
                     dragState.update(state => ({
                         ...state,
                         isDragging: true,
-                        sourcePlanet
+                        sourceRegion
                     }));
                 }
                 event.preventDefault();
@@ -337,7 +343,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         });
         unsubscribe();
 
-        if (!currentDragState!.isDragging || dragSourcePlanetId === null) {
+        if (!currentDragState!.isDragging || dragSourceRegionIndex === null) {
             document.removeEventListener('touchmove', handleDocumentTouchMove as any);
             document.removeEventListener('touchend', handleDocumentTouchEnd);
             document.removeEventListener('touchcancel', handleDocumentTouchEnd);
@@ -346,7 +352,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             setTimeout(() => {
                 dragState.update(state => {
                     if (!state.isDragging) {
-                        dragSourcePlanetId = null;
+                        dragSourceRegionIndex = null;
                     }
                     return state;
                 });
@@ -354,41 +360,25 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             return;
         }
 
-        // Look up source planet from current state
-        const sourcePlanet = getDragSourcePlanet();
-        if (!sourcePlanet) {
+        // Look up source region from current state
+        const sourceRegion = getDragSourceRegion();
+        if (!sourceRegion) {
             cleanupDrag();
             return;
         }
 
-        // Find if we're over a planet
-        const targetPlanet = findPlanetAtPosition(
-            planets(),
+        // Find if we're over a region
+        const targetRegion = findRegionAtPosition(
+            regions(),
             currentDragState!.currentX,
             currentDragState!.currentY
         );
 
-        if (targetPlanet && targetPlanet.id !== sourcePlanet.id) {
-            onDragComplete(sourcePlanet, targetPlanet);
+        if (targetRegion && targetRegion.index !== sourceRegion.index) {
+            onDragComplete(sourceRegion, targetRegion);
         }
 
         cleanupDrag();
-    }
-
-    function handleDoubleClick(planet: Planet) {
-        // Cancel any pending drag start or active drag when double-clicking
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-
-        // Always cleanup drag state on double-click
-        cleanupDrag();
-        
-        // Call the double-click callback if provided
-        if (onDoubleClick) {
-            onDoubleClick(planet);
-        }
     }
 
     // Cleanup on destroy
@@ -402,8 +392,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         },
         handlers: {
             handleMouseDown,
-            handleTouchStart,
-            handleDoubleClick
+            handleTouchStart
         }
     };
 }

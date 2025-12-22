@@ -10,6 +10,8 @@
   export let regionIndex: number;
   export let onTempleClick: (regionIndex: number) => void = () => {};
 
+  let lastTapTime = 0;
+
   let showGlow = false;
 
   // Get color scheme from upgrade definitions
@@ -26,6 +28,23 @@
   function handleClick(event: MouseEvent) {
     event.stopPropagation();
     onTempleClick(regionIndex);
+  }
+
+  function handleTouchStart(event: TouchEvent) {
+    if (!isPlayerOwned) return;
+    
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapTime;
+    
+    // Double-tap detected (within 300ms)
+    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      lastTapTime = 0; // Reset to prevent triple-tap
+      onTempleClick(regionIndex);
+    } else {
+      lastTapTime = now;
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -73,6 +92,7 @@
   {...templeAttributes}
   aria-label="Temple in region {regionIndex + 1}, level {upgradeLevel}"
   on:click={handleClick}
+  on:touchstart={handleTouchStart}
   on:keydown={handleKeyDown}
 >
   <!-- Temple shadow (for 3D effect) -->

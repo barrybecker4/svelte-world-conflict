@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import PlayerConfiguration from './PlayerConfiguration.svelte';
-  import Section from 'shared-ui';
+  import { Section } from 'shared-ui';
   import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
   import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
   import type { PlayerSlot, PlayerSlotType } from '$lib/game/entities/PlayerSlot';
