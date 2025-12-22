@@ -23,6 +23,8 @@
   export let renderArmies: boolean = true;
   export let onRegionClick: (region: Region) => void = () => {};
   export let onTempleClick: (regionIndex: number) => void = () => {};
+  export let onMouseDown: ((event: MouseEvent) => void) | undefined = undefined;
+  export let onTouchStart: ((event: TouchEvent) => void) | undefined = undefined;
 
   $: regionPath = region.points
     ? regionUtil.pointsToPath(region.points)
@@ -72,6 +74,8 @@
     aria-label={`Region ${region.index}`}
     on:click={() => onRegionClick(region)}
     on:keydown={handleKeyDown}
+    on:mousedown={onMouseDown}
+    on:touchstart={onTouchStart}
   />
 
   <!-- Inner border highlight for movable and valid target regions -->

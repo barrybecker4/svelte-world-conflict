@@ -7,6 +7,8 @@
   import Army from './Army.svelte';
   import SmokeLayer from './SmokeLayer.svelte';
   import Tooltip from '../ui/Tooltip.svelte';
+  import DragVisualization from './DragVisualization.svelte';
+  import { useDragAndDrop } from '$lib/client/interactions/useDragAndDrop';
   import { logger } from 'multiplayer-framework/shared';
 
   export let regions: Region[] = [];
@@ -32,12 +34,48 @@
   const NEUTRAL_COLOR = '#c2b5a3';
 
   let mapContainerElement: HTMLDivElement;
+  let svgElement: SVGSVGElement;
   let battlesInProgress = new Set<number>();
 
   // Bind the internal element to the exported prop
   $: if (mapContainerElement && !mapContainer) {
     mapContainer = mapContainerElement;
   }
+
+  // Drag and drop functionality
+  const { dragState, handlers } = useDragAndDrop({
+    svgElement: () => svgElement,
+    regions: () => regions,
+    canDrag: (regionIndex: number) => {
+      if (!canInteract()) return false;
+      const region = regions.find(r => r.index === regionIndex);
+      if (!region) return false;
+      
+      // Can drag if region is owned by current player and has soldiers
+      const isOwnedByCurrentPlayer = gameState?.ownersByRegion?.[regionIndex] === gameState?.currentPlayerSlot;
+      const soldierCount = gameState?.soldiersByRegion?.[regionIndex]?.length || 0;
+      return isOwnedByCurrentPlayer && soldierCount > 0;
+    },
+    onDragComplete: (sourceRegion: Region, destinationRegion: Region) => {
+      logger.debug('Drag complete:', { source: sourceRegion.index, destination: destinationRegion.index });
+      // First click to select source
+      onRegionClick(sourceRegion);
+      // Then click destination to complete move
+      setTimeout(() => {
+        onRegionClick(destinationRegion);
+      }, 50);
+    },
+    onDoubleClick: (region: Region) => {
+      logger.debug('Double-click/tap on region:', region.index);
+      // Check if this region has a temple owned by current player
+      const hasTemple = gameState?.templesByRegion?.[region.index] !== undefined;
+      const isOwnedByCurrentPlayer = gameState?.ownersByRegion?.[region.index] === gameState?.currentPlayerSlot;
+      
+      if (hasTemple && isOwnedByCurrentPlayer && canInteractWithTemple()) {
+        handleTempleClick(region.index);
+      }
+    }
+  });
 
   $: currentTurnPlayer = gameState?.players?.find(p => p.slotIndex === gameState.currentPlayerSlot) || null;
 
@@ -229,7 +267,7 @@
 </script>
 
 <div class="game-map" bind:this={mapContainerElement}>
-  <svg class="map-svg" viewBox="0 0 800 600">
+  <svg class="map-svg" viewBox="0 0 800 600" bind:this={svgElement}>
     <SvgDefinitions
       {gameState}
       {battlesInProgress}
@@ -268,6 +306,8 @@
         isClickable={isClickable}
         onRegionClick={handleRegionClick}
         onTempleClick={handleTempleClick}
+        onMouseDown={(e) => handlers.handleMouseDown(region, e)}
+        onTouchStart={(e) => handlers.handleTouchStart(region, e)}
         renderArmies={false}
       />
     {/each}
@@ -290,6 +330,14 @@
       {/if}
     {/each}
     </g>
+
+    <!-- Drag visualization layer -->
+    <DragVisualization
+      isDragging={$dragState.isDragging}
+      sourceRegion={$dragState.sourceRegion}
+      currentX={$dragState.currentX}
+      currentY={$dragState.currentY}
+    />
 
     <!-- Smoke layer (top-most) - rendered above everything -->
     <SmokeLayer />
@@ -317,11 +365,13 @@
     overflow: hidden;
     background: var(--map-ocean-color);
     border-radius: 8px;
+    touch-action: none;
   }
 
   .map-svg {
     width: 100%;
     height: 100%;
+    touch-action: none;
   }
 
   /* Responsive adjustments */
