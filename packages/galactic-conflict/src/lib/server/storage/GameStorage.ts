@@ -2,7 +2,7 @@
  * GameStorage - Persistence layer for Galactic Conflict games
  */
 
-import type { GalacticGameStateData, Player, PendingGameConfiguration } from '$lib/game/entities/gameTypes';
+import type { Player } from '$lib/game/entities/gameTypes';
 import { KVStorage } from './KVStorage';
 import { GameStatsService } from './GameStatsService';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
@@ -10,19 +10,12 @@ import { logger } from 'multiplayer-framework/shared';
 import { deleteStaleGames } from './deleteStaleGames';
 import { updateOpenGamesCache, removeFromOpenGamesCache, getOpenGamesCache, saveOpenGamesCache, OPEN_GAMES_KEY, type OpenGamesList } from './OpenGamesCache';
 import { addPlayerToGame as addPlayerToGameOp, removePlayerFromGame as removePlayerFromGameOp, canGameStart as canGameStartOp } from './GameRecordOperations';
+import type { GameRecord } from './types';
 
 const GAME_KEY_PREFIX = 'gc_game:';
 
-export interface GameRecord {
-    gameId: string;
-    status: 'PENDING' | 'ACTIVE' | 'COMPLETED';
-    players: Player[];
-    gameState?: GalacticGameStateData;
-    createdAt: number;
-    lastUpdateAt: number;
-    gameType: 'MULTIPLAYER' | 'AI';
-    pendingConfiguration?: PendingGameConfiguration;
-}
+export type { GameRecord };
+
 
 export class GameStorage {
     private storage: KVStorage;
@@ -52,14 +45,14 @@ export class GameStorage {
      */
     async saveGame(game: GameRecord): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${game.gameId}`;
-        
+
         // Check if status changed to COMPLETED
         const existingGame = await this.loadGame(game.gameId);
         const statusChanged = existingGame && existingGame.status !== game.status;
-        
+
         game.lastUpdateAt = Date.now();
         await this.storage.put(key, game);
-        
+
         // Update open games cache if status changed
         if (game.status === 'PENDING') {
             await updateOpenGamesCache(game, this.storage);
@@ -78,7 +71,7 @@ export class GameStorage {
             }
         }
     }
-    
+
 
     /**
      * Load a game record
@@ -104,8 +97,7 @@ export class GameStorage {
     async listGames(status?: 'PENDING' | 'ACTIVE' | 'COMPLETED'): Promise<GameRecord[]> {
         // For PENDING games, use cached open games list if available
         if (status === 'PENDING') {
-            const openGames = await this.getOpenGames();
-            return openGames;
+            return await this.getOpenGames();
         }
 
         // For other statuses, we need to list all keys and read each game
@@ -159,7 +151,7 @@ export class GameStorage {
     private async getOpenGamesFromCache(staleThreshold: number): Promise<GameRecord[] | null> {
         try {
             const cachedList = await getOpenGamesCache(this.storage);
-            
+
             if (!cachedList || cachedList.games.length === 0) {
                 return null;
             }
@@ -271,7 +263,7 @@ export class GameStorage {
      */
     async addPlayerToGame(gameId: string, player: Player, slotIndex: number): Promise<boolean> {
         const game = await this.loadGame(gameId);
-        
+
         if (!game) {
             logger.warn(`Cannot add player to game ${gameId}: game not found`);
             return false;
@@ -285,7 +277,7 @@ export class GameStorage {
      */
     async removePlayerFromGame(gameId: string, slotIndex: number): Promise<boolean> {
         const game = await this.loadGame(gameId);
-        
+
         if (!game) {
             return false;
         }
@@ -298,7 +290,7 @@ export class GameStorage {
      */
     async canGameStart(gameId: string): Promise<boolean> {
         const game = await this.loadGame(gameId);
-        
+
         if (!game) {
             return false;
         }
@@ -306,4 +298,3 @@ export class GameStorage {
         return canGameStartOp(game);
     }
 }
-
