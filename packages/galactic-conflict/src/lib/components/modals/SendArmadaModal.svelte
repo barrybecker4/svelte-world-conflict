@@ -18,6 +18,7 @@
     let selectedDestinationId: number | null = preselectedDestination?.id ?? null;
     let initialShips: number | null = null;
     let isSending = false;
+    let hasInitialized = false;
 
     // Track initial ships on mount to detect if all ships were sent
     onMount(() => {
@@ -30,6 +31,12 @@
     $: maxShips = currentSourcePlanet.ships;
     $: stillOwned = currentSourcePlanet.ownerId === currentPlayerId;
     $: selectedDestination = planets.find(p => p.id === selectedDestinationId);
+    
+    // Initialize shipCount to maxShips on first render
+    $: if (!hasInitialized && maxShips > 0) {
+        shipCount = maxShips;
+        hasInitialized = true;
+    }
     
     // Get player colors for the source and destination planets
     $: sourcePlayer = players.find(p => p.slotIndex === currentSourcePlanet.ownerId);

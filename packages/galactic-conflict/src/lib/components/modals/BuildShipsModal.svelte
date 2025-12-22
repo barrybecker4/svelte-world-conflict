@@ -12,6 +12,7 @@
     const dispatch = createEventDispatcher();
 
     let shipCount = 1;
+    let hasInitialized = false;
 
     // Use fresh planet data from the planets array (it gets updated via polling)
     $: currentPlanet = planets.find(p => p.id === planet.id) ?? planet;
@@ -20,6 +21,12 @@
     $: totalCost = shipCount * shipCost;
     $: maxAffordable = Math.floor(playerResources / shipCost);
     $: canAfford = playerResources >= totalCost;
+    
+    // Initialize shipCount to maxAffordable on first render
+    $: if (!hasInitialized && maxAffordable > 0) {
+        shipCount = maxAffordable;
+        hasInitialized = true;
+    }
     
     // Clamp shipCount if maxAffordable changes
     $: if (shipCount > maxAffordable && maxAffordable > 0) shipCount = maxAffordable;
