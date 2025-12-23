@@ -44,8 +44,8 @@
     // Don't check hasUnprocessedReplays - just wait for animations to finish
     $: shouldShowGameEndAnnouncement = $gameState?.status === 'COMPLETED' && $battleAnimations.size === 0;
 
-    // Track game completion and play appropriate sound
-    $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed) {
+    // Track game completion and play appropriate sound (wait for battle animations to finish)
+    $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed && $battleAnimations.size === 0) {
         gameEndSoundPlayed = true;
         const myPlayerId = $currentPlayerId;
         const winnerId = typeof $gameState.endResult === 'object' && $gameState.endResult 

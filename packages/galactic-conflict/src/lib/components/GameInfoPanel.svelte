@@ -69,6 +69,15 @@
     
     // Delay showing eliminated/resigned message until battle animations complete
     $: shouldShowEliminatedMessage = (isEliminated || hasResigned) && $battleAnimations.size === 0;
+
+    // Only show players as eliminated in leaderboard if they're not currently being attacked
+    // This prevents showing elimination before the battle animation finishes
+    $: playersBeingAttacked = new Set(
+        Array.from($battleAnimations.values()).map(anim => anim.replay.defenderPlayerId)
+    );
+    $: visibleEliminatedPlayers = (gameState.eliminatedPlayers ?? []).filter(
+        playerId => !playersBeingAttacked.has(playerId)
+    );
 </script>
 
 <div class="panel">
@@ -100,7 +109,7 @@
     <Leaderboard
         sortedPlayers={sortedPlayers.map(p => ({ ...p, ...getPlayerStats(p) }))}
         {currentPlayerId}
-        eliminatedPlayers={gameState.eliminatedPlayers}
+        eliminatedPlayers={visibleEliminatedPlayers}
     />
 
     <!-- Game result -->
