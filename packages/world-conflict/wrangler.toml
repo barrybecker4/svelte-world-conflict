@@ -5,6 +5,12 @@ pages_build_output_dir = "dist"
 # Add nodejs compatibility for SvelteKit
 compatibility_flags = ["nodejs_compat"]
 
+# Environment variables for build-time (VITE_ prefixed)
+# These are available during the build process
+[vars]
+VITE_ADSENSE_PUBLISHER_ID = "ca-pub-7416723383632921"
+VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id"
+
 # Local development KV namespace
 [[kv_namespaces]]
 binding = "WORLD_CONFLICT_KV"
@@ -23,16 +29,6 @@ kv_namespaces = [
 kv_namespaces = [
     { binding = "WORLD_CONFLICT_KV", id = "374d788f7a834bc3ad81f660362bd647" }
 ]
-
-# For production
-[env.production.vars]
-VITE_ADSENSE_PUBLISHER_ID = "ca-pub-7416723383632921"
-VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id"
-
-# For preview/staging
-[env.preview.vars]
-VITE_ADSENSE_PUBLISHER_ID = "ca-pub-7416723383632921"
-VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id"
 
 # Note: WebSocket worker runs separately - no Durable Object binding needed
 # The game connects to the worker via WebSocket URLs configured in src/lib/websocket-config.ts

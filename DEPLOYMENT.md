@@ -175,9 +175,34 @@ This configuration automatically:
 
 ### Environment Variables
 
-No additional environment variables are needed. Everything is configured via:
+Most configuration is done via:
 - KV bindings in `wrangler.toml`
 - WebSocket URL in `websocket-config.ts`
+
+**AdSense Environment Variables (Optional):**
+
+The AdSense environment variables are configured in `wrangler.toml` using a top-level `[vars]` section. This makes them available during the build process.
+
+**If you get a "Binding name already in use" error:**
+
+This means `VITE_ADSENSE_PUBLISHER_ID` (or another variable) is already defined in your Cloudflare Pages dashboard. To fix:
+
+1. Go to your Pages project → **Settings** → **Environment Variables**
+2. Check if `VITE_ADSENSE_PUBLISHER_ID` or `VITE_ADSENSE_AD_UNIT_ID` are already listed
+3. If they exist, **delete them** from the dashboard
+4. The variables in `wrangler.toml` will then be used instead
+
+**Alternative: Using Dashboard Instead of wrangler.toml**
+
+If you prefer to use the dashboard:
+1. Remove the `[vars]` section from `wrangler.toml`
+2. In the Cloudflare Pages dashboard → **Settings** → **Environment Variables**
+3. Click **Add variable**
+4. Enter the variable name and value
+5. **Do NOT check "Encrypt"** - leave it as a plain text variable (secrets are only available at runtime, not build time)
+6. Make sure to add it for both **Production** and **Preview** environments
+
+**Note:** You cannot have the same variable defined in both `wrangler.toml` and the dashboard - this causes binding name conflicts.
 
 ## 🧪 Testing Deployment
 
