@@ -9,6 +9,7 @@ import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 import { deleteStaleGames } from './deleteStaleGames';
 import { updateOpenGamesCache, removeFromOpenGamesCache, getOpenGamesCache, saveOpenGamesCache, OPEN_GAMES_KEY, type OpenGamesList } from './OpenGamesCache';
+import { updateActiveGamesCache, removeFromActiveGamesCache, getActiveGamesCache, saveActiveGamesCache } from './ActiveGamesCache';
 import { addPlayerToGame as addPlayerToGameOp, removePlayerFromGame as removePlayerFromGameOp, canGameStart as canGameStartOp } from './GameRecordOperations';
 import type { GameRecord } from './types';
 
@@ -60,6 +61,14 @@ export class GameStorage {
             await removeFromOpenGamesCache(game.gameId, this.storage);
         }
 
+        // Update active games cache
+        if (game.status === 'ACTIVE') {
+            await updateActiveGamesCache(game.gameId, this.storage);
+        } else if (statusChanged && existingGame?.status === 'ACTIVE') {
+            // Remove from active cache if transitioning away from ACTIVE
+            await removeFromActiveGamesCache(game.gameId, this.storage);
+        }
+
         // Record game completion statistics
         if (game.status === 'COMPLETED' && statusChanged) {
             logger.info(`Game ${game.gameId} completed - recording stats. endResult: ${JSON.stringify(game.gameState?.endResult)}`);
@@ -88,6 +97,7 @@ export class GameStorage {
         const key = `${GAME_KEY_PREFIX}${gameId}`;
         await this.storage.delete(key);
         await removeFromOpenGamesCache(gameId, this.storage);
+        await removeFromActiveGamesCache(gameId, this.storage);
     }
 
     /**
@@ -100,8 +110,12 @@ export class GameStorage {
             return await this.getOpenGames();
         }
 
-        // For other statuses, we need to list all keys and read each game
-        // This is necessary for ACTIVE games used by event processing
+        // For ACTIVE games, use cached active games list if available
+        if (status === 'ACTIVE') {
+            return await this.getActiveGames();
+        }
+
+        // For other statuses (COMPLETED or no filter), we need to list all keys and read each game
         const result = await this.storage.list(GAME_KEY_PREFIX);
         const games: GameRecord[] = [];
 
@@ -245,6 +259,63 @@ export class GameStorage {
 
         // Fallback to full scan
         return await this.getOpenGamesFromFullScan(staleThreshold);
+    }
+
+    /**
+     * Get list of active games
+     * Uses cached list to reduce KV list operations
+     */
+    async getActiveGames(): Promise<GameRecord[]> {
+        try {
+            // Try to get from cache first
+            const cachedList = await getActiveGamesCache(this.storage);
+            
+            if (cachedList && cachedList.gameIds.length > 0) {
+                // Read each game record from the cached IDs
+                const games: GameRecord[] = [];
+                for (const gameId of cachedList.gameIds) {
+                    const game = await this.loadGame(gameId);
+                    if (game && game.status === 'ACTIVE') {
+                        games.push(game);
+                    } else if (game && game.status !== 'ACTIVE') {
+                        // Cache is stale - game is no longer active, remove it
+                        logger.debug(`Removing ${gameId} from active cache (status: ${game?.status})`);
+                        await removeFromActiveGamesCache(gameId, this.storage);
+                    }
+                }
+                return games;
+            }
+
+            // Cache miss or empty - fall back to full scan
+            logger.info('Active games cache miss - performing full KV scan');
+            return await this.getActiveGamesFromFullScan();
+            
+        } catch (error) {
+            logger.warn('Error reading cached active games list, falling back to full scan:', error);
+            return await this.getActiveGamesFromFullScan();
+        }
+    }
+
+    /**
+     * Get active games from full scan (fallback when cache is missing)
+     */
+    private async getActiveGamesFromFullScan(): Promise<GameRecord[]> {
+        const result = await this.storage.list(GAME_KEY_PREFIX);
+        const activeGames: GameRecord[] = [];
+        const activeGameIds: string[] = [];
+
+        for (const key of result.keys) {
+            const game = await this.storage.get<GameRecord>(key.name);
+            if (game && game.status === 'ACTIVE') {
+                activeGames.push(game);
+                activeGameIds.push(game.gameId);
+            }
+        }
+
+        // Rebuild cache for next time
+        await saveActiveGamesCache(activeGameIds, this.storage);
+
+        return activeGames;
     }
 
     /**
