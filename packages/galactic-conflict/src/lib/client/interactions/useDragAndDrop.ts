@@ -23,6 +23,9 @@ export interface DragAndDropHandlers {
     handleDoubleClick: (planet: Planet) => void;
 }
 
+// Detect if we're on a touch device (iPad Safari, etc.)
+const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
 /**
  * Hook that provides drag and drop functionality for planets
  * Uses modern pointer events to handle mouse, touch, stylus, and other input devices
@@ -77,6 +80,17 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             clearTimeout(dragStartTimeout);
             dragStartTimeout = null;
         }
+        
+        // Release pointer capture from SVG element
+        const svg = svgElement();
+        if (svg && activePointerId !== null) {
+            try {
+                svg.releasePointerCapture(activePointerId);
+            } catch (e) {
+                // Ignore errors if pointer was already released
+            }
+        }
+        
         dragSourcePlanetId = null;
         activePointerId = null;
         
@@ -120,10 +134,20 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             return;
         }
 
-        // Capture this pointer for consistent event delivery
-        const target = event.currentTarget as Element;
-        if (target && 'setPointerCapture' in target) {
-            target.setPointerCapture(event.pointerId);
+        // Prevent default to stop Safari touch gestures from interfering
+        // This is critical for iPad Safari to allow drag to work
+        event.preventDefault();
+        event.stopPropagation();
+
+        // On touch devices, capture pointer on the SVG element itself
+        // SVG <g> elements don't reliably support pointer capture on Safari iOS
+        const svg = svgElement();
+        if (svg && 'setPointerCapture' in svg) {
+            try {
+                svg.setPointerCapture(event.pointerId);
+            } catch (e) {
+                // Some browsers may throw if pointer capture fails, ignore
+            }
         }
         activePointerId = event.pointerId;
 
@@ -139,6 +163,10 @@ export function useDragAndDrop(options: DragAndDropOptions): {
 
         dragSourcePlanetId = planet.id;
         updateDragPosition(event);
+
+        // On touch devices, start drag immediately (shorter delay) to feel more responsive
+        // On desktop, use longer delay to allow double-click detection
+        const dragDelay = isTouchDevice ? 100 : 200;
 
         // Delay drag start to allow double-click detection
         dragStartTimeout = setTimeout(() => {
@@ -156,7 +184,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
                 document.addEventListener('pointerup', handleDocumentPointerUp);
                 document.addEventListener('pointercancel', handleDocumentPointerUp);
             }
-        }, 200);
+        }, dragDelay);
 
         // Add listeners to detect actual drag
         document.addEventListener('pointermove', handleDocumentPointerMoveCheck);

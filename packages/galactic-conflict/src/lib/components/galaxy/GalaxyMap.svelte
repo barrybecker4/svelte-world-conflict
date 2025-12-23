@@ -182,10 +182,15 @@
             {#if hoveredPlanet && selectedPlanetId !== hoveredPlanetId}
                 {@const radius = getPlanetRadius(hoveredPlanet.volume)}
                 {@const TOOLTIP_WIDTH = 140}
-                {@const TOOLTIP_OFFSET = 15}
-                {@const showTooltipOnLeft = hoveredPlanet.position.x + radius + TOOLTIP_OFFSET + TOOLTIP_WIDTH > GALACTIC_CONSTANTS.GALAXY_WIDTH}
-                {@const tooltipX = showTooltipOnLeft ? hoveredPlanet.position.x - radius - TOOLTIP_WIDTH - TOOLTIP_OFFSET : hoveredPlanet.position.x + radius + TOOLTIP_OFFSET}
-                {@const tooltipY = hoveredPlanet.position.y - 50}
+                {@const TOOLTIP_HEIGHT = 100}
+                {@const TOOLTIP_OFFSET = 8}
+                {@const spaceOnRight = GALACTIC_CONSTANTS.GALAXY_WIDTH - (hoveredPlanet.position.x + radius)}
+                {@const spaceOnLeft = hoveredPlanet.position.x - radius}
+                {@const showTooltipOnLeft = spaceOnRight < TOOLTIP_WIDTH + TOOLTIP_OFFSET && spaceOnLeft > TOOLTIP_WIDTH + TOOLTIP_OFFSET}
+                {@const tooltipX = showTooltipOnLeft 
+                    ? hoveredPlanet.position.x - radius - TOOLTIP_WIDTH - TOOLTIP_OFFSET 
+                    : hoveredPlanet.position.x + radius + TOOLTIP_OFFSET}
+                {@const tooltipY = Math.max(5, Math.min(hoveredPlanet.position.y - TOOLTIP_HEIGHT / 2, GALACTIC_CONSTANTS.GALAXY_HEIGHT - TOOLTIP_HEIGHT - 5))}
                 <PlanetTooltip
                     planet={hoveredPlanet}
                     players={gameState.players}

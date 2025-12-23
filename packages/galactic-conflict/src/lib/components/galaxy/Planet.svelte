@@ -141,6 +141,9 @@
     .planet {
         cursor: pointer;
         transition: transform 0.2s ease;
+        /* Critical for touch devices: prevent browser handling of touch gestures */
+        touch-action: none;
+        -webkit-touch-callout: none;
     }
 
     .planet:hover {
@@ -157,6 +160,8 @@
 
     .hit-area {
         pointer-events: all;
+        /* Ensure hit area also has touch-action none */
+        touch-action: none;
     }
 
     .ship-count {
