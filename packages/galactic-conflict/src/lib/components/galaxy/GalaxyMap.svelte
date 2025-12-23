@@ -82,12 +82,8 @@
         onPlanetClick(planet);
     }
 
-    function handlePlanetMouseDown(planet: PlanetType, event: MouseEvent) {
-        handlers.handleMouseDown(planet, event);
-    }
-
-    function handlePlanetTouchStart(planet: PlanetType, event: TouchEvent) {
-        handlers.handleTouchStart(planet, event);
+    function handlePlanetPointerDown(planet: PlanetType, event: PointerEvent) {
+        handlers.handlePointerDown(planet, event);
     }
 
     function handlePlanetDoubleClick(planet: PlanetType) {
@@ -148,8 +144,7 @@
                     canMove={canMovePlanet}
                     hasBattle={hasAnimationAtPlanet(planet.id, $battleAnimations)}
                     on:click={() => handlePlanetClick(planet)}
-                    on:mousedown={(e) => handlePlanetMouseDown(planet, e)}
-                    on:touchstart={(e) => handlePlanetTouchStart(planet, e)}
+                    on:pointerdown={(e) => handlePlanetPointerDown(planet, e)}
                     on:dblclick={() => handlePlanetDoubleClick(planet)}
                 />
             {/key}

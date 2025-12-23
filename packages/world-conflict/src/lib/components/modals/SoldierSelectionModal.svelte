@@ -41,17 +41,30 @@ import { Button, Modal } from 'shared-ui';
   on:close={handleClose}
 >
   <div class="soldier-display">
+    <!-- Native slider control -->
+    <div class="slider-container">
+      <input
+        type="range"
+        id="soldier-slider"
+        bind:value={selectedCount}
+        min="1"
+        max={maxSoldiers}
+        step="1"
+        class="soldier-slider"
+      />
+      <div class="slider-labels">
+        <span>1</span>
+        <span>{maxSoldiers}</span>
+      </div>
+    </div>
+
+    <!-- Visual soldier icons (read-only display) -->
     <div class="soldier-grid">
       {#each Array(maxSoldiers) as _, index}
         <div
           class="soldier-icon"
           class:selected={index < clampedSelection}
           class:available={index >= clampedSelection}
-          onclick={() => selectSoldiers(index + 1)}
-          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && selectSoldiers(index + 1)}
-          role="button"
-          tabindex="0"
-          aria-label="Select {index + 1} soldiers"
         >
           <div class="soldier-figure">
             <div class="helmet"></div>
@@ -64,7 +77,7 @@ import { Button, Modal } from 'shared-ui';
 
     <div class="selection-info">
       <p>Moving <strong>{clampedSelection}</strong> of {maxSoldiers} soldiers</p>
-      <small>Click soldiers that you want to move above</small>
+      <small>Use the slider to select how many soldiers to move</small>
     </div>
   </div>
 
@@ -81,6 +94,63 @@ import { Button, Modal } from 'shared-ui';
 <style>
   .soldier-display {
     margin-bottom: 1.5rem;
+  }
+
+  .slider-container {
+    margin-bottom: 1.5rem;
+  }
+
+  .soldier-slider {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #10b981, #059669);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .soldier-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #10b981;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .soldier-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    border-color: #34d399;
+  }
+
+  .soldier-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #10b981;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .soldier-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    border-color: #34d399;
+  }
+
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
   }
 
   .soldier-grid {
@@ -102,9 +172,9 @@ import { Button, Modal } from 'shared-ui';
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
     transition: all 0.2s ease;
     border: 2px solid transparent;
+    pointer-events: none;
   }
 
   .soldier-icon.selected {
@@ -116,11 +186,6 @@ import { Button, Modal } from 'shared-ui';
   .soldier-icon.available {
     background: rgba(71, 85, 105, 0.3);
     border-color: #64748b;
-  }
-
-  .soldier-icon:hover {
-    transform: scale(1.1);
-    border-color: #fbbf24;
   }
 
   .soldier-figure {

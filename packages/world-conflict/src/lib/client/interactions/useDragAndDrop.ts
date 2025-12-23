@@ -19,13 +19,14 @@ export interface DragAndDropOptions {
 }
 
 export interface DragAndDropHandlers {
-    handleMouseDown: (region: Region, event: MouseEvent) => void;
-    handleTouchStart: (region: Region, event: TouchEvent) => void;
+    handlePointerDown: (region: Region, event: PointerEvent) => void;
+    handleDoubleClick: (region: Region) => void;
 }
 
 /**
  * Hook that provides drag and drop functionality for regions
- * Handles both mouse and touch events, with support for double-click/tap detection
+ * Uses modern pointer events to handle mouse, touch, stylus, and other input devices
+ * Supports double-click/tap detection
  */
 export function useDragAndDrop(options: DragAndDropOptions): {
     dragState: Readable<DragState>;
@@ -43,10 +44,11 @@ export function useDragAndDrop(options: DragAndDropOptions): {
 
     let dragSourceRegionIndex: number | null = null;
     let dragStartTimeout: ReturnType<typeof setTimeout> | null = null;
-    let mouseDownX = 0;
-    let mouseDownY = 0;
+    let pointerDownX = 0;
+    let pointerDownY = 0;
     let lastClickTime = 0;
     let lastClickRegionIndex: number | null = null;
+    let activePointerId: number | null = null;
 
     // Helper to get drag source region from current regions array
     function getDragSourceRegion(): Region | null {
@@ -55,7 +57,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
     }
 
     // Update drag position in SVG coordinates
-    function updateDragPosition(event: MouseEvent | TouchEvent) {
+    function updateDragPosition(event: PointerEvent) {
         const svg = svgElement();
         if (!svg) return;
 
@@ -76,6 +78,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             dragStartTimeout = null;
         }
         dragSourceRegionIndex = null;
+        activePointerId = null;
         
         dragState.set({
             isDragging: false,
@@ -84,33 +87,42 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             currentY: 0
         });
 
-        document.removeEventListener('mousemove', handleDocumentMouseMove);
-        document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
-        document.removeEventListener('mouseup', handleDocumentMouseUp);
-        document.removeEventListener('touchmove', handleDocumentTouchMove as any);
-        document.removeEventListener('touchmove', handleDocumentTouchMoveCheck as any);
-        document.removeEventListener('touchend', handleDocumentTouchEnd);
-        document.removeEventListener('touchcancel', handleDocumentTouchEnd);
+        document.removeEventListener('pointermove', handleDocumentPointerMove);
+        document.removeEventListener('pointermove', handleDocumentPointerMoveCheck);
+        document.removeEventListener('pointerup', handleDocumentPointerUp);
+        document.removeEventListener('pointercancel', handleDocumentPointerUp);
     }
 
-    // Mouse event handlers
-    function handleMouseDown(region: Region, event: MouseEvent) {
-        if (!canDrag(region.index)) {
-            return;
-        }
-
-        // Check for double-click
+    // Pointer event handlers - works for mouse, touch, stylus, etc.
+    function handlePointerDown(region: Region, event: PointerEvent) {
+        // Check for double-click/tap BEFORE checking canDrag
         const now = Date.now();
-        if (lastClickRegionIndex === region.index && now - lastClickTime < 300) {
-            // Double-click detected
+        const timeSinceLastClick = now - lastClickTime;
+        
+        if (lastClickRegionIndex === region.index && timeSinceLastClick < 300 && timeSinceLastClick > 0) {
+            // Double-click/tap detected
+            event.preventDefault();
+            event.stopPropagation();
             lastClickTime = 0;
             lastClickRegionIndex = null;
             cleanupDrag();
             onDoubleClick(region);
             return;
         }
+        
         lastClickTime = now;
         lastClickRegionIndex = region.index;
+
+        if (!canDrag(region.index)) {
+            return;
+        }
+
+        // Capture this pointer for consistent event delivery
+        const target = event.currentTarget as Element;
+        if (target && 'setPointerCapture' in target) {
+            target.setPointerCapture(event.pointerId);
+        }
+        activePointerId = event.pointerId;
 
         // Clear any existing drag timeout
         if (dragStartTimeout) {
@@ -118,16 +130,16 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             dragStartTimeout = null;
         }
 
-        // Store initial mouse position
-        mouseDownX = event.clientX;
-        mouseDownY = event.clientY;
+        // Store initial pointer position
+        pointerDownX = event.clientX;
+        pointerDownY = event.clientY;
 
         dragSourceRegionIndex = region.index;
         updateDragPosition(event);
 
         // Delay drag start to allow double-click detection
         dragStartTimeout = setTimeout(() => {
-            if (dragSourceRegionIndex === region.index) {
+            if (dragSourceRegionIndex === region.index && activePointerId === event.pointerId) {
                 const sourceRegion = getDragSourceRegion();
                 if (sourceRegion) {
                     dragState.update(state => ({
@@ -137,23 +149,30 @@ export function useDragAndDrop(options: DragAndDropOptions): {
                     }));
                 }
                 updateDragPosition(event);
-                document.addEventListener('mousemove', handleDocumentMouseMove);
-                document.addEventListener('mouseup', handleDocumentMouseUp);
+                document.addEventListener('pointermove', handleDocumentPointerMove);
+                document.addEventListener('pointerup', handleDocumentPointerUp);
+                document.addEventListener('pointercancel', handleDocumentPointerUp);
             }
         }, 200);
 
         // Add listeners to detect actual drag
-        document.addEventListener('mousemove', handleDocumentMouseMoveCheck);
-        document.addEventListener('mouseup', handleDocumentMouseUp);
+        document.addEventListener('pointermove', handleDocumentPointerMoveCheck);
+        document.addEventListener('pointerup', handleDocumentPointerUp);
+        document.addEventListener('pointercancel', handleDocumentPointerUp);
     }
 
-    function handleDocumentMouseMoveCheck(event: MouseEvent) {
+    function handleDocumentPointerMoveCheck(event: PointerEvent) {
+        // Only respond to the active pointer
+        if (activePointerId !== null && event.pointerId !== activePointerId) {
+            return;
+        }
+
         const moveThreshold = 5;
-        const dx = Math.abs(event.clientX - mouseDownX);
-        const dy = Math.abs(event.clientY - mouseDownY);
+        const dx = Math.abs(event.clientX - pointerDownX);
+        const dy = Math.abs(event.clientY - pointerDownY);
 
         if (dx > moveThreshold || dy > moveThreshold) {
-            // Mouse moved significantly - start drag immediately
+            // Pointer moved significantly - start drag immediately
             if (dragStartTimeout) {
                 clearTimeout(dragStartTimeout);
                 dragStartTimeout = null;
@@ -169,17 +188,26 @@ export function useDragAndDrop(options: DragAndDropOptions): {
                     }));
                 }
                 updateDragPosition(event);
-                document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
-                document.addEventListener('mousemove', handleDocumentMouseMove);
+                document.removeEventListener('pointermove', handleDocumentPointerMoveCheck);
+                document.addEventListener('pointermove', handleDocumentPointerMove);
             }
         }
     }
 
-    function handleDocumentMouseMove(event: MouseEvent) {
+    function handleDocumentPointerMove(event: PointerEvent) {
+        // Only respond to the active pointer
+        if (activePointerId !== null && event.pointerId !== activePointerId) {
+            return;
+        }
         updateDragPosition(event);
     }
 
-    function handleDocumentMouseUp(event: MouseEvent) {
+    function handleDocumentPointerUp(event: PointerEvent) {
+        // Only respond to the active pointer
+        if (activePointerId !== null && event.pointerId !== activePointerId) {
+            return;
+        }
+
         // Clear the drag start timeout if pending
         if (dragStartTimeout) {
             clearTimeout(dragStartTimeout);
@@ -187,7 +215,7 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         }
 
         // Remove the move check listener
-        document.removeEventListener('mousemove', handleDocumentMouseMoveCheck);
+        document.removeEventListener('pointermove', handleDocumentPointerMoveCheck);
 
         let currentDragState: DragState;
         const unsubscribe = dragState.subscribe(state => {
@@ -196,8 +224,9 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         unsubscribe();
 
         if (!currentDragState!.isDragging || dragSourceRegionIndex === null) {
-            document.removeEventListener('mousemove', handleDocumentMouseMove);
-            document.removeEventListener('mouseup', handleDocumentMouseUp);
+            document.removeEventListener('pointermove', handleDocumentPointerMove);
+            document.removeEventListener('pointerup', handleDocumentPointerUp);
+            document.removeEventListener('pointercancel', handleDocumentPointerUp);
 
             // Reset drag state after a brief delay to allow double-click
             setTimeout(() => {
@@ -232,153 +261,18 @@ export function useDragAndDrop(options: DragAndDropOptions): {
         cleanupDrag();
     }
 
-    // Touch event handlers
-    function handleTouchStart(region: Region, event: TouchEvent) {
-        if (!canDrag(region.index)) {
-            return;
-        }
-
-        // Check for double-tap
-        const now = Date.now();
-        if (lastClickRegionIndex === region.index && now - lastClickTime < 300) {
-            // Double-tap detected
-            lastClickTime = 0;
-            lastClickRegionIndex = null;
-            cleanupDrag();
-            onDoubleClick(region);
-            event.preventDefault();
-            return;
-        }
-        lastClickTime = now;
-        lastClickRegionIndex = region.index;
-
-        // Clear any existing drag timeout
+    function handleDoubleClick(region: Region) {
+        // Cancel any pending drag start or active drag when double-clicking
         if (dragStartTimeout) {
             clearTimeout(dragStartTimeout);
             dragStartTimeout = null;
         }
 
-        // Store initial touch position
-        if (event.touches.length > 0) {
-            mouseDownX = event.touches[0].clientX;
-            mouseDownY = event.touches[0].clientY;
-        }
-
-        dragSourceRegionIndex = region.index;
-        updateDragPosition(event);
-
-        // Delay drag start to allow double-tap detection
-        dragStartTimeout = setTimeout(() => {
-            if (dragSourceRegionIndex === region.index) {
-                const sourceRegion = getDragSourceRegion();
-                if (sourceRegion) {
-                    dragState.update(state => ({
-                        ...state,
-                        isDragging: true,
-                        sourceRegion
-                    }));
-                }
-                updateDragPosition(event);
-                document.addEventListener('touchmove', handleDocumentTouchMove as any, { passive: false });
-                document.addEventListener('touchend', handleDocumentTouchEnd);
-                document.addEventListener('touchcancel', handleDocumentTouchEnd);
-            }
-        }, 200);
-
-        // Add listeners to detect actual drag
-        document.addEventListener('touchmove', handleDocumentTouchMoveCheck as any, { passive: false });
-        document.addEventListener('touchend', handleDocumentTouchEnd);
-        document.addEventListener('touchcancel', handleDocumentTouchEnd);
-    }
-
-    function handleDocumentTouchMoveCheck(event: TouchEvent) {
-        if (event.touches.length === 0) return;
-
-        const moveThreshold = 5;
-        const dx = Math.abs(event.touches[0].clientX - mouseDownX);
-        const dy = Math.abs(event.touches[0].clientY - mouseDownY);
-
-        if (dx > moveThreshold || dy > moveThreshold) {
-            // Touch moved significantly - start drag immediately
-            if (dragStartTimeout) {
-                clearTimeout(dragStartTimeout);
-                dragStartTimeout = null;
-            }
-
-            if (dragSourceRegionIndex !== null) {
-                const sourceRegion = getDragSourceRegion();
-                if (sourceRegion) {
-                    dragState.update(state => ({
-                        ...state,
-                        isDragging: true,
-                        sourceRegion
-                    }));
-                }
-                event.preventDefault();
-                updateDragPosition(event);
-                document.removeEventListener('touchmove', handleDocumentTouchMoveCheck as any);
-                document.addEventListener('touchmove', handleDocumentTouchMove as any, { passive: false });
-            }
-        }
-    }
-
-    function handleDocumentTouchMove(event: TouchEvent) {
-        event.preventDefault();
-        updateDragPosition(event);
-    }
-
-    function handleDocumentTouchEnd(event: TouchEvent) {
-        // Clear the drag start timeout if pending
-        if (dragStartTimeout) {
-            clearTimeout(dragStartTimeout);
-            dragStartTimeout = null;
-        }
-
-        // Remove the move check listener
-        document.removeEventListener('touchmove', handleDocumentTouchMoveCheck as any);
-
-        let currentDragState: DragState;
-        const unsubscribe = dragState.subscribe(state => {
-            currentDragState = state;
-        });
-        unsubscribe();
-
-        if (!currentDragState!.isDragging || dragSourceRegionIndex === null) {
-            document.removeEventListener('touchmove', handleDocumentTouchMove as any);
-            document.removeEventListener('touchend', handleDocumentTouchEnd);
-            document.removeEventListener('touchcancel', handleDocumentTouchEnd);
-
-            // Reset drag state after a brief delay to allow double-tap
-            setTimeout(() => {
-                dragState.update(state => {
-                    if (!state.isDragging) {
-                        dragSourceRegionIndex = null;
-                    }
-                    return state;
-                });
-            }, 50);
-            return;
-        }
-
-        // Look up source region from current state
-        const sourceRegion = getDragSourceRegion();
-        if (!sourceRegion) {
-            cleanupDrag();
-            return;
-        }
-
-        // Find if we're over a region
-        const targetRegion = findRegionAtPosition(
-            regions(),
-            currentDragState!.currentX,
-            currentDragState!.currentY
-        );
-
-        if (targetRegion && targetRegion.index !== sourceRegion.index) {
-            onDragComplete(sourceRegion, targetRegion);
-        }
-
+        // Always cleanup drag state on double-click
         cleanupDrag();
+        
+        // Call the double-click callback
+        onDoubleClick(region);
     }
 
     // Cleanup on destroy
@@ -391,8 +285,8 @@ export function useDragAndDrop(options: DragAndDropOptions): {
             subscribe: dragState.subscribe
         },
         handlers: {
-            handleMouseDown,
-            handleTouchStart
+            handlePointerDown,
+            handleDoubleClick
         }
     };
 }

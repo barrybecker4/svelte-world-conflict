@@ -306,8 +306,7 @@
         isClickable={isClickable}
         onRegionClick={handleRegionClick}
         onTempleClick={handleTempleClick}
-        onMouseDown={(e) => handlers.handleMouseDown(region, e)}
-        onTouchStart={(e) => handlers.handleTouchStart(region, e)}
+        onPointerDown={(e) => handlers.handlePointerDown(region, e)}
         renderArmies={false}
       />
     {/each}
