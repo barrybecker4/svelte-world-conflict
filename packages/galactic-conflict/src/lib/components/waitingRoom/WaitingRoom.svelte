@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+    import { AdBanner } from 'shared-ui';
     import type { PendingGameData } from '$lib/game/entities/gameTypes';
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
     import { getWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
@@ -111,6 +112,10 @@
     $: activePlayerCount = playerSlots.filter(s => s.type === 'Set' || s.type === 'AI').length;
     $: neutralPlanets = game?.pendingConfiguration?.settings?.neutralPlanetCount ?? (game?.pendingConfiguration?.settings?.planetCount ? game.pendingConfiguration.settings.planetCount - activePlayerCount : 8);
     $: totalPlanets = activePlayerCount + neutralPlanets;
+
+    // Ad configuration
+    $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
+    $: showAds = adUnitId && !loading && game;
 </script>
 
 <div class="waiting-room-overlay">
@@ -167,6 +172,16 @@
                 Leave Game
             </button>
         </footer>
+
+        {#if showAds}
+            <div class="ad-container">
+                <AdBanner
+                    adUnitId={adUnitId}
+                    adFormat="rectangle"
+                    className="waiting-room-ad"
+                />
+            </div>
+        {/if}
     </div>
 </div>
 
@@ -308,6 +323,14 @@
 
     .leave-btn:hover {
         background: #4b5563;
+    }
+
+    .ad-container {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(71, 85, 105, 0.3);
+        display: flex;
+        justify-content: center;
     }
 
 </style>

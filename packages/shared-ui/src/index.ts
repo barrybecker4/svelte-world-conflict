@@ -9,6 +9,7 @@ export { default as LoadingState } from './components/ui/LoadingState.svelte';
 export { default as ConnectionStatus } from './components/ui/ConnectionStatus.svelte';
 export { default as StatDisplay } from './components/ui/StatDisplay.svelte';
 export { default as Tooltip } from './components/ui/Tooltip.svelte';
+export { default as AdBanner } from './components/ui/AdBanner.svelte';
 
 // Charts
 export { default as LineChart } from './components/charts/LineChart.svelte';

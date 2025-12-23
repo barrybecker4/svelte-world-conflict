@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
     import { goto } from '$app/navigation';
+    import { AdBanner } from 'shared-ui';
     import type { GalacticGameStateData, Planet } from '$lib/game/entities/gameTypes';
     import GalaxyMap from './galaxy/GalaxyMap.svelte';
     import GameInfoPanel from './GameInfoPanel.svelte';
@@ -39,6 +40,10 @@
     let gameEndSoundPlayed = false;
     let devEventProcessingInterval: ReturnType<typeof setInterval> | null = null;
     const processedEventIds = new Set<string>();
+
+    // Ad configuration
+    $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
+    $: showAds = adUnitId && $gameState && $gameState.status !== 'COMPLETED';
     
     // Track when to show game end announcement (after battle animations complete)
     // Don't check hasUnprocessedReplays - just wait for animations to finish
@@ -384,6 +389,23 @@
                     on:doubleClick={handlePlanetDoubleClick}
                 />
             </div>
+
+            {#if showAds}
+                <aside class="ad-sidebar">
+                    <AdBanner
+                        adUnitId={adUnitId}
+                        adFormat="rectangle"
+                        className="desktop-ad"
+                    />
+                </aside>
+                <div class="ad-banner-mobile">
+                    <AdBanner
+                        adUnitId={adUnitId}
+                        adFormat="horizontal"
+                        className="mobile-ad"
+                    />
+                </div>
+            {/if}
         </div>
     {:else}
         <div class="loading">Loading game...</div>
@@ -464,6 +486,39 @@
         font-size: 1.5rem;
     }
 
+
+    .ad-sidebar {
+        position: fixed;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 100;
+        display: none;
+    }
+
+    .ad-banner-mobile {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        display: none;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 0.5rem;
+        text-align: center;
+    }
+
+    @media (min-width: 1024px) {
+        .ad-sidebar {
+            display: block;
+        }
+    }
+
+    @media (max-width: 1023px) {
+        .ad-banner-mobile {
+            display: block;
+        }
+    }
 
     @media (max-width: 768px) {
         .game-layout {

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { LoadingState, SoundTestModal } from 'shared-ui';
+  import { LoadingState, SoundTestModal, AdBanner } from 'shared-ui';
   import Banner from './ui/Banner.svelte';
   import GameInfoPanel from './GameInfoPanel.svelte';
   import GameSummaryPanel from './GameSummaryPanel.svelte';
@@ -48,6 +48,10 @@
   let showGameSummary = false;
   let gameWinner: Player | 'DRAWN_GAME' | null = null;
   let showSoundTestModal = false;
+
+  // Ad configuration
+  $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
+  $: showAds = adUnitId && !showGameSummary;
 
   // Convert SNAKE_CASE to Title Case for sound names
   function formatSoundName(key: string): string {
@@ -250,6 +254,23 @@
         onPlaySound={handlePlaySound}
       />
     {/if}
+
+    {#if showAds}
+      <aside class="ad-sidebar">
+        <AdBanner
+          adUnitId={adUnitId}
+          adFormat="rectangle"
+          className="desktop-ad"
+        />
+      </aside>
+      <div class="ad-banner-mobile">
+        <AdBanner
+          adUnitId={adUnitId}
+          adFormat="horizontal"
+          className="mobile-ad"
+        />
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -286,5 +307,38 @@
     font-size: 0.75rem;
     border-radius: 6px;
     z-index: 1001;
+  }
+
+  .ad-sidebar {
+    position: fixed;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: none;
+  }
+
+  .ad-banner-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 0.5rem;
+    text-align: center;
+  }
+
+  @media (min-width: 1024px) {
+    .ad-sidebar {
+      display: block;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .ad-banner-mobile {
+      display: block;
+    }
   }
 </style>

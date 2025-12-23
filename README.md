@@ -110,6 +110,74 @@ LOG_LEVEL=WARN npm run build -w world-conflict
 
 **Note:** DEBUG logs will only appear if both `LOG_LEVEL=DEBUG` (or `VITE_LOG_LEVEL=DEBUG`) is set AND the code is running in development mode (`NODE_ENV=development` or Vite dev mode).
 
+### Ad Monetization
+
+All games support Google AdSense display advertising. To enable ads:
+
+1. **Get your AdSense Publisher ID:**
+   - Sign up at https://www.google.com/adsense
+   - Your publisher ID format: `ca-pub-XXXXXXXXXXXXXXXX`
+   - See [How to Get Your AdSense Publisher ID](#how-to-get-your-adsense-publisher-id) below for detailed steps
+
+2. **Create Ad Units:**
+   - Create display ad units in your AdSense account
+   - Note the ad unit IDs (numeric values)
+
+3. **Configure Environment Variables:**
+   Create a `.env` file in the root directory:
+   ```bash
+   # Required: Your AdSense publisher ID
+   VITE_ADSENSE_PUBLISHER_ID=ca-pub-XXXXXXXXXXXXXXXX
+   
+   # Required: Your ad unit ID
+   VITE_ADSENSE_AD_UNIT_ID=1234567890
+   
+   # Optional: Enable/disable ads (default: enabled if publisher ID is set)
+   VITE_ADSENSE_ENABLED=true
+   ```
+
+4. **Ad Placement:**
+   - Desktop: Sidebar ads (300x250) on game pages and lobby
+   - Mobile: Bottom banner ads (728x90 horizontal, 320x50 on small screens)
+   - Waiting room: Rectangle ads (300x250)
+
+Ads are automatically hidden if:
+- Publisher ID is not configured
+- Ad blockers are detected (gracefully handled)
+- Game summary/end screen is displayed
+- Game is completed
+
+#### How to Get Your AdSense Publisher ID
+
+1. **Sign Up for Google AdSense:**
+   - Go to https://www.google.com/adsense
+   - Sign in with your Google account
+   - Click "Get Started"
+
+2. **Add Your Website:**
+   - Enter your website URL (e.g., `https://your-game-domain.pages.dev`)
+
+3. **Complete Account Setup:**
+   - Provide payment information
+   - Verify your identity (may require ID verification)
+   - Accept the AdSense terms
+
+4. **Get Your Publisher ID:**
+   - After approval, go to your AdSense dashboard
+   - Click "Account" → "Account information"
+   - Your Publisher ID is shown as `ca-pub-XXXXXXXXXXXXXXXX` (16 digits)
+   - Copy this value
+
+5. **Create Ad Units:**
+   - Go to "Ads" → "By ad unit" → "Display ads"
+   - Click "Create ad unit"
+   - Choose "Display ads"
+   - Configure:
+     - Name (e.g., "Game Sidebar Ad")
+     - Ad size (e.g., "Responsive" or "300x250")
+   - Click "Create"
+   - Copy the Ad Unit ID (numeric value, e.g., `1234567890`)
+
 ### Building
 
 Build all packages:

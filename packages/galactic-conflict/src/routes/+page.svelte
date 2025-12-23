@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { AdBanner } from 'shared-ui';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
   import Lobby from '$lib/components/lobby/Lobby.svelte';
   import GameInstructionsModal from '$lib/components/modals/GameInstructionsModal.svelte';
@@ -10,6 +11,10 @@
   let showInstructions = true;
   let showLobby = false;
   let showConfiguration = false;
+
+  // Ad configuration - use environment variable or default
+  $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
+  $: showAds = adUnitId && (showLobby || showConfiguration);
 
   function handleInstructionsComplete() {
     showInstructions = false;
@@ -59,18 +64,83 @@
   }
 </script>
 
-{#if showInstructions}
-  <GameInstructionsModal oncomplete={handleInstructionsComplete} />
-{/if}
+<div class="page-container">
+  <div class="main-content">
+    {#if showInstructions}
+      <GameInstructionsModal oncomplete={handleInstructionsComplete} />
+    {/if}
 
-{#if showLobby}
-  <Lobby on:close={handleLobbyClose} />
-{/if}
+    {#if showLobby}
+      <Lobby on:close={handleLobbyClose} />
+    {/if}
 
-{#if showConfiguration}
-  <GameConfiguration
-    on:close={handleConfigurationClose}
-    on:gameCreated={handleGameCreated}
-  />
-{/if}
+    {#if showConfiguration}
+      <GameConfiguration
+        on:close={handleConfigurationClose}
+        on:gameCreated={handleGameCreated}
+      />
+    {/if}
+  </div>
+
+  {#if showAds}
+    <aside class="ad-sidebar">
+      <AdBanner
+        adUnitId={adUnitId}
+        adFormat="rectangle"
+        className="desktop-ad"
+      />
+    </aside>
+    <div class="ad-banner-mobile">
+      <AdBanner
+        adUnitId={adUnitId}
+        adFormat="horizontal"
+        className="mobile-ad"
+      />
+    </div>
+  {/if}
+</div>
+
+<style>
+  .page-container {
+    position: relative;
+    min-height: 100vh;
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
+  .ad-sidebar {
+    position: fixed;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: none;
+  }
+
+  .ad-banner-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: none;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 0.5rem;
+    text-align: center;
+  }
+
+  @media (min-width: 1024px) {
+    .ad-sidebar {
+      display: block;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .ad-banner-mobile {
+      display: block;
+    }
+  }
+</style>
 

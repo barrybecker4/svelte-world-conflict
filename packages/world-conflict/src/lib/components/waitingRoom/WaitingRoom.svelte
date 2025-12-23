@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
+import { Button, LoadingState, ConnectionStatus, AdBanner } from 'shared-ui';
   import { onMount, createEventDispatcher } from 'svelte';
         import PlayerSlotCard from './PlayerSlotCard.svelte';
   import GameSettingsDisplay from './GameSettingsDisplay.svelte';
@@ -74,6 +74,10 @@ import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
   $: openSlotsCount = game ? countOpenSlots(game) : 0;
   $: activePlayersCount = game ? countActivePlayers(game) : 0;
   $: totalActiveSlots = game ? countTotalActiveSlots(game) : GAME_CONSTANTS.MAX_PLAYERS;
+
+  // Ad configuration
+  $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
+  $: showAds = adUnitId && !loading && game;
 </script>
 
 <div class="waiting-room-overlay">
@@ -152,6 +156,16 @@ import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
         </div>
       {/if}
     </LoadingState>
+
+    {#if showAds}
+      <div class="ad-container">
+        <AdBanner
+          adUnitId={adUnitId}
+          adFormat="rectangle"
+          className="waiting-room-ad"
+        />
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -292,5 +306,13 @@ import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
       width: 100%;
       max-width: 200px;
     }
+  }
+
+  .ad-container {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(71, 85, 105, 0.3);
+    display: flex;
+    justify-content: center;
   }
 </style>

@@ -1,6 +1,24 @@
 <script lang="ts">
   import '../app.css';
+
+  // Load AdSense script if publisher ID is configured
+  $: publisherId = import.meta.env.VITE_ADSENSE_PUBLISHER_ID;
+  $: adsEnabled = typeof window !== 'undefined' && publisherId;
 </script>
+
+<svelte:head>
+  {#if publisherId}
+    <!-- Google AdSense verification -->
+    <meta name="google-adsense-account" content={publisherId} />
+  {/if}
+  {#if adsEnabled}
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={publisherId}"
+      crossorigin="anonymous"
+    ></script>
+  {/if}
+</svelte:head>
 
 <main>
   <slot />
