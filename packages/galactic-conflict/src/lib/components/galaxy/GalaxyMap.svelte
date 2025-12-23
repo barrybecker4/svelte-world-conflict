@@ -7,12 +7,14 @@
     import { useAnimationTime } from '$lib/client/hooks/useAnimationTime';
     import { useDragAndDrop } from '$lib/client/interactions/useDragAndDrop';
     import { useBattleCoordinator } from '$lib/client/hooks/useBattleCoordinator';
+    import { getPlanetRadius } from '$lib/game/entities/Planet';
     import Planet from './Planet.svelte';
     import Armada from './Armada.svelte';
     import BattleAnimationOverlay from './battle-animation/BattleAnimationOverlay.svelte';
     import FloatingTextManager from './FloatingTextManager.svelte';
     import GalaxySVGDefinitions from './GalaxySVGDefinitions.svelte';
     import DragVisualization from './DragVisualization.svelte';
+    import PlanetTooltip from './PlanetTooltip.svelte';
 
     export let gameState: GalacticGameStateData;
     export let currentPlayerId: number | null = null;
@@ -27,6 +29,7 @@
 
     let svgElement: SVGSVGElement;
     let floatingTextManager: FloatingTextManager;
+    let hoveredPlanetId: number | null = null;
 
     // Use animation time hook
     const currentTime = useAnimationTime(() => !isGameCompleted(gameState));
@@ -139,6 +142,8 @@
                 {@const canMovePlanet = isOwned && displayPlanet.ships > 0}
                 <Planet
                     planet={displayPlanet}
+                    players={gameState.players}
+                    productionRate={gameState.productionRate}
                     isSelected={selectedPlanetId === planet.id}
                     {isOwned}
                     canMove={canMovePlanet}
@@ -146,6 +151,8 @@
                     on:click={() => handlePlanetClick(planet)}
                     on:pointerdown={(e) => handlePlanetPointerDown(planet, e)}
                     on:dblclick={() => handlePlanetDoubleClick(planet)}
+                    on:hoverstart={(e) => hoveredPlanetId = e.detail.planetId}
+                    on:hoverend={() => hoveredPlanetId = null}
                 />
             {/key}
         {/each}
@@ -168,6 +175,26 @@
             currentX={$dragState.currentX}
             currentY={$dragState.currentY}
         />
+
+        <!-- Tooltips Layer (rendered last so they appear on top) -->
+        {#if hoveredPlanetId !== null}
+            {@const hoveredPlanet = gameState.planets.find(p => p.id === hoveredPlanetId)}
+            {#if hoveredPlanet && selectedPlanetId !== hoveredPlanetId}
+                {@const radius = getPlanetRadius(hoveredPlanet.volume)}
+                {@const TOOLTIP_WIDTH = 140}
+                {@const TOOLTIP_OFFSET = 15}
+                {@const showTooltipOnLeft = hoveredPlanet.position.x + radius + TOOLTIP_OFFSET + TOOLTIP_WIDTH > GALACTIC_CONSTANTS.GALAXY_WIDTH}
+                {@const tooltipX = showTooltipOnLeft ? hoveredPlanet.position.x - radius - TOOLTIP_WIDTH - TOOLTIP_OFFSET : hoveredPlanet.position.x + radius + TOOLTIP_OFFSET}
+                {@const tooltipY = hoveredPlanet.position.y - 50}
+                <PlanetTooltip
+                    planet={hoveredPlanet}
+                    players={gameState.players}
+                    productionRate={gameState.productionRate}
+                    x={tooltipX}
+                    y={tooltipY}
+                />
+            {/if}
+        {/if}
     </svg>
 </div>
 

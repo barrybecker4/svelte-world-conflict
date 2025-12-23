@@ -1,17 +1,33 @@
 <script lang="ts">
-    import type { Planet } from '$lib/game/entities/gameTypes';
+    import type { Planet, Player } from '$lib/game/entities/gameTypes';
     import { getPlanetRadius } from '$lib/game/entities/Planet';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
+    import { createEventDispatcher } from 'svelte';
 
     export let planet: Planet;
+    export let players: Player[] = [];
+    export let productionRate: number = 0;
     export let isSelected: boolean = false;
     export let isOwned: boolean = false;
     export let canMove: boolean = false;  // Whether the player can move ships from this planet
     export let hasBattle: boolean = false;
 
+    const dispatch = createEventDispatcher<{
+        hoverstart: { planetId: number };
+        hoverend: { planetId: number };
+    }>();
+
     $: radius = getPlanetRadius(planet.volume);
     $: color = getPlayerColor(planet.ownerId);
     $: glowColor = isSelected ? color : 'transparent';
+
+    function handleMouseEnter() {
+        dispatch('hoverstart', { planetId: planet.id });
+    }
+
+    function handleMouseLeave() {
+        dispatch('hoverend', { planetId: planet.id });
+    }
 </script>
 
 <!-- Outer group handles positioning only - CSS transforms won't override this -->
@@ -29,6 +45,8 @@
         on:keydown
         on:pointerdown
         on:dblclick
+        on:mouseenter={handleMouseEnter}
+        on:mouseleave={handleMouseLeave}
     >
         <!-- Invisible hit area circle - ensures consistent clickable area for all planets -->
         <circle
