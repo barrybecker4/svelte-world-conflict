@@ -1,15 +1,24 @@
 <script lang="ts">
-  export let size = 'md'; // xs, sm, md, lg, xl
-  export let color = 'primary'; // primary, blue, teal, white
-  export let text = '';
-  export let className = '';
+  interface Props {
+    size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+    color?: 'primary' | 'blue' | 'teal' | 'white';
+    text?: string;
+    className?: string;
+  }
 
-  $: spinnerClasses = [
+  let {
+    size = 'md',
+    color = 'primary',
+    text = '',
+    className = ''
+  }: Props = $props();
+
+  let spinnerClasses = $derived([
     'loading-spinner',
     `spinner-${size}`,
     `spinner-${color}`,
     className
-  ].filter(Boolean).join(' ');
+  ].filter(Boolean).join(' '));
 </script>
 
 <div class="loading-container">

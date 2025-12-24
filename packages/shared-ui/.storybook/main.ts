@@ -9,26 +9,16 @@ const config: StorybookConfig = {
   ],
   framework: {
     name: '@storybook/svelte-vite',
-    options: {
-      builder: {
-        viteConfigPath: undefined,
-      },
-    },
+    options: {},
   },
   docs: {
     autodocs: 'tag',
   },
   async viteFinal(config) {
-    // Prevent pre-bundling of @storybook/svelte and ensure proper module resolution
-    config.optimizeDeps = {
-      ...config.optimizeDeps,
-      exclude: [...(config.optimizeDeps?.exclude || []), '@storybook/svelte'],
-    };
-    
     // Ensure proper module resolution in monorepo
     config.resolve = {
       ...config.resolve,
-      dedupe: [...(config.resolve?.dedupe || []), '@storybook/svelte', 'svelte'],
+      dedupe: ['svelte'],
     };
     
     // Allow file system access for monorepo

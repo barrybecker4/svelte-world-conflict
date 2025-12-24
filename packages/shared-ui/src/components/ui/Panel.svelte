@@ -1,12 +1,27 @@
 <script lang="ts">
-  export let variant = 'default'; // default, dark, glass, error, success
-  export let size = 'md'; // sm, md, lg
-  export let padding = true;
-  export let border = true;
-  export let blur = false;
-  export let customClass = '';
+  import type { Snippet } from 'svelte';
 
-  $: classes = [
+  interface Props {
+    variant?: 'default' | 'dark' | 'glass' | 'error' | 'success';
+    size?: 'sm' | 'md' | 'lg';
+    padding?: boolean;
+    border?: boolean;
+    blur?: boolean;
+    customClass?: string;
+    children?: Snippet;
+  }
+
+  let {
+    variant = 'default',
+    size = 'md',
+    padding = true,
+    border = true,
+    blur = false,
+    customClass = '',
+    children
+  }: Props = $props();
+
+  let classes = $derived([
     'panel-base',
     `panel-${variant}`,
     `panel-${size}`,
@@ -14,11 +29,11 @@
     !border && 'panel-no-border',
     blur && 'panel-blur',
     customClass
-  ].filter(Boolean).join(' ');
+  ].filter(Boolean).join(' '));
 </script>
 
 <div class={classes}>
-  <slot />
+  {@render children?.()}
 </div>
 
 <style>

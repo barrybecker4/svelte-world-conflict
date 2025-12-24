@@ -1,7 +1,14 @@
 <!-- src/lib/components/shared/ConnectionStatus.svelte -->
 <script lang="ts">
-  export let isConnected: boolean = false;
-  export let size: 'sm' | 'md' | 'lg' = 'md';
+  interface Props {
+    isConnected?: boolean;
+    size?: 'sm' | 'md' | 'lg';
+  }
+
+  let {
+    isConnected = false,
+    size = 'md'
+  }: Props = $props();
 </script>
 
 {#if isConnected}

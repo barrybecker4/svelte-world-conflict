@@ -1,24 +1,34 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
 
-  export let adUnitId: string = '';
-  export let adFormat: 'auto' | 'rectangle' | 'horizontal' | 'vertical' = 'auto';
-  export let adSlot: string = '';
-  export let fullWidthResponsive: boolean = true;
-  export let className: string = '';
+  interface Props {
+    adUnitId?: string;
+    adFormat?: 'auto' | 'rectangle' | 'horizontal' | 'vertical';
+    adSlot?: string;
+    fullWidthResponsive?: boolean;
+    className?: string;
+  }
+
+  let {
+    adUnitId = '',
+    adFormat = 'auto',
+    adSlot = '',
+    fullWidthResponsive = true,
+    className = ''
+  }: Props = $props();
 
   let adContainer: HTMLDivElement;
-  let adLoaded = false;
-  let adError = false;
-  let adScriptLoaded = false;
+  let adLoaded = $state(false);
+  let adError = $state(false);
+  let adScriptLoaded = $state(false);
 
   // Check if AdSense is enabled (publisher ID configured)
-  $: adsEnabled = typeof window !== 'undefined' && 
+  let adsEnabled = $derived(typeof window !== 'undefined' && 
     (import.meta.env.VITE_ADSENSE_PUBLISHER_ID || 
-     import.meta.env.VITE_ADSENSE_ENABLED === 'true');
+     import.meta.env.VITE_ADSENSE_ENABLED === 'true'));
 
   // Determine ad size based on format
-  $: adSize = getAdSize(adFormat);
+  let adSize = $derived(getAdSize(adFormat));
 
   function getAdSize(format: string): { width: string; height: string; style: string } {
     switch (format) {

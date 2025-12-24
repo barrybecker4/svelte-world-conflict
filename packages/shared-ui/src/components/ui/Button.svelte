@@ -1,24 +1,41 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import type { Snippet } from 'svelte';
+  import type { HTMLButtonAttributes } from 'svelte/elements';
 
-  const dispatch = createEventDispatcher();
+  interface Props extends HTMLButtonAttributes {
+    variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'ghost';
+    size?: 'sm' | 'md' | 'lg';
+    disabled?: boolean;
+    loading?: boolean;
+    type?: 'button' | 'submit' | 'reset';
+    title?: string;
+    uppercase?: boolean;
+    customClass?: string;
+    onclick?: (event: MouseEvent) => void;
+    children?: Snippet;
+  }
 
-  export let variant = 'primary'; // primary, secondary, danger, success, ghost
-  export let size = 'md'; // sm, md, lg
-  export let disabled = false;
-  export let loading = false;
-  export let type: 'button' | 'submit' | 'reset' = 'button';
-  export let title = '';
-  export let uppercase = false;
-  export let customClass = '';
+  let {
+    variant = 'primary',
+    size = 'md',
+    disabled = false,
+    loading = false,
+    type = 'button',
+    title = '',
+    uppercase = false,
+    customClass = '',
+    onclick,
+    children,
+    ...rest
+  }: Props = $props();
 
   function handleClick(event: MouseEvent) {
-    if (!disabled && !loading) {
-      dispatch('click', event);
+    if (!disabled && !loading && onclick) {
+      onclick(event);
     }
   }
 
-  $: classes = [
+  let classes = $derived([
     'btn-base',
     `btn-${variant}`,
     `btn-${size}`,
@@ -26,7 +43,7 @@
     disabled && 'btn-disabled',
     loading && 'btn-loading',
     customClass
-  ].filter(Boolean).join(' ');
+  ].filter(Boolean).join(' '));
 </script>
 
 <button
@@ -34,13 +51,13 @@
   {disabled}
   {type}
   {title}
-  on:click={handleClick}
-  {...$$restProps}
+  onclick={handleClick}
+  {...rest}
 >
   {#if loading}
     <div class="btn-spinner"></div>
   {/if}
-  <slot />
+  {@render children?.()}
 </button>
 
 <style>

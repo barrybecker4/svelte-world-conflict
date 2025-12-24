@@ -1,20 +1,35 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import type { Snippet } from 'svelte';
   import IconButton from './IconButton.svelte';
   import Panel from './Panel.svelte';
   import Section from './Section.svelte';
 
-  const dispatch = createEventDispatcher();
+  interface Props {
+    isOpen?: boolean;
+    title?: string;
+    showHeader?: boolean;
+    showCloseButton?: boolean;
+    width?: string;
+    height?: string;
+    onclose?: () => void;
+    children?: Snippet;
+    footer?: Snippet;
+  }
 
-  export let isOpen = false;
-  export let title = '';
-  export let showHeader = true;
-  export let showCloseButton = true;
-  export let width = '500px';
-  export let height = '90vh';
+  let {
+    isOpen = false,
+    title = '',
+    showHeader = true,
+    showCloseButton = true,
+    width = '500px',
+    height = '90vh',
+    onclose,
+    children,
+    footer
+  }: Props = $props();
 
   function handleClose() {
-    dispatch('close');
+    onclose?.();
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -33,15 +48,19 @@
       handleClose();
     }
   }
+
+  function stopPropagation(event: Event) {
+    event.stopPropagation();
+  }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen}
   <div
     class="modal-backdrop"
-    on:click={handleBackdropClick}
-    on:keydown={handleBackdropKeydown}
+    onclick={handleBackdropClick}
+    onkeydown={handleBackdropKeydown}
     role="button"
     aria-label="Close modal"
     tabindex="0"
@@ -49,8 +68,8 @@
     <div
       class="modal-wrapper"
       style="width: {width}; max-height: {height}"
-      on:click|stopPropagation
-      on:keydown|stopPropagation
+      onclick={stopPropagation}
+      onkeydown={stopPropagation}
       role="dialog"
       tabindex="-1"
       aria-labelledby={showHeader ? "modal-title" : undefined}
@@ -64,24 +83,24 @@
 
         {#if showHeader}
           <Section title={title} borderBottom={true}>
-            <svelte:fragment slot="actions">
+            {#snippet actions()}
               {#if showCloseButton}
-                <IconButton variant="default" size="sm" title="Close" on:click={handleClose}>
+                <IconButton variant="default" size="sm" title="Close" onclick={handleClose}>
                   ✕
                 </IconButton>
               {/if}
-            </svelte:fragment>
+            {/snippet}
           </Section>
         {/if}
 
         <Section title="" borderBottom={false}>
-          <slot />
+          {@render children?.()}
         </Section>
 
-        {#if $$slots.footer}
+        {#if footer}
           <Section title="" borderBottom={false} customClass="modal-footer-section">
             <div class="modal-footer">
-              <slot name="footer" />
+              {@render footer()}
             </div>
           </Section>
         {/if}

@@ -44,7 +44,7 @@
   {isOpen}
   title="Test Game Sounds"
   width="600px"
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="sound-test-container">
     <p class="description">
@@ -56,7 +56,7 @@
         <Button
           variant={playingSound === sound.key ? 'success' : 'secondary'}
           size="md"
-          on:click={() => playSound(sound.key)}
+          onclick={() => playSound(sound.key)}
           disabled={playingSound !== null && playingSound !== sound.key}
         >
           <span class="sound-icon">{sound.icon}</span>
@@ -66,11 +66,11 @@
     </div>
   </div>
 
-  <svelte:fragment slot="footer">
-    <Button variant="primary" on:click={handleClose}>
+  {#snippet footer()}
+    <Button variant="primary" onclick={handleClose}>
       Close
     </Button>
-  </svelte:fragment>
+  {/snippet}
 </Modal>
 
 <style>

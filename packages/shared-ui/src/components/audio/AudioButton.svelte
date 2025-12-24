@@ -37,7 +37,7 @@
   }
 </script>
 
-<IconButton title="Toggle Audio" on:click={toggleAudio} disabled={!isInitialized}>
+<IconButton title="Toggle Audio" onclick={toggleAudio} disabled={!isInitialized}>
     {#if isEnabled}🔊{:else}🔇{/if}
 </IconButton>
 

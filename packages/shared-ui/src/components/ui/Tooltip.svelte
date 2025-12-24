@@ -1,14 +1,25 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   
-  export let id: string;
-  export let x: number; // percentage (0-100)
-  export let y: number; // percentage (0-100)
-  export let text: string;
-  export let width: number = 7; // percentage
-  export let onDismiss: (id: string) => void;
+  interface Props {
+    id: string;
+    x: number; // percentage (0-100)
+    y: number; // percentage (0-100)
+    text: string;
+    width?: number; // percentage
+    onDismiss: (id: string) => void;
+  }
+
+  let {
+    id,
+    x,
+    y,
+    text,
+    width = 7,
+    onDismiss
+  }: Props = $props();
   
-  let visible = false;
+  let visible = $state(false);
   
   onMount(() => {
     // Fade in after mount
@@ -22,16 +33,16 @@
   }
   
   // Calculate position
-  $: left = x - (width + 1) * 0.5;
-  $: bottom = 100 - y;
+  let left = $derived(x - (width + 1) * 0.5);
+  let bottom = $derived(100 - y);
 </script>
 
 <div 
   class="tooltip"
   class:visible
   style="bottom: {bottom}%; left: {left}%; width: {width}%"
-  on:click={handleClick}
-  on:keydown={(e) => e.key === 'Enter' && handleClick()}
+  onclick={handleClick}
+  onkeydown={(e) => e.key === 'Enter' && handleClick()}
   role="button"
   tabindex="0"
   title="Click to dismiss"

@@ -1,35 +1,48 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import type { Snippet } from 'svelte';
+  import type { HTMLButtonAttributes } from 'svelte/elements';
 
-  const dispatch = createEventDispatcher();
+  interface Props extends HTMLButtonAttributes {
+    disabled?: boolean;
+    title?: string;
+    size?: 'sm' | 'md' | 'lg';
+    variant?: 'default' | 'primary' | 'danger';
+    onclick?: (event: MouseEvent) => void;
+    children?: Snippet;
+  }
 
-  export let disabled = false;
-  export let title = '';
-  export let size = 'md'; // sm, md, lg
-  export let variant = 'default'; // default, primary, danger
+  let {
+    disabled = false,
+    title = '',
+    size = 'md',
+    variant = 'default',
+    onclick,
+    children,
+    ...rest
+  }: Props = $props();
 
   function handleClick(event: MouseEvent) {
-    if (!disabled) {
-      dispatch('click', event);
+    if (!disabled && onclick) {
+      onclick(event);
     }
   }
 
-  $: classes = [
+  let classes = $derived([
     'icon-btn',
     `icon-btn-${size}`,
     `icon-btn-${variant}`,
     disabled && 'icon-btn-disabled'
-  ].filter(Boolean).join(' ');
+  ].filter(Boolean).join(' '));
 </script>
 
 <button
   class={classes}
   {disabled}
   {title}
-  on:click={handleClick}
-  {...$$restProps}
+  onclick={handleClick}
+  {...rest}
 >
-  <slot />
+  {@render children?.()}
 </button>
 
 <style>

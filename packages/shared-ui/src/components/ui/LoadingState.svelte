@@ -1,22 +1,38 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Spinner from './Spinner.svelte';
   import Button from './Button.svelte';
 
-  export let loading = false;
-  export let error: string | null | undefined = null;
-  export let loadingText = 'Loading...';
-  export let spinnerSize = 'lg';
-  export let spinnerColor = 'teal';
-  export let showRetry = false;
-  export let retryText = 'Try Again';
-  export let containerClass = '';
+  interface Props {
+    loading?: boolean;
+    error?: string | null | undefined;
+    loadingText?: string;
+    spinnerSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+    spinnerColor?: 'primary' | 'blue' | 'teal' | 'white';
+    showRetry?: boolean;
+    retryText?: string;
+    containerClass?: string;
+    onretry?: () => void;
+    children?: Snippet;
+    errorActions?: Snippet;
+  }
 
-  // Event dispatcher for retry action
-  import { createEventDispatcher } from 'svelte';
-  const dispatch = createEventDispatcher();
+  let {
+    loading = false,
+    error = null,
+    loadingText = 'Loading...',
+    spinnerSize = 'lg',
+    spinnerColor = 'teal',
+    showRetry = false,
+    retryText = 'Try Again',
+    containerClass = '',
+    onretry,
+    children,
+    errorActions
+  }: Props = $props();
 
   function handleRetry() {
-    dispatch('retry');
+    onretry?.();
   }
 </script>
 
@@ -33,16 +49,16 @@
 
       <div class="error-actions">
         {#if showRetry}
-          <Button variant="primary" on:click={handleRetry}>
+          <Button variant="primary" onclick={handleRetry}>
             {retryText}
           </Button>
         {/if}
-        <slot name="error-actions" />
+        {@render errorActions?.()}
       </div>
     </div>
   </div>
 {:else}
-  <slot />
+  {@render children?.()}
 {/if}
 
 <style>

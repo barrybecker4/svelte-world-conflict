@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script lang="ts" module>
   export interface StatItem {
     value: number | string;
     label: string;
@@ -13,9 +13,17 @@
    * Used in GameInfoPanel, TempleUpgradePanel, etc.
    */
 
-  export let items: StatItem[] = [];
-  export let columns: number = 2;
-  export let compact: boolean = false;
+  interface Props {
+    items?: StatItem[];
+    columns?: number;
+    compact?: boolean;
+  }
+
+  let {
+    items = [],
+    columns = 2,
+    compact = false
+  }: Props = $props();
 </script>
 
 <div class="stat-display" class:compact style="--stat-columns: {columns}">

@@ -1,24 +1,43 @@
 <script lang="ts">
-  export let title = '';
-  export let subtitle = '';
-  export let padding = '16px';
-  export let borderBottom = true;
-  export let flex = false;
-  export let flexDirection = 'column';
-  export let gap = '8px';
-  export let customClass = '';
+  import type { Snippet } from 'svelte';
 
-  $: classes = [
+  interface Props {
+    title?: string;
+    subtitle?: string;
+    padding?: string;
+    borderBottom?: boolean;
+    flex?: boolean;
+    flexDirection?: string;
+    gap?: string;
+    customClass?: string;
+    children?: Snippet;
+    actions?: Snippet;
+  }
+
+  let {
+    title = '',
+    subtitle = '',
+    padding = '16px',
+    borderBottom = true,
+    flex = false,
+    flexDirection = 'column',
+    gap = '8px',
+    customClass = '',
+    children,
+    actions
+  }: Props = $props();
+
+  let classes = $derived([
     'section-base',
     borderBottom && 'section-border',
     flex && 'section-flex',
     customClass
-  ].filter(Boolean).join(' ');
+  ].filter(Boolean).join(' '));
 
-  $: sectionStyle = `
+  let sectionStyle = $derived(`
     padding: ${padding};
     ${flex ? `display: flex; flex-direction: ${flexDirection}; gap: ${gap};` : ''}
-  `;
+  `);
 </script>
 
 <section class={classes} style={sectionStyle}>
@@ -32,12 +51,12 @@
   {/if}
 
   <div class="section-content">
-    <slot />
+    {@render children?.()}
   </div>
 
-  {#if $$slots.actions}
+  {#if actions}
     <div class="section-actions">
-      <slot name="actions" />
+      {@render actions()}
     </div>
   {/if}
 </section>
