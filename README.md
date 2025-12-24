@@ -1,6 +1,6 @@
 # Svelte Multiplayer Games Monorepo
 
-A collection of real-time multiplayer games built with SvelteKit and Cloudflare infrastructure. This monorepo contains multiple multiplayer games and a reusable **Svelte Multiplayer Framework** that powers them.
+A collection of multiplayer games built with SvelteKit and Cloudflare infrastructure. This monorepo contains multiple multiplayer games and a reusable **Svelte Multiplayer Framework** that powers them.
 
 ## 📦 Packages
 
@@ -15,27 +15,13 @@ A minimal WebSocket framework for building real-time multiplayer games.
 - Type-safe and extensible
 - Generic - works with any turn-based or real-time game
 
+**Games:**
+- [World Conflict]((./packages/world-conflict))
+- [Galactic Conflict](./packages/galactic-conflict)
+
 ### [`shared-ui`](./packages/shared-ui)
 
 Shared Svelte UI components used across all games.
-
-**Features:**
-- Reusable UI components (Button, Modal, Panel, Spinner, etc.)
-- Chart components (LineChart with Chart.js)
-- Audio components (AudioButton, SoundTestModal)
-- Consistent styling and behavior
-- Source-level sharing (no build step required)
-
-### [`world-conflict`](./packages/world-conflict)
-
-The World Conflict strategy game - a modernized port from Google Apps Script.
-
-**Features:**
-- Real-time multiplayer (up to 4 players)
-- Strategic combat system inspired by Risk
-- AI opponents with different personalities
-- Persistent game state
-- Mobile-friendly interface
 
 ## 🚀 Quick Start
 
@@ -53,7 +39,7 @@ This will automatically install dependencies for all packages in the workspace.
 
 Each game requires the WebSocket worker to be running. You can start them separately or together:
 
-**Option 1: Start worker and game separately**
+**Start worker and game separately**
 
 ```bash
 # Terminal 1: Start the WebSocket worker
@@ -64,16 +50,6 @@ npm run dev -w world-conflict
 # or
 npm run dev -w galactic-conflict
 ```
-
-**Option 2: Start everything with concurrently**
-
-```bash
-npm run dev:full
-```
-
-Then open the game URL (typically [http://localhost:5173](http://localhost:5173))
-
-See individual game READMEs for game-specific development instructions.
 
 ### Logging Configuration
 
@@ -254,22 +230,6 @@ From the root directory:
 | `npm run format` | Format code in all packages |
 | `npm run lint` | Lint code in all packages |
 
-### Package-Specific Scripts
-
-Run commands in a specific package:
-
-```bash
-# Run dev server for a game
-npm run dev -w world-conflict
-npm run dev -w galactic-conflict
-
-# Build only the framework
-npm run build -w multiplayer-framework
-
-# Run tests in a specific package
-npm run test -w world-conflict
-npm run test -w galactic-conflict
-```
 
 ## 🎯 Using the Framework in Your Own Game
 
