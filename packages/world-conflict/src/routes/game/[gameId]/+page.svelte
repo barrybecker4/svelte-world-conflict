@@ -76,7 +76,7 @@ import { page } from '$app/stores';
   on:retry={handleRetry}
 >
   <svelte:fragment slot="error-actions">
-    <Button variant="primary" on:click={handleReturnHome}>
+    <Button variant="primary" onclick={handleReturnHome}>
       Return to Home
     </Button>
   </svelte:fragment>

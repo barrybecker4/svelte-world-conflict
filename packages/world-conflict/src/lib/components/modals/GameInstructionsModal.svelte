@@ -47,7 +47,7 @@ import { Button, IconButton, Modal } from 'shared-ui';
   {isOpen}
   showHeader={false}
   width="1000px"
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="tutorial-container" data-testid="instructions-modal">
     <div class="tutorial-header">
@@ -66,7 +66,7 @@ import { Button, IconButton, Modal } from 'shared-ui';
       </div>
 
       <div class="close-button-wrapper">
-        <IconButton variant="default" size="lg" title="Close" on:click={handleClose} data-testid="instructions-close-btn">
+        <IconButton variant="default" size="lg" title="Close" onclick={handleClose} data-testid="instructions-close-btn">
           ✕
         </IconButton>
       </div>
@@ -78,7 +78,7 @@ import { Button, IconButton, Modal } from 'shared-ui';
         size="lg"
         disabled={currentCard === 0}
         title="Previous"
-        on:click={prevCard}
+        onclick={prevCard}
       >
         ‹
       </IconButton>
@@ -90,7 +90,7 @@ import { Button, IconButton, Modal } from 'shared-ui';
           variant="primary"
           size="lg"
           title="Next"
-          on:click={nextCard}
+          onclick={nextCard}
         >
           ›
         </IconButton>
@@ -134,7 +134,7 @@ import { Button, IconButton, Modal } from 'shared-ui';
             variant="primary"
             size="lg"
             title="Got it"
-            on:click={complete}
+            onclick={complete}
           >
             Got it!
           </Button>

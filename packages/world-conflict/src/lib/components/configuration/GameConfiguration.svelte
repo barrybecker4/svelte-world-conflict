@@ -256,7 +256,7 @@ import { Button, Panel, Section } from 'shared-ui';
             size="md"
             disabled={createGameDisabled}
             loading={creating}
-            on:click={createGame}
+            onclick={createGame}
             title={warning}
             data-testid="create-game-btn"
           >

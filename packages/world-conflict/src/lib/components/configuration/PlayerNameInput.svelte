@@ -41,7 +41,7 @@
     size="lg"
     disabled={!playerName.trim()}
     loading={loading}
-    on:click={handleProceed}
+    onclick={handleProceed}
     data-testid="player-name-submit"
   >
     Continue

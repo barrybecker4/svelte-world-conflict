@@ -149,7 +149,7 @@ import { Button, LoadingState } from 'shared-ui';
     size="sm"
     loading={loadingPreview}
     title="Generate new map"
-    on:click={loadPreviewMap}
+    onclick={loadPreviewMap}
   >
     New Map
   </Button>

@@ -136,7 +136,7 @@ import { Button, LoadingState, ConnectionStatus, AdBanner } from 'shared-ui';
               <Button
                 variant="success"
                 size="lg"
-                on:click={handleStartGame}
+                onclick={handleStartGame}
                 disabled={loading}
                 data-testid="start-game-btn"
               >
@@ -146,7 +146,7 @@ import { Button, LoadingState, ConnectionStatus, AdBanner } from 'shared-ui';
             <Button
               variant="danger"
               size="lg"
-              on:click={handleLeaveGame}
+              onclick={handleLeaveGame}
               disabled={loading}
               data-testid="leave-game-btn"
             >

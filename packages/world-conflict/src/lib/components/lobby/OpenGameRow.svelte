@@ -38,7 +38,7 @@
           variant={getSlotButtonVariant(slotInfo)}
           size="sm"
           disabled={!slotInfo.canJoin}
-          on:click={() => handleSlotClick(slotIndex, slotInfo)}
+          onclick={() => handleSlotClick(slotIndex, slotInfo)}
           customClass="slot-button {slotInfo.type}"
         >
           {slotInfo.name}

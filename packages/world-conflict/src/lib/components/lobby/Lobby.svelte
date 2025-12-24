@@ -110,7 +110,7 @@ import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
           {loading}
           loadingText="Loading available games..."
           showRetry={true}
-          on:retry={handleRetry}
+          onretry={handleRetry}
         >
           {#if games.length > 0}
             <div class="games-list">
@@ -128,17 +128,17 @@ import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
         </LoadingState>
 
         <div class="stats-button-container">
-          <Button variant="ghost" size="sm" on:click={() => showStats = true}>
+          <Button variant="ghost" size="sm" onclick={() => showStats = true}>
             📊 Historical Statistics
           </Button>
         </div>
       </div>
 
       <div class="bottom-box">
-        <Button variant="primary" size="lg" on:click={close} data-testid="new-game-btn" data-tooltip="Create a new game if none of the above are to your liking">
+        <Button variant="primary" size="lg" onclick={close} data-testid="new-game-btn" data-tooltip="Create a new game if none of the above are to your liking">
           Configure New Game
         </Button>
-        <Button variant="ghost" size="lg" on:click={close} data-testid="lobby-back-btn">
+        <Button variant="ghost" size="lg" onclick={close} data-testid="lobby-back-btn">
           Back
         </Button>
       </div>

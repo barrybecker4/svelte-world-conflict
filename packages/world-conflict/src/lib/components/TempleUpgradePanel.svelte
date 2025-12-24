@@ -161,7 +161,7 @@ import { Button, Panel, Section } from 'shared-ui';
 
   <!-- Done Button -->
   <Section title="">
-    <Button variant="secondary" size="lg" uppercase on:click={handleDone}>
+    <Button variant="secondary" size="lg" uppercase onclick={handleDone}>
       Done
     </Button>
   </Section>

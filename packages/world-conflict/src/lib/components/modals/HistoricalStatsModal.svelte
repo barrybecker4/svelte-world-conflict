@@ -93,7 +93,7 @@
   title="Historical Statistics"
   width="900px"
   height="85vh"
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="stats-container">
     {#if loading}
@@ -104,7 +104,7 @@
     {:else if error}
       <div class="error-state">
         <p>⚠️ {error}</p>
-        <Button variant="secondary" on:click={fetchStats}>Retry</Button>
+        <Button variant="secondary" onclick={fetchStats}>Retry</Button>
       </div>
     {:else if stats.length === 0}
       <div class="empty-state">
@@ -172,7 +172,7 @@
   </div>
 
   <svelte:fragment slot="footer">
-    <Button variant="secondary" on:click={handleClose}>Close</Button>
+    <Button variant="secondary" onclick={handleClose}>Close</Button>
   </svelte:fragment>
 </Modal>
 

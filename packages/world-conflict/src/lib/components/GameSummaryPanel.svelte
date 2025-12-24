@@ -133,7 +133,7 @@ import { Button, Panel, Section } from 'shared-ui';
 
   <!-- Play Again Button -->
   <Section title="" borderBottom={false}>
-    <Button variant="primary" size="lg" on:click={onPlayAgain} data-testid="play-again-btn">
+    <Button variant="primary" size="lg" onclick={onPlayAgain} data-testid="play-again-btn">
       Play Again
     </Button>
   </Section>

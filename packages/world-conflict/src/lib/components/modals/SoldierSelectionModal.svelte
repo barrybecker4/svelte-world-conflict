@@ -34,7 +34,7 @@ import { Button, Modal } from 'shared-ui';
 <Modal
   {isOpen}
   title="Select Soldiers to Move"
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="soldier-display">
     <!-- Native slider control -->
@@ -61,14 +61,14 @@ import { Button, Modal } from 'shared-ui';
     </div>
   </div>
 
-  <div slot="footer" class="modal-footer">
-    <Button variant="secondary" on:click={handleCancel}>
+  {#snippet footer()}
+    <Button variant="secondary" onclick={handleCancel}>
       Cancel
     </Button>
-    <Button variant="success" on:click={handleConfirm}>
+    <Button variant="success" onclick={handleConfirm}>
       Move {clampedSelection} Soldier{clampedSelection === 1 ? '' : 's'}
     </Button>
-  </div>
+  {/snippet}
 </Modal>
 
 <style>

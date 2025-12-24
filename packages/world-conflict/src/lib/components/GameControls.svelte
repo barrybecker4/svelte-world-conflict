@@ -31,7 +31,7 @@
     <Button
       variant="primary"
       disabled={!isPlayerTurn || playerFaith < 10}
-      on:click={onBuyArmies}
+      onclick={onBuyArmies}
     >
       Buy Armies (10 Faith)
     </Button>
@@ -39,7 +39,7 @@
     <Button
       variant="secondary"
       disabled={!isPlayerTurn || playerFaith < 50}
-      on:click={onUpgradeTemple}
+      onclick={onUpgradeTemple}
     >
       Upgrade Temple (50 Faith)
     </Button>
@@ -47,7 +47,7 @@
     <Button
       variant="warning"
       disabled={!canUndo || !isPlayerTurn}
-      on:click={onUndo}
+      onclick={onUndo}
     >
       ↩️ Undo
     </Button>
@@ -55,7 +55,7 @@
     <Button
       variant="success"
       disabled={!canEndTurn || !isPlayerTurn}
-      on:click={onEndTurn}
+      onclick={onEndTurn}
     >
       End Turn
     </Button>

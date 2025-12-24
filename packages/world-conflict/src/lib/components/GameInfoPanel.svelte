@@ -141,11 +141,11 @@ import { Button, IconButton, Panel, Section, AudioButton } from 'shared-ui';
   </Section>
 
   <Section title="" flex={true} flexDirection="column" gap="8px">
-    <Button variant="secondary" uppercase disabled={!canUndo || !isMyTurn} on:click={onUndo}>
+    <Button variant="secondary" uppercase disabled={!canUndo || !isMyTurn} onclick={onUndo}>
       ↩️ Undo
     </Button>
 
-    <Button variant="danger" size="lg" uppercase disabled={!isMyTurn || battleInProgress} on:click={onEndTurn} data-testid="end-turn-btn">
+    <Button variant="danger" size="lg" uppercase disabled={!isMyTurn || battleInProgress} onclick={onEndTurn} data-testid="end-turn-btn">
       END TURN
     </Button>
   </Section>
@@ -154,10 +154,10 @@ import { Button, IconButton, Panel, Section, AudioButton } from 'shared-ui';
   <Section title="" borderBottom={false}>
     <div class="icon-actions">
       <AudioButton {audioSystem} testSound={SOUNDS.CLICK} />
-      <IconButton title="Instructions" on:click={onShowInstructions}>❓</IconButton>
-      <IconButton title="Resign" on:click={onResign}>🏳️</IconButton>
+      <IconButton title="Instructions" onclick={onShowInstructions}>❓</IconButton>
+      <IconButton title="Resign" onclick={onResign}>🏳️</IconButton>
       {#if import.meta.env.DEV}
-        <IconButton title="Test Sounds" on:click={onOpenSoundTest}>🎵</IconButton>
+        <IconButton title="Test Sounds" onclick={onOpenSoundTest}>🎵</IconButton>
       {/if}
     </div>
 
