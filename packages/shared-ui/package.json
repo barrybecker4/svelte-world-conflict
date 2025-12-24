@@ -20,7 +20,6 @@
     "chart.js": "^4.5.1"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "^3.2.7",
     "@storybook/addon-essentials": "^8.5.3",
     "@storybook/addon-interactions": "^8.5.3",
     "@storybook/addon-links": "^8.5.3",
