@@ -2,25 +2,15 @@
  * ArmadaManager - Handles armada-related operations
  */
 
-import type { Armada, GameEvent } from '$lib/game/entities/gameTypes';
-import { v4 as uuidv4 } from 'uuid';
+import type { Armada } from '$lib/game/entities/gameTypes';
 
 export class ArmadaManager {
     constructor(
-        private armadas: Armada[],
-        private scheduleEventCallback: (event: GameEvent) => void
+        private armadas: Armada[]
     ) {}
 
     addArmada(armada: Armada): void {
         this.armadas.push(armada);
-
-        // Schedule arrival event
-        this.scheduleEventCallback({
-            id: uuidv4(),
-            type: 'armada_arrival',
-            scheduledTime: armada.arrivalTime,
-            payload: { armadaId: armada.id },
-        });
     }
 
     removeArmada(armadaId: string): Armada | undefined {

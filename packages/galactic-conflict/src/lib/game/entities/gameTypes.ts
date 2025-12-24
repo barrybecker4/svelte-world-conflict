@@ -159,7 +159,6 @@ export interface PlayerEliminationEvent {
 // ==================== EVENTS ====================
 
 export type GameEventType = 
-    | 'armada_arrival'
     | 'resource_tick'
     | 'game_end';
 
@@ -168,11 +167,7 @@ export interface GameEvent {
     type: GameEventType;
     /** Unix timestamp when this event should be processed */
     scheduledTime: number;
-    payload: ArmadaArrivalPayload | ResourceTickPayload | GameEndPayload;
-}
-
-export interface ArmadaArrivalPayload {
-    armadaId: string;
+    payload: ResourceTickPayload | GameEndPayload;
 }
 
 export interface ResourceTickPayload {

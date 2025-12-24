@@ -70,7 +70,6 @@ export class GalacticGameState {
             this.state.eliminatedPlayers,
             this.state.resourcesByPlayer
         );
-        // Initialize eventManager first, as armadaManager depends on it
         this.eventManager = new EventManager(
             this.state.eventQueue,
             this.state.recentBattleReplays,
@@ -78,10 +77,7 @@ export class GalacticGameState {
             this.state.recentConquestEvents,
             this.state.recentPlayerEliminationEvents
         );
-        this.armadaManager = new ArmadaManager(
-            this.state.armadas,
-            (event) => this.eventManager.scheduleEvent(event)
-        );
+        this.armadaManager = new ArmadaManager(this.state.armadas);
     }
 
     /**

@@ -7,12 +7,13 @@
  * - Game end conditions
  */
 
-import type { GameEvent, ArmadaArrivalPayload } from '$lib/game/entities/gameTypes';
+import type { GameEvent } from '$lib/game/entities/gameTypes';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { BattleManager } from '$lib/game/mechanics/BattleManager';
 import { GALACTIC_CONSTANTS, GAME_STATUS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 import { processAITurns } from '$lib/server/ai';
+import { hasArmadaArrived } from '$lib/game/entities/Armada';
 
 export class GameLoop {
     private battleManager: BattleManager;
@@ -29,6 +30,15 @@ export class GameLoop {
         let eventsProcessed = false;
         const pendingEvents: string[] = [];
 
+        // Process armada arrivals directly from armadas first
+        // Armadas are the source of truth - they contain their arrival time
+        // This ensures armadas are always processed even if events are missing
+        const armadasProcessed = this.processArrivedArmadas(currentTime);
+        if (armadasProcessed) {
+            eventsProcessed = true;
+        }
+
+        // Then process other scheduled events
         while (true) {
             const event = this.gameState.getNextEvent();
 
@@ -63,16 +73,37 @@ export class GameLoop {
     }
 
     /**
+     * Process all armadas that have arrived
+     * This is the source of truth - armadas contain their arrival time
+     * @returns true if any armadas were processed
+     */
+    private processArrivedArmadas(currentTime: number): boolean {
+        const armadas = this.gameState.armadas;
+        const arrivedArmadas: string[] = [];
+
+        // Find all armadas that have arrived
+        for (const armada of armadas) {
+            if (hasArmadaArrived(armada, currentTime)) {
+                arrivedArmadas.push(armada.id);
+            }
+        }
+
+        // Process each arrived armada
+        for (const armadaId of arrivedArmadas) {
+            logger.info(`[GameLoop] Processing arrived armada ${armadaId} (checked directly from armada state)`);
+            this.battleManager.handleArmadaArrival(armadaId);
+        }
+
+        return arrivedArmadas.length > 0;
+    }
+
+    /**
      * Process a single event
      */
     private processEvent(event: GameEvent, currentTime: number): void {
         logger.debug(`Processing event: ${event.type} at ${event.scheduledTime}`);
 
         switch (event.type) {
-            case 'armada_arrival':
-                this.processArmadaArrival(event.payload as ArmadaArrivalPayload);
-                break;
-
             case 'resource_tick':
                 this.processResourceTick(currentTime);
                 break;
@@ -84,15 +115,6 @@ export class GameLoop {
             default:
                 logger.warn(`Unknown event type: ${event.type}`);
         }
-    }
-
-    /**
-     * Process armada arrival event
-     * Note: Battles are resolved immediately when armada arrives - no delayed rounds
-     */
-    private processArmadaArrival(payload: ArmadaArrivalPayload): void {
-        logger.info(`[GameLoop] Processing armada arrival: ${payload.armadaId}`);
-        this.battleManager.handleArmadaArrival(payload.armadaId);
     }
 
     /**
