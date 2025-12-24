@@ -5,8 +5,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
-import { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import { createPlayer, handleApiError } from '$lib/server/api-utils';
+import { createPlayer, handleApiError, startGame } from '$lib/server/api-utils';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';
 
@@ -52,7 +51,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         // Auto-start the game if all slots are filled
         if (canStart) {
             logger.info(`All slots filled - auto-starting game ${gameId}`);
-            const startResult = await autoStartGame(gameId, gameStorage);
+            const startResult = await startGame(gameId, gameStorage);
 
             if (startResult.success) {
                 return json({
@@ -77,40 +76,4 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return handleApiError(error, 'joining game', { platform });
     }
 };
-
-async function autoStartGame(gameId: string, gameStorage: GameStorage): Promise<{ success: boolean; gameState?: any }> {
-    try {
-        const gameRecord = await gameStorage.loadGame(gameId);
-
-        if (!gameRecord || gameRecord.status !== 'PENDING' || !gameRecord.pendingConfiguration) {
-            return { success: false };
-        }
-
-        // Create game state from pending configuration
-        const gameState = GalacticGameState.createInitialState(
-            gameId,
-            gameRecord.pendingConfiguration.playerSlots,
-            gameRecord.pendingConfiguration.settings!,
-            `seed-${gameId}`
-        );
-
-        // Update game record
-        gameRecord.status = 'ACTIVE';
-        gameRecord.gameState = gameState.toJSON();
-        gameRecord.players = gameState.players;
-        delete gameRecord.pendingConfiguration;
-
-        await gameStorage.saveGame(gameRecord);
-
-        // Notify all players via WebSocket
-        await WebSocketNotifications.gameStarted(gameId, gameRecord.gameState);
-
-        logger.info(`Game ${gameId} auto-started with ${gameRecord.players.length} players`);
-
-        return { success: true, gameState: gameRecord.gameState };
-    } catch (error) {
-        logger.error(`Failed to auto-start game ${gameId}:`, error);
-        return { success: false };
-    }
-}
 

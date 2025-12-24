@@ -5,10 +5,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage } from '$lib/server/storage/GameStorage';
-import { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import { handleApiError } from '$lib/server/api-utils';
-import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
-import { logger } from 'multiplayer-framework/shared';
+import { handleApiError, startGame } from '$lib/server/api-utils';
 
 export const POST: RequestHandler = async ({ params, platform }) => {
     try {
@@ -28,32 +25,17 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             return json({ error: 'Game configuration not found' }, { status: 400 });
         }
 
-        // Create game state from pending configuration
-        const gameState = GalacticGameState.createInitialState(
-            gameId,
-            gameRecord.pendingConfiguration.playerSlots,
-            gameRecord.pendingConfiguration.settings!,
-            `seed-${gameId}`
-        );
+        const startResult = await startGame(gameId, gameStorage);
 
-        // Update game record
-        gameRecord.status = 'ACTIVE';
-        gameRecord.gameState = gameState.toJSON();
-        gameRecord.players = gameState.players;
-        delete gameRecord.pendingConfiguration;
-
-        await gameStorage.saveGame(gameRecord);
-
-        // Notify all players via WebSocket
-        await WebSocketNotifications.gameStarted(gameId, gameRecord.gameState);
-
-        logger.info(`Game ${gameId} started with ${gameRecord.players.length} players`);
+        if (!startResult.success) {
+            return json({ error: 'Failed to start game' }, { status: 500 });
+        }
 
         return json({
             success: true,
             gameId,
             status: 'ACTIVE',
-            gameState: gameRecord.gameState,
+            gameState: startResult.gameState,
             message: 'Game started successfully',
         });
 
