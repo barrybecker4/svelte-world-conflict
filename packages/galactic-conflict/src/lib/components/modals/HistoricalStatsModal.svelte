@@ -77,7 +77,7 @@
   title="Historical Statistics"
   width="900px"
   height="85vh"
-  on:close={handleClose}
+  onclose={handleClose}
 >
   <div class="stats-container">
     {#if loading}
