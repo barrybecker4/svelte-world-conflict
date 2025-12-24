@@ -1,24 +1,22 @@
 <script lang="ts">
   import '../app.css';
+  import { onMount } from 'svelte';
 
-  // Load AdSense script if publisher ID is configured
-  $: publisherId = import.meta.env.VITE_ADSENSE_PUBLISHER_ID;
-  $: adsEnabled = typeof window !== 'undefined' && publisherId;
+  onMount(() => {
+    // Extract publisher ID from the meta tag in app.html
+    const metaTag = document.querySelector('meta[name="google-adsense-account"]');
+    const publisherId = metaTag?.getAttribute('content');
+    
+    if (publisherId) {
+      // Dynamically inject the AdSense script
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`;
+      script.crossOrigin = 'anonymous';
+      document.head.appendChild(script);
+    }
+  });
 </script>
-
-<svelte:head>
-  {#if publisherId}
-    <!-- Google AdSense verification -->
-    <meta name="google-adsense-account" content={publisherId} />
-  {/if}
-  {#if adsEnabled}
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={publisherId}"
-      crossorigin="anonymous"
-    ></script>
-  {/if}
-</svelte:head>
 
 <main>
   <slot />

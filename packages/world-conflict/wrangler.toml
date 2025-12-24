@@ -8,7 +8,6 @@ compatibility_flags = ["nodejs_compat"]
 # Environment variables for build-time (VITE_ prefixed)
 # These are available during the build process
 [vars]
-VITE_ADSENSE_PUBLISHER_ID = "ca-pub-7416723383632921"
 VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id"
 
 # Local development KV namespace

@@ -123,6 +123,10 @@ Game settings are configurable:
 - Armada speed: 10-1000 units/minute
 - State broadcast interval: 1-10 seconds
 
+### Google AdSense
+
+The Google AdSense Publisher ID is configured in `src/app.html` as a meta tag. The AdSense script in `src/routes/+layout.svelte` automatically extracts the Publisher ID from this meta tag, so you only need to update it in one place.
+
 ## License
 
 MIT License
