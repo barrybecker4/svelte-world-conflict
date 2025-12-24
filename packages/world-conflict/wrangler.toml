@@ -17,6 +17,7 @@ id = "local-dev-storage"
 preview_id = "local-dev-storage"
 
 [env.preview]
+vars = { VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id" }
 kv_namespaces = [
     { binding = "WORLD_CONFLICT_KV", id = "a776ced349e4415ab2b2f7c519fb9642" }
 ]
@@ -25,6 +26,7 @@ kv_namespaces = [
 # The game connects to the worker via WebSocket URLs configured in src/lib/websocket-config.ts
 
 [env.production]
+vars = { VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id" }
 kv_namespaces = [
     { binding = "WORLD_CONFLICT_KV", id = "374d788f7a834bc3ad81f660362bd647" }
 ]

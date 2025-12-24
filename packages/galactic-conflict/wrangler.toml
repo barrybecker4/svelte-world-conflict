@@ -17,11 +17,13 @@ id = "local-dev-storage"
 preview_id = "local-dev-storage"
 
 [env.preview]
+vars = { VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id" }
 kv_namespaces = [
     { binding = "GALACTIC_CONFLICT_KV", id = "2e0584ff1854476ba6bdecd5bd0a9daf" }
 ]
 
 [env.production]
+vars = { VITE_ADSENSE_AD_UNIT_ID = "your-ad-unit-id" }
 kv_namespaces = [
     { binding = "GALACTIC_CONFLICT_KV", id = "45d22a743168411f8abe7d8819ea0881" }
 ]
