@@ -10,8 +10,19 @@ const __dirname = dirname(__filename);
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
+// Plugin to replace AdSense publisher ID placeholder in app.html
+const adsensePlugin = () => {
+    return {
+        name: 'adsense-publisher-id',
+        transformIndexHtml(html) {
+            const publisherId = process.env.VITE_ADSENSE_PUBLISHER_ID || '';
+            return html.replace('__ADSENSE_PUBLISHER_ID__', publisherId);
+        }
+    };
+};
+
 export default defineConfig({
-    plugins: [tailwindcss(), sveltekit()],
+    plugins: [tailwindcss(), sveltekit(), adsensePlugin()],
     define: {
         '__APP_VERSION__': JSON.stringify(pkg.version)
     },
