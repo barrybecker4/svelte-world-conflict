@@ -16,6 +16,7 @@
     let playerName = '';
     let showNameInput = true;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let visibilityChangeHandler: (() => void) | null = null;
     let showStats = false;
     let isEditingName = false;
     let editingName = '';
@@ -27,12 +28,33 @@
             playerName = storedName;
             showNameInput = false;
             await loadGames();
-            startPolling();
+            
+            // Only start polling if page is visible
+            if (!document.hidden) {
+                startPolling();
+            }
+            
+            // Stop polling when page is hidden, resume when visible
+            visibilityChangeHandler = () => {
+                if (document.hidden) {
+                    stopPolling();
+                } else {
+                    // Only start if we're not already polling
+                    if (!pollInterval) {
+                        startPolling();
+                    }
+                }
+            };
+            document.addEventListener('visibilitychange', visibilityChangeHandler);
         }
     });
 
     onDestroy(() => {
         stopPolling();
+        if (visibilityChangeHandler) {
+            document.removeEventListener('visibilitychange', visibilityChangeHandler);
+            visibilityChangeHandler = null;
+        }
     });
 
     function startPolling() {
