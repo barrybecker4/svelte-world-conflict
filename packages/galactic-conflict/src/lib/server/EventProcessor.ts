@@ -3,7 +3,7 @@
  * Processes game events (armada arrivals, battles, resource ticks) and broadcasts updates
  */
 
-import { GameStorage } from '$lib/server/storage';
+import { GameStorage, VersionConflictError } from '$lib/server/storage';
 import type { GameRecord } from '$lib/server/storage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from './GameLoop';
@@ -19,7 +19,7 @@ import { formatEndResult } from './utils/gameStateFormatters';
 async function loadAndValidateGame(
     gameId: string,
     gameStorage: GameStorage
-): Promise<{ gameRecord: GameRecord; gameState: GalacticGameState } | null> {
+): Promise<{ gameRecord: GameRecord; gameState: GalacticGameState; expectedLastUpdateAt: number } | null> {
     const gameRecord = await gameStorage.loadGame(gameId);
 
     if (!gameRecord) {
@@ -33,7 +33,7 @@ async function loadAndValidateGame(
     }
 
     const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
-    return { gameRecord, gameState };
+    return { gameRecord, gameState, expectedLastUpdateAt: gameRecord.lastUpdateAt };
 }
 
 /**
@@ -103,7 +103,8 @@ async function broadcastAndSaveChanges(
     gameState: GalacticGameState,
     stateBefore: GameStateSnapshot,
     stateAfter: GameStateSnapshot,
-    gameStorage: GameStorage
+    gameStorage: GameStorage,
+    expectedLastUpdateAt: number
 ): Promise<void> {
     // Broadcast updates to all clients via websocket (before clearing events)
     // Include events in the broadcast so clients can process them
@@ -118,14 +119,24 @@ async function broadcastAndSaveChanges(
     gameState.clearConquestEvents();
     gameState.clearPlayerEliminationEvents();
 
-    // Save state once after clearing events (single KV write)
-    gameRecord.gameState = gameState.toJSON();
-    await gameStorage.saveGame(gameRecord);
+    // Save state once after clearing events (single KV write) with optimistic locking
+    try {
+        gameRecord.gameState = gameState.toJSON();
+        await gameStorage.saveGame(gameRecord, expectedLastUpdateAt);
 
-    const replaysAdded = calculateReplaysAdded(stateBefore, stateAfter);
-    const armadasArrived = calculateArmadasArrived(stateBefore, stateAfter);
-    const summary = formatProcessingSummary(gameId, replaysAdded, armadasArrived, stateBefore, stateAfter);
-    logger.info(summary);
+        const replaysAdded = calculateReplaysAdded(stateBefore, stateAfter);
+        const armadasArrived = calculateArmadasArrived(stateBefore, stateAfter);
+        const summary = formatProcessingSummary(gameId, replaysAdded, armadasArrived, stateBefore, stateAfter);
+        logger.info(summary);
+    } catch (error) {
+        // If version conflict, log and continue - events will be processed on next run
+        // This is acceptable for EventProcessor since it's not user-initiated
+        if (error instanceof VersionConflictError) {
+            logger.debug(`[EventProcessor] Version conflict for game ${gameId}, skipping save. Events will be processed on next run.`);
+        } else {
+            throw error;
+        }
+    }
 }
 
 /**
@@ -143,11 +154,11 @@ export async function processGameEvents(
             return false;
         }
 
-        const { gameRecord, gameState } = loaded;
+        const { gameRecord, gameState, expectedLastUpdateAt } = loaded;
         const { stateBefore, stateAfter, hasChanges } = processAndDetectChanges(gameState);
 
         if (hasChanges) {
-            await broadcastAndSaveChanges(gameId, gameRecord, gameState, stateBefore, stateAfter, gameStorage);
+            await broadcastAndSaveChanges(gameId, gameRecord, gameState, stateBefore, stateAfter, gameStorage, expectedLastUpdateAt);
             return true;
         } else {
             logger.debug(`[EventProcessor] No changes detected for game ${gameId} (replays: ${stateBefore.replays}, armadas: ${stateBefore.armadas}, status: ${stateBefore.status})`);

@@ -42,13 +42,27 @@ export class GameStorage {
     }
 
     /**
-     * Save a game record
+     * Save a game record with optimistic locking
+     * Throws VersionConflictError if the game was modified by another request
      */
-    async saveGame(game: GameRecord): Promise<void> {
+    async saveGame(game: GameRecord, expectedLastUpdateAt?: number): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${game.gameId}`;
 
         // Check if status changed to COMPLETED
         const existingGame = await this.loadGame(game.gameId);
+        
+        // Optimistic locking: if expectedLastUpdateAt is provided, verify the game hasn't been modified
+        if (expectedLastUpdateAt !== undefined && existingGame) {
+            if (existingGame.lastUpdateAt > expectedLastUpdateAt) {
+                throw new VersionConflictError(
+                    game.gameId,
+                    expectedLastUpdateAt,
+                    existingGame.lastUpdateAt,
+                    'Game was modified by another request. Please retry.'
+                );
+            }
+        }
+        
         const statusChanged = existingGame && existingGame.status !== game.status;
 
         game.lastUpdateAt = Date.now();
@@ -367,5 +381,20 @@ export class GameStorage {
         }
 
         return canGameStartOp(game);
+    }
+}
+
+/**
+ * Error thrown when a save operation fails due to a version conflict
+ */
+export class VersionConflictError extends Error {
+    constructor(
+        public gameId: string,
+        public expectedVersion: number,
+        public actualVersion: number,
+        message: string
+    ) {
+        super(message);
+        this.name = 'VersionConflictError';
     }
 }

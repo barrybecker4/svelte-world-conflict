@@ -4,7 +4,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { GameStorage } from '$lib/server/storage/GameStorage';
+import { GameStorage, VersionConflictError } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from '$lib/server/GameLoop';
 import { handleApiError } from '$lib/server/api-utils';
@@ -34,6 +34,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
         // For ACTIVE games, process events and return current state
         if (gameRecord.status === 'ACTIVE' && gameRecord.gameState) {
+            // Store the version we're working with for optimistic locking
+            const expectedLastUpdateAt = gameRecord.lastUpdateAt;
+            
             const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
             
             // Track state before processing to detect changes
@@ -81,27 +84,38 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
             // Only write to KV if state actually changed
             if (hasChanges) {
-                // Save updated state
-                gameRecord.gameState = gameState.toJSON();
-                gameRecord.status = statusAfter;
-                await gameStorage.saveGame(gameRecord);
-                
-                // Broadcast if:
-                // - New battle replays were created
-                // - Game status changed to COMPLETED
-                // - endResult changed (game ended)
-                const replaysAdded = replaysAfter - replaysBefore;
-                const shouldBroadcast = replaysAdded > 0 || 
-                                       statusAfter === 'COMPLETED' || 
-                                       endResultChanged;
-                
-                if (shouldBroadcast) {
-                    logger.debug(`[GET /game] Broadcasting update: ${replaysAdded} new replays, status: ${statusBefore} -> ${statusAfter}, endResult changed: ${endResultChanged}`);
-                    await WebSocketNotifications.gameUpdate(gameId, gameRecord.gameState);
+                try {
+                    // Save updated state with optimistic locking
+                    gameRecord.gameState = gameState.toJSON();
+                    gameRecord.status = statusAfter;
+                    await gameStorage.saveGame(gameRecord, expectedLastUpdateAt);
+                    
+                    // Broadcast if:
+                    // - New battle replays were created
+                    // - Game status changed to COMPLETED
+                    // - endResult changed (game ended)
+                    const replaysAdded = replaysAfter - replaysBefore;
+                    const shouldBroadcast = replaysAdded > 0 || 
+                                           statusAfter === 'COMPLETED' || 
+                                           endResultChanged;
+                    
+                    if (shouldBroadcast) {
+                        logger.debug(`[GET /game] Broadcasting update: ${replaysAdded} new replays, status: ${statusBefore} -> ${statusAfter}, endResult changed: ${endResultChanged}`);
+                        await WebSocketNotifications.gameUpdate(gameId, gameRecord.gameState);
+                    }
+                } catch (error) {
+                    // If version conflict, log and continue - the state will be processed on next GET
+                    // This is acceptable for GET endpoints since they're not user-initiated
+                    if (error instanceof VersionConflictError) {
+                        logger.debug(`[GET /game] Version conflict detected, skipping save. Game was modified by another request.`);
+                    } else {
+                        throw error;
+                    }
                 }
             }
 
             // Return current state (whether we saved or not)
+            // If there was a version conflict, return the processed state anyway so client gets updates
             return json({
                 gameId: gameRecord.gameId,
                 status: hasChanges ? statusAfter : gameRecord.status,
