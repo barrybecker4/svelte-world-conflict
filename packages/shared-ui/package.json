@@ -8,20 +8,32 @@
     "./*": "./src/*"
   },
   "scripts": {
-    "check": "svelte-check --tsconfig tsconfig.json"
+    "check": "svelte-check --tsconfig tsconfig.json",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "peerDependencies": {
-    "svelte": "^5.46.0",
-    "multiplayer-framework": "*"
+    "multiplayer-framework": "*",
+    "svelte": "^5.46.0"
   },
   "dependencies": {
     "chart.js": "^4.5.1"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^3.2.7",
+    "@storybook/addon-essentials": "^8.5.3",
+    "@storybook/addon-interactions": "^8.5.3",
+    "@storybook/addon-links": "^8.5.3",
+    "@storybook/blocks": "^8.5.3",
+    "@storybook/svelte": "^8.5.3",
+    "@storybook/svelte-vite": "^8.5.3",
+    "@storybook/test": "^8.5.3",
     "@sveltejs/kit": "^2.16.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "storybook": "^8.5.3",
     "svelte": "^5.46.0",
     "svelte-check": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vite": "^6.2.6"
   }
 }
-
