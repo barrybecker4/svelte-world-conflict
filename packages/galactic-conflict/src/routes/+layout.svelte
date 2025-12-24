@@ -7,9 +7,6 @@
 </script>
 
 <svelte:head>
-  {#if publisherId}
-    <meta name="google-adsense-account" content={publisherId} />
-  {/if}
   {#if adsEnabled}
     <script
       async
