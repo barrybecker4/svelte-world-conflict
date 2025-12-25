@@ -28,7 +28,7 @@
         const creatorInfo = loadGameCreator(gameId);
         if (creatorInfo) {
             currentPlayerId = creatorInfo.playerSlotIndex;
-            isCreator = true;
+            isCreator = creatorInfo.isCreator === true;
         }
 
         // Connect to WebSocket

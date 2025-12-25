@@ -7,8 +7,10 @@ import {
     type GameCreatorInfo as BaseGameCreatorInfo
 } from 'multiplayer-framework/shared';
 
-// Galactic Conflict uses the same GameCreatorInfo structure
-export type GameCreatorInfo = BaseGameCreatorInfo;
+// Galactic Conflict extends the base type with an isCreator flag
+export interface GameCreatorInfo extends BaseGameCreatorInfo {
+    isCreator: boolean;
+}
 
 // Create storage instance with Galactic Conflict prefix
 const storage = createClientStorage({ prefix: 'gc_' });

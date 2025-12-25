@@ -96,7 +96,8 @@
                 saveGameCreator(gameId, {
                     playerId: result.player.slotIndex.toString(),
                     playerSlotIndex: result.player.slotIndex,
-                    playerName: result.player.name
+                    playerName: result.player.name,
+                    isCreator: false
                 });
                 await goto(`/game/${gameId}`);
             }
