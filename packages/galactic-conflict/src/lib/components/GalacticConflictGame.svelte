@@ -21,7 +21,6 @@
         updateGameState,
         clearGameStores,
     } from '$lib/client/stores/gameStateStore';
-    import { trackOptimisticArmada } from '$lib/client/stores/optimisticArmadaStore';
     import { logger } from 'multiplayer-framework/shared';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
     import { battleAnimations } from '$lib/client/stores/battleAnimationStore';
@@ -45,7 +44,7 @@
     // Ad configuration
     $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
     $: showAds = adUnitId && $gameState && $gameState.status !== 'COMPLETED';
-    
+
     // Track when to show game end announcement (after battle animations complete)
     // Don't check hasUnprocessedReplays - just wait for animations to finish
     $: shouldShowGameEndAnnouncement = $gameState?.status === 'COMPLETED' && $battleAnimations.size === 0;
@@ -54,10 +53,10 @@
     $: if ($gameState?.status === 'COMPLETED' && !gameEndSoundPlayed && $battleAnimations.size === 0) {
         gameEndSoundPlayed = true;
         const myPlayerId = $currentPlayerId;
-        const winnerId = typeof $gameState.endResult === 'object' && $gameState.endResult 
-            ? $gameState.endResult.slotIndex 
+        const winnerId = typeof $gameState.endResult === 'object' && $gameState.endResult
+            ? $gameState.endResult.slotIndex
             : undefined;
-        
+
         if (winnerId !== undefined && winnerId === myPlayerId) {
             audioSystem.playSound(SOUNDS.GAME_WON);
         } else if (winnerId !== undefined) {
@@ -122,13 +121,13 @@
 
         // Get current player from local storage
         let creatorInfo = loadGameCreator(gameId);
-        
+
         // If not in localStorage, try to identify player from game state
         // This handles cases where player joined but localStorage wasn't set
         if (!creatorInfo && initialState.players) {
             logger.warn('No player info in localStorage for game', gameId);
         }
-        
+
         if (creatorInfo) {
             currentPlayerId.set(creatorInfo.playerSlotIndex);
         } else {
@@ -163,12 +162,12 @@
         const currentState = get(gameState);
 
         if (currentPlayer === null) return;
-        
+
         // Disable interactions if game is completed
         if (currentState?.status === 'COMPLETED') return;
 
         // Simply select the planet when clicked
-        
+
         if (planet.ownerId === currentPlayer) {
             selectedPlanetId.set(planet.id);
         } else {
@@ -183,10 +182,10 @@
         const currentState = get(gameState);
 
         if (currentPlayer === null || !currentState || hasResigned) return;
-        
+
         // Disable interactions if game is completed
         if (currentState.status === 'COMPLETED') return;
-        
+
         // Check if player is eliminated (resigned or defeated)
         if (currentState.eliminatedPlayers?.includes(currentPlayer)) return;
 
@@ -208,10 +207,10 @@
         const currentState = get(gameState);
 
         if (currentPlayer === null || !currentState || hasResigned) return;
-        
+
         // Disable interactions if game is completed
         if (currentState.status === 'COMPLETED') return;
-        
+
         // Check if player is eliminated (resigned or defeated)
         if (currentState.eliminatedPlayers?.includes(currentPlayer)) return;
 
@@ -227,11 +226,11 @@
     async function handleSendArmada(event: CustomEvent) {
         const { shipCount, destinationPlanetId } = event.detail;
         const currentPlayer = get(currentPlayerId);
-        
+
         if (!sourcePlanet || currentPlayer === null) return;
 
         try {
-            const response = await GameApiClient.sendArmada(
+            await GameApiClient.sendArmada(
                 gameId,
                 currentPlayer,
                 sourcePlanet.id,
@@ -239,30 +238,8 @@
                 shipCount
             );
 
-            // Track and add the armada optimistically
-            // The optimistic armada store will protect this armada from being removed
-            // by stale server broadcasts (due to Cloudflare KV's eventual consistency)
-            if (response.success && response.armada) {
-                // Track this armada to protect it from stale server updates
-                trackOptimisticArmada(response.armada);
-                
-                gameState.update(state => {
-                    if (!state) return state;
-
-                    // Check if armada already exists to prevent duplicates
-                    const armadaExists = state.armadas.some(a => a.id === response.armada.id);
-                    if (armadaExists) {
-                        // WebSocket already updated, don't add duplicate
-                        return state;
-                    }
-
-                    return {
-                        ...state,
-                        armadas: [...state.armadas, response.armada],
-                    };
-                });
-            }
-
+            // Rely on WebSocket for state updates.
+            // The server will broadcast the new state via WebSocket after saving.
             // Close the modal after send attempt (success or failure)
             showSendArmadaModal = false;
             destinationPlanet = null;
@@ -279,46 +256,19 @@
     async function handleBuildShips(event: CustomEvent) {
         const { shipCount } = event.detail;
         const currentPlayer = get(currentPlayerId);
-        
+
         if (!sourcePlanet || currentPlayer === null) return;
 
         try {
-            const response = await GameApiClient.buildShips(
+            await GameApiClient.buildShips(
                 gameId,
                 currentPlayer,
                 sourcePlanet.id,
                 shipCount
             );
 
-            // Update local state with server response
-            if (response.success && response.newShipCount !== undefined) {
-                gameState.update(state => {
-                    if (!state) return state;
-
-                    const updatedPlanets = state.planets.map(p => {
-                        if (p.id === sourcePlanet!.id) {
-                            return {
-                                ...p,
-                                ships: response.newShipCount,
-                            };
-                        }
-                        return p;
-                    });
-
-                    // Update player's global resources
-                    const updatedResourcesByPlayer = {
-                        ...state.resourcesByPlayer,
-                        [currentPlayer]: response.newPlayerResources ?? state.resourcesByPlayer?.[currentPlayer] ?? 0,
-                    };
-
-                    return {
-                        ...state,
-                        planets: updatedPlanets,
-                        resourcesByPlayer: updatedResourcesByPlayer,
-                    };
-                });
-            }
-
+            // Drely on WebSocket for state updates.
+            // The server will broadcast the new state via WebSocket after saving.
             showBuildShipsModal = false;
             sourcePlanet = null;
         } catch (error) {

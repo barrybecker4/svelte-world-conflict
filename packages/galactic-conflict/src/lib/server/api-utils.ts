@@ -9,7 +9,6 @@ import { getPlayerColor, getPlayerDefaultName } from '$lib/game/constants/player
 import { logger } from 'multiplayer-framework/shared';
 import { GameStorage, VersionConflictError, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import { processGameState } from '$lib/server/GameLoop';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 
 /**
@@ -49,7 +48,7 @@ export function handleApiError(
 ): Response {
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error(`Error ${context}: ${message}`);
-    
+
     return json(
         { error: message, context },
         { status: 500 }
@@ -77,7 +76,13 @@ export function validateRequired<T extends Record<string, unknown>>(
 }
 
 /**
- * Load and validate an active game with state processing
+ * Load and validate an active game WITHOUT processing events.
+ *
+ * Event processing should only happen in EventProcessor to avoid race conditions
+ * where multiple requests process the same events and broadcast conflicting state.
+ *
+ * User actions (send armada, build ships, resign) should ONLY make their specific
+ * changes to the state, not process unrelated events like resource ticks.
  */
 export async function loadActiveGame(
     gameStorage: GameStorage,
@@ -95,9 +100,6 @@ export async function loadActiveGame(
 
     const expectedLastUpdateAt = gameRecord.lastUpdateAt;
     const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
-    
-    // Process any pending events first
-    processGameState(gameState);
 
     return { gameRecord, gameState, expectedLastUpdateAt };
 }
