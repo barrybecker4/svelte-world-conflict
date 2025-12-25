@@ -40,6 +40,22 @@
     let gameEndSoundPlayed = false;
     let devEventProcessingInterval: ReturnType<typeof setInterval> | null = null;
     const processedEventIds = new Set<string>();
+    
+    // Action error feedback
+    let actionError: string | null = null;
+    let actionErrorTimeout: ReturnType<typeof setTimeout> | null = null;
+    
+    function showActionError(message: string) {
+        actionError = message;
+        // Clear any existing timeout
+        if (actionErrorTimeout) {
+            clearTimeout(actionErrorTimeout);
+        }
+        // Auto-hide after 4 seconds
+        actionErrorTimeout = setTimeout(() => {
+            actionError = null;
+        }, 4000);
+    }
 
     // Ad configuration
     $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
@@ -238,15 +254,16 @@
                 shipCount
             );
 
-            // Rely on WebSocket for state updates.
-            // The server will broadcast the new state via WebSocket after saving.
-            // Close the modal after send attempt (success or failure)
+            // Success - close modal and wait for WebSocket update
             showSendArmadaModal = false;
             destinationPlanet = null;
             selectedPlanetId.set(null);
         } catch (error) {
-            // Close modal even on error - user can reopen if needed
             logger.error('Failed to send armada:', error);
+            // Show error to user so they know to retry
+            const message = error instanceof Error ? error.message : 'Failed to send fleet';
+            showActionError(message);
+            // Close modal - user can try again
             showSendArmadaModal = false;
             destinationPlanet = null;
             selectedPlanetId.set(null);
@@ -267,12 +284,15 @@
                 shipCount
             );
 
-            // Drely on WebSocket for state updates.
-            // The server will broadcast the new state via WebSocket after saving.
+            // Success - close modal and wait for WebSocket update
             showBuildShipsModal = false;
             sourcePlanet = null;
         } catch (error) {
             logger.error('Failed to build ships:', error);
+            // Show error to user so they know to retry
+            const message = error instanceof Error ? error.message : 'Failed to build ships';
+            showActionError(message);
+            // Close modal - user can try again
             showBuildShipsModal = false;
             sourcePlanet = null;
         }
@@ -404,6 +424,14 @@
     />
 {/if}
 
+{#if actionError}
+    <div class="action-error-toast" role="alert">
+        <span class="error-icon">⚠️</span>
+        <span class="error-message">{actionError}</span>
+        <button class="error-dismiss" on:click={() => actionError = null}>×</button>
+    </div>
+{/if}
+
 <style>
     .game-container {
         width: 100vw;
@@ -485,6 +513,59 @@
             height: auto;
             max-height: 40vh;
         }
+    }
+
+    /* Action error toast */
+    .action-error-toast {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(220, 38, 38, 0.95);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(1rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    .error-icon {
+        font-size: 1.1rem;
+    }
+
+    .error-message {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .error-dismiss {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0 0.25rem;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+    }
+
+    .error-dismiss:hover {
+        opacity: 1;
     }
 
 </style>

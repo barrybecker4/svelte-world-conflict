@@ -120,7 +120,8 @@ export async function saveAndNotify(
 }
 
 /**
- * Retry logic for operations that may encounter version conflicts
+ * Retry logic for operations that may encounter version conflicts.
+ * Uses exponential backoff with jitter to avoid thundering herd.
  */
 export async function withRetry<T>(
     operation: () => Promise<T>,
@@ -130,7 +131,7 @@ export async function withRetry<T>(
         onRetry?: (attempt: number) => void;
     } = {}
 ): Promise<T> {
-    const { maxRetries = 3, operationName = 'operation', onRetry } = options;
+    const { maxRetries = 5, operationName = 'operation', onRetry } = options;
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -144,8 +145,11 @@ export async function withRetry<T>(
                 if (onRetry) {
                     onRetry(attempt);
                 }
-                // Small delay before retry (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
+                // Exponential backoff with jitter: base * 2^attempt + random jitter
+                const baseDelay = 50;
+                const exponentialDelay = baseDelay * Math.pow(2, attempt);
+                const jitter = Math.random() * 50; // 0-50ms random jitter
+                await new Promise(resolve => setTimeout(resolve, exponentialDelay + jitter));
                 continue;
             }
             // If not a version conflict or max retries reached, throw
