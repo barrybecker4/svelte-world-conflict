@@ -21,6 +21,7 @@
         updateGameState,
         clearGameStores,
     } from '$lib/client/stores/gameStateStore';
+    import { trackOptimisticArmada } from '$lib/client/stores/optimisticArmadaStore';
     import { logger } from 'multiplayer-framework/shared';
     import { audioSystem, SOUNDS } from '$lib/client/audio';
     import { battleAnimations } from '$lib/client/stores/battleAnimationStore';
@@ -238,9 +239,13 @@
                 shipCount
             );
 
-            // Optimistically add armada, but check for duplicates first
-            // The WebSocket will also update the state, so we need to avoid duplicates
+            // Track and add the armada optimistically
+            // The optimistic armada store will protect this armada from being removed
+            // by stale server broadcasts (due to Cloudflare KV's eventual consistency)
             if (response.success && response.armada) {
+                // Track this armada to protect it from stale server updates
+                trackOptimisticArmada(response.armada);
+                
                 gameState.update(state => {
                     if (!state) return state;
 

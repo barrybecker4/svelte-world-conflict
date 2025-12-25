@@ -4,6 +4,7 @@
 
 import { writable, derived, type Writable, type Readable } from 'svelte/store';
 import type { GalacticGameStateData, Planet, Armada, Player } from '$lib/game/entities/gameTypes';
+import { mergeArmadasWithOptimistic, clearOptimisticArmadas } from './optimisticArmadaStore';
 
 /**
  * Main game state store
@@ -141,9 +142,19 @@ export const selectedPlanet: Readable<Planet | null> = derived(
 
 /**
  * Update game state from server
+ * 
+ * This function merges armadas intelligently to prevent stale server broadcasts
+ * (due to Cloudflare KV's eventual consistency) from removing recently-created armadas.
  */
 export function updateGameState(newState: GalacticGameStateData): void {
-    gameState.set(newState);
+    // Merge server armadas with any optimistically-added armadas
+    // that haven't been confirmed yet
+    const mergedArmadas = mergeArmadasWithOptimistic(newState.armadas);
+    
+    gameState.set({
+        ...newState,
+        armadas: mergedArmadas,
+    });
 }
 
 /**
@@ -156,5 +167,6 @@ export function clearGameStores(): void {
     isConnected.set(false);
     isLoading.set(false);
     errorMessage.set(null);
+    clearOptimisticArmadas();
 }
 

@@ -96,6 +96,10 @@ function formatProcessingSummary(
 
 /**
  * Broadcast updates and save game state
+ * 
+ * IMPORTANT: We save BEFORE broadcasting to prevent sending stale data.
+ * If there's a version conflict, we skip the broadcast because another
+ * process has already updated the state with newer data.
  */
 async function broadcastAndSaveChanges(
     gameId: string,
@@ -106,33 +110,35 @@ async function broadcastAndSaveChanges(
     gameStorage: GameStorage,
     expectedLastUpdateAt: number
 ): Promise<void> {
-    // Broadcast updates to all clients via websocket (before clearing events)
-    // Include events in the broadcast so clients can process them
-    // Broadcast BEFORE saving, so clients get the update with battle replays
-    gameRecord.gameState = gameState.toJSON();
-    gameRecord.status = stateAfter.status as 'PENDING' | 'ACTIVE' | 'COMPLETED';
-    await WebSocketNotifications.gameUpdate(gameId, gameRecord.gameState);
-
-    // Clear events after broadcasting (similar to battle replays)
+    // Prepare state for broadcast (includes battle replays and events)
+    const stateForBroadcast = gameState.toJSON();
+    
+    // Clear events after capturing state for broadcast
     gameState.clearBattleReplays();
     gameState.clearReinforcementEvents();
     gameState.clearConquestEvents();
     gameState.clearPlayerEliminationEvents();
 
-    // Save state once after clearing events (single KV write) with optimistic locking
+    // Save state first with optimistic locking
+    // Only broadcast if save succeeds - this prevents sending stale data
+    // when another process has already updated the state
     try {
         gameRecord.gameState = gameState.toJSON();
+        gameRecord.status = stateAfter.status as 'PENDING' | 'ACTIVE' | 'COMPLETED';
         await gameStorage.saveGame(gameRecord, expectedLastUpdateAt);
+
+        // Save succeeded - now broadcast the state (which includes battle replays)
+        await WebSocketNotifications.gameUpdate(gameId, stateForBroadcast);
 
         const replaysAdded = calculateReplaysAdded(stateBefore, stateAfter);
         const armadasArrived = calculateArmadasArrived(stateBefore, stateAfter);
         const summary = formatProcessingSummary(gameId, replaysAdded, armadasArrived, stateBefore, stateAfter);
         logger.info(summary);
     } catch (error) {
-        // If version conflict, log and continue - events will be processed on next run
-        // This is acceptable for EventProcessor since it's not user-initiated
+        // If version conflict, DO NOT broadcast - another process already has newer data
+        // The next EventProcessor run will pick up the correct state
         if (error instanceof VersionConflictError) {
-            logger.debug(`[EventProcessor] Version conflict for game ${gameId}, skipping save. Events will be processed on next run.`);
+            logger.debug(`[EventProcessor] Version conflict for game ${gameId}, skipping save AND broadcast. Another process has newer data.`);
         } else {
             throw error;
         }
