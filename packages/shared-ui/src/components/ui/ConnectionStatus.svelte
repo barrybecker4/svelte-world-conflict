@@ -15,6 +15,10 @@
   <span class="connection-status connected size-{size}">
     ● Live
   </span>
+{:else}
+  <span class="connection-status disconnected size-{size}">
+    Disconnected
+  </span>
 {/if}
 
 <style>
@@ -43,6 +47,6 @@
   }
 
   .disconnected {
-    color: #f59e0b;
+    color: #ef4444;
   }
 </style>
