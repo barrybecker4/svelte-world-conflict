@@ -8,43 +8,6 @@ interface ApiErrorResponse {
     error?: string;
 }
 
-/**
- * Retry a fetch operation with exponential backoff for version conflicts (409).
- * This handles cases where the server is busy with event processing.
- */
-async function fetchWithRetry(
-    url: string,
-    options: RequestInit,
-    maxRetries: number = 3
-): Promise<Response> {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-        const response = await fetch(url, options);
-        
-        // If success or non-retryable error, return immediately
-        if (response.ok || response.status !== 409) {
-            return response;
-        }
-        
-        // 409 = version conflict, retry with backoff
-        if (attempt < maxRetries - 1) {
-            const baseDelay = 100;
-            const exponentialDelay = baseDelay * Math.pow(2, attempt);
-            const jitter = Math.random() * 100;
-            await new Promise(resolve => setTimeout(resolve, exponentialDelay + jitter));
-            lastError = new Error('Version conflict, retrying...');
-            continue;
-        }
-        
-        // Last attempt also failed
-        return response;
-    }
-    
-    // Should not reach here, but TypeScript needs this
-    throw lastError || new Error('Fetch failed');
-}
-
 export class GameApiClient {
     /**
      * Create a new game
@@ -115,7 +78,7 @@ export class GameApiClient {
 
     /**
      * Send an armada from one planet to another.
-     * Uses client-side retry for version conflicts (409).
+     * Server handles retries for version conflicts.
      */
     static async sendArmada(
         gameId: string,
@@ -124,20 +87,16 @@ export class GameApiClient {
         destinationPlanetId: number,
         shipCount: number
     ): Promise<any> {
-        const response = await fetchWithRetry(
-            `/api/game/${gameId}/send-armada`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerId,
-                    sourcePlanetId,
-                    destinationPlanetId,
-                    shipCount,
-                }),
-            },
-            3 // Client retries in addition to server retries
-        );
+        const response = await fetch(`/api/game/${gameId}/send-armada`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playerId,
+                sourcePlanetId,
+                destinationPlanetId,
+                shipCount,
+            }),
+        });
 
         if (!response.ok) {
             const error: ApiErrorResponse = await response.json();
@@ -149,7 +108,7 @@ export class GameApiClient {
 
     /**
      * Build ships at a planet.
-     * Uses client-side retry for version conflicts (409).
+     * Server handles retries for version conflicts.
      */
     static async buildShips(
         gameId: string,
@@ -157,19 +116,15 @@ export class GameApiClient {
         planetId: number,
         shipCount: number
     ): Promise<any> {
-        const response = await fetchWithRetry(
-            `/api/game/${gameId}/build-ships`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerId,
-                    planetId,
-                    shipCount,
-                }),
-            },
-            3 // Client retries in addition to server retries
-        );
+        const response = await fetch(`/api/game/${gameId}/build-ships`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playerId,
+                planetId,
+                shipCount,
+            }),
+        });
 
         if (!response.ok) {
             const error: ApiErrorResponse = await response.json();

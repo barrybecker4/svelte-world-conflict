@@ -120,50 +120,53 @@ export async function saveAndNotify(
 }
 
 /**
- * Retry logic for operations that may encounter version conflicts.
- * Uses exponential backoff with jitter to avoid thundering herd.
+ * Simple retry logic for operations that may encounter version conflicts.
+ * Uses a fixed delay between retries - no exponential backoff needed since
+ * we're handling optimistic locking conflicts, not rate limiting.
  */
 export async function withRetry<T>(
     operation: () => Promise<T>,
     options: {
-        maxRetries?: number;
+        maxAttempts?: number;
         operationName?: string;
-        onRetry?: (attempt: number) => void;
     } = {}
 ): Promise<T> {
-    const { maxRetries = 5, operationName = 'operation', onRetry } = options;
-    let lastError: Error | null = null;
+    const { maxAttempts = 4, operationName = 'operation' } = options;
+    const RETRY_DELAY_MS = 100; // Fixed delay - simple and predictable
 
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            return await operation();
+            const result = await operation();
+            if (attempt > 1) {
+                logger.info(`${operationName} succeeded on attempt ${attempt}`);
+            }
+            return result;
         } catch (error) {
-            // Retry on version conflict
-            if (error instanceof VersionConflictError && attempt < maxRetries - 1) {
-                logger.debug(`Version conflict on attempt ${attempt + 1} for ${operationName}, retrying...`);
-                lastError = error;
-                if (onRetry) {
-                    onRetry(attempt);
-                }
-                // Exponential backoff with jitter: base * 2^attempt + random jitter
-                const baseDelay = 50;
-                const exponentialDelay = baseDelay * Math.pow(2, attempt);
-                const jitter = Math.random() * 50; // 0-50ms random jitter
-                await new Promise(resolve => setTimeout(resolve, exponentialDelay + jitter));
+            const isVersionConflict = error instanceof VersionConflictError;
+            const hasMoreAttempts = attempt < maxAttempts;
+
+            if (isVersionConflict && hasMoreAttempts) {
+                logger.debug(`Version conflict on attempt ${attempt}/${maxAttempts} for ${operationName}, retrying in ${RETRY_DELAY_MS}ms...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
                 continue;
             }
-            // If not a version conflict or max retries reached, throw
+
+            // Either not a version conflict, or we've exhausted retries
+            if (isVersionConflict) {
+                logger.warn(`${operationName} failed after ${maxAttempts} attempts due to version conflicts`);
+                throw new VersionConflictError(
+                    (error as VersionConflictError).gameId,
+                    (error as VersionConflictError).expectedVersion,
+                    (error as VersionConflictError).actualVersion,
+                    'Server busy - please try again'
+                );
+            }
             throw error;
         }
     }
 
-    // If we exhausted retries, throw the last error
-    if (lastError instanceof VersionConflictError) {
-        logger.warn(`Failed ${operationName} after ${maxRetries} attempts due to version conflicts`);
-        throw new Error('Game state was modified by another request. Please try again.');
-    }
-
-    throw lastError || new Error(`Failed ${operationName}`);
+    // TypeScript needs this but we should never reach here
+    throw new Error(`${operationName} failed unexpectedly`);
 }
 
 /**
@@ -207,4 +210,5 @@ export async function startGame(
         return { success: false };
     }
 }
+
 
