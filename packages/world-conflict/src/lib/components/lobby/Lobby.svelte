@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button, LoadingState, ConnectionStatus } from 'shared-ui';
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-    import PlayerNameInput from '$lib/components/configuration/PlayerNameInput.svelte';
+    import { NameInput } from 'shared-ui';
     import OpenGameRow from './OpenGameRow.svelte';
     import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
     import { OpenGamesManager, type OpenGame } from './OpenGamesManager';
@@ -52,7 +52,7 @@
         unsubWsConnected = gamesManager.wsConnected.subscribe(value => (wsConnected = value));
     }
 
-    function handleNameSubmitted(event: CustomEvent) {
+    function handleNameSubmitted(event: CustomEvent<{ name: string }>) {
         const { name } = event.detail;
         playerName = name;
         savePlayerName(name);
@@ -82,7 +82,7 @@
     <div class="lobby-overlay">
         {#if showNameInput}
             <div class="name-input-container">
-                <PlayerNameInput initialName={playerName} on:nameSubmitted={handleNameSubmitted} />
+                <NameInput initialName={playerName} on:submit={handleNameSubmitted} />
             </div>
         {:else}
             <div class="lobby-container">

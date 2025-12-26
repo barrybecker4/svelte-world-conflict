@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button, Panel, Section } from 'shared-ui';
     import { createEventDispatcher, onMount } from 'svelte';
-    import PlayerNameInput from './PlayerNameInput.svelte';
+    import { NameInput } from 'shared-ui';
     import PlayerSlots from './PlayerSlots.svelte';
     import GameSettingsPanel from './GameSettingsPanel.svelte';
     import MapPreviewPanel from '$lib/components/map/MapPreviewPanel.svelte';
@@ -111,8 +111,8 @@
         return validOptions.includes(value) ? value : defaultGameSettings.mapSize;
     }
 
-    // Handle player name submission from the PlayerNameInput component
-    function handleNameSubmitted(event: CustomEvent) {
+    // Handle player name submission from the NameInput component
+    function handleNameSubmitted(event: CustomEvent<{ name: string }>) {
         const { name } = event.detail;
         playerName = name;
         proceedWithName();
@@ -227,7 +227,7 @@
 <div class="game-configuration">
     {#if showNameInput}
         <div class="name-input-container">
-            <PlayerNameInput initialName={playerName} on:nameSubmitted={handleNameSubmitted} {error} />
+            <NameInput initialName={playerName} on:submit={handleNameSubmitted} {error} />
         </div>
     {:else}
         <div class="configuration-main">

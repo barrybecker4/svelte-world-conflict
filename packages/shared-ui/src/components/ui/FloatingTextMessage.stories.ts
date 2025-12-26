@@ -30,7 +30,7 @@ const meta = {
         text: '+5 Reinforcements',
         color: '#ffffff',
         duration: 10000
-    },
+    } as any,
     argTypes: {
         x: {
             control: { type: 'range', min: 0, max: 800, step: 10 },
@@ -52,7 +52,7 @@ const meta = {
             control: { type: 'range', min: 500, max: 10000, step: 100 },
             description: 'Duration in milliseconds before the message fades out'
         }
-    }
+    } as any
 } satisfies Meta<typeof FloatingTextMessage>;
 
 export default meta;

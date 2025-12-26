@@ -5,7 +5,7 @@
     import { goto } from '$app/navigation';
     import { logger } from 'multiplayer-framework/shared';
     import HistoricalStatsModal from '$lib/components/modals/HistoricalStatsModal.svelte';
-    import NameInputForm from './NameInputForm.svelte';
+    import { NameInput } from 'shared-ui';
     import GameCard from './GameCard.svelte';
 
     const dispatch = createEventDispatcher();
@@ -112,8 +112,8 @@
         dispatch('close');
     }
 
-    function handleNameSubmit(event: CustomEvent<{ playerName: string }>) {
-        const { playerName: name } = event.detail;
+    function handleNameSubmit(event: CustomEvent<{ name: string }>) {
+        const { name } = event.detail;
         playerName = name;
         savePlayerName(name);
         showNameInput = false;
@@ -160,9 +160,11 @@
 
 <div class="lobby-overlay">
     {#if showNameInput}
-        <NameInputForm
-            {playerName}
+        <NameInput
+            value={playerName}
             on:submit={handleNameSubmit}
+            autofocus={true}
+            placeholder="Commander name..."
         />
     {:else}
         <div class="lobby-container">

@@ -1,6 +1,7 @@
 // UI Components
 export { default as Button } from './components/ui/Button.svelte';
 export { default as IconButton } from './components/ui/IconButton.svelte';
+export { default as NameInput } from './components/ui/NameInput.svelte';
 export { default as Modal } from './components/ui/Modal.svelte';
 export { default as Panel } from './components/ui/Panel.svelte';
 export { default as Section } from './components/ui/Section.svelte';
