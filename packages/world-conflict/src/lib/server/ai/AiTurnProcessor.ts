@@ -61,12 +61,9 @@ function extractMoveMetadata(command: Command): MoveMetadata | undefined {
 /**
  * Execute a single AI move and process the result
  */
-async function executeAiMove(
-    currentState: GameState,
-    currentPlayer: Player
-): Promise<AiMoveResult> {
+async function executeAiMove(currentState: GameState, currentPlayer: Player): Promise<AiMoveResult> {
     const aiMove = await pickAiMove(currentPlayer, currentState);
-    
+
     if (!aiMove) {
         return { success: false, newState: currentState };
     }
@@ -90,10 +87,7 @@ async function executeAiMove(
 /**
  * End the current player's turn
  */
-function endPlayerTurn(
-    currentState: GameState,
-    currentPlayer: Player
-): AiMoveResult {
+function endPlayerTurn(currentState: GameState, currentPlayer: Player): AiMoveResult {
     const endTurnCommand = new EndTurnCommand(currentState, currentPlayer);
     const commandProcessor = new CommandProcessor();
     const result = commandProcessor.process(endTurnCommand);
@@ -151,11 +145,13 @@ async function saveFinalGameState(
     finalGame.lastMoveAt = Date.now();
     finalGame.lastAttackSequence = lastAttackSequence;
     finalGame.lastMove = lastMoveMetadata;
-    
+
     // Update status if game ended during AI turns
     if (currentState.endResult) {
         finalGame.status = 'COMPLETED';
-        logger.info(`saveFinalGameState: Game ${gameId} ended during AI turns. endResult=${JSON.stringify(currentState.endResult)}, setting status=COMPLETED`);
+        logger.info(
+            `saveFinalGameState: Game ${gameId} ended during AI turns. endResult=${JSON.stringify(currentState.endResult)}, setting status=COMPLETED`
+        );
     } else {
         logger.debug(`saveFinalGameState: Game ${gameId} continues. No endResult, status=${finalGame.status}`);
     }
@@ -180,7 +176,9 @@ interface AiProcessingContext {
 function checkAndSetGameEnd(state: GameState): boolean {
     const gameEndCheck = checkGameEnd(state.toJSON(), state.players);
     if (gameEndCheck.isGameEnded && !state.endResult) {
-        logger.info(`Game ended during AI move: ${gameEndCheck.reason}, winner: ${JSON.stringify(gameEndCheck.winner)}`);
+        logger.info(
+            `Game ended during AI move: ${gameEndCheck.reason}, winner: ${JSON.stringify(gameEndCheck.winner)}`
+        );
         state.endResult = gameEndCheck.winner;
         return true;
     }
@@ -194,7 +192,10 @@ function checkAndSetGameEnd(state: GameState): boolean {
 async function handleSuccessfulMove(
     ctx: AiProcessingContext,
     moveResult: AiMoveResult
-): Promise<{ continueProcessing: boolean; updatedContext: AiProcessingContext }> {
+): Promise<{
+    continueProcessing: boolean;
+    updatedContext: AiProcessingContext;
+}> {
     const updatedContext = {
         ...ctx,
         currentState: moveResult.newState,
@@ -217,7 +218,7 @@ async function handleSuccessfulMove(
 
     // Small delay between AI actions for better UX
     await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.AI_ACTION_DELAY_MS));
-    
+
     return { continueProcessing: true, updatedContext };
 }
 
@@ -228,9 +229,12 @@ async function handleSuccessfulMove(
 async function handleEndOfTurn(
     ctx: AiProcessingContext,
     currentPlayer: Player
-): Promise<{ continueProcessing: boolean; updatedContext: AiProcessingContext }> {
+): Promise<{
+    continueProcessing: boolean;
+    updatedContext: AiProcessingContext;
+}> {
     const endResult = endPlayerTurn(ctx.currentState, currentPlayer);
-    
+
     if (!endResult.success) {
         return { continueProcessing: false, updatedContext: ctx };
     }
@@ -242,13 +246,7 @@ async function handleEndOfTurn(
         lastMoveMetadata: endResult.moveMetadata
     };
 
-    await notifyGameUpdate(
-        ctx.gameStorage,
-        ctx.gameId,
-        updatedContext.currentState,
-        endResult.moveMetadata,
-        undefined
-    );
+    await notifyGameUpdate(ctx.gameStorage, ctx.gameId, updatedContext.currentState, endResult.moveMetadata, undefined);
 
     return { continueProcessing: true, updatedContext };
 }
@@ -282,7 +280,7 @@ export async function processAiTurns(
         lastAttackSequence: undefined,
         lastMoveMetadata: undefined
     };
-    
+
     let currentPlayer = ctx.currentState.getCurrentPlayer();
     let turnCount = 0;
     const maxTurns = GAME_CONSTANTS.MAX_AI_TURNS;

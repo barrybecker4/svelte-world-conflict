@@ -18,17 +18,17 @@ const STATS_FIX_VERSION = '2025-11-30-v8';
 export const GET: RequestHandler = async ({ url, platform }) => {
     try {
         const statsService = GameStatsService.create(platform!);
-        
+
         const days = parseInt(url.searchParams.get('days') || '1');
-        
+
         if (days > 1) {
             const stats = await statsService.getStatsForLastNDays(days);
             return json({ stats });
         }
-        
+
         const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
         const stats = await statsService.getDailyStats(date);
-        
+
         return json({
             version: VERSION,
             statsFixVersion: STATS_FIX_VERSION,
@@ -47,11 +47,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 export const POST: RequestHandler = async ({ url, platform }) => {
     try {
         const action = url.searchParams.get('action');
-        
+
         if (action === 'test-completion') {
             // Create a mock completed game to test the recording flow
             const statsService = GameStatsService.create(platform!);
-            
+
             const mockGame = {
                 gameId: `test-${Date.now()}`,
                 status: 'COMPLETED' as const,
@@ -81,43 +81,43 @@ export const POST: RequestHandler = async ({ url, platform }) => {
                 currentPlayerSlot: 0,
                 gameType: 'AI' as const
             };
-            
+
             await statsService.recordGameCompleted(mockGame);
-            
+
             const date = new Date().toISOString().split('T')[0];
             const stats = await statsService.getDailyStats(date);
-            
+
             return json({
                 success: true,
                 message: 'Test completion recorded',
                 stats
             });
         }
-        
+
         if (action === 'diagnose-game') {
             // Diagnose why a specific game didn't end
             const gameId = url.searchParams.get('gameId');
             if (!gameId) {
                 return json({ error: 'gameId required' }, { status: 400 });
             }
-            
+
             const gameStorage = GameStorage.create(platform!);
             const game = await gameStorage.getGame(gameId);
             if (!game) {
                 return json({ error: 'Game not found' }, { status: 404 });
             }
-            
+
             const gameState = game.worldConflictState;
             const players = game.players;
-            
+
             // Test checkGameEnd with the current state
             const gameEndResult = checkGameEnd(gameState, players);
-            
+
             // Calculate what the turn limit check sees
             const turnNumber = gameState.turnNumber;
             const maxTurns = gameState.maxTurns ?? 0;
             const currentTurn = turnNumber + 1;
-            
+
             return json({
                 gameId,
                 status: game.status,
@@ -128,18 +128,20 @@ export const POST: RequestHandler = async ({ url, platform }) => {
                 storedEndResult: gameState.endResult,
                 checkGameEndResult: gameEndResult,
                 playerCount: players.length,
-                activePlayers: players.filter(p => {
-                    const regions = Object.values(gameState.ownersByRegion).filter(o => o === p.slotIndex);
-                    return regions.length > 0;
-                }).map(p => ({ name: p.name, slotIndex: p.slotIndex }))
+                activePlayers: players
+                    .filter(p => {
+                        const regions = Object.values(gameState.ownersByRegion).filter(o => o === p.slotIndex);
+                        return regions.length > 0;
+                    })
+                    .map(p => ({ name: p.name, slotIndex: p.slotIndex }))
             });
         }
-        
+
         if (action === 'check-games') {
             // List recent games and their statuses
             const gameStorage = GameStorage.create(platform!);
             const games: any[] = [];
-            
+
             // This is a diagnostic to see what games exist and their statuses
             try {
                 const kv = (platform as any)?.env?.WORLD_CONFLICT_KV;
@@ -168,18 +170,18 @@ export const POST: RequestHandler = async ({ url, platform }) => {
                         ...g,
                         createdAt: new Date(g.createdAt).toISOString()
                     }));
-                    return json({ 
+                    return json({
                         totalGames: games.length,
-                        recentGames 
+                        recentGames
                     });
                 }
             } catch (e) {
                 logger.error('Error listing games:', e);
             }
-            
+
             return json({ games: [], error: 'Could not list games' });
         }
-        
+
         return json({ error: 'Unknown action. Use ?action=test-completion or ?action=check-games' }, { status: 400 });
     } catch (error) {
         logger.error('Error in stats action:', error);

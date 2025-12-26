@@ -42,10 +42,10 @@ export function max(array: number[]): number {
  */
 export function maxBy<T>(array: T[], mapper: (item: T) => number): T | undefined {
     if (array.length === 0) return undefined;
-    
+
     let maxItem = array[0];
     let maxValue = mapper(maxItem);
-    
+
     for (let i = 1; i < array.length; i++) {
         const value = mapper(array[i]);
         if (value > maxValue) {
@@ -53,7 +53,7 @@ export function maxBy<T>(array: T[], mapper: (item: T) => number): T | undefined
             maxItem = array[i];
         }
     }
-    
+
     return maxItem;
 }
 
@@ -70,10 +70,10 @@ export function min(array: number[]): number {
  */
 export function minBy<T>(array: T[], mapper: (item: T) => number): T | undefined {
     if (array.length === 0) return undefined;
-    
+
     let minItem = array[0];
     let minValue = mapper(minItem);
-    
+
     for (let i = 1; i < array.length; i++) {
         const value = mapper(array[i]);
         if (value < minValue) {
@@ -81,7 +81,7 @@ export function minBy<T>(array: T[], mapper: (item: T) => number): T | undefined
             minItem = array[i];
         }
     }
-    
+
     return minItem;
 }
 

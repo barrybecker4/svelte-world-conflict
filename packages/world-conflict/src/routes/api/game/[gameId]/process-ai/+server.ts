@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         const gameStorage = GameStorage.create(platform!);
         const game = await gameStorage.getGame(gameId);
-        
+
         if (!game) {
             return json({ error: 'Game not found' }, { status: 404 });
         }
@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, platform }) => {
 
         // Only process if current player is AI
         if (!currentPlayer?.isAI) {
-            return json({ 
+            return json({
                 success: true,
                 message: 'Current player is not AI, no processing needed',
                 currentPlayerSlot: gameState.currentPlayerSlot
@@ -47,7 +47,6 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             currentPlayerSlot: processedGameState.currentPlayerSlot,
             message: 'AI turns processed successfully'
         });
-
     } catch (error) {
         return handleApiError(error, `processing AI turns for game ${params.gameId}`);
     }

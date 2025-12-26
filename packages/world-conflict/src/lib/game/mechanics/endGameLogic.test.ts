@@ -32,10 +32,7 @@ function createGameState(options: {
         turnNumber: options.turnNumber ?? 1,
         maxTurns: options.maxTurns ?? 10,
         currentPlayerSlot: 0,
-        players: options.players ?? [
-            createPlayer(0, 'Player 1'),
-            createPlayer(1, 'Player 2')
-        ],
+        players: options.players ?? [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2')],
         regions: [],
         movesRemaining: 3,
         ownersByRegion: options.ownersByRegion ?? {},
@@ -177,11 +174,7 @@ describe('endGameLogic', () => {
         });
 
         it('should handle 3-player game with one eliminated', () => {
-            const players = [
-                createPlayer(0, 'Player 1'),
-                createPlayer(1, 'Player 2'),
-                createPlayer(2, 'Player 3')
-            ];
+            const players = [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2'), createPlayer(2, 'Player 3')];
             const gameState = createGameState({
                 turnNumber: 5,
                 maxTurns: 10,
@@ -196,11 +189,7 @@ describe('endGameLogic', () => {
         });
 
         it('should end 3-player game when only one player remains', () => {
-            const players = [
-                createPlayer(0, 'Player 1'),
-                createPlayer(1, 'Player 2'),
-                createPlayer(2, 'Player 3')
-            ];
+            const players = [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2'), createPlayer(2, 'Player 3')];
             const gameState = createGameState({
                 turnNumber: 5,
                 maxTurns: 10,
@@ -258,9 +247,9 @@ describe('endGameLogic', () => {
                 ownersByRegion: { 0: 0, 1: 0, 2: 1, 3: 1 }, // Each has 2 regions
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }], // Player 0: 3 soldiers
-                    1: [{ i: 4 }, { i: 5 }],           // Player 0: 2 more = 5 total
-                    2: [{ i: 6 }],                     // Player 1: 1 soldier
-                    3: [{ i: 7 }]                      // Player 1: 1 more = 2 total
+                    1: [{ i: 4 }, { i: 5 }], // Player 0: 2 more = 5 total
+                    2: [{ i: 6 }], // Player 1: 1 soldier
+                    3: [{ i: 7 }] // Player 1: 1 more = 2 total
                 }
             });
 
@@ -271,10 +260,7 @@ describe('endGameLogic', () => {
         });
 
         it('should include faith in score calculation', () => {
-            const players = [
-                createPlayer(0, 'Barry'),
-                createPlayer(1, 'Amber')
-            ];
+            const players = [createPlayer(0, 'Barry'), createPlayer(1, 'Amber')];
 
             const gameState = createGameState({
                 turnNumber: 10,
@@ -283,13 +269,13 @@ describe('endGameLogic', () => {
                 ownersByRegion: { 0: 0, 1: 0, 2: 1, 3: 1 }, // Each has 2 regions
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // Barry: 2 soldiers
-                    1: [{ i: 3 }],           // Barry: 1 more = 3 total
+                    1: [{ i: 3 }], // Barry: 1 more = 3 total
                     2: [{ i: 4 }, { i: 5 }], // Amber: 2 soldiers
-                    3: [{ i: 6 }]            // Amber: 1 more = 3 total
+                    3: [{ i: 6 }] // Amber: 1 more = 3 total
                 },
                 faithByPlayer: {
                     0: 18, // Barry: 18 faith -> score = 2000 + 30 + 18 = 2048
-                    1: 25  // Amber: 25 faith -> score = 2000 + 30 + 25 = 2055 (wins!)
+                    1: 25 // Amber: 25 faith -> score = 2000 + 30 + 25 = 2055 (wins!)
                 }
             });
 
@@ -300,10 +286,7 @@ describe('endGameLogic', () => {
         });
 
         it('should declare draw only when scores are exactly equal', () => {
-            const players = [
-                createPlayer(0, 'Player 1'),
-                createPlayer(1, 'Player 2')
-            ];
+            const players = [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2')];
 
             const gameState = createGameState({
                 turnNumber: 10,
@@ -327,11 +310,7 @@ describe('endGameLogic', () => {
         });
 
         it('should declare draw in 3-way tie', () => {
-            const players = [
-                createPlayer(0, 'Player 1'),
-                createPlayer(1, 'Player 2'),
-                createPlayer(2, 'Player 3')
-            ];
+            const players = [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2'), createPlayer(2, 'Player 3')];
 
             const gameState = createGameState({
                 turnNumber: 10,
@@ -357,11 +336,7 @@ describe('endGameLogic', () => {
         });
 
         it('should not declare draw when only 2 of 3 players are tied', () => {
-            const players = [
-                createPlayer(0, 'Player 1'),
-                createPlayer(1, 'Player 2'),
-                createPlayer(2, 'Player 3')
-            ];
+            const players = [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2'), createPlayer(2, 'Player 3')];
 
             const gameState = createGameState({
                 turnNumber: 10,
@@ -414,15 +389,18 @@ describe('endGameLogic', () => {
             // Amber: 4 regions, 11 soldiers, 25 faith -> 4000 + 110 + 25 = 4135
             // Amber should win!
 
-            const players = [
-                createPlayer(0, 'Barry'),
-                createPlayer(1, 'Amber')
-            ];
+            const players = [createPlayer(0, 'Barry'), createPlayer(1, 'Amber')];
 
             // Set up 4 regions each with soldiers distributed to total 11 each
             const ownersByRegion: Record<number, number> = {
-                0: 0, 1: 0, 2: 0, 3: 0, // Barry owns regions 0-3
-                4: 1, 5: 1, 6: 1, 7: 1  // Amber owns regions 4-7
+                0: 0,
+                1: 0,
+                2: 0,
+                3: 0, // Barry owns regions 0-3
+                4: 1,
+                5: 1,
+                6: 1,
+                7: 1 // Amber owns regions 4-7
             };
 
             const soldiersByRegion: Record<number, { i: number }[]> = {
@@ -433,7 +411,7 @@ describe('endGameLogic', () => {
                 4: Array.from({ length: 3 }, (_, i) => ({ i: 40 + i })),
                 5: Array.from({ length: 3 }, (_, i) => ({ i: 50 + i })),
                 6: Array.from({ length: 3 }, (_, i) => ({ i: 60 + i })),
-                7: Array.from({ length: 2 }, (_, i) => ({ i: 70 + i }))  // Total: 11 soldiers for Amber
+                7: Array.from({ length: 2 }, (_, i) => ({ i: 70 + i })) // Total: 11 soldiers for Amber
             };
 
             const gameState = createGameState({
@@ -444,7 +422,7 @@ describe('endGameLogic', () => {
                 soldiersByRegion,
                 faithByPlayer: {
                     0: 18, // Barry
-                    1: 25  // Amber
+                    1: 25 // Amber
                 }
             });
 

@@ -10,11 +10,11 @@ import type { GameStateData } from '$lib/game/entities/gameTypes';
  * Used to ensure WebSocket updates don't carry temporary battle flags
  */
 export function clearBattleState(gameState: GameStateData): GameStateData {
-  return {
-    ...gameState,
-    battlesInProgress: [],
-    pendingMoves: []
-  };
+    return {
+        ...gameState,
+        battlesInProgress: [],
+        pendingMoves: []
+    };
 }
 
 /**
@@ -22,7 +22,7 @@ export function clearBattleState(gameState: GameStateData): GameStateData {
  * Useful for creating animation states without affecting the original
  */
 export function cloneGameState(gameState: GameStateData): GameStateData {
-  return JSON.parse(JSON.stringify(gameState));
+    return JSON.parse(JSON.stringify(gameState));
 }
 
 /**
@@ -30,8 +30,10 @@ export function cloneGameState(gameState: GameStateData): GameStateData {
  * (as opposed to an unexpected system error)
  */
 export function isExpectedValidationError(message: string): boolean {
-  return message.includes('conquered') || 
-         message.includes('No moves remaining') ||
-         message.includes('not owned by') ||
-         message.includes('Invalid');
+    return (
+        message.includes('conquered') ||
+        message.includes('No moves remaining') ||
+        message.includes('not owned by') ||
+        message.includes('Invalid')
+    );
 }

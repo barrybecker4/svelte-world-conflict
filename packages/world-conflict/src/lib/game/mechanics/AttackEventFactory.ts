@@ -40,12 +40,14 @@ export class AttackEventFactory {
      */
     createFloatingText(regionIdx: number, color: string, text: string): AttackEvent {
         return {
-            floatingText: [{
-                regionIdx,
-                color,
-                text,
-                width: AttackEventFactory.DEFAULT_TEXT_WIDTH
-            }]
+            floatingText: [
+                {
+                    regionIdx,
+                    color,
+                    text,
+                    width: AttackEventFactory.DEFAULT_TEXT_WIDTH
+                }
+            ]
         };
     }
 
@@ -53,26 +55,16 @@ export class AttackEventFactory {
      * Create the "Conquered!" outcome event
      */
     createConqueredEvent(toRegion: number): AttackEvent {
-        return this.createFloatingText(
-            toRegion,
-            AttackEventFactory.CONQUERED_COLOR,
-            AttackEventFactory.CONQUERED_TEXT
-        );
+        return this.createFloatingText(toRegion, AttackEventFactory.CONQUERED_COLOR, AttackEventFactory.CONQUERED_TEXT);
     }
 
     /**
      * Create the "Defended!" outcome event
      */
     createDefendedEvent(toRegion: number, players: Player[], toOwner: number | undefined): AttackEvent {
-        const toOwnerPlayer = toOwner !== undefined 
-            ? players.find(p => p.slotIndex === toOwner) 
-            : undefined;
+        const toOwnerPlayer = toOwner !== undefined ? players.find(p => p.slotIndex === toOwner) : undefined;
         const color = toOwnerPlayer?.color || '#fff';
-        return this.createFloatingText(
-            toRegion,
-            color,
-            AttackEventFactory.DEFENDED_TEXT
-        );
+        return this.createFloatingText(toRegion, color, AttackEventFactory.DEFENDED_TEXT);
     }
 
     /**
@@ -80,11 +72,7 @@ export class AttackEventFactory {
      */
     createRetreatEvent(fromRegion: number): AttackEvent {
         return {
-            ...this.createFloatingText(
-                fromRegion,
-                AttackEventFactory.RETREAT_COLOR,
-                AttackEventFactory.RETREAT_TEXT
-            ),
+            ...this.createFloatingText(fromRegion, AttackEventFactory.RETREAT_COLOR, AttackEventFactory.RETREAT_TEXT),
             isRetreat: true
         };
     }
@@ -110,10 +98,7 @@ export class AttackEventFactory {
     /**
      * Create an event for preemptive defense damage (Earth upgrade - kills attackers)
      */
-    createPreemptiveDamageEvent(
-        damage: number,
-        toRegion: number
-    ): AttackEvent {
+    createPreemptiveDamageEvent(damage: number, toRegion: number): AttackEvent {
         return {
             attackerCasualties: damage,
             defenderCasualties: 0,
@@ -121,23 +106,21 @@ export class AttackEventFactory {
             runningDefenderTotal: 0,
             soundCue: 'ATTACK',
             delay: AttackEventFactory.BATTLE_ROUND_DELAY,
-            floatingText: [{
-                regionIdx: toRegion,
-                text: `Earth kills ${damage}!`,
-                color: '#8B4513',
-                width: AttackEventFactory.PREEMPTIVE_TEXT_WIDTH
-            }]
+            floatingText: [
+                {
+                    regionIdx: toRegion,
+                    text: `Earth kills ${damage}!`,
+                    color: '#8B4513',
+                    width: AttackEventFactory.PREEMPTIVE_TEXT_WIDTH
+                }
+            ]
         };
     }
 
     /**
      * Create an event for preemptive attack damage (Fire upgrade - kills defenders)
      */
-    createFireDamageEvent(
-        damage: number,
-        toRegion: number,
-        runningAttackerTotal: number
-    ): AttackEvent {
+    createFireDamageEvent(damage: number, toRegion: number, runningAttackerTotal: number): AttackEvent {
         return {
             attackerCasualties: 0,
             defenderCasualties: damage,
@@ -145,12 +128,14 @@ export class AttackEventFactory {
             runningDefenderTotal: damage,
             soundCue: 'ATTACK',
             delay: AttackEventFactory.BATTLE_ROUND_DELAY,
-            floatingText: [{
-                regionIdx: toRegion,
-                text: `Fire kills ${damage}!`,
-                color: '#ef4444',
-                width: AttackEventFactory.PREEMPTIVE_TEXT_WIDTH
-            }]
+            floatingText: [
+                {
+                    regionIdx: toRegion,
+                    text: `Fire kills ${damage}!`,
+                    color: '#ef4444',
+                    width: AttackEventFactory.PREEMPTIVE_TEXT_WIDTH
+                }
+            ]
         };
     }
 

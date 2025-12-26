@@ -6,10 +6,10 @@ import type { Region } from '$lib/game/entities/gameTypes';
 import { logger } from 'multiplayer-framework/shared';
 
 export interface FloatingTextEvent {
-  regionIdx: number;
-  text: string;
-  color: string;
-  width: number;
+    regionIdx: number;
+    text: string;
+    color: string;
+    width: number;
 }
 
 const TEXT_CONTENT_STYLE = `
@@ -37,68 +37,74 @@ const TEXT_CONTENT_STYLE = `
 export type StateUpdateCallback = (attackerLosses: number, defenderLosses: number) => void;
 
 export class BattleAnimationSystem {
-  private activeAnimations = new Set<HTMLElement>();
-  private mapContainer: HTMLElement | null = null;
+    private activeAnimations = new Set<HTMLElement>();
+    private mapContainer: HTMLElement | null = null;
 
-  constructor(mapContainer?: HTMLElement) {
-    this.mapContainer = mapContainer ?? null;
-  }
-
-  setMapContainer(container: HTMLElement) {
-    this.mapContainer = container;
-  }
-
-  async playAttackSequence(
-    attackSequence: AttackEvent[],
-    regions: Region[],
-    onStateUpdate?: StateUpdateCallback
-  ): Promise<void> {
-    // Check if we have a map container
-    if (!this.mapContainer) {
-      throw new Error('No map container available, cannot show animations');
+    constructor(mapContainer?: HTMLElement) {
+        this.mapContainer = mapContainer ?? null;
     }
 
-    for (const event of attackSequence) {
-      // Update state with casualties from this round
-      if (onStateUpdate && (event.attackerCasualties || event.defenderCasualties)) {
-        onStateUpdate(event.attackerCasualties || 0, event.defenderCasualties || 0);
-      }
+    setMapContainer(container: HTMLElement) {
+        this.mapContainer = container;
+    }
 
-      if (event.floatingText) {   // Show floating text if present
-        for (const textEvent of event.floatingText) {
-          this.showFloatingText(textEvent, regions);
+    async playAttackSequence(
+        attackSequence: AttackEvent[],
+        regions: Region[],
+        onStateUpdate?: StateUpdateCallback
+    ): Promise<void> {
+        // Check if we have a map container
+        if (!this.mapContainer) {
+            throw new Error('No map container available, cannot show animations');
         }
-      }
 
-      if (event.soundCue) { // Play sound cues if present
-        await this.playSoundCue(event.soundCue);
-      }
+        for (const event of attackSequence) {
+            // Update state with casualties from this round
+            if (onStateUpdate && (event.attackerCasualties || event.defenderCasualties)) {
+                onStateUpdate(event.attackerCasualties || 0, event.defenderCasualties || 0);
+            }
 
-      if (event.delay) { // Wait for delay if specified
-        await this.delay(event.delay);
-      }
+            if (event.floatingText) {
+                // Show floating text if present
+                for (const textEvent of event.floatingText) {
+                    this.showFloatingText(textEvent, regions);
+                }
+            }
+
+            if (event.soundCue) {
+                // Play sound cues if present
+                await this.playSoundCue(event.soundCue);
+            }
+
+            if (event.delay) {
+                // Wait for delay if specified
+                await this.delay(event.delay);
+            }
+        }
     }
-  }
 
-  showFloatingText(textEvent: FloatingTextEvent, regions: Region[]) {
-    if (!this.isValid(textEvent, regions)) return;
+    showFloatingText(textEvent: FloatingTextEvent, regions: Region[]) {
+        if (!this.isValid(textEvent, regions)) return;
 
-    const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
-    if (!region) {
-      return;
+        const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
+        if (!region) {
+            return;
+        }
+
+        const screenCoords = this.getScreenCoords(region, regions);
+        const textElement = this.createFloatingTextElement(textEvent, screenCoords);
+
+        this.ensureFloatingTextStyles();
+        this.displayFloatingText(textElement);
     }
 
-    const screenCoords = this.getScreenCoords(region, regions);
-    const textElement = this.createFloatingTextElement(textEvent, screenCoords);
-    
-    this.ensureFloatingTextStyles();
-    this.displayFloatingText(textElement);
-  }
-
-  private createFloatingTextElement(textEvent: FloatingTextEvent, screenCoords: {x: number, y: number}): HTMLElement {
-    const textElement = document.createElement('div');
-    textElement.className = 'floating-text';
-    textElement.style.cssText = `
+    private createFloatingTextElement(
+        textEvent: FloatingTextEvent,
+        screenCoords: { x: number; y: number }
+    ): HTMLElement {
+        const textElement = document.createElement('div');
+        textElement.className = 'floating-text';
+        textElement.style.cssText = `
       position: fixed;
       left: ${screenCoords.x}px;
       top: ${screenCoords.y}px;
@@ -111,123 +117,123 @@ export class BattleAnimationSystem {
       transform: translate(-50%, -50%);
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
     `;
-    textElement.textContent = textEvent.text;
-    return textElement;
-  }
-
-  private ensureFloatingTextStyles(): void {
-    if (!document.getElementById('floating-text-styles')) {
-      const style = document.createElement('style');
-      style.id = 'floating-text-styles';
-      style.textContent = TEXT_CONTENT_STYLE;
-      document.head.appendChild(style);
-    }
-  }
-
-  private displayFloatingText(textElement: HTMLElement): void {
-    // Append to document body instead of map container for fixed positioning
-    document.body.appendChild(textElement);
-    this.activeAnimations.add(textElement);
-
-    // Remove after animation
-    setTimeout(() => {
-      if (textElement.parentNode) {
-        textElement.parentNode.removeChild(textElement);
-        this.activeAnimations.delete(textElement);
-      }
-    }, GAME_CONSTANTS.BANNER_TIME);
-  }
-
-  // Calculate the actual screen position accounting for SVG scaling
-  private getScreenCoords(region: Region, regions: Region[]): {x: number, y: number} {
-    // Get the bounding rectangle of the map container and SVG
-    if (!this.mapContainer) throw new Error('Map container not set');
-    const containerRect = this.mapContainer.getBoundingClientRect();
-    const svgElement = this.mapContainer.querySelector('svg');
-    if (!svgElement) throw new Error('SVG element not found');
-    const svgRect = svgElement.getBoundingClientRect();
-
-    const svgViewBox = svgElement.viewBox.baseVal;
-    const scaleX = svgRect.width / svgViewBox.width;
-    const scaleY = svgRect.height / svgViewBox.height;
-
-    // Convert region coordinates to screen coordinates
-    const screenX = svgRect.left + (region.x * scaleX);
-    const screenY = svgRect.top + (region.y * scaleY);
-
-    return { x: screenX, y: screenY };
-  }
-
-  private isValid(textEvent: FloatingTextEvent, regions: Region[]) {
-    if (!this.mapContainer) {
-      logger.warn('No map container for floating text');
-      return false;
+        textElement.textContent = textEvent.text;
+        return textElement;
     }
 
-    const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
-    if (!region) {
-      logger.warn('Region not found for floating text:', textEvent.regionIdx);
-      return false;
+    private ensureFloatingTextStyles(): void {
+        if (!document.getElementById('floating-text-styles')) {
+            const style = document.createElement('style');
+            style.id = 'floating-text-styles';
+            style.textContent = TEXT_CONTENT_STYLE;
+            document.head.appendChild(style);
+        }
     }
-    return true;
-  }
 
-  async playSoundCue(soundCue: string): Promise<void> {
-      try {
-          // Map sound cues to constants (handles both new and old GAS format)
-          const soundMap: Record<string, SoundType> = {
-              // Actions
-              'attack': SOUNDS.ATTACK,
-              'combat': SOUNDS.COMBAT,
-              'move': SOUNDS.SOLDIERS_MOVE,
-              'conquest': SOUNDS.REGION_CONQUERED,
-              'recruit': SOUNDS.SOLDIERS_RECRUITED,
-              'soldiers': SOUNDS.SOLDIERS_RECRUITED,
-              'upgrade': SOUNDS.TEMPLE_UPGRADED,
+    private displayFloatingText(textElement: HTMLElement): void {
+        // Append to document body instead of map container for fixed positioning
+        document.body.appendChild(textElement);
+        this.activeAnimations.add(textElement);
 
-              // Game events
-              'victory': SOUNDS.GAME_WON,
-              'win': SOUNDS.GAME_WON,
-              'defeat': SOUNDS.GAME_LOST,
-              'lose': SOUNDS.GAME_LOST,
-              'start': SOUNDS.GAME_STARTED,
-              'created': SOUNDS.GAME_CREATED,
+        // Remove after animation
+        setTimeout(() => {
+            if (textElement.parentNode) {
+                textElement.parentNode.removeChild(textElement);
+                this.activeAnimations.delete(textElement);
+            }
+        }, GAME_CONSTANTS.BANNER_TIME);
+    }
 
-              // Economy
-              'income': SOUNDS.INCOME,
+    // Calculate the actual screen position accounting for SVG scaling
+    private getScreenCoords(region: Region, regions: Region[]): { x: number; y: number } {
+        // Get the bounding rectangle of the map container and SVG
+        if (!this.mapContainer) throw new Error('Map container not set');
+        const containerRect = this.mapContainer.getBoundingClientRect();
+        const svgElement = this.mapContainer.querySelector('svg');
+        if (!svgElement) throw new Error('SVG element not found');
+        const svgRect = svgElement.getBoundingClientRect();
 
-              // UI
-              'click': SOUNDS.CLICK,
-              'hover': SOUNDS.HOVER,
-              'error': SOUNDS.ERROR,
+        const svgViewBox = svgElement.viewBox.baseVal;
+        const scaleX = svgRect.width / svgViewBox.width;
+        const scaleY = svgRect.height / svgViewBox.height;
 
-              // Time warnings
-              'almost_out_of_time': SOUNDS.ALMOST_OUT_OF_TIME,
-              'out_of_time': SOUNDS.OUT_OF_TIME,
-          };
+        // Convert region coordinates to screen coordinates
+        const screenX = svgRect.left + region.x * scaleX;
+        const screenY = svgRect.top + region.y * scaleY;
 
-          const soundType = soundMap[soundCue.toLowerCase()];
-          if (soundType) {
-              await audioSystem.playSound(soundType);
-          } else {
-              logger.warn(`Unknown sound cue: ${soundCue}`);
-          }
-      } catch (error) {
-          logger.warn(`Could not play sound cue "${soundCue}":`, error);
-      }
-  }
+        return { x: screenX, y: screenY };
+    }
 
-  delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+    private isValid(textEvent: FloatingTextEvent, regions: Region[]) {
+        if (!this.mapContainer) {
+            logger.warn('No map container for floating text');
+            return false;
+        }
 
-  cleanup() {
-    // Clear any active animations
-    this.activeAnimations.forEach(element => {
-      if (element.parentNode) {
-        element.parentNode.removeChild(element);
-      }
-    });
-    this.activeAnimations.clear();
-  }
+        const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
+        if (!region) {
+            logger.warn('Region not found for floating text:', textEvent.regionIdx);
+            return false;
+        }
+        return true;
+    }
+
+    async playSoundCue(soundCue: string): Promise<void> {
+        try {
+            // Map sound cues to constants (handles both new and old GAS format)
+            const soundMap: Record<string, SoundType> = {
+                // Actions
+                attack: SOUNDS.ATTACK,
+                combat: SOUNDS.COMBAT,
+                move: SOUNDS.SOLDIERS_MOVE,
+                conquest: SOUNDS.REGION_CONQUERED,
+                recruit: SOUNDS.SOLDIERS_RECRUITED,
+                soldiers: SOUNDS.SOLDIERS_RECRUITED,
+                upgrade: SOUNDS.TEMPLE_UPGRADED,
+
+                // Game events
+                victory: SOUNDS.GAME_WON,
+                win: SOUNDS.GAME_WON,
+                defeat: SOUNDS.GAME_LOST,
+                lose: SOUNDS.GAME_LOST,
+                start: SOUNDS.GAME_STARTED,
+                created: SOUNDS.GAME_CREATED,
+
+                // Economy
+                income: SOUNDS.INCOME,
+
+                // UI
+                click: SOUNDS.CLICK,
+                hover: SOUNDS.HOVER,
+                error: SOUNDS.ERROR,
+
+                // Time warnings
+                almost_out_of_time: SOUNDS.ALMOST_OUT_OF_TIME,
+                out_of_time: SOUNDS.OUT_OF_TIME
+            };
+
+            const soundType = soundMap[soundCue.toLowerCase()];
+            if (soundType) {
+                await audioSystem.playSound(soundType);
+            } else {
+                logger.warn(`Unknown sound cue: ${soundCue}`);
+            }
+        } catch (error) {
+            logger.warn(`Could not play sound cue "${soundCue}":`, error);
+        }
+    }
+
+    delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    cleanup() {
+        // Clear any active animations
+        this.activeAnimations.forEach(element => {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        });
+        this.activeAnimations.clear();
+    }
 }

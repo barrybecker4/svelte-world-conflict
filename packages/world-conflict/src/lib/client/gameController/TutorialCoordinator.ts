@@ -7,81 +7,69 @@ import type { MoveState } from '$lib/game/mechanics/moveTypes';
  * Coordinates tutorial tooltip display and management
  */
 export class TutorialCoordinator {
-  private tutorialTips: Writable<TooltipData[]>;
-  private tutorialManager: TutorialTips;
-  private readonly playerSlotIndex: number;
+    private tutorialTips: Writable<TooltipData[]>;
+    private tutorialManager: TutorialTips;
+    private readonly playerSlotIndex: number;
 
-  constructor(playerId: string) {
-    this.playerSlotIndex = parseInt(playerId);
-    this.tutorialTips = writable([]);
-    this.tutorialManager = new TutorialTips();
-  }
-
-  /**
-   * Get the tutorial tips store for component binding
-   */
-  getTutorialTipsStore(): Writable<TooltipData[]> {
-    return this.tutorialTips;
-  }
-
-  /**
-   * Update tutorial tooltips based on current game state
-   */
-  updateTooltips(
-    gameState: GameStateData | null,
-    regions: any[],
-    moveState: MoveState
-  ): void {
-    if (!gameState || !regions) {
-      this.clearTooltips();
-      return;
+    constructor(playerId: string) {
+        this.playerSlotIndex = parseInt(playerId);
+        this.tutorialTips = writable([]);
+        this.tutorialManager = new TutorialTips();
     }
 
-    const isMyTurn = gameState.currentPlayerSlot === this.playerSlotIndex;
-    const selectedRegionIndex = moveState?.sourceRegion ?? null;
+    /**
+     * Get the tutorial tips store for component binding
+     */
+    getTutorialTipsStore(): Writable<TooltipData[]> {
+        return this.tutorialTips;
+    }
 
-    const previousTooltips = get(this.tutorialTips);
-    const tooltips = this.tutorialManager.getTooltips(
-      gameState,
-      regions,
-      selectedRegionIndex,
-      isMyTurn
-    );
+    /**
+     * Update tutorial tooltips based on current game state
+     */
+    updateTooltips(gameState: GameStateData | null, regions: any[], moveState: MoveState): void {
+        if (!gameState || !regions) {
+            this.clearTooltips();
+            return;
+        }
 
-    this.markRemovedTooltipsAsShown(previousTooltips, tooltips);
-    this.tutorialTips.set(tooltips);
-  }
+        const isMyTurn = gameState.currentPlayerSlot === this.playerSlotIndex;
+        const selectedRegionIndex = moveState?.sourceRegion ?? null;
 
-  /**
-   * Clear all tooltips
-   */
-  private clearTooltips(): void {
-    const currentTooltips = get(this.tutorialTips);
-    currentTooltips.forEach(tooltip => {
-      this.tutorialManager.markTooltipAsShown(tooltip.id);
-    });
-    this.tutorialTips.set([]);
-  }
+        const previousTooltips = get(this.tutorialTips);
+        const tooltips = this.tutorialManager.getTooltips(gameState, regions, selectedRegionIndex, isMyTurn);
 
-  /**
-   * Mark tooltips that are no longer visible as shown
-   */
-  private markRemovedTooltipsAsShown(
-    previousTooltips: TooltipData[],
-    currentTooltips: TooltipData[]
-  ): void {
-    previousTooltips.forEach(prevTooltip => {
-      const stillVisible = currentTooltips.some(t => t.id === prevTooltip.id);
-      if (!stillVisible) {
-        this.tutorialManager.markTooltipAsShown(prevTooltip.id);
-      }
-    });
-  }
+        this.markRemovedTooltipsAsShown(previousTooltips, tooltips);
+        this.tutorialTips.set(tooltips);
+    }
 
-  /**
-   * Dismiss a tutorial tooltip
-   */
-  dismissTooltip(tooltipId: string): void {
-    this.tutorialManager.dismissTooltip(tooltipId);
-  }
+    /**
+     * Clear all tooltips
+     */
+    private clearTooltips(): void {
+        const currentTooltips = get(this.tutorialTips);
+        currentTooltips.forEach(tooltip => {
+            this.tutorialManager.markTooltipAsShown(tooltip.id);
+        });
+        this.tutorialTips.set([]);
+    }
+
+    /**
+     * Mark tooltips that are no longer visible as shown
+     */
+    private markRemovedTooltipsAsShown(previousTooltips: TooltipData[], currentTooltips: TooltipData[]): void {
+        previousTooltips.forEach(prevTooltip => {
+            const stillVisible = currentTooltips.some(t => t.id === prevTooltip.id);
+            if (!stillVisible) {
+                this.tutorialManager.markTooltipAsShown(prevTooltip.id);
+            }
+        });
+    }
+
+    /**
+     * Dismiss a tutorial tooltip
+     */
+    dismissTooltip(tooltipId: string): void {
+        this.tutorialManager.dismissTooltip(tooltipId);
+    }
 }

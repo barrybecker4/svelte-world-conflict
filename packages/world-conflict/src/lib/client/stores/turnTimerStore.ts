@@ -35,22 +35,22 @@ function createTurnTimerStore() {
             // Handle timer expiration
             if (newTimeRemaining <= 0) {
                 audioSystem.playSound(SOUNDS.OUT_OF_TIME);
-                
+
                 // Clear the interval
                 if (intervalId !== null) {
                     clearInterval(intervalId);
                     intervalId = null;
                 }
-                
+
                 // Save the callback before clearing it
                 const callbackToExecute = onExpireCallback;
                 onExpireCallback = null;
-                
+
                 // Call the expiration callback
                 if (callbackToExecute) {
                     callbackToExecute();
                 }
-                
+
                 return {
                     timeRemaining: 0,
                     isRunning: false,

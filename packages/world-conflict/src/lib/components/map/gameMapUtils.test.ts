@@ -3,81 +3,85 @@ import regionUtil from './regionUtil';
 import type { Region, Player, GameStateData } from '$lib/game/entities/gameTypes';
 
 describe('GameMap Utilities', () => {
-  let mockRegion: Region;
-  let mockGameState: GameStateData;
-  let mockPlayers: Player[];
+    let mockRegion: Region;
+    let mockGameState: GameStateData;
+    let mockPlayers: Player[];
 
-  beforeEach(() => {
-    // Initialize mock players first
-    mockPlayers = [
-      { slotIndex: 0, name: 'Player 1', color: '#ff0000', isAI: false },
-      { slotIndex: 1, name: 'Player 2', color: '#00ff00', isAI: true }
-    ];
-
-    mockRegion = {
-      index: 0,
-      x: 100,
-      y: 150,
-      points: [
-        { x: 80, y: 130 },
-        { x: 120, y: 130 },
-        { x: 130, y: 170 },
-        { x: 70, y: 170 }
-      ]
-    } as Region;
-
-    mockGameState = {
-      id: 1,
-      gameId: 'test-game',
-      turnNumber: 1,
-      currentPlayerSlot: 0,
-      players: mockPlayers,
-      movesRemaining: 3,
-      regions: [mockRegion],
-      ownersByRegion: { 0: 0, 1: 1 },
-      soldiersByRegion: { 
-        0: [{ i: 1 }, { i: 2 }], 
-        1: [{ i: 3 }] 
-      },
-      templesByRegion: { 0: { regionIndex: 0, level: 1 } },
-      faithByPlayer: { 0: 0, 1: 0 },
-      conqueredRegions: []
-    };
-  });
-
-  describe('SVG Path Utilities', () => {
-    describe('pointsToPath', () => {
-      it('should convert points to SVG path', () => {
-        const points = [
-          { x: 10, y: 20 },
-          { x: 30, y: 40 },
-          { x: 50, y: 60 }
+    beforeEach(() => {
+        // Initialize mock players first
+        mockPlayers = [
+            { slotIndex: 0, name: 'Player 1', color: '#ff0000', isAI: false },
+            { slotIndex: 1, name: 'Player 2', color: '#00ff00', isAI: true }
         ];
-        
-        const result = regionUtil.pointsToPath(points);
-        expect(result).toBe('M 10,20 L 30,40 L 50,60 Z');
-      });
 
-      it('should return empty string for insufficient points', () => {
-        expect(regionUtil.pointsToPath([])).toBe('');
-        expect(regionUtil.pointsToPath([{ x: 10, y: 20 }])).toBe('');
-        expect(regionUtil.pointsToPath([{ x: 10, y: 20 }, { x: 30, y: 40 }])).toBe('');
-      });
+        mockRegion = {
+            index: 0,
+            x: 100,
+            y: 150,
+            points: [
+                { x: 80, y: 130 },
+                { x: 120, y: 130 },
+                { x: 130, y: 170 },
+                { x: 70, y: 170 }
+            ]
+        } as Region;
 
-      it('should handle null/undefined points', () => {
-        expect(regionUtil.pointsToPath(null as any)).toBe('');
-        expect(regionUtil.pointsToPath(undefined as any)).toBe('');
-      });
+        mockGameState = {
+            id: 1,
+            gameId: 'test-game',
+            turnNumber: 1,
+            currentPlayerSlot: 0,
+            players: mockPlayers,
+            movesRemaining: 3,
+            regions: [mockRegion],
+            ownersByRegion: { 0: 0, 1: 1 },
+            soldiersByRegion: {
+                0: [{ i: 1 }, { i: 2 }],
+                1: [{ i: 3 }]
+            },
+            templesByRegion: { 0: { regionIndex: 0, level: 1 } },
+            faithByPlayer: { 0: 0, 1: 0 },
+            conqueredRegions: []
+        };
     });
 
-    describe('createFallbackCircle', () => {
-      it('should create circular SVG path for region', () => {
-        const result = regionUtil.createFallbackCircle(mockRegion);
-        expect(result).toContain('M 135,150');
-        expect(result).toContain('A 35,35');
-        expect(result).toContain('Z');
-      });
-    });
-  });
+    describe('SVG Path Utilities', () => {
+        describe('pointsToPath', () => {
+            it('should convert points to SVG path', () => {
+                const points = [
+                    { x: 10, y: 20 },
+                    { x: 30, y: 40 },
+                    { x: 50, y: 60 }
+                ];
 
+                const result = regionUtil.pointsToPath(points);
+                expect(result).toBe('M 10,20 L 30,40 L 50,60 Z');
+            });
+
+            it('should return empty string for insufficient points', () => {
+                expect(regionUtil.pointsToPath([])).toBe('');
+                expect(regionUtil.pointsToPath([{ x: 10, y: 20 }])).toBe('');
+                expect(
+                    regionUtil.pointsToPath([
+                        { x: 10, y: 20 },
+                        { x: 30, y: 40 }
+                    ])
+                ).toBe('');
+            });
+
+            it('should handle null/undefined points', () => {
+                expect(regionUtil.pointsToPath(null as any)).toBe('');
+                expect(regionUtil.pointsToPath(undefined as any)).toBe('');
+            });
+        });
+
+        describe('createFallbackCircle', () => {
+            it('should create circular SVG path for region', () => {
+                const result = regionUtil.createFallbackCircle(mockRegion);
+                expect(result).toContain('M 135,150');
+                expect(result).toContain('A 35,35');
+                expect(result).toContain('Z');
+            });
+        });
+    });
 });

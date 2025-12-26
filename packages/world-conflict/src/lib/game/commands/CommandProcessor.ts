@@ -1,5 +1,5 @@
-import { Command } from "./Command";
-import type { GameState } from "$lib/game/state/GameState";
+import { Command } from './Command';
+import type { GameState } from '$lib/game/state/GameState';
 
 export interface CommandResult {
     success: boolean;
@@ -25,10 +25,10 @@ export class CommandProcessor {
             (command as any).isSimulation = this.isSimulation;
 
             const newState = command.execute();
-            
+
             // Include attack sequence for battle replay (if available)
             const attackSequence = (command as any).attackSequence;
-            
+
             return {
                 success: true,
                 newState,

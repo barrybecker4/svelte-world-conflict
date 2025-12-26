@@ -54,7 +54,10 @@ function validateRequest(gameId: string | undefined, playerId: string | undefine
 /**
  * Parse and validate player ID
  */
-function parsePlayerId(playerId: string): { playerSlotIndex?: number; error?: string } {
+function parsePlayerId(playerId: string): {
+    playerSlotIndex?: number;
+    error?: string;
+} {
     const playerSlotIndex = parseInt(playerId);
     if (isNaN(playerSlotIndex) || playerSlotIndex < 0 || playerSlotIndex >= GAME_CONSTANTS.MAX_PLAYERS) {
         return { error: `Invalid player ID: ${playerId}` };
@@ -65,17 +68,15 @@ function parsePlayerId(playerId: string): { playerSlotIndex?: number; error?: st
 /**
  * Validate that it's the player's turn and they can end it
  */
-function validatePlayerTurn(
-    game: GameRecord,
-    gameState: GameState,
-    playerSlotIndex: number
-): ValidationResult {
+function validatePlayerTurn(game: GameRecord, gameState: GameState, playerSlotIndex: number): ValidationResult {
     const currentTurnPlayer = gameState.players.find(p => p.slotIndex === gameState.currentPlayerSlot);
     if (!currentTurnPlayer || currentTurnPlayer.slotIndex !== playerSlotIndex) {
         return { error: { message: 'Not your turn', status: 400 } };
     }
 
-    logger.debug(`currentTurnPlayer.slotIndex = ${currentTurnPlayer.slotIndex}, game.currentPlayerSlot = ${game.currentPlayerSlot}`);
+    logger.debug(
+        `currentTurnPlayer.slotIndex = ${currentTurnPlayer.slotIndex}, game.currentPlayerSlot = ${game.currentPlayerSlot}`
+    );
 
     const player = game.players.find(p => p.slotIndex === playerSlotIndex);
     if (!player) {
@@ -97,7 +98,9 @@ function createMoveCommand(
     if (move.type === 'ARMY_MOVE') {
         if (move.source === undefined || move.destination === undefined || move.count === undefined) {
             logger.error('Invalid ARMY_MOVE - missing parameters:', move);
-            return { error: `Invalid move ${moveIndex + 1}: missing parameters` };
+            return {
+                error: `Invalid move ${moveIndex + 1}: missing parameters`
+            };
         }
         return {
             command: new ArmyMoveCommand(gameState, player, move.source, move.destination, move.count),
@@ -113,7 +116,9 @@ function createMoveCommand(
     if (move.type === 'BUILD') {
         if (move.regionIndex === undefined || move.upgradeIndex === undefined) {
             logger.error('Invalid BUILD - missing parameters:', move);
-            return { error: `Invalid move ${moveIndex + 1}: missing parameters` };
+            return {
+                error: `Invalid move ${moveIndex + 1}: missing parameters`
+            };
         }
         return {
             command: new BuildCommand(gameState, player, move.regionIndex, move.upgradeIndex),
@@ -153,7 +158,12 @@ function processPendingMoves(
         const moveResult = commandProcessor.process(command);
         if (!moveResult.success) {
             logger.error(`Move ${i + 1} failed:`, moveResult.error);
-            return { error: { message: `Move ${i + 1} failed: ${moveResult.error}`, status: 400 } };
+            return {
+                error: {
+                    message: `Move ${i + 1} failed: ${moveResult.error}`,
+                    status: 400
+                }
+            };
         }
 
         gameState = moveResult.newState!;
@@ -186,12 +196,20 @@ async function executeEndTurn(
     gameId: string,
     platform: App.Platform | undefined,
     commandProcessor: CommandProcessor
-): Promise<{ finalState?: GameState; error?: { message: string; status: number } }> {
+): Promise<{
+    finalState?: GameState;
+    error?: { message: string; status: number };
+}> {
     const endTurnCommand = new EndTurnCommand(gameState, player);
     const result = commandProcessor.process(endTurnCommand);
 
     if (!result.success) {
-        return { error: { message: result.error || 'Failed to end turn', status: 400 } };
+        return {
+            error: {
+                message: result.error || 'Failed to end turn',
+                status: 400
+            }
+        };
     }
 
     let finalGameState = result.newState!;
@@ -199,7 +217,9 @@ async function executeEndTurn(
     const nextPlayer = finalGameState.getCurrentPlayer();
     const isNextPlayerAi = nextPlayer?.isAI;
 
-    logger.debug(`Turn ended - Next player is ${nextPlayer?.name} (AI: ${isNextPlayerAi}, movesRemaining: ${finalGameState.movesRemaining})`);
+    logger.debug(
+        `Turn ended - Next player is ${nextPlayer?.name} (AI: ${isNextPlayerAi}, movesRemaining: ${finalGameState.movesRemaining})`
+    );
 
     if (isNextPlayerAi) {
         finalGameState = await processAiTurns(finalGameState, gameStorage, gameId, platform);
@@ -219,8 +239,10 @@ function buildUpdatedGame(
 ): GameRecord {
     const endResult = finalGameState.endResult;
     const gameStatus: 'ACTIVE' | 'COMPLETED' = endResult ? 'COMPLETED' : 'ACTIVE';
-    
-    logger.info(`buildUpdatedGame: gameId=${game.gameId}, endResult=${JSON.stringify(endResult)}, gameStatus=${gameStatus}`);
+
+    logger.info(
+        `buildUpdatedGame: gameId=${game.gameId}, endResult=${JSON.stringify(endResult)}, gameStatus=${gameStatus}`
+    );
 
     return {
         ...game,
@@ -236,15 +258,14 @@ function buildUpdatedGame(
 /**
  * Broadcast game update via WebSocket and save to storage
  */
-async function broadcastAndSave(
-    updatedGame: GameRecord,
-    gameStorage: GameStorage
-): Promise<void> {
+async function broadcastAndSave(updatedGame: GameRecord, gameStorage: GameStorage): Promise<void> {
     if (updatedGame.turnMoves && updatedGame.turnMoves.length > 0) {
         logger.debug(`Sending WebSocket update with ${updatedGame.turnMoves.length} moves for replay`);
     }
     if (updatedGame.lastAttackSequence) {
-        logger.debug(`Sending WebSocket update with attack sequence (${(updatedGame.lastAttackSequence as unknown[]).length} events)`);
+        logger.debug(
+            `Sending WebSocket update with attack sequence (${(updatedGame.lastAttackSequence as unknown[]).length} events)`
+        );
     }
 
     await WebSocketNotifications.gameUpdate(updatedGame);
@@ -265,7 +286,7 @@ async function broadcastAndSave(
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
-        const { playerId, moves = [] } = await request.json() as EndTurnRequest;
+        const { playerId, moves = [] } = (await request.json()) as EndTurnRequest;
 
         // Validate request
         const validation = validateRequest(gameId, playerId);
@@ -323,13 +344,17 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         const finalGameState = endTurnResult.finalState!;
 
         // Log the state before building/saving
-        logger.info(`end-turn: finalGameState.endResult=${JSON.stringify(finalGameState.endResult)}, turnNumber=${finalGameState.turnNumber}, currentPlayerSlot=${finalGameState.currentPlayerSlot}`);
+        logger.info(
+            `end-turn: finalGameState.endResult=${JSON.stringify(finalGameState.endResult)}, turnNumber=${finalGameState.turnNumber}, currentPlayerSlot=${finalGameState.currentPlayerSlot}`
+        );
 
         // Build updated game and broadcast/save
         const updatedGame = buildUpdatedGame(game, finalGameState, lastAttackSequence, turnMoves);
-        
-        logger.info(`end-turn: updatedGame.status=${updatedGame.status}, hasEndResult=${!!updatedGame.worldConflictState.endResult}`);
-        
+
+        logger.info(
+            `end-turn: updatedGame.status=${updatedGame.status}, hasEndResult=${!!updatedGame.worldConflictState.endResult}`
+        );
+
         await broadcastAndSave(updatedGame, gameStorage);
 
         logger.debug(`Turn processing complete, final player slot: ${finalGameState.currentPlayerSlot}`);
@@ -340,7 +365,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             message: 'Turn ended successfully',
             turnTransition: true
         });
-
     } catch (error) {
         return handleApiError(error, `ending turn in game ${params.gameId}`, {
             platform,

@@ -13,9 +13,7 @@ import { logger } from 'multiplayer-framework/shared';
  */
 export function getActiveSlots(players: Player[], gameState: any): number[] {
     const activePlayers = players.filter(p => {
-        const regionCount = Object.values(gameState.ownersByRegion).filter(
-            owner => owner === p.slotIndex
-        ).length;
+        const regionCount = Object.values(gameState.ownersByRegion).filter(owner => owner === p.slotIndex).length;
         return regionCount > 0;
     });
 
@@ -50,11 +48,7 @@ export function calculateAirBonus(gameState: any, player: Player): number {
  * Eliminate a player and advance the turn if it was their turn
  * Returns the updated game state
  */
-export function eliminateAndAdvanceTurn(
-    gameState: GameState,
-    playerSlotIndex: number,
-    playerName: string
-): GameState {
+export function eliminateAndAdvanceTurn(gameState: GameState, playerSlotIndex: number, playerName: string): GameState {
     // Eliminate the player - clear their regions and add to eliminatedPlayers
     PlayerEliminationService.eliminatePlayer(gameState.state, playerSlotIndex);
 
@@ -86,7 +80,9 @@ export function eliminateAndAdvanceTurn(
             gameState.conqueredRegions = [];
             // Keep eliminatedPlayers array so client can show elimination banner
 
-            logger.debug(`Turn advanced to player slot ${nextSlot} (${nextPlayer?.name}) with ${gameState.movesRemaining} moves`);
+            logger.debug(
+                `Turn advanced to player slot ${nextSlot} (${nextPlayer?.name}) with ${gameState.movesRemaining} moves`
+            );
         }
     }
 

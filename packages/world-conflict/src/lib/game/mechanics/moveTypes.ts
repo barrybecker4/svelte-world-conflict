@@ -8,29 +8,29 @@ import type { MoveMode, MoveActionType } from './moveConstants';
  * 3. Adjust soldier count
  */
 export interface MoveState {
-  /** Current mode of the move system */
-  mode: MoveMode;
+    /** Current mode of the move system */
+    mode: MoveMode;
 
-  /** Index of the selected source region, null if none selected */
-  sourceRegion: number | null;
+    /** Index of the selected source region, null if none selected */
+    sourceRegion: number | null;
 
-  /** Index of the selected target region, null if none selected */
-  targetRegion: number | null;
+    /** Index of the selected target region, null if none selected */
+    targetRegion: number | null;
 
-  /** Number of soldiers currently selected for the move */
-  selectedSoldierCount: number;
+    /** Number of soldiers currently selected for the move */
+    selectedSoldierCount: number;
 
-  /** Maximum number of soldiers available for the move */
-  maxSoldiers: number;
+    /** Maximum number of soldiers available for the move */
+    maxSoldiers: number;
 
-  /** Number of moves remaining in the current turn */
-  availableMoves: number;
+    /** Number of moves remaining in the current turn */
+    availableMoves: number;
 
-  /** Whether a move is currently being executed */
-  isMoving: boolean;
+    /** Whether a move is currently being executed */
+    isMoving: boolean;
 
-  /** Index of the region being upgraded in BUILD mode, null if not building */
-  buildRegion: number | null;
+    /** Index of the region being upgraded in BUILD mode, null if not building */
+    buildRegion: number | null;
 }
 
 /**
@@ -38,14 +38,14 @@ export interface MoveState {
  * Follows Redux-style action pattern for predictable state updates
  */
 export interface MoveAction {
-  /** The type of action to perform */
-  type: MoveActionType;
+    /** The type of action to perform */
+    type: MoveActionType;
 
-  /** Optional payload data for the action */
-  payload?: {
-    /** Region index for region-related actions */
-    regionIndex?: number;
-    /** Soldier count for soldier-related actions */
-    soldierCount?: number;
-  };
+    /** Optional payload data for the action */
+    payload?: {
+        /** Region index for region-related actions */
+        regionIndex?: number;
+        /** Soldier count for soldier-related actions */
+        soldierCount?: number;
+    };
 }

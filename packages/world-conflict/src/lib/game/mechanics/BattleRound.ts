@@ -10,7 +10,7 @@ export interface BattleRoundResult {
 
 /**
  * Handles Risk-style dice combat resolution for a single round.
- * 
+ *
  * Rules:
  * - Attackers roll up to 3 dice (limited by soldier count)
  * - Defenders roll up to 2 dice (limited by soldier count)

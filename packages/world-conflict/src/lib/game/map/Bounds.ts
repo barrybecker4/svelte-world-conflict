@@ -1,6 +1,6 @@
-import { Region } from "$lib/game/entities/Region";
-import { RegionMap } from "$lib/game/map/RegionMap";
-import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants";
+import { Region } from '$lib/game/entities/Region';
+import { RegionMap } from '$lib/game/map/RegionMap';
+import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants';
 
 // Bitmap for overlapping parts
 const TOP_OVERLAP = 1;
@@ -51,7 +51,7 @@ export class Bounds {
         } else {
             this.shrinkRandomly();
         }
-        return (this.width * this.height < minRegionArea);
+        return this.width * this.height < minRegionArea;
     }
 
     private shrinkRandomly(): void {
@@ -87,15 +87,18 @@ export class Bounds {
         return overlapBitmap;
     }
 
-    makeRegion(index: number, mapWidth: number, mapHeight: number): Region & { points?: Array<{x: number, y: number}> } {
+    makeRegion(
+        index: number,
+        mapWidth: number,
+        mapHeight: number
+    ): Region & { points?: Array<{ x: number; y: number }> } {
         const left = this.left;
         const top = this.top;
         const width = this.width;
         const height = this.height;
 
-
         // Create perturbed border points (like original GAS)
-        const points: Array<{x: number, y: number}> = [];
+        const points: Array<{ x: number; y: number }> = [];
 
         // Top edge (left to right)
         for (let i = 0; i < width; i++) {
@@ -113,7 +116,6 @@ export class Bounds {
         for (let i = 0; i < height; i++) {
             points[width + height + width + i] = Bounds.perturbPoint(left, top + height - i);
         }
-
 
         // Convert grid coordinates to pixel coordinates
         const pixelPoints = points.map(point => ({
@@ -150,11 +152,11 @@ export class Bounds {
      * Perturbs a point to give the region borders a natural feel
      * This is the exact algorithm from the original Bounds.gs
      */
-    static perturbPoint(x: number, y: number): {x: number, y: number} {
+    static perturbPoint(x: number, y: number): { x: number; y: number } {
         // Uncomment to disable perturbation: return { x, y };
         const pc = Bounds.getPerturbConst();
-        const angle = (Math.sin(x * x * y * y * 600 + pc * 357)) * 2 * Math.PI;
-        const dist = PERTURB_SCALE * (Math.sin(x * y * 600 + pc * 211));
+        const angle = Math.sin(x * x * y * y * 600 + pc * 357) * 2 * Math.PI;
+        const dist = PERTURB_SCALE * Math.sin(x * y * 600 + pc * 211);
         const xPos = x + Math.sin(angle) * dist;
         const yPos = y + Math.cos(angle) * dist;
         return { x: xPos, y: yPos };

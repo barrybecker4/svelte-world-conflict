@@ -8,7 +8,7 @@
  * @param ms - Duration in milliseconds
  */
 export function delay(ms: number): Promise<void> {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+    return new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -17,9 +17,7 @@ export function delay(ms: number): Promise<void> {
  * all pending layout and paint operations
  */
 export function waitForNextFrame(): Promise<void> {
-  return new Promise<void>((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-  );
+    return new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
 /**
@@ -28,7 +26,7 @@ export function waitForNextFrame(): Promise<void> {
  * @param detail - Event detail payload
  */
 export function dispatchGameEvent(name: string, detail: object): void {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent(name, { detail }));
-  }
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(name, { detail }));
+    }
 }

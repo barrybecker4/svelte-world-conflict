@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ platform }) => {
 
 /**
  * POST: Clean up old game entries
- * 
+ *
  * Query params:
  * - maxAgeDays: Maximum age in days (default: 1)
  * - dryRun: If "true", only report what would be deleted (default: false)
@@ -29,17 +29,17 @@ export const POST: RequestHandler = async ({ url, platform }) => {
     try {
         const maxAgeDays = parseFloat(url.searchParams.get('maxAgeDays') || '1');
         const dryRun = url.searchParams.get('dryRun') === 'true';
-        
+
         if (isNaN(maxAgeDays) || maxAgeDays <= 0) {
             return json({ error: 'Invalid maxAgeDays parameter' }, { status: 400 });
         }
 
         const maxAgeMs = maxAgeDays * ONE_DAY_MS;
-        
+
         logger.info(`Starting cleanup: maxAgeDays=${maxAgeDays}, dryRun=${dryRun}`);
-        
+
         const result = await cleanupOldGames(platform!, maxAgeMs, dryRun);
-        
+
         return json({
             success: true,
             dryRun,

@@ -11,7 +11,6 @@ interface QuitGameRequest {
     reason?: 'RESIGN' | 'TIMEOUT' | 'DISCONNECT';
 }
 
-
 /**
  * Get game given gameId
  */
@@ -42,7 +41,6 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             pendingConfiguration: game.pendingConfiguration,
             gameType: game.gameType
         });
-
     } catch (error) {
         return handleApiError(error, `getting World Conflict game ${params.gameId}`);
     }
@@ -54,7 +52,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
-        const { playerId, reason = 'RESIGN' } = await request.json() as QuitGameRequest;
+        const { playerId, reason = 'RESIGN' } = (await request.json()) as QuitGameRequest;
 
         if (!gameId) {
             return json({ error: 'Game ID is required' }, { status: 400 });
@@ -101,7 +99,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                     lastMoveAt: Date.now()
                 };
 
-                 logger.debug("saveGame after removing player. gameId: " + updatedGame.gameId);
+                logger.debug('saveGame after removing player. gameId: ' + updatedGame.gameId);
                 await gameStorage.saveGame(updatedGame);
                 await WebSocketNotifications.gameUpdate(updatedGame);
 
@@ -123,7 +121,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 endedBy: player.slotIndex
             };
 
-            logger.debug("saveGame after resign. gameId: " + updatedGame.gameId);
+            logger.debug('saveGame after resign. gameId: ' + updatedGame.gameId);
             await gameStorage.saveGame(updatedGame);
             await WebSocketNotifications.gameUpdate(updatedGame);
 
@@ -136,7 +134,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 gameEnded: true
             });
         }
-
     } catch (error) {
         return handleApiError(error, 'quitting game');
     }

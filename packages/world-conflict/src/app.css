@@ -13,7 +13,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600 rounded;
+    @apply rounded bg-gray-600;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -27,12 +27,13 @@
 
 /* Focus styles for accessibility */
 :focus-visible {
-    @apply outline-2 outline-blue-500 outline-offset-2;
+    @apply outline-2 outline-offset-2 outline-blue-500;
 }
 
 /* Game-specific animations */
 @keyframes territory-pulse {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 1;
         transform: scale(1);
     }
@@ -72,15 +73,31 @@
 }
 
 /* Player colors */
-.player-1 { color: #dc2626; }
-.player-2 { color: #2563eb; }
-.player-3 { color: #16a34a; }
-.player-4 { color: #ca8a04; }
+.player-1 {
+    color: #dc2626;
+}
+.player-2 {
+    color: #2563eb;
+}
+.player-3 {
+    color: #16a34a;
+}
+.player-4 {
+    color: #ca8a04;
+}
 
-.bg-player-1 { background-color: #dc2626; }
-.bg-player-2 { background-color: #2563eb; }
-.bg-player-3 { background-color: #16a34a; }
-.bg-player-4 { background-color: #ca8a04; }
+.bg-player-1 {
+    background-color: #dc2626;
+}
+.bg-player-2 {
+    background-color: #2563eb;
+}
+.bg-player-3 {
+    background-color: #16a34a;
+}
+.bg-player-4 {
+    background-color: #ca8a04;
+}
 
 /* Custom instant tooltips using data-tooltip attribute */
 [data-tooltip] {

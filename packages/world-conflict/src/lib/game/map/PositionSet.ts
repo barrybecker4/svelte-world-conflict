@@ -1,6 +1,6 @@
-import { Bounds } from "./Bounds.ts";
-import { RegionMap } from "./RegionMap.ts";
-import { GRID_WIDTH, GRID_HEIGHT, randomInt } from "./mapConstants.ts";
+import { Bounds } from './Bounds.ts';
+import { RegionMap } from './RegionMap.ts';
+import { GRID_WIDTH, GRID_HEIGHT, randomInt } from './mapConstants.ts';
 
 export class PositionSet {
     private positions: Array<[number, number]> = [];
@@ -21,7 +21,7 @@ export class PositionSet {
 
     removeRandomPosition(): [number, number] {
         if (this.isEmpty()) {
-            throw new Error("Cannot remove a position when the set is empty");
+            throw new Error('Cannot remove a position when the set is empty');
         }
         const len = this.positions.length;
         const idx = randomInt(0, len);

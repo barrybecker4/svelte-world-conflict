@@ -5,25 +5,19 @@ import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 
 export const GET: RequestHandler = async ({ platform }) => {
-
     const gameStorage = GameStorage.create(platform!);
 
     try {
         const waitingGames = await gameStorage.getGamesByStatus('PENDING');
 
         const now = Date.now();
-        const validGames = waitingGames.filter(game =>
-            (now - game.createdAt) < GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS
-        );
+        const validGames = waitingGames.filter(game => now - game.createdAt < GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS);
 
-        const expiredGames = waitingGames.filter(game =>
-          (now - game.createdAt) >= GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS
-        );
+        const expiredGames = waitingGames.filter(game => now - game.createdAt >= GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS);
 
         cleanupOldGames(expiredGames, gameStorage);
         const openGames = getOpenGames(validGames, now);
         return json(openGames);
-
     } catch (error) {
         logger.error('Failed to get open games:', error);
         return json({ error: 'Failed to load games' }, { status: 500 });
@@ -40,17 +34,17 @@ function getCreatorName(game: GameRecord): string {
 }
 
 function getOpenGames(validGames: GameRecord[], now: number) {
-  return validGames.map(game => ({
-       gameId: game.gameId,
-       creator: getCreatorName(game),
-       playerCount: game.players.length,
-       maxPlayers: GAME_CONSTANTS.MAX_PLAYERS,
-       createdAt: game.createdAt,
-       gameType: game.gameType || 'MULTIPLAYER',
-       timeRemaining: Math.max(0, GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS - (now - game.createdAt)), // Time until expiration
-       pendingConfiguration: game.pendingConfiguration,
-       players: game.players
-  }));
+    return validGames.map(game => ({
+        gameId: game.gameId,
+        creator: getCreatorName(game),
+        playerCount: game.players.length,
+        maxPlayers: GAME_CONSTANTS.MAX_PLAYERS,
+        createdAt: game.createdAt,
+        gameType: game.gameType || 'MULTIPLAYER',
+        timeRemaining: Math.max(0, GAME_CONSTANTS.STALE_GAME_TIMEOUT_MS - (now - game.createdAt)), // Time until expiration
+        pendingConfiguration: game.pendingConfiguration,
+        players: game.players
+    }));
 }
 
 // Clean up expired games from storage (helps keep storage clean)

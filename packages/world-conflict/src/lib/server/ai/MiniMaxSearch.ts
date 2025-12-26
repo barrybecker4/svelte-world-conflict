@@ -63,20 +63,13 @@ export async function miniMaxSearch(
     aiLevel: AiLevel
 ): Promise<Command> {
     const simulation = fromState.copy();
-    const initialNode = new Node(
-        null,
-        forPlayer,
-        depth,
-        null,
-        simulation,
-        possibleMoves(fromState)
-    );
+    const initialNode = new Node(null, forPlayer, depth, null, simulation, possibleMoves(fromState));
 
     let currentNode: Node | null = initialNode;
     const unitOfWork = 100;
     const timeStart = Date.now();
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
         function doSomeWork() {
             let stepsRemaining = unitOfWork;
 
@@ -126,14 +119,7 @@ function minMaxDoSomeWork(node: Node | null, forPlayer: Player, aiLevel: AiLevel
     } else {
         // Spawn a child node
         const childState = executeMove(node.state, move);
-        return new Node(
-            node,
-            node.activePlayer,
-            node.depth - 1,
-            move,
-            childState,
-            possibleMoves(childState)
-        );
+        return new Node(node, node.activePlayer, node.depth - 1, move, childState, possibleMoves(childState));
     }
 }
 

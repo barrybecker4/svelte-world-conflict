@@ -10,58 +10,56 @@ import { removeGameCreator } from '$lib/client/stores/clientStorage';
  * Coordinates game end detection and presentation
  */
 export class GameEndCoordinator {
-  private modalManager: ModalManager;
-  private turnTimerCoordinator: TurnTimerCoordinator;
-  private readonly playerSlotIndex: number;
-  private readonly gameId: string;
-  private gameEndChecked = false;
-  private updateGameState: ((updater: (state: GameStateData) => GameStateData) => void) | null = null;
+    private modalManager: ModalManager;
+    private turnTimerCoordinator: TurnTimerCoordinator;
+    private readonly playerSlotIndex: number;
+    private readonly gameId: string;
+    private gameEndChecked = false;
+    private updateGameState: ((updater: (state: GameStateData) => GameStateData) => void) | null = null;
 
-  constructor(
-    gameId: string,
-    playerId: string,
-    modalManager: ModalManager,
-    turnTimerCoordinator: TurnTimerCoordinator,
-    updateGameState?: (updater: (state: GameStateData) => GameStateData) => void
-  ) {
-    this.gameId = gameId;
-    this.playerSlotIndex = parseInt(playerId);
-    this.modalManager = modalManager;
-    this.turnTimerCoordinator = turnTimerCoordinator;
-    this.updateGameState = updateGameState || null;
-  }
-
-  /**
-   * Check for game end and handle the end-game presentation
-   */
-  checkGameEnd(gameState: GameStateData | null, players: Player[]): void {
-    if (!gameState || players.length === 0 || this.gameEndChecked) {
-      return;
+    constructor(
+        gameId: string,
+        playerId: string,
+        modalManager: ModalManager,
+        turnTimerCoordinator: TurnTimerCoordinator,
+        updateGameState?: (updater: (state: GameStateData) => GameStateData) => void
+    ) {
+        this.gameId = gameId;
+        this.playerSlotIndex = parseInt(playerId);
+        this.modalManager = modalManager;
+        this.turnTimerCoordinator = turnTimerCoordinator;
+        this.updateGameState = updateGameState || null;
     }
 
-    const endResult = checkGameEnd(gameState, players);
+    /**
+     * Check for game end and handle the end-game presentation
+     */
+    checkGameEnd(gameState: GameStateData | null, players: Player[]): void {
+        if (!gameState || players.length === 0 || this.gameEndChecked) {
+            return;
+        }
 
-    if (endResult.isGameEnded) {
-      this.gameEndChecked = true;
+        const endResult = checkGameEnd(gameState, players);
 
-      if (this.updateGameState && gameState) {
-        this.updateGameState((state) => {
-          if (!state) return state;
-          return { ...state, endResult: endResult.winner };
-        });
-      }
+        if (endResult.isGameEnded) {
+            this.gameEndChecked = true;
 
-      this.turnTimerCoordinator.stopTimer();
+            if (this.updateGameState && gameState) {
+                this.updateGameState(state => {
+                    if (!state) return state;
+                    return { ...state, endResult: endResult.winner };
+                });
+            }
 
-      // Clean up localStorage entry for this game since it's completed
-      removeGameCreator(this.gameId);
+            this.turnTimerCoordinator.stopTimer();
 
-      const isWinner =
-        endResult.winner !== 'DRAWN_GAME' &&
-        endResult.winner?.slotIndex === this.playerSlotIndex;
+            // Clean up localStorage entry for this game since it's completed
+            removeGameCreator(this.gameId);
 
-      audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
-      this.modalManager.showGameSummary(endResult.winner!);
+            const isWinner = endResult.winner !== 'DRAWN_GAME' && endResult.winner?.slotIndex === this.playerSlotIndex;
+
+            audioSystem.playSound(isWinner ? SOUNDS.GAME_WON : SOUNDS.GAME_LOST);
+            this.modalManager.showGameSummary(endResult.winner!);
+        }
     }
-  }
 }

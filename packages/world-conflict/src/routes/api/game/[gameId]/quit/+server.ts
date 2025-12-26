@@ -16,10 +16,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const gameId = params.gameId;
         if (!gameId) {
-            return json({ error: "Missing gameId" }, { status: 400 });
+            return json({ error: 'Missing gameId' }, { status: 400 });
         }
 
-        const body = await request.json() as QuitGameRequest;
+        const body = (await request.json()) as QuitGameRequest;
         const { playerId, reason = 'RESIGN' } = body;
 
         if (!playerId) {
@@ -45,7 +45,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         } else {
             return await quitFromActiveGame(gameId, game, player, gameStorage);
         }
-
     } catch (error) {
         logger.error('Error processing quit:', error);
         return json({ error: 'Failed to process quit' }, { status: 500 });
@@ -90,27 +89,22 @@ async function quitFromPendingGame(
     }
 }
 
-async function quitFromActiveGame(
-    gameId: string,
-    game: GameRecord,
-    player: Player,
-    gameStorage: GameStorage
-) {
+async function quitFromActiveGame(gameId: string, game: GameRecord, player: Player, gameStorage: GameStorage) {
     const playerSlotIndex = player.slotIndex;
     logger.info(`Player ${player.name} (slot ${playerSlotIndex}) resigned from active game ${gameId}`);
 
     let gameState = GameState.fromJSON(game.worldConflictState);
-    
+
     // Eliminate the player and advance turn if needed
     gameState = eliminateAndAdvanceTurn(gameState, playerSlotIndex, player.name);
 
     const updatedStateData = gameState.toJSON();
     const activeSlots = getActiveSlots(game.players, updatedStateData);
-    
+
     logger.debug(`After elimination - Active players remaining: ${activeSlots.length}`);
 
     const gameEndResult = checkGameEnd(updatedStateData, game.players);
-    
+
     let updatedGame: GameRecord;
     let shouldEndGame = false;
 

@@ -13,7 +13,7 @@ export class GameStateValidator {
 
         // Validate players
         if (gameData.players.length === 0) {
-            errors.push("Game must have at least one player");
+            errors.push('Game must have at least one player');
         }
 
         if (gameData.players.length > GAME_CONSTANTS.MAX_PLAYERS) {
@@ -68,7 +68,7 @@ export class GameStateValidator {
 
         // Validate turn state
         if (gameData.movesRemaining < 0) {
-            errors.push("Moves remaining cannot be negative");
+            errors.push('Moves remaining cannot be negative');
         }
 
         // Allow extra moves for Air upgrade

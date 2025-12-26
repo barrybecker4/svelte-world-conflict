@@ -21,10 +21,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const gameId = params.gameId;
         if (!gameId) {
-            return json({ error: "Missing gameId" }, { status: 400 });
+            return json({ error: 'Missing gameId' }, { status: 400 });
         }
 
-        const body = await request.json() as PlayerEventRequest;
+        const body = (await request.json()) as PlayerEventRequest;
         const { type, playerId } = body;
 
         logger.debug(`[player-event] Received ${type} event for player ${playerId} in game ${gameId}`);
@@ -44,7 +44,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 logger.warn(`[player-event] Unknown event type: ${type}`);
                 return json({ error: `Unknown event type: ${type}` }, { status: 400 });
         }
-
     } catch (error) {
         logger.error('[player-event] Error processing player event:', error);
         return json({ error: 'Failed to process player event' }, { status: 500 });
@@ -107,7 +106,9 @@ async function handlePlayerDisconnect(
         });
     }
 
-    logger.info(`[disconnect] Processing disconnect for player ${player.name} (slot ${playerSlotIndex}) in game ${gameId}`);
+    logger.info(
+        `[disconnect] Processing disconnect for player ${player.name} (slot ${playerSlotIndex}) in game ${gameId}`
+    );
 
     // Eliminate the player and advance turn if needed
     let gameState = GameState.fromJSON(game.worldConflictState);
@@ -121,11 +122,13 @@ async function handlePlayerDisconnect(
         .map(p => p.slotIndex);
 
     const gameEndResult = checkGameEnd(updatedStateData, game.players);
-    
+
     let updatedGame: GameRecord;
     let shouldEndGame = false;
 
-    logger.debug(`[disconnect] Game end check: ended=${gameEndResult.isGameEnded}, winner=${gameEndResult.winner}, activeCount=${activeSlots.length}`);
+    logger.debug(
+        `[disconnect] Game end check: ended=${gameEndResult.isGameEnded}, winner=${gameEndResult.winner}, activeCount=${activeSlots.length}`
+    );
 
     if (gameEndResult.isGameEnded) {
         updatedGame = {
@@ -163,10 +166,7 @@ async function handlePlayerDisconnect(
 /**
  * Handle player reconnect - could be used for grace period logic in the future
  */
-async function handlePlayerReconnect(
-    gameId: string,
-    playerId: string
-): Promise<Response> {
+async function handlePlayerReconnect(gameId: string, playerId: string): Promise<Response> {
     logger.debug(`[reconnect] Player ${playerId} reconnected to game ${gameId}`);
     return json({
         success: true,
@@ -177,10 +177,7 @@ async function handlePlayerReconnect(
 /**
  * Handle player idle - could be used for timeout/inactivity logic
  */
-async function handlePlayerIdle(
-    gameId: string,
-    playerId: string
-): Promise<Response> {
+async function handlePlayerIdle(gameId: string, playerId: string): Promise<Response> {
     logger.debug(`[idle] Player ${playerId} idle in game ${gameId}`);
     return json({
         success: true,

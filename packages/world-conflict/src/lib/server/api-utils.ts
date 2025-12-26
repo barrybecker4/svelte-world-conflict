@@ -42,20 +42,15 @@ export interface HandleApiErrorOptions {
  * @param statusOrOptions - HTTP status code (default: 500) or options object
  * @returns JSON error response
  */
-export function handleApiError(
-    error: unknown, 
-    context: string, 
-    statusOrOptions: number | HandleApiErrorOptions = 500
-) {
-    const options: HandleApiErrorOptions = typeof statusOrOptions === 'number' 
-        ? { status: statusOrOptions } 
-        : statusOrOptions;
-    
+export function handleApiError(error: unknown, context: string, statusOrOptions: number | HandleApiErrorOptions = 500) {
+    const options: HandleApiErrorOptions =
+        typeof statusOrOptions === 'number' ? { status: statusOrOptions } : statusOrOptions;
+
     const { status = 500, platform, gameId } = options;
-    
+
     const errorMessage = getErrorMessage(error);
     logger.error(`Error ${context}:`, error);
-    
+
     // Record error in daily statistics if platform is available
     if (platform) {
         const statsService = GameStatsService.create(platform);
@@ -65,7 +60,7 @@ export function handleApiError(
             logger.error('Failed to record error in stats:', recordError);
         });
     }
-    
+
     return json({ error: errorMessage }, { status });
 }
 
@@ -84,7 +79,7 @@ function getPersonalitiesForDifficulty(difficulty?: string): readonly AiPersonal
 
 /**
  * Create a properly typed World Conflict Player object
- * 
+ *
  * @param name - Player name
  * @param slotIndex - Slot index (0-3)
  * @param isAI - Whether this is an AI player

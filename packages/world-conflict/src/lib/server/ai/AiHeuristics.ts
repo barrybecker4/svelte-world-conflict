@@ -37,8 +37,9 @@ export function heuristicForPlayer(player: Player, state: GameState, aiLevel: Ai
         // Count the value of the region itself
         let value = regionFullValue(state, region.index);
         // Take into account threats and opportunities
-        value += regionOpportunity(state, player, region.index, aiLevel) * threatOpportunityMultiplier -
-                 regionThreat(state, player, region.index, aiLevel) * threatOpportunityMultiplier * value;
+        value +=
+            regionOpportunity(state, player, region.index, aiLevel) * threatOpportunityMultiplier -
+            regionThreat(state, player, region.index, aiLevel) * threatOpportunityMultiplier * value;
         // Add the value of soldiers on it
         value += state.soldierCount(region.index) * soldierBonus;
 
@@ -50,7 +51,7 @@ export function heuristicForPlayer(player: Player, state: GameState, aiLevel: Ai
     });
 
     // Each point of faith counts as 1/12th of a soldier
-    const faithTotal = state.income(player) * soldierBonus / 12;
+    const faithTotal = (state.income(player) * soldierBonus) / 12;
 
     return regionTotal + faithTotal;
 }
@@ -63,8 +64,10 @@ export function templeDangerousness(state: GameState, temple: Temple, aiLevel: A
     const templeOwner = state.getPlayerBySlotIndex(state.owner(temple.regionIndex) || 0);
     if (!templeOwner) return 0;
 
-    return regionThreat(state, templeOwner, temple.regionIndex, aiLevel) +
-           regionOpportunity(state, templeOwner, temple.regionIndex, aiLevel);
+    return (
+        regionThreat(state, templeOwner, temple.regionIndex, aiLevel) +
+        regionOpportunity(state, templeOwner, temple.regionIndex, aiLevel)
+    );
 }
 
 /**
@@ -77,7 +80,7 @@ export function regionFullValue(state: GameState, regionIdx: number): number {
     if (temple) {
         const templeBonus = slidingBonus(state, 6, 0, 0.5);
         const upgradeBonus = slidingBonus(state, 4, 0, 0.9);
-        const upgradeValue = temple.upgradeIndex ? (temple.level + 1) : 0;
+        const upgradeValue = temple.upgradeIndex ? temple.level + 1 : 0;
         return 1 + templeBonus + upgradeBonus * upgradeValue;
     } else {
         return 1;
@@ -101,45 +104,49 @@ export function regionThreat(state: GameState, player: Player, regionIndex: numb
         return 0;
     }
 
-    const enemyPresence = maxBy(region.neighbors, (neighborIdx: number) => {
-        // Is this an enemy region?
-        const nbrOwner = state.owner(neighborIdx);
-        const nbrPlayer = nbrOwner !== undefined ? state.getPlayerBySlotIndex(nbrOwner) : null;
-        if (!nbrPlayer || state.isOwnedBy(neighborIdx, player)) {
-            return 0;
-        }
-
-        // Count soldiers that can reach us in moves from this direction using BFS
-        // 'Rude' AI only looks at direct neighbors, harder AIs look deeper
-        const depth = (aiLevel === AI_LEVELS.RUDE) ? 0 : 2;
-        const queue: Array<{ region: Region; depth: number }> = [{ region: state.regions[neighborIdx], depth }];
-        const visited: Region[] = [];
-        let total = 0;
-
-        while (queue.length > 0) {
-            const entry = queue.shift()!;
-            // Soldiers further away count for less (for MEAN AI)
-            total += state.soldierCount(entry.region.index) * ((aiLevel > AI_LEVELS.RUDE) ? (2 + entry.depth) / 4 : 1);
-            visited.push(entry.region);
-
-            if (entry.depth > 0) {
-                // Go deeper with the search
-                const unvisitedNeighbors = (entry.region.neighbors || []).filter((candidateIdx: number) => {
-                    const candidateRegion = state.regions[candidateIdx];
-                    return !contains(visited, candidateRegion) &&
-                           state.isOwnedBy(candidateIdx, nbrPlayer);
-                });
-
-                unvisitedNeighbors.forEach((i: number) =>
-                    queue.push({ region: state.regions[i], depth: entry.depth - 1 })
-                );
+    const enemyPresence =
+        maxBy(region.neighbors, (neighborIdx: number) => {
+            // Is this an enemy region?
+            const nbrOwner = state.owner(neighborIdx);
+            const nbrPlayer = nbrOwner !== undefined ? state.getPlayerBySlotIndex(nbrOwner) : null;
+            if (!nbrPlayer || state.isOwnedBy(neighborIdx, player)) {
+                return 0;
             }
-        }
 
-        return total;
-    }) || 0;
+            // Count soldiers that can reach us in moves from this direction using BFS
+            // 'Rude' AI only looks at direct neighbors, harder AIs look deeper
+            const depth = aiLevel === AI_LEVELS.RUDE ? 0 : 2;
+            const queue: Array<{ region: Region; depth: number }> = [{ region: state.regions[neighborIdx], depth }];
+            const visited: Region[] = [];
+            let total = 0;
 
-    const clampHigh = (aiLevel === AI_LEVELS.RUDE) ? 0.5 : 1.1;
+            while (queue.length > 0) {
+                const entry = queue.shift()!;
+                // Soldiers further away count for less (for MEAN AI)
+                total +=
+                    state.soldierCount(entry.region.index) * (aiLevel > AI_LEVELS.RUDE ? (2 + entry.depth) / 4 : 1);
+                visited.push(entry.region);
+
+                if (entry.depth > 0) {
+                    // Go deeper with the search
+                    const unvisitedNeighbors = (entry.region.neighbors || []).filter((candidateIdx: number) => {
+                        const candidateRegion = state.regions[candidateIdx];
+                        return !contains(visited, candidateRegion) && state.isOwnedBy(candidateIdx, nbrPlayer);
+                    });
+
+                    unvisitedNeighbors.forEach((i: number) =>
+                        queue.push({
+                            region: state.regions[i],
+                            depth: entry.depth - 1
+                        })
+                    );
+                }
+            }
+
+            return total;
+        }) || 0;
+
+    const clampHigh = aiLevel === AI_LEVELS.RUDE ? 0.5 : 1.1;
     const threatLevel = (enemyPresence / (ourPresence + 0.0001) - 1) / 1.5;
     return clamp(threatLevel, 0, clampHigh);
 }
@@ -181,7 +188,12 @@ export function regionOpportunity(state: GameState, player: Player, regionIndex:
  * Calculate sliding bonuses that change through game phases
  * Values transition from early game to late game
  */
-export function slidingBonus(state: GameState, startOfGameValue: number, endOfGameValue: number, dropOffPoint: number): number {
+export function slidingBonus(
+    state: GameState,
+    startOfGameValue: number,
+    endOfGameValue: number,
+    dropOffPoint: number
+): number {
     const maxTurns = state.maxTurns || 100;
     const dropOffTurn = dropOffPoint * maxTurns;
     let alpha = (state.turnNumber - dropOffTurn) / (maxTurns - dropOffTurn);

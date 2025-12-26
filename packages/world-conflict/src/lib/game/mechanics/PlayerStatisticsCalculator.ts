@@ -2,66 +2,66 @@ import type { Player, GameStateData } from '$lib/game/entities/gameTypes';
 import { ScoreCalculator } from '$lib/game/mechanics/ScoreCalculator';
 
 export interface PlayerStats {
-  player: Player;
-  regionCount: number;
-  soldierCount: number;
-  faithCount: number;
-  totalScore: number;
-  rank: number;
+    player: Player;
+    regionCount: number;
+    soldierCount: number;
+    faithCount: number;
+    totalScore: number;
+    rank: number;
 }
 
 export class PlayerStatisticsCalculator {
-  private gameState: GameStateData;
-  private scoreCalculator: ScoreCalculator;
+    private gameState: GameStateData;
+    private scoreCalculator: ScoreCalculator;
 
-  constructor(gameState: GameStateData) {
-    this.gameState = gameState;
-    this.scoreCalculator = new ScoreCalculator(gameState);
-  }
-
-  /**
-   * Calculate statistics for all players and rank them by score
-   */
-  calculatePlayerStats(players: Player[]): PlayerStats[] {
-    if (!this.gameState || !players.length) {
-      return [];
+    constructor(gameState: GameStateData) {
+        this.gameState = gameState;
+        this.scoreCalculator = new ScoreCalculator(gameState);
     }
 
-    const stats = players.map(player => ({
-      ...this.getPlayerStats(player),
-      rank: 0 // Will be calculated after sorting
-    }));
+    /**
+     * Calculate statistics for all players and rank them by score
+     */
+    calculatePlayerStats(players: Player[]): PlayerStats[] {
+        if (!this.gameState || !players.length) {
+            return [];
+        }
 
-    // Sort by score descending and assign ranks
-    stats.sort((a, b) => b.totalScore - a.totalScore);
-    stats.forEach((stat, index) => {
-      stat.rank = index + 1;
-    });
+        const stats = players.map(player => ({
+            ...this.getPlayerStats(player),
+            rank: 0 // Will be calculated after sorting
+        }));
 
-    return stats;
-  }
+        // Sort by score descending and assign ranks
+        stats.sort((a, b) => b.totalScore - a.totalScore);
+        stats.forEach((stat, index) => {
+            stat.rank = index + 1;
+        });
 
-  getPlayerStats(player: Player): Omit<PlayerStats, 'rank'> {
-    const regionCount = this.scoreCalculator.getRegionCount(player.slotIndex);
-    const soldierCount = this.scoreCalculator.getTotalSoldiers(player.slotIndex);
-    const faithCount = this.gameState.faithByPlayer[player.slotIndex] || 0;
-    const totalScore = this.scoreCalculator.calculatePlayerScore(player.slotIndex);
+        return stats;
+    }
 
-    return {
-      player,
-      regionCount,
-      soldierCount,
-      faithCount,
-      totalScore
-    };
-  }
+    getPlayerStats(player: Player): Omit<PlayerStats, 'rank'> {
+        const regionCount = this.scoreCalculator.getRegionCount(player.slotIndex);
+        const soldierCount = this.scoreCalculator.getTotalSoldiers(player.slotIndex);
+        const faithCount = this.gameState.faithByPlayer[player.slotIndex] || 0;
+        const totalScore = this.scoreCalculator.calculatePlayerScore(player.slotIndex);
 
-  getActivePlayers(players: Player[]): Player[] {
-    return players.filter(player => this.scoreCalculator.getRegionCount(player.slotIndex) > 0);
-  }
+        return {
+            player,
+            regionCount,
+            soldierCount,
+            faithCount,
+            totalScore
+        };
+    }
 
-  getLeadingPlayer(players: Player[]): Player | null {
-    const stats = this.calculatePlayerStats(players);
-    return stats.length > 0 ? stats[0].player : null;
-  }
+    getActivePlayers(players: Player[]): Player[] {
+        return players.filter(player => this.scoreCalculator.getRegionCount(player.slotIndex) > 0);
+    }
+
+    getLeadingPlayer(players: Player[]): Player | null {
+        const stats = this.calculatePlayerStats(players);
+        return stats.length > 0 ? stats[0].player : null;
+    }
 }

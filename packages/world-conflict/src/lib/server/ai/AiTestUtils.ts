@@ -25,19 +25,18 @@ export function createMockPlayer(options: {
         name: options.name || `Player ${options.slotIndex}`,
         isAI: options.isAI ?? false,
         personality: options.personality,
-        color: options.color || `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`
+        color:
+            options.color ||
+            `#${Math.floor(Math.random() * 16777215)
+                .toString(16)
+                .padStart(6, '0')}`
     };
 }
 
 /**
  * Create a mock region with configurable properties
  */
-export function createMockRegion(options: {
-    index: number;
-    neighbors?: number[];
-    x?: number;
-    y?: number;
-}): Region {
+export function createMockRegion(options: { index: number; neighbors?: number[]; x?: number; y?: number }): Region {
     return new Region({
         index: options.index,
         name: `Region ${options.index}`,
@@ -57,11 +56,7 @@ export function createMockRegion(options: {
 /**
  * Create a mock temple
  */
-export function createMockTemple(options: {
-    regionIndex: number;
-    upgradeIndex?: number;
-    level?: number;
-}): Temple {
+export function createMockTemple(options: { regionIndex: number; upgradeIndex?: number; level?: number }): Temple {
     return {
         regionIndex: options.regionIndex,
         upgradeIndex: options.upgradeIndex,
@@ -89,7 +84,12 @@ export function createMockGameStateData(options: {
 }): GameStateData {
     const players = options.players || [
         createMockPlayer({ slotIndex: 0, name: 'Player 1', isAI: false }),
-        createMockPlayer({ slotIndex: 1, name: 'AI Player', isAI: true, personality: 'Defender' })
+        createMockPlayer({
+            slotIndex: 1,
+            name: 'AI Player',
+            isAI: true,
+            personality: 'Defender'
+        })
     ];
 
     const regions = options.regions || [
@@ -131,8 +131,17 @@ export function createMockGameState(options: Parameters<typeof createMockGameSta
  * Create a simple 2-player game state with basic setup
  */
 export function createSimpleTwoPlayerGame(): GameState {
-    const player1 = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-    const player2 = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Defender' });
+    const player1 = createMockPlayer({
+        slotIndex: 0,
+        name: 'Human',
+        isAI: false
+    });
+    const player2 = createMockPlayer({
+        slotIndex: 1,
+        name: 'AI',
+        isAI: true,
+        personality: 'Defender'
+    });
 
     const regions = [
         createMockRegion({ index: 0, neighbors: [1, 2] }),
@@ -145,19 +154,27 @@ export function createSimpleTwoPlayerGame(): GameState {
         0: 0, // Player 1 owns region 0
         1: 0, // Player 1 owns region 1
         2: 1, // Player 2 owns region 2
-        3: 1  // Player 2 owns region 3
+        3: 1 // Player 2 owns region 3
     };
 
     const soldiersByRegion = {
-        0: [{ i: 1 }, { i: 2 }],        // 2 soldiers
-        1: [{ i: 3 }],                   // 1 soldier
+        0: [{ i: 1 }, { i: 2 }], // 2 soldiers
+        1: [{ i: 3 }], // 1 soldier
         2: [{ i: 4 }, { i: 5 }, { i: 6 }], // 3 soldiers
-        3: [{ i: 7 }]                    // 1 soldier
+        3: [{ i: 7 }] // 1 soldier
     };
 
     const templesByRegion = {
-        0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined, level: 0 }),
-        2: createMockTemple({ regionIndex: 2, upgradeIndex: undefined, level: 0 })
+        0: createMockTemple({
+            regionIndex: 0,
+            upgradeIndex: undefined,
+            level: 0
+        }),
+        2: createMockTemple({
+            regionIndex: 2,
+            upgradeIndex: undefined,
+            level: 0
+        })
     };
 
     return createMockGameState({
@@ -221,28 +238,32 @@ export function createGameStateWithSoldierCounts(
     neighbors: Record<number, number[]>
 ): GameState {
     const player1 = createMockPlayer({ slotIndex: 0, name: 'Player 1' });
-    const player2 = createMockPlayer({ slotIndex: 1, name: 'Player 2', isAI: true, personality: 'Defender' });
+    const player2 = createMockPlayer({
+        slotIndex: 1,
+        name: 'Player 2',
+        isAI: true,
+        personality: 'Defender'
+    });
 
-    const allRegionIndices = [
-        ...player1Regions.map(r => r.index),
-        ...player2Regions.map(r => r.index)
-    ];
+    const allRegionIndices = [...player1Regions.map(r => r.index), ...player2Regions.map(r => r.index)];
 
-    const regions = allRegionIndices.map(index =>
-        createMockRegion({ index, neighbors: neighbors[index] || [] })
-    );
+    const regions = allRegionIndices.map(index => createMockRegion({ index, neighbors: neighbors[index] || [] }));
 
     const ownersByRegion: Record<number, number> = {};
     const soldiersByRegion: Record<number, any[]> = {};
 
     player1Regions.forEach(({ index, soldiers }) => {
         ownersByRegion[index] = 0;
-        soldiersByRegion[index] = Array.from({ length: soldiers }, (_, i) => ({ i: index * 100 + i }));
+        soldiersByRegion[index] = Array.from({ length: soldiers }, (_, i) => ({
+            i: index * 100 + i
+        }));
     });
 
     player2Regions.forEach(({ index, soldiers }) => {
         ownersByRegion[index] = 1;
-        soldiersByRegion[index] = Array.from({ length: soldiers }, (_, i) => ({ i: index * 100 + i + 50 }));
+        soldiersByRegion[index] = Array.from({ length: soldiers }, (_, i) => ({
+            i: index * 100 + i + 50
+        }));
     });
 
     return createMockGameState({

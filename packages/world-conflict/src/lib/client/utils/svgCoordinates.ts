@@ -13,13 +13,13 @@ export function screenToSVGCoordinates(
     const point = svgElement.createSVGPoint();
     point.x = event.clientX;
     point.y = event.clientY;
-    
+
     // Transform from screen coordinates to SVG coordinates
     const screenCTM = svgElement.getScreenCTM();
     if (!screenCTM) return null;
-    
+
     const svgPoint = point.matrixTransform(screenCTM.inverse());
-    
+
     return {
         x: svgPoint.x,
         y: svgPoint.y
@@ -30,11 +30,7 @@ export function screenToSVGCoordinates(
  * Find a region at the given SVG coordinates
  * Uses point-in-polygon algorithm for accurate hit detection
  */
-export function findRegionAtPosition(
-    regions: Region[],
-    x: number,
-    y: number
-): Region | undefined {
+export function findRegionAtPosition(regions: Region[], x: number, y: number): Region | undefined {
     // Check regions in reverse order (top to bottom) for better UX
     for (let i = regions.length - 1; i >= 0; i--) {
         const region = regions[i];
@@ -59,20 +55,19 @@ function isPointInRegion(x: number, y: number, region: Region): boolean {
     // Ray casting algorithm for point-in-polygon test
     let inside = false;
     const points = region.points;
-    
+
     for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
         const xi = points[i].x;
         const yi = points[i].y;
         const xj = points[j].x;
         const yj = points[j].y;
-        
-        const intersect = ((yi > y) !== (yj > y))
-            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-        
+
+        const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+
         if (intersect) {
             inside = !inside;
         }
     }
-    
+
     return inside;
 }

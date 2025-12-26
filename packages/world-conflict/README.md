@@ -68,6 +68,7 @@ npm run deploy           # Deploy to Cloudflare Pages
 ### Game Statistics
 
 Daily game statistics are automatically tracked and stored in KV with keys like `wc_stats:2025-11-30`. Statistics include:
+
 - Games started, completed, and abandoned
 - Player counts (human vs AI)
 - Turn statistics (min, max, average)
@@ -83,39 +84,42 @@ When a game completes, old game entries (14+ days old) are automatically cleaned
 An admin endpoint is also available to manually clean up old game entries.
 
 **Get game entry statistics:**
+
 ```bash
 curl https://svelte-world-conflict.pages.dev/api/admin/cleanup
 ```
 
 **Dry run (see what would be deleted):**
+
 ```bash
 curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup?dryRun=true"
 ```
 
 **Delete games older than 1 day:**
+
 ```bash
 curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup"
 ```
 
 **Delete games older than N days:**
+
 ```bash
 curl -X POST "https://svelte-world-conflict.pages.dev/api/admin/cleanup?maxAgeDays=7"
 ```
 
-> **Note:** When running locally, the cleanup operates on in-memory storage, not production KV. To clean up production, run against the deployed URL or use `wrangler kv:key` commands with the namespace ID from `wrangler.toml`. 
-
+> **Note:** When running locally, the cleanup operates on in-memory storage, not production KV. To clean up production, run against the deployed URL or use `wrangler kv:key` commands with the namespace ID from `wrangler.toml`.
 
 ## 🎮 How to Play
 
 1. **Create a game** - Choose map size, player slots (human/AI/disabled)
 2. **Wait for players** - Share the game link or start with AI
 3. **Take turns** - Each turn you can:
-   - Move armies between adjacent regions you control
-   - Attack adjacent enemy regions
-   - Build up forces in your regions
+    - Move armies between adjacent regions you control
+    - Attack adjacent enemy regions
+    - Build up forces in your regions
 4. **Win conditions**:
-   - Eliminate all opponents
-   - Control the most territory when turn limit is reached
+    - Eliminate all opponents
+    - Control the most territory when turn limit is reached
 
 ### Game Mechanics
 
@@ -136,8 +140,8 @@ import { GameWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
 const client = new GameWebSocketClient();
 await client.connect(gameId);
 
-client.onGameUpdate((gameState) => {
-  // Update UI with new game state
+client.onGameUpdate(gameState => {
+    // Update UI with new game state
 });
 ```
 
@@ -154,24 +158,26 @@ const game = await storage.get(`wc_game:${gameId}`);
 ### Deploy to Cloudflare Pages
 
 1. **Build the application:**
-   ```bash
-   npm run build -w world-conflict
-   ```
+
+    ```bash
+    npm run build -w world-conflict
+    ```
 
 2. **Deploy to Pages:**
-   ```bash
-   npm run deploy -w world-conflict
-   ```
+
+    ```bash
+    npm run deploy -w world-conflict
+    ```
 
 3. **Configure KV binding:**
-   
-   In your Cloudflare Pages project settings, add a KV binding:
-   - Variable name: `WORLD_CONFLICT_KV`
-   - KV Namespace: Your created KV namespace
+
+    In your Cloudflare Pages project settings, add a KV binding:
+    - Variable name: `WORLD_CONFLICT_KV`
+    - KV Namespace: Your created KV namespace
 
 4. **Set worker URL:**
-   
-   Update `src/lib/websocket-config.ts` with your deployed worker URL.
+
+    Update `src/lib/websocket-config.ts` with your deployed worker URL.
 
 ## 🧪 Testing
 

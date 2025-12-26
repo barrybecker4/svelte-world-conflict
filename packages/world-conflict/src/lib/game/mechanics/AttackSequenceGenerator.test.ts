@@ -28,7 +28,7 @@ function createCombatGameState(options: {
     attackerOwner?: number;
     defenderOwner?: number;
     earthDamage?: number; // Desired preemptive damage (1 or 2 for Earth upgrade)
-    fireDamage?: number;  // Desired attack damage (1 or 2 for Fire upgrade)
+    fireDamage?: number; // Desired attack damage (1 or 2 for Fire upgrade)
     seed?: string;
 }): GameState {
     const {
@@ -41,14 +41,27 @@ function createCombatGameState(options: {
         seed = 'test-seed'
     } = options;
 
-    const players = [
-        createPlayer(0, 'Attacker'),
-        createPlayer(1, 'Defender')
-    ];
+    const players = [createPlayer(0, 'Attacker'), createPlayer(1, 'Defender')];
 
     const regions = [
-        new Region({ index: 0, name: 'Region 0', neighbors: [1], x: 100, y: 100, hasTemple: fireDamage > 0, points: [] }),
-        new Region({ index: 1, name: 'Region 1', neighbors: [0], x: 200, y: 100, hasTemple: true, points: [] })
+        new Region({
+            index: 0,
+            name: 'Region 0',
+            neighbors: [1],
+            x: 100,
+            y: 100,
+            hasTemple: fireDamage > 0,
+            points: []
+        }),
+        new Region({
+            index: 1,
+            name: 'Region 1',
+            neighbors: [0],
+            x: 200,
+            y: 100,
+            hasTemple: true,
+            points: []
+        })
     ];
 
     const soldiersByRegion: Record<number, { i: number }[]> = {
@@ -102,7 +115,6 @@ function createCombatGameState(options: {
         rngSeed: seed
     });
 }
-
 
 describe('AttackSequenceGenerator', () => {
     describe('createAttackSequenceIfFight', () => {
@@ -202,8 +214,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Look for "Conquered!" floating text
-            const conqueredEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+            const conqueredEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Conquered!')
             );
 
             expect(conqueredEvent).toBeDefined();
@@ -230,8 +242,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Look for "Defended!" floating text
-            const defendedEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Defended!')
+            const defendedEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Defended!')
             );
 
             expect(defendedEvent).toBeDefined();
@@ -257,8 +269,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Should still show "Conquered!" for taking neutral region
-            const conqueredEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+            const conqueredEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Conquered!')
             );
 
             expect(conqueredEvent).toBeDefined();
@@ -287,8 +299,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Look for Earth damage event (has "Earth kills" text)
-            const earthEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            const earthEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
 
             expect(earthEvent).toBeDefined();
@@ -317,8 +329,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Find Earth damage event
-            const earthEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            const earthEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
 
             expect(earthEvent).toBeDefined();
@@ -347,8 +359,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Find Earth damage event
-            const earthEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            const earthEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
 
             expect(earthEvent).toBeDefined();
@@ -379,8 +391,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Look for Fire damage event (has "Fire kills" text)
-            const fireEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            const fireEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Fire kills'))
             );
 
             expect(fireEvent).toBeDefined();
@@ -409,8 +421,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Find Fire damage event
-            const fireEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            const fireEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Fire kills'))
             );
 
             expect(fireEvent).toBeDefined();
@@ -438,8 +450,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Find Fire damage event
-            const fireEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            const fireEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Fire kills'))
             );
 
             expect(fireEvent).toBeDefined();
@@ -468,15 +480,15 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Should have Fire damage event
-            const fireEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            const fireEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Fire kills'))
             );
             expect(fireEvent).toBeDefined();
             expect(fireEvent!.defenderCasualties).toBe(2);
 
             // Should conquer (no remaining defenders after Fire)
-            const conqueredEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+            const conqueredEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Conquered!')
             );
             expect(conqueredEvent).toBeDefined();
         });
@@ -503,15 +515,15 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Should have Earth damage event
-            const earthEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            const earthEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
             expect(earthEvent).toBeDefined();
             expect(earthEvent!.attackerCasualties).toBe(1);
 
             // Should have Fire damage event
-            const fireEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Fire kills'))
+            const fireEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Fire kills'))
             );
             expect(fireEvent).toBeDefined();
             expect(fireEvent!.defenderCasualties).toBe(1);
@@ -609,9 +621,7 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Each combat event should have at least one casualty
-            const combatEvents = sequence!.filter(
-                (e: AttackEvent) => e.soundCue === 'COMBAT'
-            );
+            const combatEvents = sequence!.filter((e: AttackEvent) => e.soundCue === 'COMBAT');
 
             for (const event of combatEvents) {
                 const totalCasualties = (event.attackerCasualties || 0) + (event.defenderCasualties || 0);
@@ -714,17 +724,14 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Calculate total attacker casualties
-            const totalAttackerCasualties = sequence!.reduce(
-                (sum, e) => sum + (e.attackerCasualties || 0),
-                0
-            );
+            const totalAttackerCasualties = sequence!.reduce((sum, e) => sum + (e.attackerCasualties || 0), 0);
 
             // All 2 attackers should be eliminated (capped at 2)
             expect(totalAttackerCasualties).toBeLessThanOrEqual(2);
 
             // Should have "Defended!" message
-            const defendedEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Defended!')
+            const defendedEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Defended!')
             );
             expect(defendedEvent).toBeDefined();
         });
@@ -750,17 +757,14 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Calculate total defender casualties
-            const totalDefenderCasualties = sequence!.reduce(
-                (sum, e) => sum + (e.defenderCasualties || 0),
-                0
-            );
+            const totalDefenderCasualties = sequence!.reduce((sum, e) => sum + (e.defenderCasualties || 0), 0);
 
             // All 2 defenders should be eliminated
             expect(totalDefenderCasualties).toBe(2);
 
             // Should have "Conquered!" message
-            const conqueredEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+            const conqueredEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Conquered!')
             );
             expect(conqueredEvent).toBeDefined();
         });
@@ -800,23 +804,17 @@ describe('AttackSequenceGenerator', () => {
                 expect(retreatEvent.floatingText?.some(ft => ft.text === 'Retreat!')).toBe(true);
 
                 // Should also have "Defended!" text
-                const defendedEvent = sequence!.find(
-                    (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Defended!')
+                const defendedEvent = sequence!.find((e: AttackEvent) =>
+                    e.floatingText?.some(ft => ft.text === 'Defended!')
                 );
                 expect(defendedEvent).toBeDefined();
 
                 // Verify total attacker casualties are >50% of initial (10)
-                const totalAttackerCasualties = sequence!.reduce(
-                    (sum, e) => sum + (e.attackerCasualties || 0),
-                    0
-                );
+                const totalAttackerCasualties = sequence!.reduce((sum, e) => sum + (e.attackerCasualties || 0), 0);
                 expect(totalAttackerCasualties).toBeGreaterThan(5);
 
                 // Some defenders should still be alive (not all eliminated)
-                const totalDefenderCasualties = sequence!.reduce(
-                    (sum, e) => sum + (e.defenderCasualties || 0),
-                    0
-                );
+                const totalDefenderCasualties = sequence!.reduce((sum, e) => sum + (e.defenderCasualties || 0), 0);
                 expect(totalDefenderCasualties).toBeLessThan(10);
             }
             // If no retreat, the battle ended normally - which is also valid for this test
@@ -908,8 +906,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Should have Earth damage event
-            const earthEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            const earthEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
             expect(earthEvent).toBeDefined();
             expect(earthEvent!.attackerCasualties).toBe(2);
@@ -943,8 +941,8 @@ describe('AttackSequenceGenerator', () => {
             expect(sequence).toBeDefined();
 
             // Verify Earth killed exactly 2
-            const earthEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text.includes('Earth kills'))
+            const earthEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text.includes('Earth kills'))
             );
             expect(earthEvent).toBeDefined();
             expect(earthEvent!.attackerCasualties).toBe(2);
@@ -990,14 +988,8 @@ describe('AttackSequenceGenerator', () => {
 
             if (retreatEvent) {
                 // Count total casualties
-                const totalAttackerCasualties = sequence!.reduce(
-                    (sum, e) => sum + (e.attackerCasualties || 0),
-                    0
-                );
-                const totalDefenderCasualties = sequence!.reduce(
-                    (sum, e) => sum + (e.defenderCasualties || 0),
-                    0
-                );
+                const totalAttackerCasualties = sequence!.reduce((sum, e) => sum + (e.attackerCasualties || 0), 0);
+                const totalDefenderCasualties = sequence!.reduce((sum, e) => sum + (e.defenderCasualties || 0), 0);
 
                 // Attackers lost >50% (>5)
                 expect(totalAttackerCasualties).toBeGreaterThan(5);
@@ -1009,8 +1001,8 @@ describe('AttackSequenceGenerator', () => {
                 expect(totalDefenderCasualties).toBeLessThan(20);
 
                 // Should NOT have "Conquered!" text
-                const conqueredEvent = sequence!.find(
-                    (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+                const conqueredEvent = sequence!.find((e: AttackEvent) =>
+                    e.floatingText?.some(ft => ft.text === 'Conquered!')
                 );
                 expect(conqueredEvent).toBeUndefined();
             }
@@ -1041,20 +1033,14 @@ describe('AttackSequenceGenerator', () => {
             expect(retreatEvent).toBeUndefined();
 
             // Should have "Conquered!" text
-            const conqueredEvent = sequence!.find(
-                (e: AttackEvent) => e.floatingText?.some(ft => ft.text === 'Conquered!')
+            const conqueredEvent = sequence!.find((e: AttackEvent) =>
+                e.floatingText?.some(ft => ft.text === 'Conquered!')
             );
             expect(conqueredEvent).toBeDefined();
 
             // Verify casualties are within bounds
-            const totalAttackerCasualties = sequence!.reduce(
-                (sum, e) => sum + (e.attackerCasualties || 0),
-                0
-            );
-            const totalDefenderCasualties = sequence!.reduce(
-                (sum, e) => sum + (e.defenderCasualties || 0),
-                0
-            );
+            const totalAttackerCasualties = sequence!.reduce((sum, e) => sum + (e.attackerCasualties || 0), 0);
+            const totalDefenderCasualties = sequence!.reduce((sum, e) => sum + (e.defenderCasualties || 0), 0);
 
             // Attacker casualties should be <= 10 (not >50%)
             expect(totalAttackerCasualties).toBeLessThanOrEqual(10);

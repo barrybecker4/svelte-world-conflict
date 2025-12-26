@@ -1,6 +1,7 @@
 # Multi-Player Test Scenarios - Visual Guide
 
 ## Legend
+
 ```
 🟢 = Human Player (Set)
 🔵 = Human Player (Open - to be filled)
@@ -12,6 +13,7 @@
 ---
 
 ## Test 1: Two Humans - Adjacent Slots
+
 **Goal**: Verify basic 2-player flow, waiting room, and turn order
 
 ```
@@ -30,6 +32,7 @@ Player1 → Player2 → Player1 → Player2 → ...
 ```
 
 **Key Verifications:**
+
 - ✅ Both players see each other in waiting room
 - ✅ Start button enables when both players joined
 - ✅ Turn order cycles correctly
@@ -38,6 +41,7 @@ Player1 → Player2 → Player1 → Player2 → ...
 ---
 
 ## Test 2: Two Humans - Creator in Last Slot
+
 **Goal**: Verify "start anyway" with remaining slots becoming AI
 
 ```
@@ -62,6 +66,7 @@ Player2 → AI(Crimson) → AI(Amber) → Player1 → ...
 ```
 
 **Key Verifications:**
+
 - ✅ "Start anyway" button visible to creator
 - ✅ Open slots convert to AI
 - ✅ Turn order includes AI players
@@ -70,6 +75,7 @@ Player2 → AI(Crimson) → AI(Amber) → Player1 → ...
 ---
 
 ## Test 3: Three Humans - With Gap
+
 **Goal**: Verify 3-player coordination and inactive slot handling
 
 ```
@@ -87,6 +93,7 @@ Player1 → Player2 → Player3 → Player1 → ...
 ```
 
 **Key Verifications:**
+
 - ✅ Inactive slots are skipped in turn order
 - ✅ All 3 players see synchronized state
 - ✅ Turn transitions work with 3 WebSocket connections
@@ -95,6 +102,7 @@ Player1 → Player2 → Player3 → Player1 → ...
 ---
 
 ## Test 4: Four Humans - Full Game
+
 **Goal**: Verify maximum player capacity
 
 ```
@@ -113,6 +121,7 @@ Player1 → Player2 → Player3 → Player4 → Player1 → ...
 ```
 
 **Key Verifications:**
+
 - ✅ All 4 players can join
 - ✅ Start button auto-enables when all slots filled
 - ✅ Complete turn cycle with 4 players
@@ -121,6 +130,7 @@ Player1 → Player2 → Player3 → Player4 → Player1 → ...
 ---
 
 ## Test 5: Mixed Configuration
+
 **Goal**: Verify complex slot setup with human/AI/off mix
 
 ```
@@ -138,6 +148,7 @@ Player2 → Player1 → AI(Lavender) → Player2 → ...
 ```
 
 **Key Verifications:**
+
 - ✅ Pre-configured AI slots work
 - ✅ Creator can be in middle position
 - ✅ Mixed config turn order correct
@@ -146,6 +157,7 @@ Player2 → Player1 → AI(Lavender) → Player2 → ...
 ---
 
 ## Test 6: Late Joiner (Edge Case)
+
 **Goal**: Verify game start prevents late joining
 
 ```
@@ -177,6 +189,7 @@ T3: Player2 tries to join
 ```
 
 **Key Verifications:**
+
 - ✅ Game state changes from "waiting" to "active"
 - ✅ Late joiner gets error/redirect
 - ✅ Started game not disrupted
@@ -184,6 +197,7 @@ T3: Player2 tries to join
 ---
 
 ## Test 7: Player Leaves Waiting Room
+
 **Goal**: Verify leave/rejoin functionality
 
 ```
@@ -213,6 +227,7 @@ Phase 3: Player4 joins freed slot
 ```
 
 **Key Verifications:**
+
 - ✅ Leave button works
 - ✅ Leaving player returns to lobby
 - ✅ Slot becomes open again
@@ -223,6 +238,7 @@ Phase 3: Player4 joins freed slot
 ---
 
 ## Test 8: Territory Control Gameplay
+
 **Goal**: Verify synchronized gameplay state
 
 ```
@@ -257,6 +273,7 @@ Turn 2 - Player1 attacks Player2:
 ```
 
 **Key Verifications:**
+
 - ✅ Both players see same map
 - ✅ Battle results sync in real-time
 - ✅ Territory counters update correctly
@@ -267,6 +284,7 @@ Turn 2 - Player1 attacks Player2:
 ## Test Flow Patterns
 
 ### Pattern A: Create and Join
+
 ```
 Player1                    Player2
    │                          │
@@ -284,6 +302,7 @@ Player1                    Player2
 ```
 
 ### Pattern B: Turn Coordination
+
 ```
 Player1                    Player2
    │                          │
@@ -301,6 +320,7 @@ Player1                    Player2
 ```
 
 ### Pattern C: Cleanup
+
 ```
 Player1                    Player2
    │                          │
@@ -318,64 +338,70 @@ Player1                    Player2
 ### Critical Sync Points in Tests:
 
 1. **After Player Joins**
-   ```
-   await waitForPlayerToJoin(creator, joiner, slotIndex);
-   await page.waitForTimeout(WEBSOCKET_UPDATE_TIME);
-   ```
+
+    ```
+    await waitForPlayerToJoin(creator, joiner, slotIndex);
+    await page.waitForTimeout(WEBSOCKET_UPDATE_TIME);
+    ```
 
 2. **Before Starting Game**
-   ```
-   await expect(startButton).toBeEnabled();
-   // All players should see enabled button
-   ```
+
+    ```
+    await expect(startButton).toBeEnabled();
+    // All players should see enabled button
+    ```
 
 3. **After Game Starts**
-   ```
-   await Promise.all([
-     waitForGameLoad(player1),
-     waitForGameLoad(player2),
-     waitForGameLoad(player3),
-   ]);
-   ```
+
+    ```
+    await Promise.all([
+      waitForGameLoad(player1),
+      waitForGameLoad(player2),
+      waitForGameLoad(player3),
+    ]);
+    ```
 
 4. **Turn Transitions**
-   ```
-   await synchronizeTurnTransition(
-     [player1, player2],
-     fromPlayer,
-     toPlayer
-   );
-   ```
+    ```
+    await synchronizeTurnTransition(
+      [player1, player2],
+      fromPlayer,
+      toPlayer
+    );
+    ```
 
 ---
 
 ## Common Issues and Solutions
 
 ### Issue 1: WebSocket Timing
+
 ```
 ❌ Problem:
    Player1 starts game before Player2's join propagates
-   
+
 ✅ Solution:
    await waitForPlayerToJoin(player1, PLAYER2, 1);
    await page.waitForTimeout(WEBSOCKET_UPDATE);
 ```
 
 ### Issue 2: Race Conditions
+
 ```
 ❌ Problem:
    Multiple players try to end turn simultaneously
-   
+
 ✅ Solution:
    Verify turn ownership before allowing actions
    await expect(endTurnBtn).toBeEnabled()
 ```
 
 ### Issue 3: Context Leaks
+
 ```
 ❌ Problem:
    Browser contexts not closed, memory leak
-   
+
 ✅ Solution:
    Always use try/finally:
    try {
@@ -387,10 +413,11 @@ Player1                    Player2
 ```
 
 ### Issue 4: State Desync
+
 ```
 ❌ Problem:
    Players see different game state
-   
+
 ✅ Solution:
    Verify state on both clients:
    const turn1 = await getCurrentTurn(player1);
@@ -402,18 +429,18 @@ Player1                    Player2
 
 ## Test Execution Matrix
 
-| Test # | Players | Browsers | AI | Duration | Priority |
-|--------|---------|----------|----|---------:|----------|
-| 1      | 2       | 2        | 0  | ~30s     | P0 🔴    |
-| 2      | 2       | 2        | 2  | ~40s     | P0 🔴    |
-| 3      | 3       | 3        | 0  | ~45s     | P1 🟡    |
-| 4      | 4       | 4        | 0  | ~60s     | P1 🟡    |
-| 5      | 2       | 2        | 1  | ~40s     | P1 🟡    |
-| 6      | 2       | 2        | 0  | ~25s     | P2 🟢    |
-| 7      | 3→4     | 4        | 0  | ~50s     | P2 🟢    |
-| 8      | 2       | 2        | 0  | ~60s     | P1 🟡    |
-| 9      | 2       | 2        | 0  | ~45s     | P2 🟢    |
-| 10-12  | 2       | 2        | 0  | ~30s ea  | P3 ⚪    |
+| Test # | Players | Browsers | AI  | Duration | Priority |
+| ------ | ------- | -------- | --- | -------: | -------- |
+| 1      | 2       | 2        | 0   |     ~30s | P0 🔴    |
+| 2      | 2       | 2        | 2   |     ~40s | P0 🔴    |
+| 3      | 3       | 3        | 0   |     ~45s | P1 🟡    |
+| 4      | 4       | 4        | 0   |     ~60s | P1 🟡    |
+| 5      | 2       | 2        | 1   |     ~40s | P1 🟡    |
+| 6      | 2       | 2        | 0   |     ~25s | P2 🟢    |
+| 7      | 3→4     | 4        | 0   |     ~50s | P2 🟢    |
+| 8      | 2       | 2        | 0   |     ~60s | P1 🟡    |
+| 9      | 2       | 2        | 0   |     ~45s | P2 🟢    |
+| 10-12  | 2       | 2        | 0   |  ~30s ea | P3 ⚪    |
 
 **Total Estimated Runtime**: ~8-10 minutes
 
@@ -422,11 +449,13 @@ Player1                    Player2
 ## Resource Requirements
 
 ### Per Test:
+
 - Browsers: 2-4 simultaneous Chrome instances
 - Memory: ~200-400MB per browser context
 - Network: WebSocket connections per player
 
 ### Recommendations:
+
 - Run tests sequentially (workers: 1)
 - Close contexts immediately after each test
 - Use `skipInstructionsQuick()` for speed

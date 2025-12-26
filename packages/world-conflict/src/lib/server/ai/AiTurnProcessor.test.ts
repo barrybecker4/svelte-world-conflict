@@ -20,7 +20,7 @@ import {
 // Mock WebSocketNotifications
 vi.mock('$lib/server/websocket/WebSocketNotifier', () => ({
     WebSocketNotifications: {
-        gameUpdate: vi.fn(async () => { })
+        gameUpdate: vi.fn(async () => {})
     }
 }));
 
@@ -40,7 +40,7 @@ const mockPlatform = {
     },
     context: {
         waitUntil: vi.fn(),
-        passThroughOnException: vi.fn(),
+        passThroughOnException: vi.fn()
     } as any,
     caches: {} as any
 };
@@ -48,8 +48,17 @@ const mockPlatform = {
 describe('AiTurnProcessor', () => {
     describe('processAiTurns', () => {
         it('should process single AI turn then stop at human', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Defender' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
 
             // Create a state where players are separated and won't eliminate each other quickly
             const gameState = createMockGameState({
@@ -57,7 +66,7 @@ describe('AiTurnProcessor', () => {
                 currentPlayerSlot: 1, // AI's turn
                 regions: [
                     createMockRegion({ index: 0, neighbors: [] }), // Isolated
-                    createMockRegion({ index: 1, neighbors: [] })  // Isolated
+                    createMockRegion({ index: 1, neighbors: [] }) // Isolated
                 ],
                 ownersByRegion: { 0: 0, 1: 1 },
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] },
@@ -79,9 +88,23 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should process multiple consecutive AI turns', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer1 = createMockPlayer({ slotIndex: 1, name: 'AI 1', isAI: true, personality: 'Defender' });
-            const aiPlayer2 = createMockPlayer({ slotIndex: 2, name: 'AI 2', isAI: true, personality: 'Economist' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer1 = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI 1',
+                isAI: true,
+                personality: 'Defender'
+            });
+            const aiPlayer2 = createMockPlayer({
+                slotIndex: 2,
+                name: 'AI 2',
+                isAI: true,
+                personality: 'Economist'
+            });
 
             // Human has regions that are not adjacent to AI regions, so they can't be attacked
             const gameState = createMockGameState({
@@ -93,7 +116,11 @@ describe('AiTurnProcessor', () => {
                     createMockRegion({ index: 2, neighbors: [1] })
                 ],
                 ownersByRegion: { 0: 0, 1: 1, 2: 2 },
-                soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }], 2: [{ i: 3 }] },
+                soldiersByRegion: {
+                    0: [{ i: 1 }],
+                    1: [{ i: 2 }],
+                    2: [{ i: 3 }]
+                },
                 movesRemaining: 3,
                 aiDifficulty: AiDifficulty.RUDE
             });
@@ -110,8 +137,18 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should stop when game ends', async () => {
-            const aiPlayer1 = createMockPlayer({ slotIndex: 0, name: 'AI 1', isAI: true, personality: 'Defender' });
-            const aiPlayer2 = createMockPlayer({ slotIndex: 1, name: 'AI 2', isAI: true, personality: 'Aggressor' });
+            const aiPlayer1 = createMockPlayer({
+                slotIndex: 0,
+                name: 'AI 1',
+                isAI: true,
+                personality: 'Defender'
+            });
+            const aiPlayer2 = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI 2',
+                isAI: true,
+                personality: 'Aggressor'
+            });
 
             const gameState = createMockGameState({
                 players: [aiPlayer1, aiPlayer2],
@@ -133,7 +170,12 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should respect MAX_AI_TURNS safety limit', async () => {
-            const aiPlayer = createMockPlayer({ slotIndex: 0, name: 'AI', isAI: true, personality: 'Defender' });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
 
             const gameState = createMockGameState({
                 players: [aiPlayer],
@@ -157,8 +199,17 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should handle AI move failures gracefully', async () => {
-            const aiPlayer = createMockPlayer({ slotIndex: 0, name: 'AI', isAI: true, personality: 'Defender' });
-            const humanPlayer = createMockPlayer({ slotIndex: 1, name: 'Human', isAI: false });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'Human',
+                isAI: false
+            });
 
             // Create a state where AI has very limited options
             const gameState = createMockGameState({
@@ -184,8 +235,17 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should update game state correctly', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Berserker' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Berserker'
+            });
 
             const gameState = createMockGameState({
                 players: [humanPlayer, aiPlayer],
@@ -218,8 +278,17 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should call gameStorage.saveGame once at end', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Defender' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
 
             const gameState = createMockGameState({
                 players: [humanPlayer, aiPlayer],
@@ -240,8 +309,17 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should return updated GameState', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Defender' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
 
             const gameState = createMockGameState({
                 players: [humanPlayer, aiPlayer],
@@ -262,8 +340,17 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should handle errors without crashing', async () => {
-            const aiPlayer = createMockPlayer({ slotIndex: 0, name: 'AI', isAI: true, personality: 'Invalid' });
-            const humanPlayer = createMockPlayer({ slotIndex: 1, name: 'Human', isAI: false });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'AI',
+                isAI: true,
+                personality: 'Invalid'
+            });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'Human',
+                isAI: false
+            });
 
             const gameState = createMockGameState({
                 players: [aiPlayer, humanPlayer],
@@ -277,14 +364,21 @@ describe('AiTurnProcessor', () => {
             const { storage } = createMockGameStorage();
 
             // Should not throw
-            await expect(
-                processAiTurns(gameState, storage, 'test-game', mockPlatform)
-            ).resolves.toBeDefined();
+            await expect(processAiTurns(gameState, storage, 'test-game', mockPlatform)).resolves.toBeDefined();
         });
 
         it('should process EndTurnCommand when no valid move', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Defender' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
 
             // AI has no valid moves
             const gameState = createMockGameState({
@@ -310,8 +404,18 @@ describe('AiTurnProcessor', () => {
 
     describe('Integration scenarios', () => {
         it('should handle AI vs AI game', async () => {
-            const aiPlayer1 = createMockPlayer({ slotIndex: 0, name: 'AI 1', isAI: true, personality: 'Defender' });
-            const aiPlayer2 = createMockPlayer({ slotIndex: 1, name: 'AI 2', isAI: true, personality: 'Aggressor' });
+            const aiPlayer1 = createMockPlayer({
+                slotIndex: 0,
+                name: 'AI 1',
+                isAI: true,
+                personality: 'Defender'
+            });
+            const aiPlayer2 = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI 2',
+                isAI: true,
+                personality: 'Aggressor'
+            });
 
             // Create a more balanced setup so AIs don't eliminate each other immediately
             // Give each AI multiple regions spread out to allow multiple turns
@@ -352,8 +456,17 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should handle game with temples and building', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Economist' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Economist'
+            });
 
             const gameState = createMockGameState({
                 players: [humanPlayer, aiPlayer],
@@ -365,7 +478,10 @@ describe('AiTurnProcessor', () => {
                 ownersByRegion: { 0: 0, 1: 1 },
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] },
                 templesByRegion: {
-                    1: createMockTemple({ regionIndex: 1, upgradeIndex: undefined })
+                    1: createMockTemple({
+                        regionIndex: 1,
+                        upgradeIndex: undefined
+                    })
                 },
                 faithByPlayer: { 0: 50, 1: 50 },
                 movesRemaining: 3,
@@ -384,23 +500,37 @@ describe('AiTurnProcessor', () => {
             vi.setConfig({ testTimeout: 10000 }); // Increase timeout for this test
             const players = [
                 createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false }),
-                createMockPlayer({ slotIndex: 1, name: 'AI 1', isAI: true, personality: 'Defender' }),
-                createMockPlayer({ slotIndex: 2, name: 'AI 2', isAI: true, personality: 'Aggressor' }),
-                createMockPlayer({ slotIndex: 3, name: 'AI 3', isAI: true, personality: 'Economist' })
+                createMockPlayer({
+                    slotIndex: 1,
+                    name: 'AI 1',
+                    isAI: true,
+                    personality: 'Defender'
+                }),
+                createMockPlayer({
+                    slotIndex: 2,
+                    name: 'AI 2',
+                    isAI: true,
+                    personality: 'Aggressor'
+                }),
+                createMockPlayer({
+                    slotIndex: 3,
+                    name: 'AI 3',
+                    isAI: true,
+                    personality: 'Economist'
+                })
             ];
 
             const gameState = createMockGameState({
                 players,
                 currentPlayerSlot: 1,
                 regions: Array.from({ length: 8 }, (_, i) =>
-                    createMockRegion({ index: i, neighbors: [Math.max(0, i - 1), Math.min(7, i + 1)] })
+                    createMockRegion({
+                        index: i,
+                        neighbors: [Math.max(0, i - 1), Math.min(7, i + 1)]
+                    })
                 ),
-                ownersByRegion: Object.fromEntries(
-                    Array.from({ length: 8 }, (_, i) => [i, i % 4])
-                ),
-                soldiersByRegion: Object.fromEntries(
-                    Array.from({ length: 8 }, (_, i) => [i, [{ i }]])
-                ),
+                ownersByRegion: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i, i % 4])),
+                soldiersByRegion: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i, [{ i }]])),
                 movesRemaining: 3,
                 aiDifficulty: AiDifficulty.RUDE
             });
@@ -414,9 +544,23 @@ describe('AiTurnProcessor', () => {
         });
 
         it('should handle eliminated player gracefully', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const eliminatedAi = createMockPlayer({ slotIndex: 1, name: 'Eliminated AI', isAI: true, personality: 'Defender' });
-            const activeAi = createMockPlayer({ slotIndex: 2, name: 'Active AI', isAI: true, personality: 'Aggressor' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const eliminatedAi = createMockPlayer({
+                slotIndex: 1,
+                name: 'Eliminated AI',
+                isAI: true,
+                personality: 'Defender'
+            });
+            const activeAi = createMockPlayer({
+                slotIndex: 2,
+                name: 'Active AI',
+                isAI: true,
+                personality: 'Aggressor'
+            });
 
             const gameState = createMockGameState({
                 players: [humanPlayer, eliminatedAi, activeAi],
@@ -442,21 +586,29 @@ describe('AiTurnProcessor', () => {
 
     describe('Performance', () => {
         it('should complete processing within reasonable time', async () => {
-            const humanPlayer = createMockPlayer({ slotIndex: 0, name: 'Human', isAI: false });
-            const aiPlayer = createMockPlayer({ slotIndex: 1, name: 'AI', isAI: true, personality: 'Defender' });
+            const humanPlayer = createMockPlayer({
+                slotIndex: 0,
+                name: 'Human',
+                isAI: false
+            });
+            const aiPlayer = createMockPlayer({
+                slotIndex: 1,
+                name: 'AI',
+                isAI: true,
+                personality: 'Defender'
+            });
 
             const gameState = createMockGameState({
                 players: [humanPlayer, aiPlayer],
                 currentPlayerSlot: 1,
                 regions: Array.from({ length: 6 }, (_, i) =>
-                    createMockRegion({ index: i, neighbors: [(i + 1) % 6, (i + 5) % 6] })
+                    createMockRegion({
+                        index: i,
+                        neighbors: [(i + 1) % 6, (i + 5) % 6]
+                    })
                 ),
-                ownersByRegion: Object.fromEntries(
-                    Array.from({ length: 6 }, (_, i) => [i, i % 2])
-                ),
-                soldiersByRegion: Object.fromEntries(
-                    Array.from({ length: 6 }, (_, i) => [i, [{ i }, { i: i + 100 }]])
-                ),
+                ownersByRegion: Object.fromEntries(Array.from({ length: 6 }, (_, i) => [i, i % 2])),
+                soldiersByRegion: Object.fromEntries(Array.from({ length: 6 }, (_, i) => [i, [{ i }, { i: i + 100 }]])),
                 movesRemaining: 3,
                 aiDifficulty: AiDifficulty.RUDE
             });

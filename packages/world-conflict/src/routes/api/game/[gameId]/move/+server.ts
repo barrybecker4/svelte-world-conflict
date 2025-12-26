@@ -26,17 +26,17 @@ interface MoveRequest {
 }
 
 /**
-  * Handle player moves in World Conflict game
-  * This endpoint processes player moves such as army movements, building, and ending turns.
-  * It validates the move, applies the command, updates the game state, and sends notifications.
-  * 
-  * Server-side batching: If deferKVWrite is true, the game state is updated in memory
-  * but not written to KV until endTurn is called.
+ * Handle player moves in World Conflict game
+ * This endpoint processes player moves such as army movements, building, and ending turns.
+ * It validates the move, applies the command, updates the game state, and sends notifications.
+ *
+ * Server-side batching: If deferKVWrite is true, the game state is updated in memory
+ * but not written to KV until endTurn is called.
  */
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const { gameId } = params;
-        const moveData = await request.json() as MoveRequest;
+        const moveData = (await request.json()) as MoveRequest;
 
         logger.debug(`Move request for game ${gameId}:`, moveData.moveType);
 
@@ -46,11 +46,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         let game = getPendingUpdate(gameId);
         if (!game) {
             logger.debug(`No pending update, fetching from KV...`);
-            game = await gameStorage.getGame(gameId) || undefined;
+            game = (await gameStorage.getGame(gameId)) || undefined;
         } else {
             logger.debug(`Using pending update from memory`);
         }
-        
+
         if (!game) {
             logger.debug(`Game ${gameId} not found`);
             return json({ error: 'Game not found' }, { status: 404 });
@@ -73,7 +73,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         let command;
         switch (moveData.moveType) {
             case 'ARMY_MOVE':
-                if (moveData.source === undefined || moveData.destination === undefined || moveData.count === undefined) {
+                if (
+                    moveData.source === undefined ||
+                    moveData.destination === undefined ||
+                    moveData.count === undefined
+                ) {
                     return json({ error: 'Missing army move parameters', moveData }, { status: 400 });
                 }
                 command = new ArmyMoveCommand(
@@ -89,12 +93,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
                 if (moveData.regionIndex === undefined || moveData.upgradeIndex === undefined) {
                     return json({ error: 'Missing build parameters' }, { status: 400 });
                 }
-                command = new BuildCommand(
-                    worldConflictState,
-                    player,
-                    moveData.regionIndex,
-                    moveData.upgradeIndex
-                );
+                command = new BuildCommand(worldConflictState, player, moveData.regionIndex, moveData.upgradeIndex);
                 break;
 
             default:
@@ -151,7 +150,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             message: 'Move processed successfully',
             attackSequence: result.attackSequence
         });
-
     } catch (error) {
         logger.error('Fatal error in move endpoint:', error);
         return handleApiError(error, `processing move for game ${params.gameId}`, {

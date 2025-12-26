@@ -27,7 +27,11 @@ function validateJoinRequest(
     game: GameRecord | null
 ): ValidationResult {
     if (!gameId || !playerName?.trim()) {
-        return { valid: false, error: 'Game ID and player name are required', statusCode: 400 };
+        return {
+            valid: false,
+            error: 'Game ID and player name are required',
+            statusCode: 400
+        };
     }
 
     if (!game) {
@@ -35,14 +39,20 @@ function validateJoinRequest(
     }
 
     if (game.status !== 'PENDING') {
-        return { valid: false, error: 'Game has already started or ended', statusCode: 400 };
+        return {
+            valid: false,
+            error: 'Game has already started or ended',
+            statusCode: 400
+        };
     }
 
-    const existingPlayer = game.players.find(p =>
-        p.name.toLowerCase() === playerName.trim().toLowerCase()
-    );
+    const existingPlayer = game.players.find(p => p.name.toLowerCase() === playerName.trim().toLowerCase());
     if (existingPlayer) {
-        return { valid: false, error: `Player name "${playerName}" is already taken`, statusCode: 400 };
+        return {
+            valid: false,
+            error: `Player name "${playerName}" is already taken`,
+            statusCode: 400
+        };
     }
 
     return { valid: true };
@@ -83,15 +93,15 @@ function findTargetSlot(
         const openSlots = playerSlots
             .filter((slot: any) => slot.type === 'Open')
             .sort((a: any, b: any) => a.slotIndex - b.slotIndex);
-        
-        const availableSlot = openSlots.find((slot: any) => 
-            !game.players.some((p: any) => p.slotIndex === slot.slotIndex)
+
+        const availableSlot = openSlots.find(
+            (slot: any) => !game.players.some((p: any) => p.slotIndex === slot.slotIndex)
         );
-        
+
         if (!availableSlot) {
             return { error: 'No available slots', statusCode: 400 };
         }
-        
+
         logger.debug(`Auto-assigning player to first open slot ${availableSlot.slotIndex}`);
         return { slotIndex: availableSlot.slotIndex };
     }
@@ -100,7 +110,7 @@ function findTargetSlot(
     if (game.players.length >= GAME_CONSTANTS.MAX_PLAYERS) {
         return { error: 'Game is full', statusCode: 400 };
     }
-    
+
     return { slotIndex: game.players.length };
 }
 
@@ -118,26 +128,21 @@ function checkShouldAutoStart(game: GameRecord, updatedPlayers: any[]): boolean 
 
         return unfilledOpenSlots.length === 0;
     }
-    
+
     return updatedPlayers.length >= GAME_CONSTANTS.MAX_PLAYERS;
 }
 
 /**
  * Initialize game state when auto-starting
  */
-function initializeGameForStart(
-    gameId: string,
-    game: GameRecord,
-    updatedGame: any,
-    updatedPlayers: any[]
-): void {
+function initializeGameForStart(gameId: string, game: GameRecord, updatedGame: any, updatedPlayers: any[]): void {
     const regions = game.worldConflictState?.regions || [];
-    const moveTimeLimit = game.pendingConfiguration?.settings?.timeLimit ||
-                          game.worldConflictState?.moveTimeLimit ||
-                          GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
-    const aiDifficulty = game.pendingConfiguration?.settings?.aiDifficulty ||
-                        game.worldConflictState?.aiDifficulty ||
-                        'Normal';
+    const moveTimeLimit =
+        game.pendingConfiguration?.settings?.timeLimit ||
+        game.worldConflictState?.moveTimeLimit ||
+        GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
+    const aiDifficulty =
+        game.pendingConfiguration?.settings?.aiDifficulty || game.worldConflictState?.aiDifficulty || 'Normal';
 
     logger.debug(`Auto-starting game with ${updatedPlayers.length} players, timeLimit: ${moveTimeLimit}`);
 
@@ -161,7 +166,7 @@ function initializeGameForStart(
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
         const gameId = params.gameId;
-        const body = await request.json() as JoinRequest;
+        const body = (await request.json()) as JoinRequest;
         const { playerName, preferredSlot } = body;
 
         logger.debug(`Player "${playerName}" attempting to join game ${gameId}`);
@@ -224,7 +229,6 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             },
             gameStarted: shouldStart
         });
-
     } catch (error) {
         return handleApiError(error, 'joining game');
     }

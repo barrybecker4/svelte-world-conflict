@@ -59,8 +59,9 @@ describe('BattleRound', () => {
 
             // At least some results should differ (highly probable with different seeds)
             const allSame = results.every(
-                r => r.attackerCasualties === results[0].attackerCasualties &&
-                     r.defenderCasualties === results[0].defenderCasualties
+                r =>
+                    r.attackerCasualties === results[0].attackerCasualties &&
+                    r.defenderCasualties === results[0].defenderCasualties
             );
             // While theoretically possible, it's extremely unlikely all 3 are identical
             expect(allSame).toBe(false);

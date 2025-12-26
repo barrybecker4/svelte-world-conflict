@@ -1,5 +1,5 @@
 import type { Player, Region, GameStateData, Soldier, Temple } from '$lib/game/entities/gameTypes';
-import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { TEMPLE_UPGRADES, TEMPLE_UPGRADES_BY_NAME } from '$lib/game/constants/templeUpgradeDefinitions';
 import { GameStateInitializer } from '$lib/game/state/GameStateInitializer';
 import { GameStateValidator, MoveValidator, TempleValidator } from '$lib/game/validation';
@@ -46,21 +46,40 @@ export class GameState {
     /**
      * Create initial game state - uses GameStateInitializer to prepare data
      */
-    static createInitialState(gameId: string, players: Player[], regionData: any[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameState {
-        logger.debug(`🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}, seed: ${seed}`);
+    static createInitialState(
+        gameId: string,
+        players: Player[],
+        regionData: any[],
+        maxTurns?: number,
+        moveTimeLimit?: number,
+        aiDifficulty?: string,
+        seed?: string
+    ): GameState {
+        logger.debug(
+            `🎮 Creating initial game state for ${gameId} with maxTurns: ${maxTurns}, moveTimeLimit: ${moveTimeLimit}, aiDifficulty: ${aiDifficulty}, seed: ${seed}`
+        );
 
         let regions: Region[];
 
         // Use Regions class for validation/processing, then extract to plain array
         // GameStateData must use Region[] (not Regions) for proper JSON serialization
-        regions = (regionData?.length > 0)
-            ? Regions.fromJSON(regionData).getAll()
-            : Regions.createBasic(Math.max(players.length * 3, 12), seed).getAll();
+        regions =
+            regionData?.length > 0
+                ? Regions.fromJSON(regionData).getAll()
+                : Regions.createBasic(Math.max(players.length * 3, 12), seed).getAll();
 
         logger.debug(`Using ${regions.length} regions for game initialization`);
 
         const initializer = new GameStateInitializer();
-        const initialStateData = initializer.createInitialStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
+        const initialStateData = initializer.createInitialStateData(
+            gameId,
+            players,
+            regions,
+            maxTurns,
+            moveTimeLimit,
+            aiDifficulty,
+            seed
+        );
 
         return new GameState(initialStateData);
     }
@@ -86,36 +105,82 @@ export class GameState {
 
     // ==================== ACCESSORS ====================
 
-    get turnNumber(): number { return this.state.turnNumber; }
-    set turnNumber(value: number) { this.state.turnNumber = value; }
+    get turnNumber(): number {
+        return this.state.turnNumber;
+    }
+    set turnNumber(value: number) {
+        this.state.turnNumber = value;
+    }
 
-    get currentPlayerSlot(): number { return this.state.currentPlayerSlot; }
-    set currentPlayerSlot(value: number) { this.state.currentPlayerSlot = value; }
+    get currentPlayerSlot(): number {
+        return this.state.currentPlayerSlot;
+    }
+    set currentPlayerSlot(value: number) {
+        this.state.currentPlayerSlot = value;
+    }
 
-    get numBoughtSoldiers(): number { return (this.state as any).numBoughtSoldiers || 0; }
-    set numBoughtSoldiers(value: number) { (this.state as any).numBoughtSoldiers = value; }
+    get numBoughtSoldiers(): number {
+        return (this.state as any).numBoughtSoldiers || 0;
+    }
+    set numBoughtSoldiers(value: number) {
+        (this.state as any).numBoughtSoldiers = value;
+    }
 
-    get conqueredRegions(): number[] { return this.state.conqueredRegions || []; }
-    set conqueredRegions(value: number[]) { this.state.conqueredRegions = value; }
+    get conqueredRegions(): number[] {
+        return this.state.conqueredRegions || [];
+    }
+    set conqueredRegions(value: number[]) {
+        this.state.conqueredRegions = value;
+    }
 
-    get movesRemaining(): number { return this.state.movesRemaining; }
-    set movesRemaining(value: number) { this.state.movesRemaining = value; }
+    get movesRemaining(): number {
+        return this.state.movesRemaining;
+    }
+    set movesRemaining(value: number) {
+        this.state.movesRemaining = value;
+    }
 
-    get gameId(): string { return this.state.gameId; }
-    get id(): number { return this.state.id; }
-    get players(): Player[] { return [...this.state.players]; }
-    get regions(): Region[] { return [...this.state.regions]; }
-    get ownersByRegion(): Record<number, number> { return { ...this.state.ownersByRegion }; }
-    get templesByRegion(): Record<number, any> { return { ...this.state.templesByRegion }; }
-    get soldiersByRegion(): Record<number, any[]> { return { ...this.state.soldiersByRegion }; }
-    get faithByPlayer(): Record<number, number> { return { ...this.state.faithByPlayer }; }
-    get floatingText(): any[] | undefined { return this.state.floatingText ? [...this.state.floatingText] : undefined; }
+    get gameId(): string {
+        return this.state.gameId;
+    }
+    get id(): number {
+        return this.state.id;
+    }
+    get players(): Player[] {
+        return [...this.state.players];
+    }
+    get regions(): Region[] {
+        return [...this.state.regions];
+    }
+    get ownersByRegion(): Record<number, number> {
+        return { ...this.state.ownersByRegion };
+    }
+    get templesByRegion(): Record<number, any> {
+        return { ...this.state.templesByRegion };
+    }
+    get soldiersByRegion(): Record<number, any[]> {
+        return { ...this.state.soldiersByRegion };
+    }
+    get faithByPlayer(): Record<number, number> {
+        return { ...this.state.faithByPlayer };
+    }
+    get floatingText(): any[] | undefined {
+        return this.state.floatingText ? [...this.state.floatingText] : undefined;
+    }
 
-    get maxTurns(): number { return this.state.maxTurns || GAME_CONSTANTS.MAX_GAME_TURNS; }
-    get moveTimeLimit(): number | undefined { return this.state.moveTimeLimit; }
+    get maxTurns(): number {
+        return this.state.maxTurns || GAME_CONSTANTS.MAX_GAME_TURNS;
+    }
+    get moveTimeLimit(): number | undefined {
+        return this.state.moveTimeLimit;
+    }
 
-    get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
-    set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
+    get endResult(): Player | 'DRAWN_GAME' | null | undefined {
+        return this.state.endResult;
+    }
+    set endResult(value: Player | 'DRAWN_GAME' | null | undefined) {
+        this.state.endResult = value;
+    }
 
     // ==================== PLAYER MANAGEMENT ====================
 
@@ -159,9 +224,7 @@ export class GameState {
      * Get all regions owned by a specific player
      */
     getRegionsOwnedByPlayer(playerSlotIndex: number): Region[] {
-        return this.state.regions.filter(region =>
-            this.state.ownersByRegion[region.index] === playerSlotIndex
-        );
+        return this.state.regions.filter(region => this.state.ownersByRegion[region.index] === playerSlotIndex);
     }
 
     // ==================== SOLDIER MANAGEMENT ====================
@@ -194,7 +257,9 @@ export class GameState {
         }
 
         for (let i = 0; i < count; i++) {
-            this.state.soldiersByRegion[regionIndex].push({ i: generateSoldierId() });
+            this.state.soldiersByRegion[regionIndex].push({
+                i: generateSoldierId()
+            });
         }
     }
 
@@ -242,8 +307,7 @@ export class GameState {
             if (owner !== currentPlayer.slotIndex) return false;
 
             // Check if this temple has the right type of upgrade
-            if (temple.upgradeIndex &&
-                temple.upgradeIndex === upgradeType.index) {
+            if (temple.upgradeIndex && temple.upgradeIndex === upgradeType.index) {
                 return true;
             }
 
@@ -318,9 +382,7 @@ export class GameState {
      * Count how many regions a player owns
      */
     regionCount(player: Player): number {
-        return Object.values(this.state.ownersByRegion).filter(
-            owner => owner === player.slotIndex
-        ).length;
+        return Object.values(this.state.ownersByRegion).filter(owner => owner === player.slotIndex).length;
     }
 
     /**
@@ -333,10 +395,10 @@ export class GameState {
 
         // Map upgrade names to their effects
         const upgradeMap: Record<string, string> = {
-            'DEFENSE': 'EARTH',
-            'EARTH': 'EARTH',
-            'ATTACK': 'FIRE',
-            'FIRE': 'FIRE'
+            DEFENSE: 'EARTH',
+            EARTH: 'EARTH',
+            ATTACK: 'FIRE',
+            FIRE: 'FIRE'
         };
 
         const targetUpgradeName = upgradeMap[upgradeName] || upgradeName;
@@ -452,7 +514,7 @@ export class GameState {
         const numBought = this.state.numBoughtSoldiers || 0;
         const costArray = TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost;
         // If we've exhausted the array, use formula: initialCost + numBought
-        return costArray[numBought] ?? (8 + numBought);
+        return costArray[numBought] ?? 8 + numBought;
     }
 
     /**

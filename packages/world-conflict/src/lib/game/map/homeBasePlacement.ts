@@ -12,10 +12,7 @@ export interface HomeBaseAssignment {
  * Assigns home base regions to players using distance maximization algorithm
  * Ensures home bases are placed as far apart as possible
  */
-export function assignHomeBaseRegions(
-    players: Player[],
-    regions: Region[]
-): HomeBaseAssignment[] {
+export function assignHomeBaseRegions(players: Player[], regions: Region[]): HomeBaseAssignment[] {
     logger.debug('🏠 Assigning home base regions...');
 
     // Find all temple regions (only these can be home bases)
@@ -72,7 +69,9 @@ export function assignHomeBaseRegions(
             homeRegion = bestRegion || templeRegions.find(r => !assignedRegionIndices.includes(r.index)) || null;
 
             if (homeRegion) {
-                logger.debug(`🎯 Player ${player.slotIndex} assigned region ${homeRegion.index} (distance: ${maxDistance.toFixed(1)})`);
+                logger.debug(
+                    `🎯 Player ${player.slotIndex} assigned region ${homeRegion.index} (distance: ${maxDistance.toFixed(1)})`
+                );
             }
         }
 

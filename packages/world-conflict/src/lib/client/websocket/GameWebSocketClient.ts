@@ -18,7 +18,7 @@ export type WorldConflictMessage = BaseMessage;
  * Wraps the framework WebSocketClient with game-specific configuration and types
  */
 export class GameWebSocketClient extends WebSocketClient<GameStateData, WorldConflictMessage> {
-  constructor(playerId?: string) {
-    super(WEBSOCKET_CONFIG, playerId);
-  }
+    constructor(playerId?: string) {
+        super(WEBSOCKET_CONFIG, playerId);
+    }
 }

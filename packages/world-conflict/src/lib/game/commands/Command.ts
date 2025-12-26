@@ -1,7 +1,4 @@
-import {
-    type Player,
-    GameState
-} from "$lib/game/state/GameState.ts";
+import { type Player, GameState } from '$lib/game/state/GameState.ts';
 
 export interface CommandValidationResult {
     valid: boolean;
@@ -33,7 +30,7 @@ export abstract class Command {
 
     undo(): GameState {
         if (!this.previousState) {
-            throw new Error("Cannot undo - no previous state stored");
+            throw new Error('Cannot undo - no previous state stored');
         }
         return this.previousState;
     }

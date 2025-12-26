@@ -13,7 +13,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 export default defineConfig({
     plugins: [tailwindcss(), sveltekit()],
     define: {
-        '__APP_VERSION__': JSON.stringify(pkg.version)
+        __APP_VERSION__: JSON.stringify(pkg.version)
     },
     resolve: {
         alias: {
@@ -21,7 +21,7 @@ export default defineConfig({
             'multiplayer-framework/client': resolve(__dirname, '../multiplayer-framework/dist/client/index.js'),
             'multiplayer-framework/server': resolve(__dirname, '../multiplayer-framework/dist/server/index.js'),
             'multiplayer-framework/worker': resolve(__dirname, '../multiplayer-framework/dist/worker/index.js'),
-            'shared-ui': resolve(__dirname, '../shared-ui/src/index.ts'),
+            'shared-ui': resolve(__dirname, '../shared-ui/src/index.ts')
         }
     },
     build: {
@@ -32,6 +32,6 @@ export default defineConfig({
     test: {
         include: ['src/**/*.{test,spec}.{js,ts}'],
         environment: 'node',
-        globals: true, // Enable global test functions like describe, it, expect
+        globals: true // Enable global test functions like describe, it, expect
     }
 });

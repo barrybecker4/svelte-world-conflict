@@ -26,15 +26,36 @@ function createIncomeTestGameState(options: {
     templesByRegion?: Record<number, any>;
     players?: Player[];
 }): GameState {
-    const players = options.players ?? [
-        createPlayer(0, 'Player 1'),
-        createPlayer(1, 'Player 2')
-    ];
+    const players = options.players ?? [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2')];
 
     const regions = options.regions ?? [
-        { index: 0, name: 'Region 0', neighbors: [1], x: 100, y: 100, hasTemple: true, points: [] },
-        { index: 1, name: 'Region 1', neighbors: [0, 2], x: 150, y: 100, hasTemple: false, points: [] },
-        { index: 2, name: 'Region 2', neighbors: [1], x: 200, y: 100, hasTemple: true, points: [] }
+        {
+            index: 0,
+            name: 'Region 0',
+            neighbors: [1],
+            x: 100,
+            y: 100,
+            hasTemple: true,
+            points: []
+        },
+        {
+            index: 1,
+            name: 'Region 1',
+            neighbors: [0, 2],
+            x: 150,
+            y: 100,
+            hasTemple: false,
+            points: []
+        },
+        {
+            index: 2,
+            name: 'Region 2',
+            neighbors: [1],
+            x: 200,
+            y: 100,
+            hasTemple: true,
+            points: []
+        }
     ];
 
     return new GameState({
@@ -115,7 +136,7 @@ describe('IncomeCalculator', () => {
                 ownersByRegion: { 0: 1, 1: 0 }, // Player 0 owns region 1, enemy owns 0
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // Soldiers at enemy temple
-                    1: [{ i: 3 }]            // Soldier at owned non-temple region
+                    1: [{ i: 3 }] // Soldier at owned non-temple region
                 },
                 templesByRegion: { 0: { regionIndex: 0, level: 0 } }
             });
@@ -132,7 +153,7 @@ describe('IncomeCalculator', () => {
                 ownersByRegion: { 0: 0, 1: 0, 2: 0 },
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // 2 soldiers at temple
-                    1: [{ i: 3 }],           // 1 soldier at non-temple
+                    1: [{ i: 3 }], // 1 soldier at non-temple
                     2: [{ i: 4 }, { i: 5 }, { i: 6 }] // 3 soldiers at temple
                 },
                 templesByRegion: {
@@ -228,9 +249,7 @@ describe('IncomeCalculator', () => {
 
             const gameState = createIncomeTestGameState({
                 regions,
-                ownersByRegion: Object.fromEntries(
-                    Array.from({ length: 10 }, (_, i) => [i, 0])
-                ), // 10 regions
+                ownersByRegion: Object.fromEntries(Array.from({ length: 10 }, (_, i) => [i, 0])), // 10 regions
                 soldiersByRegion: {},
                 templesByRegion: {
                     0: {
@@ -349,7 +368,7 @@ describe('IncomeCalculator', () => {
                 soldiersByRegion: {
                     0: [{ i: 1 }], // 1 soldier at Water temple
                     1: [{ i: 2 }], // 1 soldier at Fire temple
-                    2: [{ i: 3 }]  // 1 soldier at Earth temple
+                    2: [{ i: 3 }] // 1 soldier at Earth temple
                 },
                 templesByRegion: {
                     0: {
@@ -385,7 +404,7 @@ describe('IncomeCalculator', () => {
                 ownersByRegion: { 0: 0, 1: 0 }, // 2 regions
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // 2 soldiers at temple
-                    1: [{ i: 3 }]            // 1 soldier (no temple)
+                    1: [{ i: 3 }] // 1 soldier (no temple)
                 },
                 templesByRegion: {
                     0: { regionIndex: 0, level: 0 } // Basic temple
@@ -415,7 +434,7 @@ describe('IncomeCalculator', () => {
                 ownersByRegion: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, // 6 regions
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }], // 3 soldiers at Water temple
-                    1: [{ i: 4 }, { i: 5 }]           // 2 soldiers at Fire temple
+                    1: [{ i: 4 }, { i: 5 }] // 2 soldiers at Fire temple
                 },
                 templesByRegion: {
                     0: {

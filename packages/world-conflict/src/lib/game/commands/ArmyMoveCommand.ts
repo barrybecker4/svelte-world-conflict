@@ -11,8 +11,7 @@ export class ArmyMoveCommand extends Command {
     public count: number;
     public attackSequence?: AttackEvent[];
 
-    constructor(gameState: GameState, player: Player,
-                source: number, destination: number, count: number) {
+    constructor(gameState: GameState, player: Player, source: number, destination: number, count: number) {
         super(gameState, player);
         this.source = source;
         this.destination = destination;
@@ -35,15 +34,15 @@ export class ArmyMoveCommand extends Command {
         const regions = this.gameState.regions;
         const sourceRegion = regions.find((r: Region) => r.index === this.source);
         if (sourceRegion && !sourceRegion.neighbors.includes(this.destination)) {
-            errors.push("Destination must be a neighboring region");
+            errors.push('Destination must be a neighboring region');
         }
 
         if (this.gameState.conqueredRegions?.includes(this.source)) {
-            errors.push("Armies that conquered a region cannot move again this turn");
+            errors.push('Armies that conquered a region cannot move again this turn');
         }
 
         if (this.gameState.movesRemaining <= 0) {
-            errors.push("No moves remaining");
+            errors.push('No moves remaining');
         }
 
         return {
@@ -53,35 +52,39 @@ export class ArmyMoveCommand extends Command {
     }
 
     execute(): GameState {
-      this.previousState = this.gameState.copy() as GameState;
-      const newState = this.gameState.copy() as GameState;
-      const players = newState.players;
+        this.previousState = this.gameState.copy() as GameState;
+        const newState = this.gameState.copy() as GameState;
+        const players = newState.players;
 
-      const targetSoldiers = newState.soldiersAtRegion(this.destination);
-      const targetOwner = newState.owner(this.destination);
+        const targetSoldiers = newState.soldiersAtRegion(this.destination);
+        const targetOwner = newState.owner(this.destination);
 
-      // Generate attack sequence for any region with defenders that we don't own
-      const needsCombat = targetSoldiers.length > 0 &&
-                         (targetOwner === undefined || targetOwner !== this.player.slotIndex);
+        // Generate attack sequence for any region with defenders that we don't own
+        const needsCombat =
+            targetSoldiers.length > 0 && (targetOwner === undefined || targetOwner !== this.player.slotIndex);
 
-      if (needsCombat) {
-        const generator = new AttackSequenceGenerator({
-          source: this.source,
-          destination: this.destination,
-          count: this.count
-        }, newState.rng, this.isSimulation);
-        this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
+        if (needsCombat) {
+            const generator = new AttackSequenceGenerator(
+                {
+                    source: this.source,
+                    destination: this.destination,
+                    count: this.count
+                },
+                newState.rng,
+                this.isSimulation
+            );
+            this.attackSequence = generator.createAttackSequenceIfFight(newState, players);
 
-        if (!this.isSimulation) {
-          logger.debug('⚔️ Generated attack sequence:', {
-            hasSequence: !!this.attackSequence,
-            sequenceLength: this.attackSequence?.length || 0
-          });
+            if (!this.isSimulation) {
+                logger.debug('⚔️ Generated attack sequence:', {
+                    hasSequence: !!this.attackSequence,
+                    sequenceLength: this.attackSequence?.length || 0
+                });
+            }
         }
-      }
 
-      this.executeMoveLogic(newState);
-      return newState;
+        this.executeMoveLogic(newState);
+        return newState;
     }
 
     private executeMoveLogic(state: GameState): void {
@@ -101,11 +104,13 @@ export class ArmyMoveCommand extends Command {
 
         // Check if attackers retreated (attack sequence has isRetreat flag)
         const didRetreat = this.didAttackersRetreat();
-        
+
         if (didRetreat) {
             // Attackers retreated - defenders keep the region, survivors stay at source
             if (!this.isSimulation) {
-                logger.debug(`🏃 Attack resulted in retreat! ${fromList.length} survivors remain at source region ${this.source}`);
+                logger.debug(
+                    `🏃 Attack resulted in retreat! ${fromList.length} survivors remain at source region ${this.source}`
+                );
             }
             // No ownership change, no soldier transfer - survivors already at source
             state.movesRemaining = Math.max(0, state.movesRemaining - 1);
@@ -124,7 +129,12 @@ export class ArmyMoveCommand extends Command {
             }
 
             // Move remaining attackers to conquered region (after combat with enemy or neutral defenders)
-            if ((wasEnemyRegion || wasNeutralRegion) && fromList.length > 0 && this.attackSequence && this.attackSequence.length > 0) {
+            if (
+                (wasEnemyRegion || wasNeutralRegion) &&
+                fromList.length > 0 &&
+                this.attackSequence &&
+                this.attackSequence.length > 0
+            ) {
                 const attackersToMove = Math.min(this.count, fromList.length);
                 this.transferSoldiers(state, fromList, toList, attackersToMove);
             }
@@ -158,18 +168,18 @@ export class ArmyMoveCommand extends Command {
      */
     private checkPlayerElimination(state: GameState, playerSlotIndex: number): void {
         const gameStateData = state.toJSON();
-        
+
         if (PlayerEliminationService.isPlayerEliminated(gameStateData, playerSlotIndex)) {
             // Player has been eliminated!
             if (!this.isSimulation) {
                 logger.debug(`💀 Player ${playerSlotIndex} has been ELIMINATED!`);
             }
-            
+
             // Initialize eliminatedPlayers array if it doesn't exist
             if (!state.state.eliminatedPlayers) {
                 state.state.eliminatedPlayers = [];
             }
-            
+
             // Add to eliminated players list if not already there
             if (!state.state.eliminatedPlayers.includes(playerSlotIndex)) {
                 state.state.eliminatedPlayers.push(playerSlotIndex);
@@ -183,19 +193,19 @@ export class ArmyMoveCommand extends Command {
      */
     private removeTempleUpgrade(state: GameState, regionIndex: number): void {
         const temple = state.state.templesByRegion[regionIndex];
-        
+
         if (temple && temple.upgradeIndex !== undefined) {
             if (!this.isSimulation) {
                 logger.debug(`🏛️ ArmyMoveCommand: Removing temple upgrade at conquered region ${regionIndex}`);
             }
-            
+
             // Reset temple to basic (no upgrade)
             const basicTemple = {
                 regionIndex: regionIndex,
                 upgradeIndex: undefined,
                 level: 0
             };
-            
+
             // Replace the entire templesByRegion object to ensure Svelte reactivity
             state.state.templesByRegion = {
                 ...state.state.templesByRegion,
@@ -205,7 +215,12 @@ export class ArmyMoveCommand extends Command {
     }
 
     // Apply attack sequence results and award combat faith
-    private handleCombatResult(state: GameState, fromList: Soldier[], toList: Soldier[], defenderSlotIndex: number | undefined): void {
+    private handleCombatResult(
+        state: GameState,
+        fromList: Soldier[],
+        toList: Soldier[],
+        defenderSlotIndex: number | undefined
+    ): void {
         if (!this.isSimulation) {
             logger.debug('🔍 handleCombatResult - before combat:', {
                 attackers: fromList.length,

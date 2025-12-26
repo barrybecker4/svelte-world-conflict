@@ -12,177 +12,173 @@ import { logger } from 'multiplayer-framework/shared';
 
 /**
  * Svelte Store for managing game state loading, initialization, and updates.
- * 
+ *
  * This store orchestrates the game's reactive state management, coordinating:
  * - Core game state (regions, players, current turn)
  * - WebSocket updates (via GameStateUpdater)
  * - Move system and turn manager
  */
 export function createGameStateStore(gameId: string, playerSlotIndex: number) {
+    const gameState = writable<GameStateData | null>(null);
+    const regions = writable<Region[]>([]);
+    const players = writable<Player[]>([]);
+    const loading = writable<boolean>(true);
+    const error = writable<string | null>(null);
+    const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
+    const eliminatedPlayersTracker = writable<Set<number>>(new Set()); // Persistent tracker to prevent duplicate elimination banners
 
-  const gameState = writable<GameStateData | null>(null);
-  const regions = writable<Region[]>([]);
-  const players = writable<Player[]>([]);
-  const loading = writable<boolean>(true);
-  const error = writable<string | null>(null);
-  const eliminationBanners = writable<number[]>([]); // Array of player slot indices to show elimination banners for
-  const eliminatedPlayersTracker = writable<Set<number>>(new Set()); // Persistent tracker to prevent duplicate elimination banners
-  
-  let moveSystem: MoveSystem | null = null;
-  const moveReplayer = new MoveReplayer();
-  let battleAnimationSystemSet = false; // Track if we've set the animation system
-  
-  // Game state updater handles WebSocket updates with proper sequencing
-  const gameStateUpdater = new GameStateUpdater(
-    gameState,
-    regions,
-    players,
-    eliminationBanners,
-    playerSlotIndex,
-    () => moveSystem,
-    moveReplayer,
-    (playerSlotIndex: number) => showEliminationBanner(playerSlotIndex)
-  );
+    let moveSystem: MoveSystem | null = null;
+    const moveReplayer = new MoveReplayer();
+    let battleAnimationSystemSet = false; // Track if we've set the animation system
 
-  const apiClient = new GameApiClient(gameId);
+    // Game state updater handles WebSocket updates with proper sequencing
+    const gameStateUpdater = new GameStateUpdater(
+        gameState,
+        regions,
+        players,
+        eliminationBanners,
+        playerSlotIndex,
+        () => moveSystem,
+        moveReplayer,
+        (playerSlotIndex: number) => showEliminationBanner(playerSlotIndex)
+    );
 
-  /**
-   * Load initial game state from the server
-   */
-  async function loadGameState() {
-    try {
-      const data = await apiClient.getGameState();
-      
-      if (!data.worldConflictState) {
-        throw new Error('Failed to load game state');
-      }
+    const apiClient = new GameApiClient(gameId);
 
-      gameState.set(data.worldConflictState);
-      regions.set(data.worldConflictState.regions || []);
-      players.set(data.worldConflictState.players || []);
+    /**
+     * Load initial game state from the server
+     */
+    async function loadGameState() {
+        try {
+            const data = await apiClient.getGameState();
 
-      return data.worldConflictState;
-    } catch (err) {
-      logger.error('Failed to load game state:', err);
-      throw err;
-    }
-  }
+            if (!data.worldConflictState) {
+                throw new Error('Failed to load game state');
+            }
 
-  /**
-   * Initialize game systems (move system, turn manager)
-   */
-  async function initializeGame(
-    handleMoveComplete: (from: number, to: number, soldiers: number) => Promise<void>,
-    handleMoveStateChange: (state: MoveState) => void
-  ) {
-    try {
-      const initialGameState = await loadGameState();
+            gameState.set(data.worldConflictState);
+            regions.set(data.worldConflictState.regions || []);
+            players.set(data.worldConflictState.players || []);
 
-      // Initialize move system with proper callbacks
-      if (initialGameState) {
-        moveSystem = new MoveSystem(
-          initialGameState,
-          handleMoveComplete,
-          handleMoveStateChange
-        );
-
-        // Get current players array
-        const currentPlayers = initialGameState.players || [];
-
-        turnManager.initialize(initialGameState, currentPlayers);
-        
-        // Initialize GameStateUpdater with initial state so it can detect future changes
-        gameStateUpdater.initializeWithState(initialGameState);
-
-        // Show initial turn banner if it's the local player's turn
-        // Do this after a short delay to allow the UI to render first
-        setTimeout(() => {
-          turnManager.showInitialTurnBanner(playerSlotIndex);
-        }, 100);
-      }
-
-      loading.set(false);
-      return { gameState: initialGameState, moveSystem };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize game';
-      error.set(errorMessage);
-      loading.set(false);
-      throw err;
-    }
-  }
-
-  /**
-   * Handle WebSocket game state updates
-   * Delegates to GameStateUpdater for proper queuing and orchestration
-   */
-  function handleGameStateUpdate(updatedState: GameStateData) {
-    gameStateUpdater.handleGameStateUpdate(updatedState);
-  }
-
-
-  /**
-   * Complete banner transition (called when banner animation finishes)
-   */
-  function completeBanner() {
-    turnManager.onBannerComplete();
-  }
-
-  /**
-   * Complete elimination banner for a specific player
-   */
-  function completeEliminationBanner(playerSlotIndex: number) {
-    eliminationBanners.update(banners => banners.filter(p => p !== playerSlotIndex));
-  }
-
-  /**
-   * Show elimination banner for a player (if not already shown)
-   */
-  function showEliminationBanner(playerSlotIndex: number) {
-    let alreadyShown = false;
-    eliminatedPlayersTracker.update(tracker => {
-      alreadyShown = tracker.has(playerSlotIndex);
-      if (!alreadyShown) {
-        tracker.add(playerSlotIndex);
-      }
-      return tracker;
-    });
-
-    if (!alreadyShown) {
-      eliminationBanners.update(banners => [...banners, playerSlotIndex]);
-    }
-  }
-
-  /**
-   * Reset/cleanup turn manager
-   */
-  function resetTurnManager() {
-    turnManager.reset();
-  }
-
-  const currentPlayerSlot = derived(gameState, ($gameState: GameStateData | null) =>
-    $gameState?.currentPlayerSlot ?? 0
-  );
-
-  const currentPlayer = derived([players, currentPlayerSlot], ([$players, $currentPlayerSlot]: [Player[], number]): Player | null => {
-    // Return null if players haven't loaded yet
-    if (!$players || $players.length === 0) {
-      return null;
+            return data.worldConflictState;
+        } catch (err) {
+            logger.error('Failed to load game state:', err);
+            throw err;
+        }
     }
 
-    const player = $players.find((p: Player) => p.slotIndex === $currentPlayerSlot);
+    /**
+     * Initialize game systems (move system, turn manager)
+     */
+    async function initializeGame(
+        handleMoveComplete: (from: number, to: number, soldiers: number) => Promise<void>,
+        handleMoveStateChange: (state: MoveState) => void
+    ) {
+        try {
+            const initialGameState = await loadGameState();
 
-    if (!player) {
-      logger.warn(`Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);
-      // Return the first player as fallback instead of throwing
-      return $players[0] || null;
+            // Initialize move system with proper callbacks
+            if (initialGameState) {
+                moveSystem = new MoveSystem(initialGameState, handleMoveComplete, handleMoveStateChange);
+
+                // Get current players array
+                const currentPlayers = initialGameState.players || [];
+
+                turnManager.initialize(initialGameState, currentPlayers);
+
+                // Initialize GameStateUpdater with initial state so it can detect future changes
+                gameStateUpdater.initializeWithState(initialGameState);
+
+                // Show initial turn banner if it's the local player's turn
+                // Do this after a short delay to allow the UI to render first
+                setTimeout(() => {
+                    turnManager.showInitialTurnBanner(playerSlotIndex);
+                }, 100);
+            }
+
+            loading.set(false);
+            return { gameState: initialGameState, moveSystem };
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Failed to initialize game';
+            error.set(errorMessage);
+            loading.set(false);
+            throw err;
+        }
     }
 
-    return player;
-  });
+    /**
+     * Handle WebSocket game state updates
+     * Delegates to GameStateUpdater for proper queuing and orchestration
+     */
+    function handleGameStateUpdate(updatedState: GameStateData) {
+        gameStateUpdater.handleGameStateUpdate(updatedState);
+    }
 
-  const isMyTurn = derived(
-    [gameState, players],
-    ([$gameState, $players]) => {
+    /**
+     * Complete banner transition (called when banner animation finishes)
+     */
+    function completeBanner() {
+        turnManager.onBannerComplete();
+    }
+
+    /**
+     * Complete elimination banner for a specific player
+     */
+    function completeEliminationBanner(playerSlotIndex: number) {
+        eliminationBanners.update(banners => banners.filter(p => p !== playerSlotIndex));
+    }
+
+    /**
+     * Show elimination banner for a player (if not already shown)
+     */
+    function showEliminationBanner(playerSlotIndex: number) {
+        let alreadyShown = false;
+        eliminatedPlayersTracker.update(tracker => {
+            alreadyShown = tracker.has(playerSlotIndex);
+            if (!alreadyShown) {
+                tracker.add(playerSlotIndex);
+            }
+            return tracker;
+        });
+
+        if (!alreadyShown) {
+            eliminationBanners.update(banners => [...banners, playerSlotIndex]);
+        }
+    }
+
+    /**
+     * Reset/cleanup turn manager
+     */
+    function resetTurnManager() {
+        turnManager.reset();
+    }
+
+    const currentPlayerSlot = derived(
+        gameState,
+        ($gameState: GameStateData | null) => $gameState?.currentPlayerSlot ?? 0
+    );
+
+    const currentPlayer = derived(
+        [players, currentPlayerSlot],
+        ([$players, $currentPlayerSlot]: [Player[], number]): Player | null => {
+            // Return null if players haven't loaded yet
+            if (!$players || $players.length === 0) {
+                return null;
+            }
+
+            const player = $players.find((p: Player) => p.slotIndex === $currentPlayerSlot);
+
+            if (!player) {
+                logger.warn(`Could not find player with slot index ${$currentPlayerSlot} in players array:`, $players);
+                // Return the first player as fallback instead of throwing
+                return $players[0] || null;
+            }
+
+            return player;
+        }
+    );
+
+    const isMyTurn = derived([gameState, players], ([$gameState, $players]) => {
         if (!$gameState || !$players.length) return false;
 
         // Don't allow turns if game has ended
@@ -195,94 +191,94 @@ export function createGameStateStore(gameId: string, playerSlotIndex: number) {
         const isHumanPlayer = currentTurnPlayer && !currentTurnPlayer.personality;
 
         return isMySlot && isHumanPlayer;
+    });
+
+    const movesRemaining = derived(
+        gameState,
+        $gameState => $gameState?.movesRemaining ?? GAME_CONSTANTS.MAX_MOVES_PER_TURN
+    );
+
+    // Turn manager reactive stores
+    const turnState = turnManager.state;
+    const currentPlayerFromTurnManager = turnManager.currentPlayer;
+    const shouldShowBanner = turnManager.shouldShowBanner;
+    const shouldHighlightRegions = turnManager.shouldHighlightRegions;
+    const gameStateFromTurnManager = turnManager.gameData;
+
+    // Replay banner stores - for showing banners before replaying other players' moves
+    const shouldShowReplayBanner = turnManager.shouldShowReplayBanner;
+    const replayPlayer = turnManager.replayPlayer;
+
+    /**
+     * Complete replay banner (called when replay banner animation finishes)
+     */
+    function completeReplayBanner() {
+        turnManager.onReplayBannerComplete();
     }
-  );
 
-  const movesRemaining = derived(gameState, $gameState =>
-    $gameState?.movesRemaining ?? GAME_CONSTANTS.MAX_MOVES_PER_TURN
-  );
+    return {
+        // Core stores
+        gameState,
+        regions,
+        players,
+        loading,
+        error,
+        eliminationBanners,
 
-  // Turn manager reactive stores
-  const turnState = turnManager.state;
-  const currentPlayerFromTurnManager = turnManager.currentPlayer;
-  const shouldShowBanner = turnManager.shouldShowBanner;
-  const shouldHighlightRegions = turnManager.shouldHighlightRegions;
-  const gameStateFromTurnManager = turnManager.gameData;
+        // Derived stores
+        currentPlayerSlot,
+        currentPlayer,
+        isMyTurn,
+        movesRemaining,
 
-  // Replay banner stores - for showing banners before replaying other players' moves
-  const shouldShowReplayBanner = turnManager.shouldShowReplayBanner;
-  const replayPlayer = turnManager.replayPlayer;
+        // Turn manager stores
+        turnState,
+        currentPlayerFromTurnManager,
+        shouldShowBanner,
+        shouldHighlightRegions,
+        gameStateFromTurnManager,
 
-  /**
-   * Complete replay banner (called when replay banner animation finishes)
-   */
-  function completeReplayBanner() {
-    turnManager.onReplayBannerComplete();
-  }
+        // Replay banner stores
+        shouldShowReplayBanner,
+        replayPlayer,
 
-  return {
-    // Core stores
-    gameState,
-    regions,
-    players,
-    loading,
-    error,
-    eliminationBanners,
+        // Actions
+        loadGameState,
+        initializeGame,
+        handleGameStateUpdate,
+        completeBanner,
+        completeReplayBanner,
+        completeEliminationBanner,
+        showEliminationBanner,
+        resetTurnManager,
 
-    // Derived stores
-    currentPlayerSlot,
-    currentPlayer,
-    isMyTurn,
-    movesRemaining,
+        // Move system getter
+        getMoveSystem: () => moveSystem,
 
-    // Turn manager stores
-    turnState,
-    currentPlayerFromTurnManager,
-    shouldShowBanner,
-    shouldHighlightRegions,
-    gameStateFromTurnManager,
+        // Access to move replayer for configuration
+        getMoveReplayer: () => moveReplayer,
 
-    // Replay banner stores
-    shouldShowReplayBanner,
-    replayPlayer,
+        // Set battle animation system for move replayer
+        setBattleAnimationSystem: (system: BattleAnimationSystem) => {
+            if (!battleAnimationSystemSet) {
+                moveReplayer.setBattleAnimationSystem(system);
+                battleAnimationSystemSet = true;
+            }
+        },
 
-    // Actions
-    loadGameState,
-    initializeGame,
-    handleGameStateUpdate,
-    completeBanner,
-    completeReplayBanner,
-    completeEliminationBanner,
-    showEliminationBanner,
-    resetTurnManager,
+        // Set callback for when turn is ready for player interaction
+        setOnTurnReadyCallback: (callback: (gameState: GameStateData) => void) => {
+            gameStateUpdater.setOnTurnReadyCallback(callback);
+        },
 
-    // Move system getter
-    getMoveSystem: () => moveSystem,
+        // Set callback to check if a battle is in progress
+        setIsBattleInProgressCallback: (callback: () => boolean) => {
+            gameStateUpdater.setIsBattleInProgressCallback(callback);
+        },
 
-    // Access to move replayer for configuration
-    getMoveReplayer: () => moveReplayer,
-
-    // Set battle animation system for move replayer
-    setBattleAnimationSystem: (system: BattleAnimationSystem) => {
-      if (!battleAnimationSystemSet) {
-        moveReplayer.setBattleAnimationSystem(system);
-        battleAnimationSystemSet = true;
-      }
-    },
-
-    // Set callback for when turn is ready for player interaction
-    setOnTurnReadyCallback: (callback: (gameState: GameStateData) => void) => {
-      gameStateUpdater.setOnTurnReadyCallback(callback);
-    },
-
-    // Set callback to check if a battle is in progress
-    setIsBattleInProgressCallback: (callback: () => boolean) => {
-      gameStateUpdater.setIsBattleInProgressCallback(callback);
-    },
-
-    // Set callback to trigger AI processing when turn changes to AI player
-    setTriggerAiProcessingCallback: (callback: () => Promise<void>) => {
-      gameStateUpdater.setTriggerAiProcessingCallback(callback);
-    }
-  };
+        // Set callback to trigger AI processing when turn changes to AI player
+        setTriggerAiProcessingCallback: (callback: () => Promise<void>) => {
+            gameStateUpdater.setTriggerAiProcessingCallback(callback);
+        }
+    };
 }

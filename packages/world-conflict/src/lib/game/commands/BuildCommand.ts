@@ -1,18 +1,13 @@
-import { Command, type CommandValidationResult } from "./Command";
-import type { GameState, Player } from "$lib/game/state/GameState";
-import { TEMPLE_UPGRADES_BY_NAME, type TempleUpgradeDefinition } from "$lib/game/constants/templeUpgradeDefinitions";
+import { Command, type CommandValidationResult } from './Command';
+import type { GameState, Player } from '$lib/game/state/GameState';
+import { TEMPLE_UPGRADES_BY_NAME, type TempleUpgradeDefinition } from '$lib/game/constants/templeUpgradeDefinitions';
 import { logger } from 'multiplayer-framework/shared';
 
 export class BuildCommand extends Command {
     public regionIndex: number;
     public upgradeIndex: number;
 
-    constructor(
-        gameState: GameState,
-        player: Player,
-        regionIndex: number,
-        upgradeIndex: number
-    ) {
+    constructor(gameState: GameState, player: Player, regionIndex: number, upgradeIndex: number) {
         super(gameState, player);
         this.regionIndex = regionIndex;
         this.upgradeIndex = upgradeIndex;
@@ -27,7 +22,7 @@ export class BuildCommand extends Command {
 
         const temple = this.gameState.templesByRegion[this.regionIndex];
         if (!temple) {
-            errors.push("No temple at this region");
+            errors.push('No temple at this region');
         }
 
         const cost = this.calculateCost();
@@ -64,7 +59,7 @@ export class BuildCommand extends Command {
             const numBought = this.gameState.state.numBoughtSoldiers || 0;
             const costArray = TEMPLE_UPGRADES_BY_NAME.SOLDIER.cost;
             // If we've exhausted the array, use formula: initialCost + numBought
-            return costArray[numBought] ?? (8 + numBought);
+            return costArray[numBought] ?? 8 + numBought;
         }
 
         // Special case: REBUILD is free
@@ -154,7 +149,10 @@ export class BuildCommand extends Command {
                 };
 
                 logger.debug(`🏛️ BuildCommand: Updated temple object`, updatedTemple);
-                logger.debug(`🏛️ BuildCommand: Verification - temple in newState:`, newState.state.templesByRegion[this.regionIndex]);
+                logger.debug(
+                    `🏛️ BuildCommand: Verification - temple in newState:`,
+                    newState.state.templesByRegion[this.regionIndex]
+                );
 
                 // Air upgrade gives immediate extra move
                 if (this.upgradeIndex === TEMPLE_UPGRADES_BY_NAME.AIR.index) {

@@ -79,11 +79,16 @@ export class AiPersonality {
     getAggressionFactor(): number {
         // Higher level = more aggressive
         switch (this.level) {
-            case 0: return 0.6; // Nice - defensive
-            case 1: return 0.75; // Rude - balanced
-            case 2: return 0.9; // Mean - aggressive
-            case 3: return 1.1; // Evil - very aggressive
-            default: return 0.75;
+            case 0:
+                return 0.6; // Nice - defensive
+            case 1:
+                return 0.75; // Rude - balanced
+            case 2:
+                return 0.9; // Mean - aggressive
+            case 3:
+                return 1.1; // Evil - very aggressive
+            default:
+                return 0.75;
         }
     }
 
@@ -93,11 +98,16 @@ export class AiPersonality {
     getPatienceFactor(): number {
         // Lower level = more patient (builds up before attacking)
         switch (this.level) {
-            case 0: return 1.2; // Nice - patient
-            case 1: return 1.0; // Rude - normal
-            case 2: return 0.8; // Mean - impatient
-            case 3: return 0.6; // Evil - very impatient
-            default: return 1.0;
+            case 0:
+                return 1.2; // Nice - patient
+            case 1:
+                return 1.0; // Rude - normal
+            case 2:
+                return 0.8; // Mean - impatient
+            case 3:
+                return 0.6; // Evil - very impatient
+            default:
+                return 1.0;
         }
     }
 
@@ -106,11 +116,16 @@ export class AiPersonality {
      */
     getDifficultyDescription(): string {
         switch (this.level) {
-            case 0: return 'Nice';
-            case 1: return 'Rude';
-            case 2: return 'Mean';
-            case 3: return 'Evil';
-            default: return 'Unknown';
+            case 0:
+                return 'Nice';
+            case 1:
+                return 'Rude';
+            case 2:
+                return 'Mean';
+            case 3:
+                return 'Evil';
+            default:
+                return 'Unknown';
         }
     }
 
@@ -119,8 +134,8 @@ export class AiPersonality {
      */
     getDescription(): string {
         const diff = this.getDifficultyDescription();
-        const style = this.soldierEagerness > 0.7 ? 'Aggressive' :
-            this.soldierEagerness < 0.4 ? 'Defensive' : 'Balanced';
+        const style =
+            this.soldierEagerness > 0.7 ? 'Aggressive' : this.soldierEagerness < 0.4 ? 'Defensive' : 'Balanced';
         return `${diff} - ${style}`;
     }
 
@@ -159,9 +174,11 @@ export class AiPersonality {
      * Check if two personalities are equal
      */
     equals(other: AiPersonality): boolean {
-        return this.name === other.name &&
+        return (
+            this.name === other.name &&
             this.level === other.level &&
             this.soldierEagerness === other.soldierEagerness &&
-            JSON.stringify(this.upgradePreference) === JSON.stringify(other.upgradePreference);
+            JSON.stringify(this.upgradePreference) === JSON.stringify(other.upgradePreference)
+        );
     }
 }

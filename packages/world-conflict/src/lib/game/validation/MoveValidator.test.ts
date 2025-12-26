@@ -44,15 +44,8 @@ function createTestGameState(options: {
         gameId: 'test-game',
         turnNumber: 1,
         currentPlayerSlot: options.currentPlayerSlot ?? 0,
-        players: options.players ?? [
-            createPlayer(0, 'Player 1'),
-            createPlayer(1, 'Player 2')
-        ],
-        regions: options.regions ?? [
-            createRegion(0, [1]),
-            createRegion(1, [0, 2]),
-            createRegion(2, [1])
-        ],
+        players: options.players ?? [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2')],
+        regions: options.regions ?? [createRegion(0, [1]), createRegion(1, [0, 2]), createRegion(2, [1])],
         movesRemaining: 3,
         maxTurns: 100,
         ownersByRegion: options.ownersByRegion ?? {},
@@ -83,12 +76,9 @@ describe('MoveValidator', () => {
         it('should allow move from region owned by current player', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 0 }, // Both owned by player 0
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }],
                     1: [{ i: 4 }]
                 }
@@ -106,12 +96,12 @@ describe('MoveValidator', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
                 regions: [
-                    createRegion(0, [1]),     // 0 is only adjacent to 1
+                    createRegion(0, [1]), // 0 is only adjacent to 1
                     createRegion(1, [0, 2]),
-                    createRegion(2, [1])      // 2 is not adjacent to 0
+                    createRegion(2, [1]) // 2 is not adjacent to 0
                 ],
                 ownersByRegion: { 0: 0, 1: 0, 2: 0 },
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }],
                     1: [{ i: 4 }],
                     2: [{ i: 5 }]
@@ -127,13 +117,9 @@ describe('MoveValidator', () => {
         it('should allow move to adjacent region', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1, 2]),
-                    createRegion(1, [0]),
-                    createRegion(2, [0])
-                ],
+                regions: [createRegion(0, [1, 2]), createRegion(1, [0]), createRegion(2, [0])],
                 ownersByRegion: { 0: 0, 1: 0 },
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }],
                     1: [{ i: 4 }]
                 }
@@ -149,12 +135,9 @@ describe('MoveValidator', () => {
         it('should reject move with more soldiers than available', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 0 },
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // Only 2 soldiers
                     1: [{ i: 4 }]
                 }
@@ -169,12 +152,9 @@ describe('MoveValidator', () => {
         it('should reject move that would leave source region empty', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 0 },
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // 2 soldiers
                     1: [{ i: 4 }]
                 }
@@ -190,12 +170,9 @@ describe('MoveValidator', () => {
         it('should allow move that leaves at least 1 soldier', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 0 },
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }], // 3 soldiers
                     1: [{ i: 4 }]
                 }
@@ -210,12 +187,9 @@ describe('MoveValidator', () => {
         it('should handle region with no soldiers', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 0 },
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [], // No soldiers
                     1: [{ i: 4 }]
                 }
@@ -230,10 +204,7 @@ describe('MoveValidator', () => {
         it('should handle missing soldiersByRegion entry', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 0 },
                 soldiersByRegion: {} // No entries at all
             });
@@ -249,10 +220,7 @@ describe('MoveValidator', () => {
         it('should reject move when current player not found', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 5, // No player with this slot
-                players: [
-                    createPlayer(0, 'Player 1'),
-                    createPlayer(1, 'Player 2')
-                ],
+                players: [createPlayer(0, 'Player 1'), createPlayer(1, 'Player 2')],
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }, { i: 2 }] }
             });
@@ -268,10 +236,7 @@ describe('MoveValidator', () => {
         it('should validate a completely valid move', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }, { i: 2 }, { i: 3 }] }
             });
@@ -285,12 +250,9 @@ describe('MoveValidator', () => {
         it('should allow attacking enemy region', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0, 1: 1 }, // Region 1 owned by enemy
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }],
                     1: [{ i: 4 }, { i: 5 }] // Enemy soldiers
                 }
@@ -304,12 +266,9 @@ describe('MoveValidator', () => {
         it('should allow attacking neutral region', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0 }, // Region 1 has no owner (neutral)
-                soldiersByRegion: { 
+                soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }, { i: 3 }],
                     1: [{ i: 4 }] // Neutral soldiers
                 }
@@ -325,10 +284,7 @@ describe('MoveValidator', () => {
         it('should handle move with exactly 1 soldier when 2 available', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }, { i: 2 }] }
             });
@@ -342,10 +298,7 @@ describe('MoveValidator', () => {
             const soldiers = Array.from({ length: 50 }, (_, i) => ({ i }));
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
-                regions: [
-                    createRegion(0, [1]),
-                    createRegion(1, [0])
-                ],
+                regions: [createRegion(0, [1]), createRegion(1, [0])],
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: soldiers }
             });
@@ -360,7 +313,7 @@ describe('MoveValidator', () => {
             const gameState = createTestGameState({
                 currentPlayerSlot: 0,
                 regions: [
-                    createRegion(1, [0]), // No region with index 0
+                    createRegion(1, [0]) // No region with index 0
                 ],
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }, { i: 2 }] }

@@ -95,9 +95,9 @@ describe('ScoreCalculator', () => {
             const gameState = createGameStateData({
                 ownersByRegion: { 0: 0, 1: 0, 2: 0 }, // 3 regions
                 soldiersByRegion: {
-                    0: [{ i: 1 }, { i: 2 }],     // 2 soldiers
+                    0: [{ i: 1 }, { i: 2 }], // 2 soldiers
                     1: [{ i: 3 }, { i: 4 }, { i: 5 }], // 3 soldiers
-                    2: [{ i: 6 }]                // 1 soldier
+                    2: [{ i: 6 }] // 1 soldier
                 },
                 faithByPlayer: { 0: 50, 1: 0 }
             });
@@ -136,11 +136,13 @@ describe('ScoreCalculator', () => {
             // Create 10 regions with 5 soldiers each
             for (let i = 0; i < 10; i++) {
                 ownersByRegion[i] = 0;
-                soldiersByRegion[i] = Array.from({ length: 5 }, (_, j) => ({ i: i * 10 + j }));
+                soldiersByRegion[i] = Array.from({ length: 5 }, (_, j) => ({
+                    i: i * 10 + j
+                }));
             }
 
-            const gameState = createGameStateData({ 
-                ownersByRegion, 
+            const gameState = createGameStateData({
+                ownersByRegion,
                 soldiersByRegion,
                 faithByPlayer: { 0: 0, 1: 0 }
             });
@@ -158,9 +160,9 @@ describe('ScoreCalculator', () => {
                 ownersByRegion: { 0: 0, 1: 0, 2: 1, 3: 1 }, // Each has 2 regions
                 soldiersByRegion: {
                     0: [{ i: 1 }, { i: 2 }], // Player 0: 2 soldiers
-                    1: [{ i: 3 }],           // Player 0: 1 more = 3 total
+                    1: [{ i: 3 }], // Player 0: 1 more = 3 total
                     2: [{ i: 4 }, { i: 5 }], // Player 1: 2 soldiers
-                    3: [{ i: 6 }]            // Player 1: 1 more = 3 total
+                    3: [{ i: 6 }] // Player 1: 1 more = 3 total
                 },
                 faithByPlayer: { 0: 18, 1: 25 } // Amber (player 1) has more faith
             });
@@ -174,9 +176,7 @@ describe('ScoreCalculator', () => {
             expect(calculator.calculatePlayerScore(1)).toBe(2055);
 
             // Amber wins because 2055 > 2048
-            expect(calculator.calculatePlayerScore(1)).toBeGreaterThan(
-                calculator.calculatePlayerScore(0)
-            );
+            expect(calculator.calculatePlayerScore(1)).toBeGreaterThan(calculator.calculatePlayerScore(0));
         });
     });
 
@@ -299,7 +299,7 @@ describe('ScoreCalculator', () => {
                 { regions: 1, soldiers: 0, faith: 0, expected: 1000 },
                 { regions: 1, soldiers: 0, faith: 50, expected: 1050 },
                 { regions: 0, soldiers: 10, faith: 0, expected: 0 }, // No regions = no soldiers counted
-                { regions: 2, soldiers: 5, faith: 10, expected: 2060 },  // 2000 + 50 + 10
+                { regions: 2, soldiers: 5, faith: 10, expected: 2060 }, // 2000 + 50 + 10
                 { regions: 5, soldiers: 25, faith: 100, expected: 5350 }, // 5000 + 250 + 100
                 { regions: 10, soldiers: 100, faith: 0, expected: 11000 } // 10000 + 1000 + 0
             ];
@@ -315,11 +315,13 @@ describe('ScoreCalculator', () => {
                 for (let i = 0; i < regions; i++) {
                     ownersByRegion[i] = 0;
                     const count = soldiersPerRegion + (i < remainder ? 1 : 0);
-                    soldiersByRegion[i] = Array.from({ length: count }, (_, j) => ({ i: i * 100 + j }));
+                    soldiersByRegion[i] = Array.from({ length: count }, (_, j) => ({
+                        i: i * 100 + j
+                    }));
                 }
 
-                const gameState = createGameStateData({ 
-                    ownersByRegion, 
+                const gameState = createGameStateData({
+                    ownersByRegion,
                     soldiersByRegion,
                     faithByPlayer: { 0: faith, 1: 0 }
                 });

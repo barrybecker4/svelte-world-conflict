@@ -1,7 +1,12 @@
-import type { Region } from "$lib/game/entities/gameTypes";
-import { GRID_WIDTH, GRID_HEIGHT } from "./mapConstants.ts";
+import type { Region } from '$lib/game/entities/gameTypes';
+import { GRID_WIDTH, GRID_HEIGHT } from './mapConstants.ts';
 
-const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+const directions = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1]
+];
 
 export class RegionMap {
     private positionToRegion: Array<Array<Region | null>>;
@@ -41,9 +46,11 @@ export class RegionMap {
         // Check cardinal directions
         for (const [dx, dy] of directions) {
             const potentialNeighbor = this.positionToRegion[x + dx][y + dy];
-            if (potentialNeighbor &&
+            if (
+                potentialNeighbor &&
                 potentialNeighbor !== region &&
-                !region.neighbors.includes(potentialNeighbor.index)) {
+                !region.neighbors.includes(potentialNeighbor.index)
+            ) {
                 region.neighbors.push(potentialNeighbor.index);
             }
         }

@@ -87,7 +87,7 @@ class WebSocketNotifier {
                 return;
             }
 
-            const result = await response.json() as NotificationResponse;
+            const result = (await response.json()) as NotificationResponse;
             if (result.sentCount === 0) {
                 logger.debug(`No clients received ${type} for game ${gameId}`);
             }
@@ -101,9 +101,9 @@ class WebSocketNotifier {
         // Cache the URL to avoid repeated lookups
         if (this.workerUrl) return this.workerUrl;
 
-        const isDev = (process.env.NODE_ENV === 'development' ||
-                      process.env.NODE_ENV === 'dev') && 
-                      process.env.NODE_ENV !== undefined;
+        const isDev =
+            (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev') &&
+            process.env.NODE_ENV !== undefined;
 
         this.workerUrl = getWorkerHttpUrl(WEBSOCKET_CONFIG, isDev);
         return this.workerUrl;
@@ -114,12 +114,8 @@ const notifier = new WebSocketNotifier();
 
 export const WebSocketNotifications = {
     gameUpdate: (game: GameRecord) => notifier.gameUpdate(game),
-    playerJoined: (gameId: string, player: Player, game: GameRecord) =>
-        notifier.playerJoined(gameId, player, game),
-    playerLeft: (gameId: string, playerId: string, game: GameRecord) =>
-        notifier.playerLeft(gameId, playerId, game),
-    gameStarted: (gameId: string, game: GameRecord) =>
-        notifier.gameStarted(gameId, game),
-    gameEnded: (gameId: string, game: GameRecord, winner?: Player) =>
-        notifier.gameEnded(gameId, game, winner)
+    playerJoined: (gameId: string, player: Player, game: GameRecord) => notifier.playerJoined(gameId, player, game),
+    playerLeft: (gameId: string, playerId: string, game: GameRecord) => notifier.playerLeft(gameId, playerId, game),
+    gameStarted: (gameId: string, game: GameRecord) => notifier.gameStarted(gameId, game),
+    gameEnded: (gameId: string, game: GameRecord, winner?: Player) => notifier.gameEnded(gameId, game, winner)
 };

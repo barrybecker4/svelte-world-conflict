@@ -4,7 +4,7 @@ import { GameStorage } from '$lib/server/storage/GameStorage';
 import { GameState } from '$lib/game/state/GameState';
 import { Region } from '$lib/game/entities/Region';
 import { handleApiError } from '$lib/server/api-utils';
-import { GAME_CONSTANTS } from "$lib/game/constants/gameConstants";
+import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { AI_PERSONALITIES, AI_LEVELS } from '$lib/game/entities/aiPersonalities';
 import { getPlayerConfig } from '$lib/game/constants/playerConfigs';
@@ -30,19 +30,21 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         }
 
         // Get AI difficulty before filling slots
-        const aiDifficulty = game.pendingConfiguration?.settings?.aiDifficulty ||
-                            game.worldConflictState?.aiDifficulty ||
-                            'Normal';
+        const aiDifficulty =
+            game.pendingConfiguration?.settings?.aiDifficulty || game.worldConflictState?.aiDifficulty || 'Normal';
 
         const updatedPlayers = fillRemainingSlotsWithAI(game, aiDifficulty);
 
-        logger.info(`Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`);
+        logger.info(
+            `Starting game with ${updatedPlayers.length} players (${updatedPlayers.filter(p => !p.isAI).length} human)`
+        );
         const regions = reconstructRegions(game.worldConflictState?.regions);
 
         // Get time limit from pending configuration or use default
-        const moveTimeLimit = game.pendingConfiguration?.settings?.timeLimit ||
-                              game.worldConflictState?.moveTimeLimit ||
-                              GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
+        const moveTimeLimit =
+            game.pendingConfiguration?.settings?.timeLimit ||
+            game.worldConflictState?.moveTimeLimit ||
+            GAME_CONSTANTS.STANDARD_HUMAN_TIME_LIMIT;
 
         logger.debug(`Starting game with AI difficulty: ${aiDifficulty}`);
 
@@ -82,7 +84,6 @@ export const POST: RequestHandler = async ({ params, platform }) => {
             worldConflictState: updatedGame.worldConflictState,
             players: updatedGame.players
         });
-
     } catch (error) {
         return handleApiError(error, `starting game ${params.gameId}`);
     }
@@ -115,8 +116,10 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
     const players = [...game.players];
     const availablePersonalities = getPersonalitiesForDifficulty(aiDifficulty);
 
-    logger.debug(`Filling AI slots with ${aiDifficulty} difficulty personalities:`,
-        availablePersonalities.map(p => p.name).join(', '));
+    logger.debug(
+        `Filling AI slots with ${aiDifficulty} difficulty personalities:`,
+        availablePersonalities.map(p => p.name).join(', ')
+    );
 
     if (game.pendingConfiguration?.playerSlots) {
         const playerSlots = game.pendingConfiguration.playerSlots;
@@ -125,7 +128,7 @@ function fillRemainingSlotsWithAI(game: any, aiDifficulty: string): any[] {
         for (const slot of activeSlots) {
             // Use slotIndex property (not index) as saved by GameConfiguration
             const slotIndex = slot.slotIndex;
-            
+
             if (slot.type === 'Open' && !players.find(p => p.slotIndex === slotIndex)) {
                 // Pick personality from those matching the difficulty level
                 const personality = availablePersonalities[slotIndex % availablePersonalities.length];

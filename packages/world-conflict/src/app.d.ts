@@ -3,33 +3,33 @@
 
 // See https://kit.svelte.dev/docs/types#app
 declare global {
-  // App version injected at build time from package.json
-  const __APP_VERSION__: string;
+    // App version injected at build time from package.json
+    const __APP_VERSION__: string;
 
-  namespace App {
-    interface Error {}
-    interface Locals {}
-    interface PageData {}
-    interface PageState {}
-    interface Platform {
-      env: {
-        WORLD_CONFLICT_KV: {
-          get(key: string): Promise<string | null>;
-          put(key: string, value: string): Promise<void>;
-          delete(key: string): Promise<void>;
-          list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>;
-        };
-        WEBSOCKET_HIBERNATION_SERVER: {
-          idFromName(name: string): any;
-          get(id: any): any;
-        };
-      };
-      context: {
-        waitUntil(promise: Promise<any>): void;
-      };
-      caches: CacheStorage & { default: Cache };
+    namespace App {
+        interface Error {}
+        interface Locals {}
+        interface PageData {}
+        interface PageState {}
+        interface Platform {
+            env: {
+                WORLD_CONFLICT_KV: {
+                    get(key: string): Promise<string | null>;
+                    put(key: string, value: string): Promise<void>;
+                    delete(key: string): Promise<void>;
+                    list(options?: { prefix?: string }): Promise<{ keys: Array<{ name: string }> }>;
+                };
+                WEBSOCKET_HIBERNATION_SERVER: {
+                    idFromName(name: string): any;
+                    get(id: any): any;
+                };
+            };
+            context: {
+                waitUntil(promise: Promise<any>): void;
+            };
+            caches: CacheStorage & { default: Cache };
+        }
     }
-  }
 }
 
 export {};

@@ -42,7 +42,7 @@ export interface CleanupResult {
 
 /**
  * Clean up old game entries from KV storage
- * 
+ *
  * @param platform - The platform context with KV bindings
  * @param maxAgeMs - Maximum age in milliseconds (default: 1 day)
  * @param dryRun - If true, only report what would be deleted without actually deleting
@@ -56,7 +56,7 @@ export async function cleanupOldGames(
     const kv = new KVStorage(platform);
     const now = Date.now();
     const cutoffTime = now - maxAgeMs;
-    
+
     const result: CleanupResult = {
         scanned: 0,
         deleted: 0,
@@ -69,20 +69,20 @@ export async function cleanupOldGames(
         // List all game keys
         const listResult = await kv.list(GAME_KEY_PREFIX);
         const keys = listResult.keys;
-        
+
         logger.info(`Found ${keys.length} game entries to scan`);
         result.scanned = keys.length;
 
         for (const keyObj of keys) {
             const key = keyObj.name;
             const gameId = extractGameIdFromKey(key);
-            
+
             if (!gameId) {
                 continue;
             }
 
             const timestamp = extractTimestampFromGameId(gameId);
-            
+
             if (timestamp === null) {
                 // Can't determine age, skip
                 logger.debug(`Skipping ${key}: could not extract timestamp`);
@@ -112,7 +112,6 @@ export async function cleanupOldGames(
         }
 
         logger.info(`Cleanup complete: scanned ${result.scanned}, deleted ${result.deleted}, errors ${result.errors}`);
-        
     } catch (error) {
         const errorMsg = `Cleanup failed: ${error}`;
         logger.error(errorMsg);
@@ -129,7 +128,7 @@ export async function cleanupOldGames(
 function formatAge(ms: number): string {
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) {
         return `${days} day${days > 1 ? 's' : ''}, ${hours % 24} hour${hours % 24 !== 1 ? 's' : ''}`;
     }
@@ -145,7 +144,7 @@ export async function getGameStats(platform: App.Platform): Promise<{
 }> {
     const kv = new KVStorage(platform);
     const now = Date.now();
-    
+
     const stats = {
         total: 0,
         byAge: [

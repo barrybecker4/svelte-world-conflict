@@ -22,7 +22,12 @@ import type { GameState, Player } from '$lib/game/state/GameState';
 describe('AiDecisionMaker', () => {
     describe('pickAiMove', () => {
         it('should return EndTurnCommand for eliminated player (0 regions)', async () => {
-            const player = createMockPlayer({ slotIndex: 0, name: 'Eliminated', isAI: true, personality: 'Defender' });
+            const player = createMockPlayer({
+                slotIndex: 0,
+                name: 'Eliminated',
+                isAI: true,
+                personality: 'Defender'
+            });
             const gameState = createMockGameState({
                 players: [player],
                 regions: [createMockRegion({ index: 0 })],
@@ -49,7 +54,10 @@ describe('AiDecisionMaker', () => {
                 ownersByRegion: { 0: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }] }, // Few soldiers
                 templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined })
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: undefined
+                    })
                 },
                 faithByPlayer: { 0: 100 }, // Enough faith
                 aiDifficulty: AiDifficulty.RUDE
@@ -71,11 +79,17 @@ describe('AiDecisionMaker', () => {
 
             const gameState = createMockGameState({
                 players: [player],
-                regions: [createMockRegion({ index: 0, neighbors: [1] }), createMockRegion({ index: 1, neighbors: [0] })],
+                regions: [
+                    createMockRegion({ index: 0, neighbors: [1] }),
+                    createMockRegion({ index: 1, neighbors: [0] })
+                ],
                 ownersByRegion: { 0: 0, 1: 0 },
                 soldiersByRegion: { 0: [{ i: 1 }], 1: [{ i: 2 }] },
                 templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined }) // Can be upgraded
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: undefined
+                    }) // Can be upgraded
                 },
                 faithByPlayer: { 0: 50 }, // Enough for upgrade
                 aiDifficulty: AiDifficulty.RUDE
@@ -97,9 +111,15 @@ describe('AiDecisionMaker', () => {
 
             const gameState = createMockGameState({
                 players: [player],
-                regions: [createMockRegion({ index: 0, neighbors: [1] }), createMockRegion({ index: 1, neighbors: [0] })],
+                regions: [
+                    createMockRegion({ index: 0, neighbors: [1] }),
+                    createMockRegion({ index: 1, neighbors: [0] })
+                ],
                 ownersByRegion: { 0: 0, 1: 0 },
-                soldiersByRegion: { 0: [{ i: 1 }, { i: 2 }, { i: 3 }], 1: [{ i: 4 }] },
+                soldiersByRegion: {
+                    0: [{ i: 1 }, { i: 2 }, { i: 3 }],
+                    1: [{ i: 4 }]
+                },
                 templesByRegion: {},
                 faithByPlayer: { 0: 5 }, // Not enough faith for anything
                 movesRemaining: 3,
@@ -110,9 +130,7 @@ describe('AiDecisionMaker', () => {
 
             // Should use minimax to decide on army movement or end turn
             expect(command).toBeDefined();
-            expect(
-                command instanceof ArmyMoveCommand || command instanceof EndTurnCommand
-            ).toBe(true);
+            expect(command instanceof ArmyMoveCommand || command instanceof EndTurnCommand).toBe(true);
         });
 
         it('should work with different AI personalities', async () => {
@@ -223,17 +241,18 @@ describe('AiDecisionMaker', () => {
             });
 
             // Both have same scenario
-            const createScenario = (player: Player) => createMockGameState({
-                players: [player],
-                regions: [createMockRegion({ index: 0 })],
-                ownersByRegion: { 0: 0 },
-                soldiersByRegion: { 0: [{ i: 1 }] },
-                templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0 })
-                },
-                faithByPlayer: { 0: 20 },
-                aiDifficulty: AiDifficulty.RUDE
-            });
+            const createScenario = (player: Player) =>
+                createMockGameState({
+                    players: [player],
+                    regions: [createMockRegion({ index: 0 })],
+                    ownersByRegion: { 0: 0 },
+                    soldiersByRegion: { 0: [{ i: 1 }] },
+                    templesByRegion: {
+                        0: createMockTemple({ regionIndex: 0 })
+                    },
+                    faithByPlayer: { 0: 20 },
+                    aiDifficulty: AiDifficulty.RUDE
+                });
 
             const lowCommand = await pickAiMove(lowEagerness, createScenario(lowEagerness));
             const highCommand = await pickAiMove(highEagerness, createScenario(highEagerness));
@@ -329,7 +348,7 @@ describe('AiDecisionMaker', () => {
                 regions: [
                     createMockRegion({ index: 0, neighbors: [1] }), // Threatened
                     createMockRegion({ index: 1, neighbors: [0, 2] }),
-                    createMockRegion({ index: 2, neighbors: [1] })  // Safe
+                    createMockRegion({ index: 2, neighbors: [1] }) // Safe
                 ],
                 ownersByRegion: { 0: 0, 1: 1, 2: 0 },
                 soldiersByRegion: {
@@ -339,7 +358,7 @@ describe('AiDecisionMaker', () => {
                 },
                 templesByRegion: {
                     0: createMockTemple({ regionIndex: 0 }), // Threatened temple
-                    2: createMockTemple({ regionIndex: 2 })  // Safe temple
+                    2: createMockTemple({ regionIndex: 2 }) // Safe temple
                 },
                 faithByPlayer: { 0: 100, 1: 100 },
                 aiDifficulty: AiDifficulty.MEAN // Use Mean AI to see threats
@@ -425,9 +444,21 @@ describe('AiDecisionMaker', () => {
                 ],
                 ownersByRegion: { 0: 0, 1: 0, 2: 0 },
                 templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.EARTH.index, level: 2 }), // Max
-                    1: createMockTemple({ regionIndex: 1, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.WATER.index, level: 2 }), // Max
-                    2: createMockTemple({ regionIndex: 2, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index, level: 2 })   // Max
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: TEMPLE_UPGRADES_BY_NAME.EARTH.index,
+                        level: 2
+                    }), // Max
+                    1: createMockTemple({
+                        regionIndex: 1,
+                        upgradeIndex: TEMPLE_UPGRADES_BY_NAME.WATER.index,
+                        level: 2
+                    }), // Max
+                    2: createMockTemple({
+                        regionIndex: 2,
+                        upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index,
+                        level: 2
+                    }) // Max
                 },
                 faithByPlayer: { 0: 200 },
                 aiDifficulty: AiDifficulty.RUDE
@@ -452,7 +483,10 @@ describe('AiDecisionMaker', () => {
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: { 0: 0 },
                 templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined })
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: undefined
+                    })
                 },
                 faithByPlayer: { 0: 5 }, // Not enough for WATER (15)
                 aiDifficulty: AiDifficulty.RUDE
@@ -481,7 +515,11 @@ describe('AiDecisionMaker', () => {
                 ownersByRegion: { 0: 0 },
                 templesByRegion: {
                     // Temple already has different upgrade
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index, level: 0 })
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: TEMPLE_UPGRADES_BY_NAME.FIRE.index,
+                        level: 0
+                    })
                 },
                 faithByPlayer: { 0: 100 },
                 aiDifficulty: AiDifficulty.RUDE
@@ -509,10 +547,14 @@ describe('AiDecisionMaker', () => {
                     createMockRegion({ index: 2, neighbors: [1] })
                 ],
                 ownersByRegion: { 0: 0, 1: 0, 2: 1 },
-                soldiersByRegion: { 0: [], 1: [], 2: [{ i: 1 }, { i: 2 }, { i: 3 }] },
+                soldiersByRegion: {
+                    0: [],
+                    1: [],
+                    2: [{ i: 1 }, { i: 2 }, { i: 3 }]
+                },
                 templesByRegion: {
                     0: createMockTemple({ regionIndex: 0 }), // Safe temple
-                    1: createMockTemple({ regionIndex: 1 })  // Threatened temple
+                    1: createMockTemple({ regionIndex: 1 }) // Threatened temple
                 },
                 faithByPlayer: { 0: 50, 1: 50 },
                 aiDifficulty: AiDifficulty.RUDE
@@ -537,7 +579,10 @@ describe('AiDecisionMaker', () => {
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: { 0: 0 },
                 templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: undefined })
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: undefined
+                    })
                 },
                 faithByPlayer: { 0: 50 },
                 aiDifficulty: AiDifficulty.RUDE
@@ -562,7 +607,11 @@ describe('AiDecisionMaker', () => {
                 regions: [createMockRegion({ index: 0 })],
                 ownersByRegion: { 0: 0 },
                 templesByRegion: {
-                    0: createMockTemple({ regionIndex: 0, upgradeIndex: TEMPLE_UPGRADES_BY_NAME.WATER.index, level: 0 })
+                    0: createMockTemple({
+                        regionIndex: 0,
+                        upgradeIndex: TEMPLE_UPGRADES_BY_NAME.WATER.index,
+                        level: 0
+                    })
                 },
                 faithByPlayer: { 0: 50 }, // Enough for level 1
                 aiDifficulty: AiDifficulty.RUDE

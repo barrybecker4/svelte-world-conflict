@@ -29,16 +29,16 @@ export class Temple {
     getDisplayInfo(): { name: string; description: string } {
         if (!this.upgradeIndex) {
             return {
-                name: "Basic Temple",
-                description: "No upgrades"
+                name: 'Basic Temple',
+                description: 'No upgrades'
             };
         }
 
         const upgrade = this.getCurrentUpgrade();
         if (!upgrade) {
             return {
-                name: "Basic Temple",
-                description: "Unknown upgrade"
+                name: 'Basic Temple',
+                description: 'Unknown upgrade'
             };
         }
 
@@ -49,7 +49,7 @@ export class Temple {
     }
 
     getUpgradeFormattedName(upgrade: TempleUpgradeDefinition, level: number): string {
-        const templateLevel = TEMPLE_LEVELS[level] || "Unknown";
+        const templateLevel = TEMPLE_LEVELS[level] || 'Unknown';
         return upgrade.displayName.replace('{level}', templateLevel);
     }
 

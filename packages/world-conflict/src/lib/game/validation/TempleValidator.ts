@@ -14,37 +14,53 @@ export class TempleValidator {
     ): MoveValidationResult {
         const currentPlayer = gameData.players.find(p => p.slotIndex === gameData.currentPlayerSlot);
         if (!currentPlayer) {
-            return { isValid: false, error: "Current player not found" };
+            return { isValid: false, error: 'Current player not found' };
         }
         const region = gameData.regions.find(r => r.index === regionIndex);
 
         if (!region) {
-            return { isValid: false, error: "Region does not exist" };
+            return { isValid: false, error: 'Region does not exist' };
         }
 
         // Check ownership
         if (gameData.ownersByRegion[regionIndex] !== currentPlayer.slotIndex) {
-            return { isValid: false, error: "Cannot build on region you don't own" };
+            return {
+                isValid: false,
+                error: "Cannot build on region you don't own"
+            };
         }
 
         if (operationType === 'build') {
             // Check if region can support a temple
             if (!region.hasTemple) {
-                return { isValid: false, error: "This region cannot support a temple" };
+                return {
+                    isValid: false,
+                    error: 'This region cannot support a temple'
+                };
             }
 
             // Check if temple already exists
             if (gameData.templesByRegion[regionIndex]) {
-                return { isValid: false, error: "Temple already exists in this region" };
+                return {
+                    isValid: false,
+                    error: 'Temple already exists in this region'
+                };
             }
-        } else { // upgrade
+        } else {
+            // upgrade
             const temple = gameData.templesByRegion[regionIndex];
             if (!temple) {
-                return { isValid: false, error: "No temple to upgrade in this region" };
+                return {
+                    isValid: false,
+                    error: 'No temple to upgrade in this region'
+                };
             }
 
             if (temple.level >= GAME_CONSTANTS.MAX_TEMPLE_LEVEL) {
-                return { isValid: false, error: "Temple is already at maximum level" };
+                return {
+                    isValid: false,
+                    error: 'Temple is already at maximum level'
+                };
             }
         }
 

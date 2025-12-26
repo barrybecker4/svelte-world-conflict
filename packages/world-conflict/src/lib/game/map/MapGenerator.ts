@@ -47,12 +47,12 @@ export class MapGenerator {
         for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
             try {
                 const regions = this.attemptMapGeneration(mapSize, playerCount);
-                
+
                 // Success! Log if we needed multiple attempts
                 if (attempt > 1) {
                     logger.debug(`✅ Map generation succeeded on attempt ${attempt}/${MAX_GENERATION_ATTEMPTS}`);
                 }
-                
+
                 return regions;
             } catch (error) {
                 lastError = error as Error;
@@ -65,8 +65,8 @@ export class MapGenerator {
         // All attempts failed
         throw new Error(
             `Map generation failed after ${MAX_GENERATION_ATTEMPTS} attempts. ` +
-            `Last error: ${lastError?.message || 'Unknown error'}. ` +
-            `Try using a larger map size.`
+                `Last error: ${lastError?.message || 'Unknown error'}. ` +
+                `Try using a larger map size.`
         );
     }
 
@@ -113,19 +113,19 @@ export class MapGenerator {
         }
 
         regionMap.fillNeighborLists();
-        
+
         // Validate minimum region count for playable game
         // Always need MIN_REGIONS_REQUIRED (MAX_PLAYERS + 1) to ensure at least one neutral region
         if (regions.length < MIN_REGIONS_REQUIRED) {
             throw new Error(
                 `Generated ${regions.length} regions but need at least ${MIN_REGIONS_REQUIRED} ` +
-                `(${GAME_CONSTANTS.MAX_PLAYERS} max players + 1 neutral region minimum)`
+                    `(${GAME_CONSTANTS.MAX_PLAYERS} max players + 1 neutral region minimum)`
             );
         }
-        
+
         // Ensure we have enough temple regions for all players
         this.ensureMinimumTemples(regions, playerCount);
-        
+
         return regions;
     }
 
@@ -136,13 +136,15 @@ export class MapGenerator {
     private ensureMinimumTemples(regions: Region[], playerCount: number): void {
         const templeRegions = regions.filter(r => r.hasTemple);
         const neededTemples = playerCount;
-        
+
         if (templeRegions.length < neededTemples) {
-            logger.debug(`⚠️ Only ${templeRegions.length} temple regions found, need ${neededTemples} for ${playerCount} players`);
-            
+            logger.debug(
+                `⚠️ Only ${templeRegions.length} temple regions found, need ${neededTemples} for ${playerCount} players`
+            );
+
             // Get non-temple regions
             const nonTempleRegions = regions.filter(r => !r.hasTemple);
-            
+
             // Convert enough non-temple regions to temple regions
             const templeDeficit = neededTemples - templeRegions.length;
             for (let i = 0; i < Math.min(templeDeficit, nonTempleRegions.length); i++) {
@@ -151,7 +153,7 @@ export class MapGenerator {
                 (region as any).hasTemple = true;
                 logger.debug(`✅ Converted region ${region.index} to temple region`);
             }
-            
+
             const finalTempleCount = regions.filter(r => r.hasTemple).length;
             logger.debug(`🏛️ Final temple count: ${finalTempleCount} (need ${neededTemples})`);
         } else {
@@ -161,7 +163,7 @@ export class MapGenerator {
 
     private addRegion(bounds: Bounds, regionCount: number, regions: Region[], regionMap: RegionMap): number {
         const region = bounds.makeRegion(regionCount, this.mapWidth, this.mapHeight);
-        if (!region) throw new Error("Failed to create region with bounds " + bounds);
+        if (!region) throw new Error('Failed to create region with bounds ' + bounds);
         regions.push(region);
         bounds.markInMap(region, regionMap);
         return regionCount + 1;

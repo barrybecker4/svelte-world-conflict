@@ -23,7 +23,9 @@ export interface TempleUpgradeDefinition {
 const SOLDIER_COSTS = calcSoldierCosts(8, 30);
 
 function calcSoldierCosts(initial: number, n: number): number[] {
-    return Array(n).fill(0).map((x, i) => initial + i);
+    return Array(n)
+        .fill(0)
+        .map((x, i) => initial + i);
 }
 
 export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition> = {
@@ -36,7 +38,7 @@ export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition>
         level: [0],
         bgColor: '#ccc',
         templeColors: {
-            base: '#9ca3af',    // Gray
+            base: '#9ca3af', // Gray
             dark: '#6b7280',
             light: '#d1d5db',
             disc: '#9ca3af'
@@ -61,7 +63,7 @@ export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition>
         level: [20, 40],
         bgColor: '#8df',
         templeColors: {
-            base: '#3b82f6',    // Blue
+            base: '#3b82f6', // Blue
             dark: '#1e40af',
             light: '#60a5fa',
             disc: '#3b82f6'
@@ -76,7 +78,7 @@ export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition>
         level: [1, 2],
         bgColor: '#f88',
         templeColors: {
-            base: '#ef4444',    // Red
+            base: '#ef4444', // Red
             dark: '#b91c1c',
             light: '#f87171',
             disc: '#ef4444'
@@ -92,7 +94,7 @@ export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition>
         bgColor: '#ffa',
         grantsImmediateEffect: true,
         templeColors: {
-            base: '#fde047',    // Light yellow
+            base: '#fde047', // Light yellow
             dark: '#facc15',
             light: '#fef08a',
             disc: '#fde047'
@@ -107,7 +109,7 @@ export const TEMPLE_UPGRADE_DEFINITIONS: Record<string, TempleUpgradeDefinition>
         level: [1, 2],
         bgColor: '#696',
         templeColors: {
-            base: '#22c55e',    // Dark green
+            base: '#22c55e', // Dark green
             dark: '#15803d',
             light: '#4ade80',
             disc: '#22c55e'

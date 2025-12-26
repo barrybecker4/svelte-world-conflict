@@ -54,16 +54,23 @@ export class AttackSequenceGenerator {
         let defendingSoldiers = toList.length;
 
         const attackSequence: AttackEvent[] = [];
-        
+
         // Apply Earth (defense) preemptive damage to attackers
         const preemptiveCasualties = this.applyPreemptiveDamage(attackSequence, fromList);
-        
+
         // Apply Fire (attack) preemptive damage to defenders
         const fireDefenderCasualties = this.applyFireDamage(attackSequence, toList, preemptiveCasualties);
         defendingSoldiers -= fireDefenderCasualties;
 
         if (this.hasBothSidesWithForces(defendingSoldiers)) {
-            this.resolveCombatWithOutcome(attackSequence, fromList, toList, defendingSoldiers, preemptiveCasualties, players);
+            this.resolveCombatWithOutcome(
+                attackSequence,
+                fromList,
+                toList,
+                defendingSoldiers,
+                preemptiveCasualties,
+                players
+            );
         } else if (this.canConquerUndefendedRegion(defendingSoldiers)) {
             attackSequence.push(this.eventFactory.createConqueredEvent(this.toRegion));
         }
@@ -96,11 +103,12 @@ export class AttackSequenceGenerator {
         return 0;
     }
 
-    private applyFireDamage(attackSequence: AttackEvent[], toList: { i: number }[], runningAttackerCasualties: number): number {
-        const fireDamage = Math.min(
-            toList.length,
-            this.state!.upgradeLevel(this.fromOwner, 'ATTACK') || 0
-        );
+    private applyFireDamage(
+        attackSequence: AttackEvent[],
+        toList: { i: number }[],
+        runningAttackerCasualties: number
+    ): number {
+        const fireDamage = Math.min(toList.length, this.state!.upgradeLevel(this.fromOwner, 'ATTACK') || 0);
 
         if (fireDamage > 0) {
             this.recordFireDamage(fireDamage, attackSequence, toList, runningAttackerCasualties);
@@ -139,7 +147,14 @@ export class AttackSequenceGenerator {
         preemptiveCasualties: number,
         players: Player[]
     ): void {
-        const didRetreat = this.recordFight(defendingSoldiers, attackSequence, fromList, toList, preemptiveCasualties, this.soldiers);
+        const didRetreat = this.recordFight(
+            defendingSoldiers,
+            attackSequence,
+            fromList,
+            toList,
+            preemptiveCasualties,
+            this.soldiers
+        );
 
         if (didRetreat) {
             this.addRetreatOutcome(attackSequence, players);
@@ -159,11 +174,7 @@ export class AttackSequenceGenerator {
         attackSequence.push(this.eventFactory.createDefendedEvent(this.toRegion, players, this.toOwner));
     }
 
-    private recordPreemptiveDamage(
-        damage: number,
-        attackSequence: AttackEvent[],
-        fromList: { i: number }[]
-    ): void {
+    private recordPreemptiveDamage(damage: number, attackSequence: AttackEvent[], fromList: { i: number }[]): void {
         // Remove soldiers from attacking force
         for (let i = 0; i < damage && fromList.length > 0; i++) {
             fromList.pop();
@@ -196,7 +207,15 @@ export class AttackSequenceGenerator {
         let totalAttackerCasualties = preemptiveCasualties;
         let totalDefenderCasualties = 0;
 
-        if (this.shouldRetreatFromPreemptive(totalAttackerCasualties, retreatThreshold, attackersRemaining, defendersRemaining, originalAttackerCount)) {
+        if (
+            this.shouldRetreatFromPreemptive(
+                totalAttackerCasualties,
+                retreatThreshold,
+                attackersRemaining,
+                defendersRemaining,
+                originalAttackerCount
+            )
+        ) {
             this.incomingSoldiers = attackersRemaining;
             return true;
         }
@@ -210,10 +229,20 @@ export class AttackSequenceGenerator {
             totalDefenderCasualties += battleResult.defenderCasualties;
 
             this.logBattleRound(battleResult, attackersRemaining, defendersRemaining);
-            attackSequence.push(this.eventFactory.createBattleRoundEvent(battleResult, totalAttackerCasualties, totalDefenderCasualties));
+            attackSequence.push(
+                this.eventFactory.createBattleRoundEvent(battleResult, totalAttackerCasualties, totalDefenderCasualties)
+            );
             this.removeCasualtiesFromLists(fromList, toList, battleResult);
 
-            if (this.shouldRetreat(totalAttackerCasualties, retreatThreshold, attackersRemaining, defendersRemaining, originalAttackerCount)) {
+            if (
+                this.shouldRetreat(
+                    totalAttackerCasualties,
+                    retreatThreshold,
+                    attackersRemaining,
+                    defendersRemaining,
+                    originalAttackerCount
+                )
+            ) {
                 this.incomingSoldiers = attackersRemaining;
                 return true;
             }
@@ -230,7 +259,9 @@ export class AttackSequenceGenerator {
 
     private logCombatStart(defendingSoldiers: number, retreatThreshold: number): void {
         if (!this.isSimulation) {
-            logger.debug(`🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders (retreat if >${retreatThreshold} casualties)`);
+            logger.debug(
+                `🎲 Combat: ${this.incomingSoldiers} attackers vs ${defendingSoldiers} defenders (retreat if >${retreatThreshold} casualties)`
+            );
         }
     }
 
@@ -243,7 +274,9 @@ export class AttackSequenceGenerator {
     ): boolean {
         if (casualties > threshold && attackersRemaining > 0 && defendersRemaining > 0) {
             if (!this.isSimulation) {
-                logger.debug(`🏃 Retreat triggered by preemptive damage! Casualties: ${casualties}/${initialAttackers}`);
+                logger.debug(
+                    `🏃 Retreat triggered by preemptive damage! Casualties: ${casualties}/${initialAttackers}`
+                );
             }
             return true;
         }
@@ -259,7 +292,9 @@ export class AttackSequenceGenerator {
     ): boolean {
         if (totalCasualties > threshold && attackersRemaining > 0 && defendersRemaining > 0) {
             if (!this.isSimulation) {
-                logger.debug(`🏃 Retreat! Attackers lost ${totalCasualties}/${initialAttackers} (>${threshold}). ${attackersRemaining} survivors retreating.`);
+                logger.debug(
+                    `🏃 Retreat! Attackers lost ${totalCasualties}/${initialAttackers} (>${threshold}). ${attackersRemaining} survivors retreating.`
+                );
             }
             return true;
         }
@@ -267,19 +302,27 @@ export class AttackSequenceGenerator {
     }
 
     private logBattleRound(
-        battleResult: { attackerCasualties: number; defenderCasualties: number },
+        battleResult: {
+            attackerCasualties: number;
+            defenderCasualties: number;
+        },
         attackersRemaining: number,
         defendersRemaining: number
     ): void {
         if (!this.isSimulation) {
-            logger.debug(`🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`);
+            logger.debug(
+                `🎲 Battle round: A-${battleResult.attackerCasualties} D-${battleResult.defenderCasualties} | Remaining: A${attackersRemaining} D${defendersRemaining}`
+            );
         }
     }
 
     private removeCasualtiesFromLists(
         fromList: { i: number }[],
         toList: { i: number }[],
-        battleResult: { attackerCasualties: number; defenderCasualties: number }
+        battleResult: {
+            attackerCasualties: number;
+            defenderCasualties: number;
+        }
     ): void {
         for (let i = 0; i < battleResult.attackerCasualties && fromList.length > 0; i++) {
             fromList.pop();

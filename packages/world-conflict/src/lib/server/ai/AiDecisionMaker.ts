@@ -132,7 +132,7 @@ function upgradeToBuild(player: Player, state: GameState, aiLevel: AiLevel): Com
     // Do we have a place to build it?
     const temples = state.templesForPlayer(player);
     const possibleTemplesToUpgrade = temples.filter(temple => {
-        return (!temple.upgradeIndex && !desiredLevel) || (temple.upgradeIndex === desiredUpgrade.index);
+        return (!temple.upgradeIndex && !desiredLevel) || temple.upgradeIndex === desiredUpgrade.index;
     });
 
     if (possibleTemplesToUpgrade.length === 0) {
@@ -185,11 +185,7 @@ function findDesiredUpgrade(
  * Get the effective soldier eagerness for a personality
  * Returns 1.0 if no more upgrades are desired
  */
-function getEffectiveSoldierEagerness(
-    personality: AiPersonalityData,
-    player: Player,
-    state: GameState
-): number {
+function getEffectiveSoldierEagerness(personality: AiPersonalityData, player: Player, state: GameState): number {
     const desiredUpgrade = findDesiredUpgrade(personality.upgradePreference, player, state);
 
     // If we don't want more upgrades, focus entirely on soldiers

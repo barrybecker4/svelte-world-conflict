@@ -52,18 +52,22 @@ export class GameStorage {
             // SAFETY CHECK: If game has endResult but status is not COMPLETED, fix it
             const hasEndResult = game.worldConflictState?.endResult != null;
             if (hasEndResult && game.status !== 'COMPLETED') {
-                logger.warn(`Game ${game.gameId} has endResult but status is ${game.status}. Auto-fixing to COMPLETED.`);
+                logger.warn(
+                    `Game ${game.gameId} has endResult but status is ${game.status}. Auto-fixing to COMPLETED.`
+                );
                 game.status = 'COMPLETED';
             }
-            
+
             logger.debug(`Saving game ${game.gameId} with status: ${game.status}`);
 
             // Get previous game state to check if status changed
             const previousGame = await this.getGame(game.gameId);
             const statusChanged = !previousGame || previousGame.status !== game.status;
-            
+
             if (game.status === 'COMPLETED') {
-                logger.info(`Saving COMPLETED game ${game.gameId}. statusChanged=${statusChanged}, previousStatus=${previousGame?.status}`);
+                logger.info(
+                    `Saving COMPLETED game ${game.gameId}. statusChanged=${statusChanged}, previousStatus=${previousGame?.status}`
+                );
             }
 
             await this.kv.put(`wc_game:${game.gameId}`, game);
@@ -78,7 +82,9 @@ export class GameStorage {
 
                 // Record game completion statistics and run cleanup
                 if (game.status === 'COMPLETED') {
-                    logger.info(`Game ${game.gameId} completed - recording stats. endResult: ${JSON.stringify(game.worldConflictState.endResult)}`);
+                    logger.info(
+                        `Game ${game.gameId} completed - recording stats. endResult: ${JSON.stringify(game.worldConflictState.endResult)}`
+                    );
                     const statsService = this.getStatsService();
                     if (statsService) {
                         await statsService.recordGameCompleted(game);
@@ -153,7 +159,7 @@ export class GameStorage {
         if (game.status !== 'PENDING') return;
 
         try {
-            const currentList = await this.kv.get<OpenGamesList>('wc_games:open') || {
+            const currentList = (await this.kv.get<OpenGamesList>('wc_games:open')) || {
                 games: [],
                 lastUpdated: Date.now()
             };

@@ -90,7 +90,7 @@ function updateTurnStats(stats: DailyGameStats, turnNumber: number): void {
  */
 function updateEndReason(stats: DailyGameStats, reason: 'ELIMINATION' | 'TURN_LIMIT' | 'RESIGNATION' | null): void {
     if (!reason) return;
-    
+
     switch (reason) {
         case 'ELIMINATION':
             stats.endReasons.elimination++;
@@ -182,7 +182,7 @@ export class GameStatsService {
         try {
             const date = getTodayDateKey();
             logger.info(`Recording game completion for ${game.gameId} on ${date}`);
-            
+
             const stats = await this.getOrCreateStats(date);
 
             stats.completedGames++;
@@ -190,11 +190,11 @@ export class GameStatsService {
 
             updatePlayerCounts(stats, game);
             updateTurnStats(stats, game.worldConflictState.turnNumber);
-            
+
             // Determine end reason by checking game state
             const endCheck = checkGameEnd(game.worldConflictState, game.players);
             updateEndReason(stats, endCheck.reason);
-            
+
             // Use the stored endResult for winner tracking
             updateWinnerStats(stats, game.worldConflictState.endResult);
 

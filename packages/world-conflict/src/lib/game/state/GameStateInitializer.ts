@@ -5,7 +5,6 @@ import { generateSoldierId } from '$lib/game/utils/soldierIdGenerator';
 import { AiDifficulty } from '$lib/game/entities/aiPersonalities';
 import { logger } from 'multiplayer-framework/shared';
 
-
 export class GameStateInitializer {
     /**
      * Create initial game state data with starting positions
@@ -14,8 +13,24 @@ export class GameStateInitializer {
      * Note: Accepts Region[] (not Regions) because GameStateData must be JSON-serializable.
      * Use Regions.getAll() to convert from Regions to Region[] before calling this.
      */
-    createInitialStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
-        return this.createInitializedGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
+    createInitialStateData(
+        gameId: string,
+        players: Player[],
+        regions: Region[],
+        maxTurns?: number,
+        moveTimeLimit?: number,
+        aiDifficulty?: string,
+        seed?: string
+    ): GameStateData {
+        return this.createInitializedGameStateData(
+            gameId,
+            players,
+            regions,
+            maxTurns,
+            moveTimeLimit,
+            aiDifficulty,
+            seed
+        );
     }
 
     /**
@@ -32,10 +47,26 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createInitializedGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
+    private createInitializedGameStateData(
+        gameId: string,
+        players: Player[],
+        regions: Region[],
+        maxTurns?: number,
+        moveTimeLimit?: number,
+        aiDifficulty?: string,
+        seed?: string
+    ): GameStateData {
         logger.debug(`Creating preview state with ${regions.length} regions`);
 
-        const stateData = this.createGameStateData(gameId, players, regions, maxTurns, moveTimeLimit, aiDifficulty, seed);
+        const stateData = this.createGameStateData(
+            gameId,
+            players,
+            regions,
+            maxTurns,
+            moveTimeLimit,
+            aiDifficulty,
+            seed
+        );
         this.initializeStartingPositions(stateData);
 
         players.forEach(player => {
@@ -44,7 +75,15 @@ export class GameStateInitializer {
         return stateData;
     }
 
-    private createGameStateData(gameId: string, players: Player[], regions: Region[], maxTurns?: number, moveTimeLimit?: number, aiDifficulty?: string, seed?: string): GameStateData {
+    private createGameStateData(
+        gameId: string,
+        players: Player[],
+        regions: Region[],
+        maxTurns?: number,
+        moveTimeLimit?: number,
+        aiDifficulty?: string,
+        seed?: string
+    ): GameStateData {
         const sortedPlayers = [...players].sort((a, b) => a.slotIndex - b.slotIndex);
         const sortedPlayerIndices = sortedPlayers.map(p => p.slotIndex);
         const currentPlayerSlot = sortedPlayerIndices[0];
@@ -52,7 +91,10 @@ export class GameStateInitializer {
         // Generate seed if not provided - use gameId and timestamp for uniqueness
         const rngSeed = seed || `${gameId}-${Date.now()}`;
 
-        logger.debug(`Creating game with sorted players:`, sortedPlayers.map(p => `${p.name}(${p.slotIndex})`));
+        logger.debug(
+            `Creating game with sorted players:`,
+            sortedPlayers.map(p => `${p.name}(${p.slotIndex})`)
+        );
         logger.debug(`Setting initial currentPlayerSlot to ${currentPlayerSlot}`);
         logger.debug(`Setting moveTimeLimit to ${moveTimeLimit}`);
         logger.debug(`Setting aiDifficulty to ${aiDifficulty}`);
@@ -91,7 +133,6 @@ export class GameStateInitializer {
 
             this.setupPlayerHomes(stateData, assignments);
             this.setupNeutralTemples(stateData, assignments);
-
         } catch (error) {
             logger.error('Failed to assign home bases:', error);
         }
@@ -102,8 +143,10 @@ export class GameStateInitializer {
             stateData.ownersByRegion[assignment.regionIndex] = assignment.playerSlotIndex;
 
             // Add initial soldiers
-            stateData.soldiersByRegion[assignment.regionIndex] =
-                this.createSoldiers(assignment.regionIndex, GAME_CONSTANTS.OWNER_STARTING_SOLDIERS);
+            stateData.soldiersByRegion[assignment.regionIndex] = this.createSoldiers(
+                assignment.regionIndex,
+                GAME_CONSTANTS.OWNER_STARTING_SOLDIERS
+            );
 
             // Add temple if the region has one
             if (assignment.region.hasTemple) {
@@ -120,8 +163,8 @@ export class GameStateInitializer {
         const assignedRegionIndices = new Set(assignments.map(a => a.regionIndex));
 
         // Get all temple regions that aren't already assigned as home bases
-        const neutralTempleRegions = stateData.regions.filter(region =>
-            region.hasTemple && !assignedRegionIndices.has(region.index)
+        const neutralTempleRegions = stateData.regions.filter(
+            region => region.hasTemple && !assignedRegionIndices.has(region.index)
         );
 
         neutralTempleRegions.forEach(region => {
@@ -130,8 +173,10 @@ export class GameStateInitializer {
                 level: 0
             };
 
-            stateData.soldiersByRegion[region.index] =
-                this.createSoldiers(region.index, GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS);
+            stateData.soldiersByRegion[region.index] = this.createSoldiers(
+                region.index,
+                GAME_CONSTANTS.NEUTRAL_STARTING_SOLDIERS
+            );
         });
     }
 

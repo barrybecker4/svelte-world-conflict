@@ -62,11 +62,10 @@ export class Regions {
     }
 
     isValid(): boolean {
-        return this.regions.length > 0 &&
-               this.regions.every(region =>
-                   region instanceof Region &&
-                   typeof region.getDistanceTo === 'function'
-               );
+        return (
+            this.regions.length > 0 &&
+            this.regions.every(region => region instanceof Region && typeof region.getDistanceTo === 'function')
+        );
     }
 
     getTempleRegions(): Region[] {
@@ -90,9 +89,7 @@ export class Regions {
     }
 
     getRegionsWithinDistance(x: number, y: number, maxDistance: number): Region[] {
-        return this.regions.filter(region =>
-            region.isWithinDistance(x, y, maxDistance)
-        );
+        return this.regions.filter(region => region.isWithinDistance(x, y, maxDistance));
     }
 
     getClosestRegion(x: number, y: number): Region | undefined {
@@ -126,7 +123,8 @@ export class Regions {
         const region = this.getByIndex(regionIndex);
         if (!region) return [];
 
-        return region.getNeighbors()
+        return region
+            .getNeighbors()
             .map(neighborIndex => this.getByIndex(neighborIndex))
             .filter((neighbor): neighbor is Region => neighbor !== undefined);
     }
@@ -139,7 +137,7 @@ export class Regions {
     static createBasic(count: number, seed?: string): Regions {
         // Create RNG for map generation if seed provided
         const rng = seed ? new RandomNumberGenerator(seed) : null;
-        
+
         const regionData: RegionData[] = [];
 
         for (let i = 0; i < count; i++) {
