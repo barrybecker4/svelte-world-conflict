@@ -40,8 +40,15 @@ export class GalacticGameState {
 
     constructor(data: GalacticGameStateData) {
         this.state = { ...data };
+        this.initializeDefaults();
+        this.rng = this.initializeRNG();
+        this.initializeManagers();
+    }
 
-        // Initialize defaults
+    /**
+     * Initialize default values for optional state properties
+     */
+    private initializeDefaults(): void {
         if (!this.state.planets) this.state.planets = [];
         if (!this.state.players) this.state.players = [];
         if (!this.state.armadas) this.state.armadas = [];
@@ -52,18 +59,26 @@ export class GalacticGameState {
         if (!this.state.recentConquestEvents) this.state.recentConquestEvents = [];
         if (!this.state.recentPlayerEliminationEvents) this.state.recentPlayerEliminationEvents = [];
         if (!this.state.resourcesByPlayer) this.state.resourcesByPlayer = {};
+    }
 
-        // Initialize or restore RNG
+    /**
+     * Initialize or restore RNG from state
+     */
+    private initializeRNG(): RandomNumberGenerator {
         if (this.state.rngSeed && this.state.rngState) {
-            this.rng = new RandomNumberGenerator(this.state.rngSeed, this.state.rngState);
+            return new RandomNumberGenerator(this.state.rngSeed, this.state.rngState);
         } else if (this.state.rngSeed) {
-            this.rng = new RandomNumberGenerator(this.state.rngSeed);
+            return new RandomNumberGenerator(this.state.rngSeed);
         } else {
             this.state.rngSeed = `galactic-${Date.now()}`;
-            this.rng = new RandomNumberGenerator(this.state.rngSeed);
+            return new RandomNumberGenerator(this.state.rngSeed);
         }
+    }
 
-        // Initialize managers
+    /**
+     * Initialize manager instances
+     */
+    private initializeManagers(): void {
         this.planetManager = new PlanetManager(this.state.planets);
         this.playerManager = new PlayerManager(
             this.state.players,
@@ -116,10 +131,7 @@ export class GalacticGameState {
         const now = Date.now();
 
         // Initialize player resources (start with 0)
-        const resourcesByPlayer: Record<number, number> = {};
-        for (const player of players) {
-            resourcesByPlayer[player.slotIndex] = 0;
-        }
+        const resourcesByPlayer = this.initializePlayerResources(players);
 
         const initialState: GalacticGameStateData = {
             gameId,
@@ -173,6 +185,17 @@ export class GalacticGameState {
                 personality: slot.personality,
                 difficulty: slot.difficulty,
             }));
+    }
+
+    /**
+     * Initialize resources for all players (starting at 0)
+     */
+    private static initializePlayerResources(players: Player[]): Record<number, number> {
+        const resourcesByPlayer: Record<number, number> = {};
+        for (const player of players) {
+            resourcesByPlayer[player.slotIndex] = 0;
+        }
+        return resourcesByPlayer;
     }
 
     /**
@@ -430,28 +453,52 @@ export class GalacticGameState {
             return activePlayers[0];
         }
 
-        // Score players: primary = planets, tiebreaker = ships, then resources
-        const scores = activePlayers.map(p => ({
+        return this.calculateWinnerFromScores(activePlayers);
+    }
+
+    /**
+     * Calculate winner by scoring players and checking for ties
+     */
+    private calculateWinnerFromScores(activePlayers: Player[]): Player | 'DRAWN_GAME' {
+        const scores = this.calculatePlayerScores(activePlayers);
+        scores.sort(this.compareScores);
+
+        const top = scores[0];
+        const second = scores[1];
+        
+        if (this.isTie(top, second)) {
+            return GALACTIC_CONSTANTS.DRAWN_GAME;
+        }
+
+        return top.player;
+    }
+
+    /**
+     * Calculate scores for all active players
+     */
+    private calculatePlayerScores(activePlayers: Player[]) {
+        return activePlayers.map(p => ({
             player: p,
             planets: this.getPlanetsOwnedBy(p.slotIndex).length,
             ships: this.getTotalShips(p.slotIndex),
             resources: this.getTotalResources(p.slotIndex),
         }));
+    }
 
-        scores.sort((a, b) => {
-            if (a.planets !== b.planets) return b.planets - a.planets;
-            if (a.ships !== b.ships) return b.ships - a.ships;
-            return b.resources - a.resources;
-        });
+    /**
+     * Compare two player scores (higher is better)
+     */
+    private compareScores(a: { planets: number; ships: number; resources: number }, b: { planets: number; ships: number; resources: number }): number {
+        if (a.planets !== b.planets) return b.planets - a.planets;
+        if (a.ships !== b.ships) return b.ships - a.ships;
+        return b.resources - a.resources;
+    }
 
-        // Check for tie
-        const top = scores[0];
-        const second = scores[1];
-        if (top.planets === second.planets && top.ships === second.ships && top.resources === second.resources) {
-            return GALACTIC_CONSTANTS.DRAWN_GAME;
-        }
-
-        return top.player;
+    /**
+     * Check if two scores represent a tie
+     */
+    private isTie(top: { planets: number; ships: number; resources: number }, second: { planets: number; ships: number; resources: number }): boolean {
+        return top.planets === second.planets && top.ships === second.ships && top.resources === second.resources;
     }
 
     // ==================== STATE UPDATES ====================
@@ -489,23 +536,37 @@ export class GalacticGameState {
 
         return {
             ...this.state,
-            planets: this.state.planets.map(p => ({ ...p })),
-            players: this.state.players.map(p => ({ ...p })),
-            armadas: this.state.armadas.map(a => ({ ...a })),
-            eventQueue: this.state.eventQueue.map(e => ({ ...e })),
+            planets: this.deepCopyArray(this.state.planets),
+            players: this.deepCopyArray(this.state.players),
+            armadas: this.deepCopyArray(this.state.armadas),
+            eventQueue: this.deepCopyArray(this.state.eventQueue),
             resourcesByPlayer: { ...this.state.resourcesByPlayer },
-            recentBattleReplays: this.state.recentBattleReplays.map(r => ({
-                ...r,
-                rounds: r.rounds.map(round => ({ ...round })),
-            })),
-            recentReinforcementEvents: this.state.recentReinforcementEvents.map(e => ({ ...e })),
-            recentConquestEvents: this.state.recentConquestEvents.map(e => ({ ...e })),
-            recentPlayerEliminationEvents: this.state.recentPlayerEliminationEvents.map(e => ({ ...e })),
+            recentBattleReplays: this.copyBattleReplays(),
+            recentReinforcementEvents: this.deepCopyArray(this.state.recentReinforcementEvents),
+            recentConquestEvents: this.deepCopyArray(this.state.recentConquestEvents),
+            recentPlayerEliminationEvents: this.deepCopyArray(this.state.recentPlayerEliminationEvents),
             eliminatedPlayers: [...this.state.eliminatedPlayers],
             rngSeed: rngState.seed,
             rngState: rngState.state,
             lastUpdateTime: Date.now(),
         };
+    }
+
+    /**
+     * Deep copy an array of objects
+     */
+    private deepCopyArray<T extends Record<string, any>>(arr: T[]): T[] {
+        return arr.map(item => ({ ...item }));
+    }
+
+    /**
+     * Copy battle replays with nested rounds
+     */
+    private copyBattleReplays() {
+        return this.state.recentBattleReplays.map(r => ({
+            ...r,
+            rounds: r.rounds.map(round => ({ ...round })),
+        }));
     }
 
     clone(): GalacticGameState {

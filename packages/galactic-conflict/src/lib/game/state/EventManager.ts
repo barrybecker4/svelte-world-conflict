@@ -9,7 +9,6 @@ import type {
     ConquestEvent,
     PlayerEliminationEvent,
 } from '$lib/game/entities/gameTypes';
-import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 import { v4 as uuidv4 } from 'uuid';
 
