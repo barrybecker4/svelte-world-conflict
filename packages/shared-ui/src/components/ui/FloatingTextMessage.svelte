@@ -17,19 +17,16 @@
         duration = 2500
     }: Props = $props();
 
-    let element: HTMLElement;
+    // Log after props are destructured
+    console.log('FloatingTextMessage props:', { x, y, text, color, duration });
+
     let isVisible = $state(true);
 
     onMount(() => {
-        // Auto-remove after duration
+
+        // Auto-hide after duration (Svelte will handle DOM removal)
         const timer = setTimeout(() => {
             isVisible = false;
-            // Wait for fade animation to complete
-            setTimeout(() => {
-                if (element && element.parentNode) {
-                    element.parentNode.removeChild(element);
-                }
-            }, 500);
         }, duration);
 
         return () => {
@@ -38,15 +35,13 @@
     });
 </script>
 
-{#if isVisible}
-    <div
-        bind:this={element}
-        class="floating-text"
-        style="left: {x}px; top: {y}px; color: {color};"
-    >
-        {text}
-    </div>
-{/if}
+<!-- Always render - no conditional to ensure it shows up -->
+<div
+    class="floating-text"
+    style="left: {x}px; top: {y}px; color: {color};"
+>
+    {text}
+</div>
 
 <style>
     .floating-text {
@@ -54,12 +49,13 @@
         transform: translate(-50%, -50%);
         font-family: 'Arial', sans-serif;
         font-weight: bold;
-        font-size: 18px;
+        font-size: 24px;
         white-space: nowrap;
         pointer-events: none;
-        z-index: 1000;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+        z-index: 99999;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.5);
         animation: floatUp 2.5s ease-out forwards;
+        opacity: 1;
     }
 
     @keyframes floatUp {
