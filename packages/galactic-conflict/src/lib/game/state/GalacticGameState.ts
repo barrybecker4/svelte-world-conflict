@@ -17,16 +17,14 @@ import type {
     StateUpdate,
     PlanetUpdate,
 } from '$lib/game/entities/gameTypes';
-import { GALACTIC_CONSTANTS, GAME_STATUS } from '$lib/game/constants/gameConstants';
-import { getPlayerColor } from '$lib/game/constants/playerConfigs';
-import { GalaxyGenerator } from '$lib/game/map/GalaxyGenerator';
+import { GAME_STATUS } from '$lib/game/constants/gameConstants';
 import { RandomNumberGenerator } from 'multiplayer-framework/shared';
-import { logger } from 'multiplayer-framework/shared';
-import { v4 as uuidv4 } from 'uuid';
 import { PlanetManager } from './PlanetManager';
 import { PlayerManager } from './PlayerManager';
 import { ArmadaManager } from './ArmadaManager';
 import { EventManager } from './EventManager';
+import { WinnerDeterminer } from './WinnerDeterminer';
+import { GalacticGameStateFactory } from './GalacticGameStateFactory';
 
 export class GalacticGameState {
     public state: GalacticGameStateData;
@@ -37,6 +35,7 @@ export class GalacticGameState {
     private playerManager: PlayerManager;
     private armadaManager: ArmadaManager;
     private eventManager: EventManager;
+    private winnerDeterminer: WinnerDeterminer;
 
     constructor(data: GalacticGameStateData) {
         this.state = { ...data };
@@ -93,6 +92,7 @@ export class GalacticGameState {
             this.state.recentPlayerEliminationEvents
         );
         this.armadaManager = new ArmadaManager(this.state.armadas);
+        this.winnerDeterminer = new WinnerDeterminer(this);
     }
 
     /**
@@ -104,98 +104,7 @@ export class GalacticGameState {
         settings: GameSettings,
         seed?: string
     ): GalacticGameState {
-        logger.debug(`Creating initial game state for ${gameId}`);
-
-        // Create players from slots
-        const players = GalacticGameState.createPlayersFromSlots(playerSlots);
-
-        // Calculate total planets: players + neutral planets
-        const totalPlanetCount = players.length + settings.neutralPlanetCount;
-
-        // Generate galaxy
-        const generator = new GalaxyGenerator(
-            GALACTIC_CONSTANTS.GALAXY_WIDTH,
-            GALACTIC_CONSTANTS.GALAXY_HEIGHT,
-            seed || `galaxy-${gameId}`
-        );
-
-        const planets = generator.generate({
-            planetCount: totalPlanetCount,
-            playerCount: players.length,
-            players,
-            seed,
-            neutralShipsMin: settings.neutralShipsMin,
-            neutralShipsMultiplierMax: settings.neutralShipsMultiplierMax,
-        });
-
-        const now = Date.now();
-
-        // Initialize player resources (start with 0)
-        const resourcesByPlayer = this.initializePlayerResources(players);
-
-        const initialState: GalacticGameStateData = {
-            gameId,
-            status: GAME_STATUS.ACTIVE,
-            startTime: now,
-            durationMinutes: settings.gameDuration,
-            armadaSpeed: settings.armadaSpeed,
-            productionRate: settings.productionRate,
-            planets,
-            players,
-            armadas: [],
-            eventQueue: [],
-            resourcesByPlayer,
-            recentBattleReplays: [],
-            recentReinforcementEvents: [],
-            recentConquestEvents: [],
-            recentPlayerEliminationEvents: [],
-            eliminatedPlayers: [],
-            rngSeed: seed || `galactic-${gameId}`,
-            lastUpdateTime: now,
-        };
-
-        const state = new GalacticGameState(initialState);
-
-        // Schedule first resource tick
-        state.scheduleResourceTick(now + GALACTIC_CONSTANTS.RESOURCE_TICK_INTERVAL_MS);
-
-        // Schedule game end
-        const gameEndTime = now + settings.gameDuration * 60 * 1000;
-        state.scheduleEvent({
-            id: uuidv4(),
-            type: 'game_end',
-            scheduledTime: gameEndTime,
-            payload: { reason: 'time_expired' },
-        });
-
-        return state;
-    }
-
-    /**
-     * Create Player objects from PlayerSlots
-     */
-    private static createPlayersFromSlots(slots: PlayerSlot[]): Player[] {
-        return slots
-            .filter(slot => slot.type === 'Set' || slot.type === 'AI')
-            .map(slot => ({
-                slotIndex: slot.slotIndex,
-                name: slot.name || `Player ${slot.slotIndex + 1}`,
-                color: getPlayerColor(slot.slotIndex),
-                isAI: slot.type === 'AI',
-                personality: slot.personality,
-                difficulty: slot.difficulty,
-            }));
-    }
-
-    /**
-     * Initialize resources for all players (starting at 0)
-     */
-    private static initializePlayerResources(players: Player[]): Record<number, number> {
-        const resourcesByPlayer: Record<number, number> = {};
-        for (const player of players) {
-            resourcesByPlayer[player.slotIndex] = 0;
-        }
-        return resourcesByPlayer;
+        return GalacticGameStateFactory.createInitialState(gameId, playerSlots, settings, seed);
     }
 
     /**
@@ -443,62 +352,7 @@ export class GalacticGameState {
      * Determine the winner based on planets owned (then ships, then resources)
      */
     determineWinner(): Player | 'DRAWN_GAME' | null {
-        const activePlayers = this.state.players.filter(p => !this.isPlayerEliminated(p.slotIndex));
-
-        if (activePlayers.length === 0) {
-            return GALACTIC_CONSTANTS.DRAWN_GAME;
-        }
-
-        if (activePlayers.length === 1) {
-            return activePlayers[0];
-        }
-
-        return this.calculateWinnerFromScores(activePlayers);
-    }
-
-    /**
-     * Calculate winner by scoring players and checking for ties
-     */
-    private calculateWinnerFromScores(activePlayers: Player[]): Player | 'DRAWN_GAME' {
-        const scores = this.calculatePlayerScores(activePlayers);
-        scores.sort(this.compareScores);
-
-        const top = scores[0];
-        const second = scores[1];
-        
-        if (this.isTie(top, second)) {
-            return GALACTIC_CONSTANTS.DRAWN_GAME;
-        }
-
-        return top.player;
-    }
-
-    /**
-     * Calculate scores for all active players
-     */
-    private calculatePlayerScores(activePlayers: Player[]) {
-        return activePlayers.map(p => ({
-            player: p,
-            planets: this.getPlanetsOwnedBy(p.slotIndex).length,
-            ships: this.getTotalShips(p.slotIndex),
-            resources: this.getTotalResources(p.slotIndex),
-        }));
-    }
-
-    /**
-     * Compare two player scores (higher is better)
-     */
-    private compareScores(a: { planets: number; ships: number; resources: number }, b: { planets: number; ships: number; resources: number }): number {
-        if (a.planets !== b.planets) return b.planets - a.planets;
-        if (a.ships !== b.ships) return b.ships - a.ships;
-        return b.resources - a.resources;
-    }
-
-    /**
-     * Check if two scores represent a tie
-     */
-    private isTie(top: { planets: number; ships: number; resources: number }, second: { planets: number; ships: number; resources: number }): boolean {
-        return top.planets === second.planets && top.ships === second.ships && top.resources === second.resources;
+        return this.winnerDeterminer.determineWinner();
     }
 
     // ==================== STATE UPDATES ====================
