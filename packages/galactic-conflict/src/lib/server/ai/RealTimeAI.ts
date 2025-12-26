@@ -1,15 +1,14 @@
 /**
  * Real-Time AI for Galactic Conflict
- * Makes decisions for AI players in real-time gameplay
+ * Orchestrates AI decision-making for all AI players in real-time gameplay
  */
 
 import type { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import type { Planet, Player, Armada, AiDifficulty } from '$lib/game/entities/gameTypes';
-import { createArmada } from '$lib/game/entities/Armada';
-import { getDistanceBetweenPlanets } from '$lib/game/entities/Planet';
-import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
-import { logger } from 'multiplayer-framework/shared';
+import type { Player, AiDifficulty } from '$lib/game/entities/gameTypes';
 import { getAIDifficultyConfig } from './aiDifficultyConfig';
+import { AttackStrategy } from './AttackStrategy';
+import { BuildStrategy } from './BuildStrategy';
+import { DecisionExecutor } from './DecisionExecutor';
 
 export interface AIDecision {
     type: 'send_armada' | 'build_ships' | 'wait';
@@ -20,10 +19,14 @@ export interface AIDecision {
 
 /**
  * Process AI decisions for all AI players
+ * Orchestrates timing, cooldowns, and decision priority
  */
 export class RealTimeAI {
     private lastDecisionTime: Record<number, number> = {};
     private playerDifficulties: Record<number, AiDifficulty> = {};
+    private attackStrategy: AttackStrategy;
+    private buildStrategy: BuildStrategy;
+    private decisionExecutor: DecisionExecutor;
 
     constructor(private gameState: GalacticGameState) {
         // Store difficulty for each AI player
@@ -32,6 +35,11 @@ export class RealTimeAI {
                 this.playerDifficulties[player.slotIndex] = player.difficulty || 'easy';
             }
         }
+        
+        // Initialize strategies
+        this.attackStrategy = new AttackStrategy(gameState);
+        this.buildStrategy = new BuildStrategy(gameState);
+        this.decisionExecutor = new DecisionExecutor(gameState);
     }
 
     /**
@@ -63,7 +71,7 @@ export class RealTimeAI {
             if (decision.type !== 'wait') {
                 decisions.push(decision);
                 this.lastDecisionTime[player.slotIndex] = now;
-                this.executeDecision(player, decision);
+                this.decisionExecutor.executeDecision(player, decision);
             }
         }
 
@@ -71,11 +79,10 @@ export class RealTimeAI {
     }
 
     /**
-     * Make a decision for an AI player/
+     * Make a decision for an AI player
      * Prioritize decisions:
-     *    1. Attack weak enemy/neutral planets
-     *    2. Reinforce vulnerable planets
-     *    3. Build ships when resources are high
+     *    1. Build ships when resources are high (reinforce vulnerable planets)
+     *    2. Attack weak enemy/neutral planets
      */
     private makeDecision(player: Player, difficulty: AiDifficulty): AIDecision {
         const myPlanets = this.gameState.getPlanetsOwnedBy(player.slotIndex);
@@ -84,202 +91,15 @@ export class RealTimeAI {
             return { type: 'wait' };
         }
 
-        // Try to build ships
-        const buildDecision = this.findBuildOpportunity(player, myPlanets, difficulty);
+        // Try to build ships first (reinforce vulnerable planets)
+        const buildDecision = this.buildStrategy.findBuildOpportunity(player, myPlanets, difficulty);
         if (buildDecision) return buildDecision;
 
         // Try to attack
-        const attackDecision = this.findAttackOpportunity(player, myPlanets, difficulty);
+        const attackDecision = this.attackStrategy.findAttackOpportunity(player, myPlanets, difficulty);
         if (attackDecision) return attackDecision;
 
         return { type: 'wait' };
-    }
-
-    /**
-     * Find a good attack opportunity
-     */
-    private findAttackOpportunity(player: Player, myPlanets: Planet[], difficulty: AiDifficulty): AIDecision | null {
-        const allPlanets = this.gameState.planets;
-        const config = getAIDifficultyConfig(difficulty);
-        
-        // Get difficulty-based thresholds
-        const minSourceShips = config.attack.minSourceShips;
-        const minAdvantage = config.attack.minAdvantage;
-        const minShipsToSend = config.attack.minShipsToSend;
-
-        // Find planets with excess ships (threshold varies by difficulty)
-        const sourcePlanets = myPlanets.filter(p => p.ships >= minSourceShips);
-        if (sourcePlanets.length === 0) {
-            // If no planets meet the threshold, try with lower threshold for hard AI
-            if (difficulty === 'hard') {
-                const lowerThresholdPlanets = myPlanets.filter(p => p.ships >= 2);
-                if (lowerThresholdPlanets.length > 0) {
-                    sourcePlanets.push(...lowerThresholdPlanets);
-                }
-            }
-            if (sourcePlanets.length === 0) return null;
-        }
-
-        // Sort by most ships
-        sourcePlanets.sort((a, b) => b.ships - a.ships);
-        const source = sourcePlanets[0];
-
-        // Find target - prioritize weak neutral, then weak enemy
-        let bestTarget: Planet | null = null;
-        let bestScore = -Infinity;
-
-        for (const target of allPlanets) {
-            if (target.ownerId === player.slotIndex) continue;
-
-            // Calculate score based on:
-            // - Lower enemy ships = higher score
-            // - Neutral planets slightly preferred
-            // - Closer distance = higher score
-            // - Higher volume = higher score (more resources)
-
-            const distance = getDistanceBetweenPlanets(source, target);
-            const isNeutral = target.ownerId === null;
-            
-            let score = 0;
-            score -= target.ships * 10; // Prefer fewer defenders
-            score += isNeutral ? 20 : 0; // Slight preference for neutrals
-            score -= distance / 10; // Prefer closer targets
-            score += target.volume / 5; // Prefer larger planets
-
-            // Only consider if we have advantage (threshold varies by difficulty)
-            if (source.ships > target.ships + minAdvantage) {
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestTarget = target;
-                }
-            }
-        }
-
-        if (bestTarget) {
-            // Send enough ships to win, but keep some defense
-            const defenseBuffer = config.attack.defenseBuffer;
-            const shipsToSend = Math.min(
-                source.ships - defenseBuffer,
-                Math.max(minShipsToSend, Math.floor(bestTarget.ships * 1.5) + minAdvantage)
-            );
-
-            if (shipsToSend >= minShipsToSend) {
-                return {
-                    type: 'send_armada',
-                    sourcePlanetId: source.id,
-                    destinationPlanetId: bestTarget.id,
-                    shipCount: shipsToSend,
-                };
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Find opportunity to build ships
-     */
-    private findBuildOpportunity(player: Player, myPlanets: Planet[], difficulty: AiDifficulty): AIDecision | null {
-        // Check global player resources (resources are stored per player, not per planet)
-        const playerResources = this.gameState.getPlayerResources(player.slotIndex);
-        const config = getAIDifficultyConfig(difficulty);
-        
-        // Difficulty-based resource threshold
-        const minResources = GALACTIC_CONSTANTS.SHIP_COST * config.build.resourceMultiplier;
-        
-        // Check if player has enough resources
-        if (playerResources < minResources) return null;
-
-        // Find planets to build at - prioritize vulnerable planets (fewer ships)
-        const minShipsOnPlanet = config.build.minShipsOnPlanet;
-        const candidatePlanets = myPlanets.filter(p => p.ships <= minShipsOnPlanet || myPlanets.length === 1);
-        
-        if (candidatePlanets.length === 0) {
-            // If no vulnerable planets, just pick the one with fewest ships
-            candidatePlanets.push(...myPlanets);
-        }
-
-        // Sort by ships (fewest first) to prioritize vulnerable planets
-        candidatePlanets.sort((a, b) => a.ships - b.ships);
-        const targetPlanet = candidatePlanets[0];
-
-        // Calculate how many ships to build based on available resources
-        const maxShipsFromResources = Math.floor(playerResources / GALACTIC_CONSTANTS.SHIP_COST);
-        const maxBuildAtOnce = config.build.maxBuildAtOnce;
-        const shipsToBuild = Math.min(maxShipsFromResources, maxBuildAtOnce);
-
-        if (shipsToBuild >= 1) {
-            return {
-                type: 'build_ships',
-                sourcePlanetId: targetPlanet.id,
-                shipCount: shipsToBuild,
-            };
-        }
-
-        return null;
-    }
-
-    /**
-     * Execute an AI decision
-     */
-    private executeDecision(player: Player, decision: AIDecision): void {
-        switch (decision.type) {
-            case 'send_armada':
-                this.executeSendArmada(player, decision);
-                break;
-            case 'build_ships':
-                this.executeBuildShips(player, decision);
-                break;
-        }
-    }
-
-    private executeSendArmada(player: Player, decision: AIDecision): void {
-        if (!decision.sourcePlanetId || !decision.destinationPlanetId || !decision.shipCount) {
-            return;
-        }
-
-        const sourcePlanet = this.gameState.getPlanet(decision.sourcePlanetId);
-        const destPlanet = this.gameState.getPlanet(decision.destinationPlanetId);
-
-        if (!sourcePlanet || !destPlanet) return;
-        if (sourcePlanet.ships < decision.shipCount) return;
-
-        // Create armada
-        const armada = createArmada(
-            player.slotIndex,
-            decision.shipCount,
-            sourcePlanet,
-            destPlanet,
-            this.gameState.armadaSpeed
-        );
-
-        // Update state
-        this.gameState.setPlanetShips(sourcePlanet.id, sourcePlanet.ships - decision.shipCount);
-        this.gameState.addArmada(armada);
-
-        logger.debug(`AI ${player.name} sent ${decision.shipCount} ships from ${sourcePlanet.name} to ${destPlanet.name}`);
-    }
-
-    private executeBuildShips(player: Player, decision: AIDecision): void {
-        if (!decision.sourcePlanetId || !decision.shipCount) return;
-
-        const planet = this.gameState.getPlanet(decision.sourcePlanetId);
-        if (!planet) return;
-
-        const cost = decision.shipCount * GALACTIC_CONSTANTS.SHIP_COST;
-        const playerResources = this.gameState.getPlayerResources(player.slotIndex);
-        
-        // Check if player has enough global resources
-        if (playerResources < cost) {
-            logger.debug(`AI ${player.name} attempted to build ${decision.shipCount} ships but only has ${playerResources} resources (needs ${cost})`);
-            return;
-        }
-
-        // Spend from global player resources and add ships to planet
-        this.gameState.spendPlayerResources(player.slotIndex, cost);
-        this.gameState.addPlanetShips(planet.id, decision.shipCount);
-
-        logger.debug(`AI ${player.name} built ${decision.shipCount} ships at ${planet.name} for ${cost} resources (remaining: ${this.gameState.getPlayerResources(player.slotIndex)})`);
     }
 }
 

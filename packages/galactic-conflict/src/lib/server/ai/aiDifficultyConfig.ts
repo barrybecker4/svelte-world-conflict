@@ -44,17 +44,17 @@ export function getAIDifficultyConfig(difficulty: AiDifficulty): AIDifficultyCon
                     minSourceShips: 10,
                     minAdvantage: 4,
                     minShipsToSend: 5,
-                    defenseBuffer: 3,
+                    defenseBuffer: 4,
                 },
                 build: {
                     resourceMultiplier: 2,
                     minShipsOnPlanet: 3,
-                    maxBuildAtOnce: 1,
+                    maxBuildAtOnce: 2,
                 },
             };
         case 'medium':
             return {
-                cooldown: 9000, // moderate
+                cooldown: 10000, // moderate
                 attack: {
                     minSourceShips: 5,
                     minAdvantage: 2,
