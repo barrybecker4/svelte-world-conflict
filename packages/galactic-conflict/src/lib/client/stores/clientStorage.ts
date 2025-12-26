@@ -29,7 +29,14 @@ export function saveGameCreator(gameId: string, info: GameCreatorInfo): void {
 }
 
 export function loadGameCreator(gameId: string): GameCreatorInfo | null {
-    return storage.loadGameCreator(gameId);
+    const baseInfo = storage.loadGameCreator(gameId);
+    if (!baseInfo) return null;
+    
+    // Ensure isCreator property exists (default to true for backward compatibility)
+    return {
+        ...baseInfo,
+        isCreator: 'isCreator' in baseInfo ? (baseInfo as GameCreatorInfo).isCreator : true,
+    };
 }
 
 // Galactic Conflict uses "clearGameCreator" instead of "removeGameCreator"
