@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher, onMount } from 'svelte';
+    import { onMount } from 'svelte';
     import type { PlayerSlot, GameSettings, AiDifficulty } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import { getPlayerDefaultName } from '$lib/game/constants/playerConfigs';
@@ -9,9 +9,14 @@
     import GalaxySettingsPanel from './GalaxySettingsPanel.svelte';
     import PlayerSlotsManager from './PlayerSlotsManager.svelte';
 
-    const dispatch = createEventDispatcher();
+    interface Props {
+        onclose?: () => void;
+        ongameCreated?: (event: { playerSlots: PlayerSlot[]; settings: GameSettings }) => void;
+    }
 
-    let showSoundTestModal = false;
+    let { onclose, ongameCreated }: Props = $props();
+
+    let showSoundTestModal = $state(false);
 
     // Convert SNAKE_CASE to Title Case
     function formatSoundName(key: string): string {
@@ -22,11 +27,11 @@
     }
 
     // Generate sound list from SOUNDS constant
-    $: soundList = Object.keys(SOUNDS).map(key => ({
+    const soundList = $derived(Object.keys(SOUNDS).map(key => ({
         key,
         name: formatSoundName(key),
         icon: SOUND_ICONS[key] || '🔊'
-    }));
+    })));
 
     async function handlePlaySound(soundKey: string) {
         const soundType = SOUNDS[soundKey as keyof typeof SOUNDS];
@@ -34,15 +39,15 @@
     }
 
     // Game settings
-    let neutralPlanetCount = GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT;
-    let gameDuration = GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES;
-    let armadaSpeed = GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED;
-    let neutralShipsMin = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN;
-    let neutralShipsMultiplierMax = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX;
-    let productionRate = GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE;
+    let neutralPlanetCount = $state(GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT);
+    let gameDuration = $state(GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES);
+    let armadaSpeed = $state(GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED);
+    let neutralShipsMin = $state(GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MIN);
+    let neutralShipsMultiplierMax = $state(GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX);
+    let productionRate = $state(GALACTIC_CONSTANTS.DEFAULT_PRODUCTION_RATE);
 
     // Dynamic player slots - start with creator and one AI player
-    let playerSlots: PlayerSlot[] = [];
+    let playerSlots: PlayerSlot[] = $state([]);
     let nextSlotIndex = 0; // Tracks the next available slot index for color assignment
 
     // Initialize slots on mount
@@ -136,17 +141,17 @@
             productionRate,
         };
 
-        dispatch('gameCreated', {
+        ongameCreated?.({
             playerSlots,
             settings,
         });
     }
 
     function handleClose() {
-        dispatch('close');
+        onclose?.();
     }
 
-    $: canAddMorePlayers = playerSlots.length < GALACTIC_CONSTANTS.MAX_PLAYERS;
+    const canAddMorePlayers = $derived(playerSlots.length < GALACTIC_CONSTANTS.MAX_PLAYERS);
 </script>
 
 <div class="config-overlay">
@@ -186,7 +191,7 @@
                     {#if import.meta.env.DEV}
                         <button 
                             class="test-sounds-btn" 
-                            on:click={() => showSoundTestModal = true}
+                            onclick={() => showSoundTestModal = true}
                             title="Test all game sounds"
                         >
                             🎵 Test Sounds
@@ -197,12 +202,12 @@
         </div>
 
         <footer>
-            <button class="back-btn" on:click={handleClose}>
+            <button class="back-btn" onclick={handleClose}>
                 Back
             </button>
             <button 
                 class="create-btn" 
-                on:click={handleCreateGame}
+                onclick={handleCreateGame}
                 disabled={playerSlots.length < 2}
             >
                 Create Game 🚀

@@ -1,5 +1,4 @@
 import type {
-    ReinforcementEvent,
     ConquestEvent,
     PlayerEliminationEvent,
     BattleReplay

@@ -1,12 +1,12 @@
 <script lang="ts">
-    import type { PlayerSlot as PlayerSlotType } from '$lib/game/entities/gameTypes';
+    import type { PlayerSlot as PlayerSlotType, AiDifficulty } from '$lib/game/entities/gameTypes';
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 
     export let slot: PlayerSlotType;
     export let isCurrent: boolean = false;
     export let showRemoveButton: boolean = false;
     export let onRemove: (() => void) | null = null;
-    export let onDifficultyChange: ((difficulty: string) => void) | null = null;
+    export let onDifficultyChange: ((difficulty: AiDifficulty) => void) | null = null;
 
     // Always show the player's assigned color based on slotIndex
     $: slotColor = getPlayerColor(slot.slotIndex);
@@ -44,7 +44,7 @@
             <select
                 class="difficulty-select"
                 value={slot.difficulty || 'easy'}
-                on:change={(e) => onDifficultyChange?.(e.currentTarget.value)}
+                on:change={(e) => onDifficultyChange?.(e.currentTarget.value as AiDifficulty)}
                 on:click|stopPropagation
             >
                 <option value="easy">Easy</option>

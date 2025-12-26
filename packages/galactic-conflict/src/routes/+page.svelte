@@ -21,8 +21,7 @@
     showLobby = true;
   }
 
-  async function handleGameCreated(event: CustomEvent) {
-    const gameConfig = event.detail;
+  async function handleGameCreated(gameConfig: { playerSlots: any[]; settings: any }) {
     const humanPlayer = extractHumanPlayer(gameConfig);
 
     const result = await GameApiClient.createGame({
@@ -77,8 +76,8 @@
 
     {#if showConfiguration}
       <GameConfiguration
-        on:close={handleConfigurationClose}
-        on:gameCreated={handleGameCreated}
+        onclose={handleConfigurationClose}
+        ongameCreated={handleGameCreated}
       />
     {/if}
   </div>

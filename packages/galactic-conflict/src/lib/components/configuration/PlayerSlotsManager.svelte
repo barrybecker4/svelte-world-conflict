@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { PlayerSlot } from '$lib/game/entities/gameTypes';
+    import type { PlayerSlot, AiDifficulty } from '$lib/game/entities/gameTypes';
     import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
     import PlayerSlotComponent from '../common/PlayerSlot.svelte';
 
@@ -8,7 +8,7 @@
     export let onAddOpenSlot: () => void;
     export let onAddAIPlayer: () => void;
     export let onRemoveSlot: (slotIndex: number) => void;
-    export let onUpdateDifficulty: (slotIndex: number, difficulty: string) => void;
+    export let onUpdateDifficulty: (slotIndex: number, difficulty: AiDifficulty) => void;
 </script>
 
 <section class="players-section">
