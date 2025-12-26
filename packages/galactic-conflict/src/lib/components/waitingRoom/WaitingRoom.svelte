@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy, createEventDispatcher } from 'svelte';
-    import { AdBanner } from 'shared-ui';
+    import { AdBanner, ConnectionStatus } from 'shared-ui';
     import type { PendingGameData } from '$lib/game/entities/gameTypes';
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
     import { getWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
@@ -110,7 +110,7 @@
     $: openSlots = playerSlots.filter(s => s.type === 'Open').length;
     $: filledSlots = playerSlots.filter(s => s.type === 'Set' || s.type === 'AI').length;
     $: activePlayerCount = playerSlots.filter(s => s.type === 'Set' || s.type === 'AI').length;
-    $: neutralPlanets = game?.pendingConfiguration?.settings?.neutralPlanetCount ?? (game?.pendingConfiguration?.settings?.planetCount ? game.pendingConfiguration.settings.planetCount - activePlayerCount : 8);
+    $: neutralPlanets = game?.pendingConfiguration?.settings?.neutralPlanetCount ?? 8;
     $: totalPlanets = activePlayerCount + neutralPlanets;
 
     // Ad configuration
@@ -124,9 +124,7 @@
             <h1>🌌 Waiting Room</h1>
             <div class="game-info">
                 <span class="game-id">Game: {gameId}</span>
-                <span class="status" class:connected={isConnected}>
-                    {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
-                </span>
+                <ConnectionStatus {isConnected} size="sm" />
             </div>
         </header>
 
@@ -240,9 +238,6 @@
         color: #9ca3af;
     }
 
-    .status.connected {
-        color: #22c55e;
-    }
 
     .error {
         background: rgba(239, 68, 68, 0.1);

@@ -3,7 +3,6 @@
     import { getPlayerColor } from '$lib/game/constants/playerConfigs';
 
     export let planets: Planet[];
-    export let sourcePlanetId: number;
     export let currentPlayerId: number | null;
     export let selectedDestinationId: number | null;
     export let onSelect: (planetId: number) => void;
