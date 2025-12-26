@@ -62,4 +62,3 @@ export function hasConquestEventAtPlanet(
 ): boolean {
     return conquestEvents?.some(e => e.planetId === planetId) ?? false;
 }
-

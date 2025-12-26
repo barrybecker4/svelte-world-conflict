@@ -63,7 +63,7 @@
         getDisplayPlanet, 
         processReplays,
         pendingEliminationTexts 
-    } = useBattleCoordinator({ subscribe: (fn) => { fn(gameState); return () => {}; } });
+    } = useBattleCoordinator();
 
     onMount(() => {
         // Process any existing battle replays when component mounts

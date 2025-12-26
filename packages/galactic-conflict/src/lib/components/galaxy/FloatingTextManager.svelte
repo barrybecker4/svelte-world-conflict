@@ -179,4 +179,3 @@
         color={floatingText.color}
     />
 {/each}
-

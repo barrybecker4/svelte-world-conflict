@@ -46,6 +46,3 @@ export default defineConfig({
   // - App: https://svelte-world-conflict.pages.dev
   // - WebSocket Worker: https://multiplayer-games-websocket.barrybecker4.workers.dev
 });
-
-
-

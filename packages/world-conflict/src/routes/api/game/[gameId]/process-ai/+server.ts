@@ -52,4 +52,3 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         return handleApiError(error, `processing AI turns for game ${params.gameId}`);
     }
 };
-

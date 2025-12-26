@@ -59,4 +59,3 @@ export function detectGameStateChanges(before: GameStateSnapshot, after: GameSta
            compareEndResult(before.endResult, after.endResult) ||
            after.lastUpdateTime !== before.lastUpdateTime;
 }
-

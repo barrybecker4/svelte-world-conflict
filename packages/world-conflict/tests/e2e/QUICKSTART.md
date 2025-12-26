@@ -117,4 +117,3 @@ After running the initial tests successfully:
 ## Need Help?
 
 See full documentation in `tests/e2e/README.md`
-

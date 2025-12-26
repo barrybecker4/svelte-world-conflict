@@ -60,5 +60,3 @@ export const TUTORIAL_CARDS: TutorialCard[] = [
 ];
 
 export const TOTAL_TUTORIAL_CARDS = TUTORIAL_CARDS.length;
-
-

@@ -42,4 +42,3 @@ export const GET: RequestHandler = async ({ url, platform }) => {
         return json({ error: 'Failed to get stats', stats: [] }, { status: 500 });
     }
 };
-

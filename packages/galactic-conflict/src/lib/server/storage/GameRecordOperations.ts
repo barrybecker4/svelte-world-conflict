@@ -93,4 +93,3 @@ export function canGameStart(game: GameRecord): boolean {
     // Check if any slots are still Open
     return !game.pendingConfiguration.playerSlots.some(slot => slot.type === 'Open');
 }
-

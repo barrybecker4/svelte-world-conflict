@@ -512,4 +512,3 @@ export class GalacticGameState {
         return new GalacticGameState(this.toJSON());
     }
 }
-

@@ -1,4 +1,3 @@
-import type { Readable } from 'svelte/store';
 import type { 
     GalacticGameStateData, 
     Planet, 
@@ -15,7 +14,7 @@ import { extractReplayIds, hasNewReplays } from '$lib/client/utils/eventProcessi
  * Hook that coordinates battle animations with game state
  * Manages replay processing and planet display states during battles
  */
-export function useBattleCoordinator(gameState: Readable<GalacticGameStateData>) {
+export function useBattleCoordinator() {
     // Track which replays we've already processed
     let lastReplayIds: string[] = [];
 
@@ -101,4 +100,3 @@ export function useBattleCoordinator(gameState: Readable<GalacticGameStateData>)
         pendingEliminationTexts
     };
 }
-

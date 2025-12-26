@@ -80,4 +80,3 @@
     filter: blur(2px);
   }
 </style>
-

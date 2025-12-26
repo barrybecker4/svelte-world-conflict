@@ -302,4 +302,3 @@ import { Button, Panel, Section } from 'shared-ui';
     line-height: 1.3;
   }
 </style>
-

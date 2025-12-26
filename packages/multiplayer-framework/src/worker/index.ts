@@ -164,4 +164,3 @@ async function getGameIdFromRequest(request: Request): Promise<string> {
 // Export the WebSocketServer class for Durable Objects
 export { WebSocketServer, type WebSocketServerEnv } from './WebSocketServer';
 export { SessionManager, type SessionInfo, type SessionRemovalResult } from './SessionManager';
-

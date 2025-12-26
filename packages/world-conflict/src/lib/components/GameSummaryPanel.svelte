@@ -320,4 +320,3 @@ import { Button, Panel, Section } from 'shared-ui';
     font-size: 0.7rem;
   }
 </style>
-

@@ -51,4 +51,3 @@ export function compareEndResult(endResultBefore: EndResult, endResultAfter: End
         return true;
     }
 }
-

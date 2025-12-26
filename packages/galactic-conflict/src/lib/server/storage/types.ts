@@ -58,4 +58,3 @@ export interface DailyGameStats {
     // Error tracking (use errors.length for count)
     errors: StatsError[];
 }
-

@@ -194,4 +194,3 @@ When adding new shared components:
 ## 📄 License
 
 MIT - Part of the Svelte Multiplayer Games Monorepo
-

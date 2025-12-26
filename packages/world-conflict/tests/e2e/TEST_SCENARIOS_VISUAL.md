@@ -436,4 +436,3 @@ Player1                    Player2
 
 **Last Updated**: October 25, 2025
 **For Full Details**: See `MULTI_PLAYER_TEST_PLAN.md`
-

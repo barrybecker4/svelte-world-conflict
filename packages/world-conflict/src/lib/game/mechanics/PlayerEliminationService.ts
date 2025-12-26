@@ -80,4 +80,3 @@ export class PlayerEliminationService {
     logger.debug(`💀 Cleared ownership of ${regionsCleared.length} regions for player ${playerSlotIndex}:`, regionsCleared);
   }
 }
-

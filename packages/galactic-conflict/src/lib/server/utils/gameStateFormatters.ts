@@ -14,4 +14,3 @@ export function formatEndResult(result: EndResult): string {
     if (result === 'DRAWN_GAME') return 'DRAWN_GAME';
     return `Player ${result.slotIndex} (${result.name})`;
 }
-

@@ -57,4 +57,3 @@ export type MoveMode = typeof MOVE_MODES[keyof typeof MOVE_MODES];
  * Type for move action types derived from the constants
  */
 export type MoveActionType = typeof MOVE_ACTION_TYPES[keyof typeof MOVE_ACTION_TYPES];
-

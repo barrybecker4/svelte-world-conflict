@@ -28,4 +28,3 @@ export const GET: RequestHandler = async ({ platform }) => {
         return handleApiError(error, 'listing open games', { platform });
     }
 };
-

@@ -34,4 +34,3 @@
 <!-- Background -->
 <rect width="100%" height="100%" fill="#0a0a14" />
 <rect width="100%" height="100%" fill="url(#stars)" />
-

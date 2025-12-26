@@ -5,7 +5,6 @@
 
 import { SOUNDS, SOUND_CONFIGS, type SoundType } from './sounds';
 import { BaseAudioSystem } from 'multiplayer-framework/shared';
-import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 
 export class AudioSystem extends BaseAudioSystem {
     constructor() {

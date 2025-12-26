@@ -3,7 +3,8 @@
  */
 
 import type { Planet, Position, Player } from '$lib/game/entities/gameTypes';
-import { createPlanet, getPlanetRadius, generatePlanetName, getDistanceBetweenPositions, getPlanetProduction } from '$lib/game/entities/Planet';
+import { createPlanet, getPlanetRadius, getDistanceBetweenPositions, getPlanetProduction } from '$lib/game/entities/Planet';
+import { generatePlanetName } from '$lib/game/entities/PlanetNameGenerator';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { RandomNumberGenerator } from 'multiplayer-framework/shared';
 import { logger } from 'multiplayer-framework/shared';
@@ -282,4 +283,3 @@ export function generateGalaxy(options: GalaxyGenerationOptions): Planet[] {
     );
     return generator.generate(options);
 }
-

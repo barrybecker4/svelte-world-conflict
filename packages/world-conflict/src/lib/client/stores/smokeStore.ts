@@ -66,4 +66,3 @@ function createSmokeStore() {
 }
 
 export const smokeStore = createSmokeStore();
-

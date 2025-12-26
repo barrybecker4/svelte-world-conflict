@@ -76,4 +76,3 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return handleApiError(error, 'joining game', { platform });
     }
 };
-

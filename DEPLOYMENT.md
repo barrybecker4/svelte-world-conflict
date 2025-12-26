@@ -504,4 +504,3 @@ npx wrangler tail --status error
 - [Durable Objects Docs](https://developers.cloudflare.com/durable-objects/)
 - [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
 - [Wrangler CLI Docs](https://developers.cloudflare.com/workers/wrangler/)
-

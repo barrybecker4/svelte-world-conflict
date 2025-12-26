@@ -18,4 +18,3 @@ export interface Dataset {
   data: number[];
   color: string;
 }
-

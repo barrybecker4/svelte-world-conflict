@@ -186,4 +186,3 @@ export const POST: RequestHandler = async ({ url, platform }) => {
         return json({ error: 'Failed to perform action' }, { status: 500 });
     }
 };
-

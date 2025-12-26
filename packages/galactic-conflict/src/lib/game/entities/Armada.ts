@@ -87,4 +87,3 @@ export function calculateTravelTime(
     const distance = getDistanceBetweenPositions(sourcePlanet.position, destinationPlanet.position);
     return (distance / armadaSpeed) * 60 * 1000; // Convert minutes to ms
 }
-

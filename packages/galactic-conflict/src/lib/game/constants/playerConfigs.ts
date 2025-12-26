@@ -228,4 +228,3 @@ export function createPlayerWithColors(name: string, slotIndex: number, isAI: bo
     difficulty
   };
 }
-

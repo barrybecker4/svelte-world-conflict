@@ -40,4 +40,3 @@
 <IconButton title="Toggle Audio" onclick={toggleAudio} disabled={!isInitialized}>
     {#if isEnabled}🔊{:else}🔇{/if}
 </IconButton>
-

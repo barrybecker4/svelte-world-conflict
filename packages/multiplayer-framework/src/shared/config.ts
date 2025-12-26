@@ -118,4 +118,3 @@ export function buildNotificationUrl(config: WebSocketConfig, isLocal: boolean =
   const baseUrl = getWorkerHttpUrl(config, isLocal);
   return `${baseUrl}/notify`;
 }
-

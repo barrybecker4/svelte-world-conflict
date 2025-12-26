@@ -195,4 +195,3 @@ MIT License - feel free to use this project as a starting point for your own mul
 - Original World Conflict game by Jakub Wasilewski
 - Google Apps Script version by Barry Becker
 - SvelteKit port and modernization by Barry Becker
-

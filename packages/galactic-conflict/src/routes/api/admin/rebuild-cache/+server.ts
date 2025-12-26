@@ -37,4 +37,3 @@ export const POST: RequestHandler = async ({ platform }) => {
         }, { status: 500 });
     }
 };
-

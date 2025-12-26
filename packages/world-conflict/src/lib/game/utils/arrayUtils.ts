@@ -98,4 +98,3 @@ export function contains<T>(array: T[], item: T): boolean {
 export function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
 }
-

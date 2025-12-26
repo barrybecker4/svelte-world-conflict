@@ -151,4 +151,3 @@ export class EventManager {
         return this.recentPlayerEliminationEvents;
     }
 }
-

@@ -44,4 +44,3 @@ export function prepareStatsForStorage(stats: DailyGameStats): DailyGameStats & 
         minDurationMinutes: serializeMinDuration(stats.minDurationMinutes)
     };
 }
-

@@ -43,4 +43,3 @@ export const POST: RequestHandler = async ({ params, platform }) => {
         return handleApiError(error, 'starting game', { platform });
     }
 };
-

@@ -338,4 +338,3 @@ export interface JoinGameResponse {
     player?: { slotIndex: number; name: string };
     error?: string;
 }
-

@@ -116,4 +116,3 @@ export class RandomNumberGenerator {
         return new RandomNumberGenerator(this.originalSeed, this.prng.state());
     }
 }
-

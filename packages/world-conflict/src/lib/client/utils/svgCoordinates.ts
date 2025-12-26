@@ -76,4 +76,3 @@ function isPointInRegion(x: number, y: number, region: Region): boolean {
     
     return inside;
 }
-

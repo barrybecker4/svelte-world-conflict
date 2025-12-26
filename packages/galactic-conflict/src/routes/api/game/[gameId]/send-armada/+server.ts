@@ -101,4 +101,3 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return json({ error: 'An unexpected error occurred' }, { status: 500 });
     }
 };
-

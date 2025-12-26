@@ -161,5 +161,3 @@ export class AttackEventFactory {
         return { delay: AttackEventFactory.FINAL_DELAY };
     }
 }
-
-

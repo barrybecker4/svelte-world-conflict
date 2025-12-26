@@ -21,4 +21,3 @@ export function generateSoldierId(): number {
 export function resetSoldierIdGenerator(): void {
     nextSoldierId = 1;
 }
-

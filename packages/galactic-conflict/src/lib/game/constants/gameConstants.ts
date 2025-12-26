@@ -167,4 +167,3 @@ export const GAME_STATUS = {
 } as const;
 
 export type GameStatus = typeof GAME_STATUS[keyof typeof GAME_STATUS];
-

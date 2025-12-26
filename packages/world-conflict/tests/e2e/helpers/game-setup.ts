@@ -622,4 +622,3 @@ export async function createGameWithSeed(
     gameState: response.gameState
   };
 }
-

@@ -296,4 +296,3 @@ test.describe('Single Human + AI Tests', () => {
     console.log('✅ Test 3 completed successfully');
   });
 });
-

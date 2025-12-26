@@ -44,4 +44,3 @@ export async function flushPendingUpdate(gameId: string, gameStorage: GameStorag
         logger.debug(`Flushed pending update for game ${gameId}`);
     }
 }
-

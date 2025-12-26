@@ -205,4 +205,3 @@ async function saveGame(gameRecord: GameRecord, platform: App.Platform): Promise
     await gameStorage.saveGame(gameRecord);
     logger.info(`Created game: ${gameRecord.status} gameId: ${gameRecord.gameId} with ${gameRecord.players.length} players`);
 }
-

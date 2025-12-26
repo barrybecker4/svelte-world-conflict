@@ -99,5 +99,3 @@ export const WebSocketNotifications = {
     gameStarted: (gameId: string, gameState: GalacticGameStateData) =>
         notifier.gameStarted(gameId, gameState)
 };
-
-

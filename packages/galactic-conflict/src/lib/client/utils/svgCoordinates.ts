@@ -41,4 +41,3 @@ export function findPlanetAtPosition(
         return Math.sqrt(dx * dx + dy * dy) < clickRadius;
     });
 }
-

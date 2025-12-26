@@ -69,4 +69,3 @@
         background: linear-gradient(135deg, #6d28d9, #9333ea);
     }
 </style>
-

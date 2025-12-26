@@ -74,4 +74,3 @@
         cursor: not-allowed;
     }
 </style>
-

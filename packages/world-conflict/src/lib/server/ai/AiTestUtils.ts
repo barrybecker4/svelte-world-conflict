@@ -260,4 +260,3 @@ export function createGameStateWithSoldierCounts(
 export function isCommandType(command: any, typeName: string): boolean {
     return command.constructor.name === typeName;
 }
-

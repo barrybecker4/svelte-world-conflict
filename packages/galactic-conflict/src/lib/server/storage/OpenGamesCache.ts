@@ -126,4 +126,3 @@ export async function saveOpenGamesCache(
         lastUpdated: Date.now()
     });
 }
-

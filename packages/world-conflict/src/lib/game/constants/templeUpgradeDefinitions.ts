@@ -133,4 +133,3 @@ export const TEMPLE_UPGRADES_BY_NAME = TEMPLE_UPGRADE_DEFINITIONS;
 
 // Default color scheme for temples without upgrades
 export const DEFAULT_TEMPLE_COLORS: TempleColorScheme = TEMPLE_UPGRADE_DEFINITIONS.NONE.templeColors!;
-

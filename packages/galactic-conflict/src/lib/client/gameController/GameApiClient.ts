@@ -183,4 +183,3 @@ export class GameApiClient {
         return response.json();
     }
 }
-

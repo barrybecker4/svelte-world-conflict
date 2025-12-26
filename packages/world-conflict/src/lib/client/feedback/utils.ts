@@ -32,4 +32,3 @@ export function dispatchGameEvent(name: string, detail: object): void {
     window.dispatchEvent(new CustomEvent(name, { detail }));
   }
 }
-

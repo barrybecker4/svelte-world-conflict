@@ -38,4 +38,3 @@ export abstract class Command {
         return this.previousState;
     }
 }
-

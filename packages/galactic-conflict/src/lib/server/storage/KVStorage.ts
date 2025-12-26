@@ -39,4 +39,3 @@ export class KVStorage implements StorageAdapter {
         return this.adapter.getStorageInfo();
     }
 }
-

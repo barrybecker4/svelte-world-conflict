@@ -198,4 +198,3 @@ export class TutorialTips {
     return (y / 600) * 100;
   }
 }
-

@@ -363,4 +363,3 @@ describe('ScoreCalculator', () => {
         });
     });
 });
-

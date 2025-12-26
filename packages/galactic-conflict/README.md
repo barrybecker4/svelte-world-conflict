@@ -130,4 +130,3 @@ The Google AdSense Publisher ID is configured in `src/app.html` as a meta tag. T
 ## License
 
 MIT License
-

@@ -79,4 +79,3 @@ export class BattleRound {
         return rolls;
     }
 }
-

@@ -192,4 +192,3 @@ export function slidingBonus(state: GameState, startOfGameValue: number, endOfGa
 
     return startOfGameValue + (endOfGameValue - startOfGameValue) * alpha;
 }
-

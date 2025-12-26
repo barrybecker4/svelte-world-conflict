@@ -191,4 +191,3 @@ export function processGameState(gameState: GalacticGameState, currentTime: numb
 
     return gameState;
 }
-

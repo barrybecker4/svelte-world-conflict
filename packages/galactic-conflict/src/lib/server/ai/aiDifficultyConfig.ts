@@ -87,4 +87,3 @@ export function getAIDifficultyConfig(difficulty: AiDifficulty): AIDifficultyCon
             return getAIDifficultyConfig('medium');
     }
 }
-

@@ -65,4 +65,3 @@
     backdrop-filter: blur(4px);
   }
 </style>
-

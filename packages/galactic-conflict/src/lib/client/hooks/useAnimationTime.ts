@@ -33,4 +33,3 @@ export function useAnimationTime(shouldAnimate: () => boolean): Readable<number>
         subscribe: currentTime.subscribe
     };
 }
-

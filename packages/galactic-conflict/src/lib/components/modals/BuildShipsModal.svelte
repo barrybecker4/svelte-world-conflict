@@ -304,4 +304,3 @@
         cursor: not-allowed;
     }
 </style>
-

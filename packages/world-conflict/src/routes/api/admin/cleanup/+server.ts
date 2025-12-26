@@ -51,4 +51,3 @@ export const POST: RequestHandler = async ({ url, platform }) => {
         return json({ error: 'Cleanup failed' }, { status: 500 });
     }
 };
-

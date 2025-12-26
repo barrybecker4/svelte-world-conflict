@@ -56,4 +56,3 @@ export class PlanetManager {
         return this.planets;
     }
 }
-

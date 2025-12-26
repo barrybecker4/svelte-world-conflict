@@ -240,4 +240,3 @@ function executeMove(state: GameState, move: Command): GameState {
     // If move fails, return the original state
     return state;
 }
-

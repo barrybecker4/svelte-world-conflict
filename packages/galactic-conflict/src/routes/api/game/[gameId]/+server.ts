@@ -152,4 +152,3 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         return handleApiError(error, 'getting game', { platform });
     }
 };
-

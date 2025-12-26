@@ -93,4 +93,3 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return handleApiError(error, 'resigning from game', { platform });
     }
 };
-

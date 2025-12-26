@@ -31,4 +31,3 @@ export function canPlayerInteract(
     if (isPlayerEliminated(gameState, playerId)) return false;
     return true;
 }
-

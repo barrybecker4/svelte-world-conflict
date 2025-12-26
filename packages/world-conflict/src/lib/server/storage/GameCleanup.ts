@@ -193,4 +193,3 @@ export async function getGameStats(platform: App.Platform): Promise<{
 
     return stats;
 }
-

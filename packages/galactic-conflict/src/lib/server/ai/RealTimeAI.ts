@@ -290,4 +290,3 @@ export function processAITurns(gameState: GalacticGameState): AIDecision[] {
     const ai = new RealTimeAI(gameState);
     return ai.processAITurns();
 }
-
