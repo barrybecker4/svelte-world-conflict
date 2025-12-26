@@ -1,16 +1,36 @@
 <script lang="ts">
-    export let errorMessage: string;
+  interface Props {
+    errorMessage: string;
+    instructions?: string;
+    retryLabel?: string;
+  }
+
+  let {
+    errorMessage,
+    instructions = "To start the WebSocket worker, run in a separate terminal:\nnpm run dev:websocket\nThen refresh this page.",
+    retryLabel = "Retry Connection"
+  }: Props = $props();
+
+  function handleRetry() {
+    window.location.reload();
+  }
 </script>
 
 <div class="connection-error">
     <h2>Connection Failed</h2>
     <p>{errorMessage}</p>
-    <div class="error-instructions">
-        <p>To start the WebSocket worker, run in a separate terminal:</p>
-        <code>npm run dev:websocket</code>
-        <p>Then refresh this page.</p>
-    </div>
-    <button on:click={() => window.location.reload()}>Retry Connection</button>
+    {#if instructions}
+        <div class="error-instructions">
+            {#each instructions.split('\n').filter(line => line.trim()) as line}
+                {#if line.trim().startsWith('npm ') || line.trim().startsWith('yarn ') || line.trim().startsWith('pnpm ')}
+                    <code>{line.trim()}</code>
+                {:else}
+                    <p>{line.trim()}</p>
+                {/if}
+            {/each}
+        </div>
+    {/if}
+    <button on:click={handleRetry}>{retryLabel}</button>
 </div>
 
 <style>
@@ -69,3 +89,4 @@
         background: linear-gradient(135deg, #6d28d9, #9333ea);
     }
 </style>
+

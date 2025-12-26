@@ -6,10 +6,8 @@
 export const GALACTIC_CONSTANTS = {
     // ==================== GALAXY GENERATION ====================
 
-    /** Minimum number of planets in a galaxy */
-    MIN_PLANETS: 5,
     /** Maximum number of planets in a galaxy */
-    MAX_PLANETS: 100,
+    MAX_NEUTRAL_PLANETS: 100,
     /** Default number of neutral planets */
     DEFAULT_NEUTRAL_PLANET_COUNT: 8,
 
@@ -56,9 +54,9 @@ export const GALACTIC_CONSTANTS = {
     /** Minimum armada speed (units per minute) */
     ARMADA_SPEED_MIN: 10,
     /** Maximum armada speed (units per minute) */
-    ARMADA_SPEED_MAX: 2000,
+    ARMADA_SPEED_MAX: 3000,
     /** Default armada speed */
-    DEFAULT_ARMADA_SPEED: 700,
+    DEFAULT_ARMADA_SPEED: 800,
 
     // ==================== GAME TIMING ====================
 

@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount, onDestroy, tick } from 'svelte';
-    import { LoadingState, SoundTestModal, AdBanner } from 'shared-ui';
+    import { LoadingState, SoundTestModal, AdBanner, GameInstructionsModal } from 'shared-ui';
     import Banner from './ui/Banner.svelte';
     import GameInfoPanel from './GameInfoPanel.svelte';
     import GameSummaryPanel from './GameSummaryPanel.svelte';
@@ -8,7 +8,7 @@
     import GameMap from './map/GameMap.svelte';
     import FloatingTextManager from './map/FloatingTextManager.svelte';
     import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
-    import GameInstructions from './modals/GameInstructionsModal.svelte';
+    import { TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
     import { createGameStateStore } from '$lib/client/stores/gameStateStore';
     import { GameController } from '$lib/client/gameController/GameController';
     import type { Player } from '$lib/game/state/GameState';
@@ -258,7 +258,11 @@
         {/if}
 
         {#if $modalState.showInstructions}
-            <GameInstructions onclose={() => controller.closeInstructions()} />
+            <GameInstructionsModal
+                tutorialCards={TUTORIAL_CARDS}
+                gameTitle="World Conflict"
+                onclose={() => controller.closeInstructions()}
+            />
         {/if}
 
         {#if import.meta.env.DEV}

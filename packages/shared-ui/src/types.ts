@@ -29,3 +29,11 @@ export interface Dataset {
   data: number[];
   color: string;
 }
+
+// Tutorial types
+export interface TutorialCard {
+  title: string;
+  icon: string;
+  content: string[];
+  image?: string;
+}

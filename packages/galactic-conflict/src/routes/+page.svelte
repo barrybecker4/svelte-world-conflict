@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { AdBanner } from 'shared-ui';
+  import { AdBanner, GameInstructionsModal } from 'shared-ui';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
   import Lobby from '$lib/components/lobby/Lobby.svelte';
-  import GameInstructionsModal from '$lib/components/modals/GameInstructionsModal.svelte';
+  import { TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
   import { saveGameCreator } from '$lib/client/stores/clientStorage';
   import { GameApiClient } from '$lib/client/gameController/GameApiClient';
 
@@ -67,7 +67,12 @@
 <div class="page-container">
   <div class="main-content">
     {#if showInstructions}
-      <GameInstructionsModal oncomplete={handleInstructionsComplete} />
+      <GameInstructionsModal
+        tutorialCards={TUTORIAL_CARDS}
+        gameTitle="Galactic Conflict"
+        subtitle="A Real-Time Space Strategy Game"
+        oncomplete={handleInstructionsComplete}
+      />
     {/if}
 
     {#if showLobby}

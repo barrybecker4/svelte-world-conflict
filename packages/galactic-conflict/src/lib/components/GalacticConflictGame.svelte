@@ -2,14 +2,13 @@
     import { onMount, onDestroy } from 'svelte';
     import { get } from 'svelte/store';
     import { goto } from '$app/navigation';
-    import { AdBanner } from 'shared-ui';
+    import { AdBanner, ConnectionError } from 'shared-ui';
     import type { GalacticGameStateData, Planet } from '$lib/game/entities/gameTypes';
     import GalaxyMap from './galaxy/GalaxyMap.svelte';
     import GameInfoPanel from './GameInfoPanel.svelte';
     import SendArmadaModal from './modals/SendArmadaModal.svelte';
     import BuildShipsModal from './modals/BuildShipsModal.svelte';
     import ResignConfirmModal from './modals/ResignConfirmModal.svelte';
-    import ConnectionError from './ConnectionError.svelte';
     import { getWebSocketClient } from '$lib/client/websocket/GameWebSocketClient';
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
     import { loadGameCreator } from '$lib/client/stores/clientStorage';

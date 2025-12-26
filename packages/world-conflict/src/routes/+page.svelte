@@ -1,28 +1,31 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import { AdBanner } from 'shared-ui';
-    import GameInstructions from '$lib/components/modals/GameInstructionsModal.svelte';
+    import { AdBanner, GameInstructionsModal } from 'shared-ui';
     import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';
     import Lobby from '$lib/components/lobby/Lobby.svelte';
     import { useAudio } from '$lib/client/audio/useAudio';
     import { audioSystem } from '$lib/client/audio/AudioSystem';
     import { SOUNDS } from '$lib/client/audio/sounds';
-    import { saveGameCreator } from '$lib/client/stores/clientStorage';
+    import { saveGameCreator, loadPlayerName } from '$lib/client/stores/clientStorage';
     import { GameApiClient } from '$lib/client/gameController/GameApiClient';
+    import { TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
+    import { VERSION } from '$lib/version';
 
-    let showInstructions = true; // Auto-show on load
-    let showLobby = false;
-    let showConfiguration = false;
+    let showInstructions = $state(true); // Auto-show on load
+    let showLobby = $state(false);
+    let showConfiguration = $state(false);
+    let userName = $state('');
 
     // Ad configuration - use environment variable or default
-    $: adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
-    $: showAds = adUnitId && (showLobby || showConfiguration);
+    const adUnitId = import.meta.env.VITE_ADSENSE_AD_UNIT_ID || '';
+    const showAds = $derived(adUnitId && (showLobby || showConfiguration));
 
     const { initializeAudio } = useAudio();
 
     onMount(async () => {
         await initializeAudio();
+        userName = loadPlayerName();
     });
 
     function handleInstructionsComplete() {
@@ -81,7 +84,14 @@
 </script>
 
 {#if showInstructions}
-    <GameInstructions oncomplete={handleInstructionsComplete} />
+    <GameInstructionsModal
+        tutorialCards={TUTORIAL_CARDS}
+        gameTitle="World Conflict"
+        {userName}
+        version={VERSION}
+        creditsLink="https://github.com/barrybecker4/svelte-world-conflict/wiki/World-Conflict-History-and-Credits"
+        oncomplete={handleInstructionsComplete}
+    />
 {/if}
 
 <div class="page-container">

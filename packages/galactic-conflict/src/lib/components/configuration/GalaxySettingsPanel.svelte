@@ -23,7 +23,7 @@
             id="neutral-planet-count"
             bind:value={neutralPlanetCount}
             min={0}
-            max={GALACTIC_CONSTANTS.MAX_PLANETS - playerCount}
+            max={GALACTIC_CONSTANTS.MAX_NEUTRAL_PLANETS}
             step="1"
         />
         <span class="tooltip">Number of neutral planets to conquer. Total planets = players ({playerCount}) + neutral planets ({neutralPlanetCount}).</span>

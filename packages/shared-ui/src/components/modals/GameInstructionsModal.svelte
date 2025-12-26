@@ -1,36 +1,48 @@
 <script lang="ts">
-    import { Button, IconButton, Modal } from 'shared-ui';
-    import { onMount } from 'svelte';
-    import { TUTORIAL_CARDS, TOTAL_TUTORIAL_CARDS } from '$lib/game/constants/tutorialContent';
-    import { loadPlayerName } from '$lib/client/stores/clientStorage';
-    import { VERSION } from '$lib/version';
-    import { logger } from 'multiplayer-framework/shared';
+    import Button from '../ui/Button.svelte';
+    import IconButton from '../ui/IconButton.svelte';
+    import Modal from '../ui/Modal.svelte';
+    import type { TutorialCard } from '../../types';
 
     interface Props {
+        tutorialCards: TutorialCard[];
+        gameTitle?: string;
+        subtitle?: string;
+        userName?: string;
+        version?: string;
+        creditsLink?: string;
         oncomplete?: () => void;
         onclose?: () => void;
     }
 
-    let { oncomplete, onclose }: Props = $props();
+    let {
+        tutorialCards,
+        gameTitle = '',
+        subtitle,
+        userName,
+        version,
+        creditsLink,
+        oncomplete,
+        onclose
+    }: Props = $props();
 
     let currentCard = $state(0);
     let isOpen = $state(true);
-    let userName = $state('');
 
-    onMount(() => {
-        userName = loadPlayerName();
-    });
+    const totalCards = $derived(tutorialCards.length);
+    const currentTutorial = $derived(tutorialCards[currentCard]);
+    const isLastCard = $derived(currentCard === totalCards - 1);
+    const isFirstCard = $derived(currentCard === 0);
 
     function nextCard() {
-        currentCard = (currentCard + 1) % TOTAL_TUTORIAL_CARDS;
+        currentCard = (currentCard + 1) % totalCards;
     }
 
     function prevCard() {
-        currentCard = (currentCard - 1 + TOTAL_TUTORIAL_CARDS) % TOTAL_TUTORIAL_CARDS;
+        currentCard = (currentCard - 1 + totalCards) % totalCards;
     }
 
     function complete() {
-        logger.debug('📖 Got it! - Instructions complete');
         oncomplete?.();
         isOpen = false;
     }
@@ -39,28 +51,33 @@
         onclose?.();
         complete();
     }
-
-    const currentTutorial = $derived(TUTORIAL_CARDS[currentCard]);
 </script>
 
 <Modal {isOpen} showHeader={false} width="1000px" onclose={handleClose}>
     <div class="tutorial-container" data-testid="instructions-modal">
         <div class="tutorial-header">
-            <h1>World Conflict</h1>
+            {#if gameTitle}
+                <h1>{gameTitle}</h1>
+            {/if}
+            {#if subtitle}
+                <p class="subtitle">{subtitle}</p>
+            {/if}
 
-            <div class="user-info">
-                {#if userName}
-                    <span>User: {userName}</span>
-                {/if}
-                <span>Version: {VERSION}</span>
-                <a
-                    href="https://github.com/barrybecker4/svelte-world-conflict/wiki/World-Conflict-History-and-Credits"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    Credits
-                </a>
-            </div>
+            {#if userName || version || creditsLink}
+                <div class="user-info">
+                    {#if userName}
+                        <span>User: {userName}</span>
+                    {/if}
+                    {#if version}
+                        <span>Version: {version}</span>
+                    {/if}
+                    {#if creditsLink}
+                        <a href={creditsLink} target="_blank" rel="noopener noreferrer">
+                            Credits
+                        </a>
+                    {/if}
+                </div>
+            {/if}
 
             <div class="close-button-wrapper">
                 <IconButton
@@ -76,18 +93,24 @@
         </div>
 
         <div class="nav-button-wrapper prev">
-            <IconButton variant="primary" size="lg" disabled={currentCard === 0} title="Previous" onclick={prevCard}
-                >‹</IconButton
+            <IconButton
+                variant="primary"
+                size="lg"
+                disabled={isFirstCard}
+                title="Previous"
+                onclick={prevCard}
             >
+                ‹
+            </IconButton>
         </div>
 
-        {#if currentCard < TOTAL_TUTORIAL_CARDS - 1}
+        {#if !isLastCard}
             <div class="nav-button-wrapper next">
                 <IconButton variant="primary" size="lg" title="Next" onclick={nextCard}>›</IconButton>
             </div>
         {/if}
 
-        <div class="tutorial-content" class:has-image={currentTutorial.image}>
+        <div class="tutorial-content" class:has-image={!!currentTutorial.image}>
             <div class="tutorial-card">
                 <div class="card-header">
                     <h2>{currentTutorial.title}</h2>
@@ -113,12 +136,12 @@
         <div class="bottom-box">
             <!-- Slide indicator dots -->
             <div class="slide-dots">
-                {#each Array(TOTAL_TUTORIAL_CARDS) as _, i}
+                {#each Array(totalCards) as _, i}
                     <span class="dot" class:active={currentCard === i}></span>
                 {/each}
             </div>
 
-            {#if currentCard === TOTAL_TUTORIAL_CARDS - 1}
+            {#if isLastCard}
                 <div class="start-button-wrapper">
                     <Button variant="primary" size="lg" title="Got it" onclick={complete}>Got it!</Button>
                 </div>
@@ -132,7 +155,7 @@
         position: relative;
         width: 90%;
         padding: 1.25rem;
-        left: 50px;
+        margin: 0 auto;
     }
 
     .tutorial-header {
@@ -149,6 +172,12 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+        margin: 0.5rem 0 0;
+        color: #9ca3af;
+        font-size: 0.9rem;
     }
 
     .user-info {
@@ -186,6 +215,7 @@
         height: 280px;
         backdrop-filter: blur(10px);
         overflow: hidden;
+        position: relative;
     }
 
     .tutorial-card {
@@ -255,6 +285,8 @@
         border-radius: 8px;
         border: 2px solid #475569;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        display: block;
+        object-fit: contain;
     }
 
     .close-button-wrapper {
@@ -280,6 +312,7 @@
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
+        z-index: 10;
     }
 
     .nav-button-wrapper.prev {
@@ -341,3 +374,4 @@
         justify-content: center;
     }
 </style>
+
