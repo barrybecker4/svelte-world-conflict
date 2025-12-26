@@ -10,7 +10,7 @@
     
     <!-- Casualties to the right of ship count -->
     {#if casualties !== undefined && casualties > 0}
-        <text x="60" y="35" text-anchor="start" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
+        <text x="64" y="35" text-anchor="start" fill="#ef4444" font-size="14" font-weight="bold" class="casualty-text">
             -{casualties} 💥
         </text>
     {/if}

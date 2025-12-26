@@ -1,7 +1,6 @@
 import type { AttackEvent } from '$lib/game/mechanics/AttackSequenceGenerator';
 import { audioSystem } from '$lib/client/audio/AudioSystem';
 import { SOUNDS, type SoundType } from '$lib/client/audio/sounds';
-import { GAME_CONSTANTS } from '$lib/game/constants/gameConstants';
 import type { Region } from '$lib/game/entities/gameTypes';
 import { logger } from 'multiplayer-framework/shared';
 
@@ -12,33 +11,12 @@ export interface FloatingTextEvent {
     width: number;
 }
 
-const TEXT_CONTENT_STYLE = `
- @keyframes floatUp {
-   0% {
-     opacity: 1;
-     transform: translate(-50%, -50%) scale(1);
-   }
-   50% {
-     opacity: 1;
-     transform: translate(-50%, -80%) scale(1.2);
-   }
-   100% {
-     opacity: 0;
-     transform: translate(-50%, -120%) scale(0.8);
-   }
- }
- .floating-text {
-   font-family: 'Arial', sans-serif;
-   white-space: nowrap;
-   font-weight: bold;
- }
-`;
-
 export type StateUpdateCallback = (attackerLosses: number, defenderLosses: number) => void;
+export type FloatingTextCallback = (regionIdx: number, text: string, color: string) => void;
 
 export class BattleAnimationSystem {
-    private activeAnimations = new Set<HTMLElement>();
     private mapContainer: HTMLElement | null = null;
+    private floatingTextCallback: FloatingTextCallback | null = null;
 
     constructor(mapContainer?: HTMLElement) {
         this.mapContainer = mapContainer ?? null;
@@ -46,6 +24,10 @@ export class BattleAnimationSystem {
 
     setMapContainer(container: HTMLElement) {
         this.mapContainer = container;
+    }
+
+    setFloatingTextCallback(callback: FloatingTextCallback) {
+        this.floatingTextCallback = callback;
     }
 
     async playAttackSequence(
@@ -84,98 +66,13 @@ export class BattleAnimationSystem {
     }
 
     showFloatingText(textEvent: FloatingTextEvent, regions: Region[]) {
-        if (!this.isValid(textEvent, regions)) return;
-
-        const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
-        if (!region) {
-            return;
+        if (this.floatingTextCallback) {
+            // Use the callback if available (preferred - uses Svelte component)
+            this.floatingTextCallback(textEvent.regionIdx, textEvent.text, textEvent.color);
+        } else {
+            // Fallback: log warning if callback not set
+            logger.warn('FloatingTextCallback not set, cannot show floating text');
         }
-
-        const screenCoords = this.getScreenCoords(region, regions);
-        const textElement = this.createFloatingTextElement(textEvent, screenCoords);
-
-        this.ensureFloatingTextStyles();
-        this.displayFloatingText(textElement);
-    }
-
-    private createFloatingTextElement(
-        textEvent: FloatingTextEvent,
-        screenCoords: { x: number; y: number }
-    ): HTMLElement {
-        const textElement = document.createElement('div');
-        textElement.className = 'floating-text';
-        textElement.style.cssText = `
-      position: fixed;
-      left: ${screenCoords.x}px;
-      top: ${screenCoords.y}px;
-      color: ${textEvent.color};
-      font-weight: bold;
-      font-size: 16px;
-      pointer-events: none;
-      z-index: 1000;
-      animation: floatUp 3s ease-out forwards;
-      transform: translate(-50%, -50%);
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-    `;
-        textElement.textContent = textEvent.text;
-        return textElement;
-    }
-
-    private ensureFloatingTextStyles(): void {
-        if (!document.getElementById('floating-text-styles')) {
-            const style = document.createElement('style');
-            style.id = 'floating-text-styles';
-            style.textContent = TEXT_CONTENT_STYLE;
-            document.head.appendChild(style);
-        }
-    }
-
-    private displayFloatingText(textElement: HTMLElement): void {
-        // Append to document body instead of map container for fixed positioning
-        document.body.appendChild(textElement);
-        this.activeAnimations.add(textElement);
-
-        // Remove after animation
-        setTimeout(() => {
-            if (textElement.parentNode) {
-                textElement.parentNode.removeChild(textElement);
-                this.activeAnimations.delete(textElement);
-            }
-        }, GAME_CONSTANTS.BANNER_TIME);
-    }
-
-    // Calculate the actual screen position accounting for SVG scaling
-    private getScreenCoords(region: Region, regions: Region[]): { x: number; y: number } {
-        // Get the bounding rectangle of the map container and SVG
-        if (!this.mapContainer) throw new Error('Map container not set');
-        const containerRect = this.mapContainer.getBoundingClientRect();
-        const svgElement = this.mapContainer.querySelector('svg');
-        if (!svgElement) throw new Error('SVG element not found');
-        const svgRect = svgElement.getBoundingClientRect();
-
-        const svgViewBox = svgElement.viewBox.baseVal;
-        const scaleX = svgRect.width / svgViewBox.width;
-        const scaleY = svgRect.height / svgViewBox.height;
-
-        // Convert region coordinates to screen coordinates
-        const screenX = svgRect.left + region.x * scaleX;
-        const screenY = svgRect.top + region.y * scaleY;
-
-        return { x: screenX, y: screenY };
-    }
-
-    private isValid(textEvent: FloatingTextEvent, regions: Region[]) {
-        if (!this.mapContainer) {
-            logger.warn('No map container for floating text');
-            return false;
-        }
-
-        const region = regions.find((r: Region) => r.index === textEvent.regionIdx);
-        if (!region) {
-            logger.warn('Region not found for floating text:', textEvent.regionIdx);
-            return false;
-        }
-        return true;
     }
 
     async playSoundCue(soundCue: string): Promise<void> {
@@ -228,12 +125,7 @@ export class BattleAnimationSystem {
     }
 
     cleanup() {
-        // Clear any active animations
-        this.activeAnimations.forEach(element => {
-            if (element.parentNode) {
-                element.parentNode.removeChild(element);
-            }
-        });
-        this.activeAnimations.clear();
+        // Cleanup is now handled by the FloatingTextManager component
+        // No DOM elements to clean up
     }
 }

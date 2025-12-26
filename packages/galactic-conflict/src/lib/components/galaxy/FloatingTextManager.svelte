@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
     import type {
         GalacticGameStateData,
         Planet,
@@ -7,8 +6,8 @@
         ConquestEvent,
         PlayerEliminationEvent
     } from '$lib/game/entities/gameTypes';
-    import FloatingTextMessage from './FloatingTextMessage.svelte';
-    import { filterUnprocessedEvents, hasConquestEventAtPlanet } from '$lib/client/utils/eventProcessing';
+    import { FloatingTextMessage } from 'shared-ui';
+    import { hasConquestEventAtPlanet } from '$lib/client/utils/eventProcessing';
 
     export let gameState: GalacticGameStateData;
     export let svgElement: SVGSVGElement | null;

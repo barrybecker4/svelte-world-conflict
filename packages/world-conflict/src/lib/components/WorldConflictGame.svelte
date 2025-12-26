@@ -6,6 +6,7 @@
     import GameSummaryPanel from './GameSummaryPanel.svelte';
     import TempleUpgradePanel from './TempleUpgradePanel.svelte';
     import GameMap from './map/GameMap.svelte';
+    import FloatingTextManager from './map/FloatingTextManager.svelte';
     import SoldierSelectionModal from './modals/SoldierSelectionModal.svelte';
     import GameInstructions from './modals/GameInstructionsModal.svelte';
     import { createGameStateStore } from '$lib/client/stores/gameStateStore';
@@ -44,6 +45,7 @@
     const { modalState, moveState, isConnected, tutorialTips, battleInProgress } = controller.getStores();
 
     let mapContainer: HTMLElement;
+    let floatingTextManager: FloatingTextManager;
     let showVictoryBanner = false;
     let showGameSummary = false;
     let gameWinner: Player | 'DRAWN_GAME' | null = null;
@@ -110,6 +112,18 @@
     $: if (mapContainer) {
         logger.debug('Map container available, setting in battle manager');
         controller.setMapContainer(mapContainer);
+    }
+
+    // Set floating text callback when both map container and floating text manager are available
+    $: if (mapContainer && floatingTextManager) {
+        const battleAnimationSystem = controller.getBattleAnimationSystem();
+        if (battleAnimationSystem) {
+            battleAnimationSystem.setFloatingTextCallback(
+                (regionIdx: number, text: string, color: string) => {
+                    floatingTextManager.showFloatingText(regionIdx, text, color);
+                }
+            );
+        }
     }
 
     onDestroy(() => {
@@ -196,6 +210,7 @@
                 }}
                 onDismissTooltip={tooltipId => controller.dismissTooltip(tooltipId)}
             />
+            <FloatingTextManager bind:this={floatingTextManager} mapContainer={mapContainer} regions={$regions} />
         </div>
 
         <!-- Replay Banner - shows before replaying other players' moves -->

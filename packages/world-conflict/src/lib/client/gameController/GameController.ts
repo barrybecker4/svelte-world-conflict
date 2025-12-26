@@ -198,6 +198,13 @@ export class GameController {
     }
 
     /**
+     * Get the battle animation system (for setting callbacks)
+     */
+    getBattleAnimationSystem() {
+        return this.battleCoordinator.getBattleAnimationSystem();
+    }
+
+    /**
      * Cleanup - call this from onDestroy
      */
     destroy(): void {

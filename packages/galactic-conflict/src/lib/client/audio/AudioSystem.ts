@@ -12,14 +12,15 @@ export class AudioSystem extends BaseAudioSystem {
     }
 
     /**
-     * Play a sound by type
+     * Play a sound by type (accepts SoundType or string for compatibility)
      */
-    async playSound(soundType: SoundType): Promise<void> {
+    async playSound(soundType: SoundType | string): Promise<void> {
         if (!this.getIsEnabled()) return;
 
         await this.initializeAudio();
 
-        const config = SOUND_CONFIGS[soundType];
+        // Cast to SoundType - AudioSystem will validate
+        const config = SOUND_CONFIGS[soundType as SoundType];
         if (config) {
             this.playSoundConfig(config);
         } else {

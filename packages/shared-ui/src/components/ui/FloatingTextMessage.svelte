@@ -1,14 +1,24 @@
 <script lang="ts">
     import { onMount } from 'svelte';
 
-    export let x: number;
-    export let y: number;
-    export let text: string;
-    export let color: string = '#ffffff';
-    export let duration: number = 2500;
+    interface Props {
+        x: number;
+        y: number;
+        text: string;
+        color?: string;
+        duration?: number;
+    }
+
+    let {
+        x,
+        y,
+        text,
+        color = '#ffffff',
+        duration = 2500
+    }: Props = $props();
 
     let element: HTMLElement;
-    let isVisible = true;
+    let isVisible = $state(true);
 
     onMount(() => {
         // Auto-remove after duration
@@ -67,3 +77,4 @@
         }
     }
 </style>
+

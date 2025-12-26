@@ -10,6 +10,7 @@ export { default as ConnectionStatus } from './components/ui/ConnectionStatus.sv
 export { default as StatDisplay } from './components/ui/StatDisplay.svelte';
 export { default as Tooltip } from './components/ui/Tooltip.svelte';
 export { default as AdBanner } from './components/ui/AdBanner.svelte';
+export { default as FloatingTextMessage } from './components/ui/FloatingTextMessage.svelte';
 
 // Charts
 export { default as LineChart } from './components/charts/LineChart.svelte';

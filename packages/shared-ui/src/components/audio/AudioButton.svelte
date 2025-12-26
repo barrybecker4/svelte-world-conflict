@@ -1,13 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import IconButton from '../ui/IconButton.svelte';
+  import type { AudioSystem } from '../../types';
 
   interface Props {
-    audioSystem: {
-      isAudioEnabled: () => boolean;
-      toggle: () => Promise<boolean>;
-      playSound: (sound: string) => Promise<void>;
-    };
+    audioSystem: AudioSystem;
     testSound?: string;
   }
 

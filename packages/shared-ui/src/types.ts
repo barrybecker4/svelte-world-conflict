@@ -6,6 +6,17 @@ export interface AudioSystem {
   playSound: (sound: string) => Promise<void>;
 }
 
+// Type guard to check if an object implements AudioSystem interface
+export function implementsAudioSystem(obj: any): obj is AudioSystem {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.isAudioEnabled === 'function' &&
+    typeof obj.toggle === 'function' &&
+    typeof obj.playSound === 'function'
+  );
+}
+
 export interface SoundItem {
   key: string;
   name: string;
