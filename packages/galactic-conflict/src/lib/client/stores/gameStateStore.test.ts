@@ -109,6 +109,8 @@ function createMockGameState(overrides?: Partial<GalacticGameStateData>): Galact
         recentReinforcementEvents: [],
         recentConquestEvents: [],
         recentPlayerEliminationEvents: [],
+        eliminatedPlayers: [],
+        lastUpdateTime: now,
         ...overrides,
     };
 }
@@ -575,9 +577,9 @@ describe('gameStateStore', () => {
                 expect(get(isGameComplete)).toBe(false);
             });
 
-            it('should return false when status is WAITING', () => {
+            it('should return false when status is PENDING', () => {
                 const state = createMockGameState({
-                    status: 'WAITING',
+                    status: 'PENDING',
                 });
 
                 gameState.set(state);
