@@ -21,7 +21,12 @@
                     class="player-color"
                     style="background-color: {getPlayerColor(player.slotIndex)}"
                 ></span>
-                <span class="player-name">{player.name}</span>
+                <span class="player-name">
+                    {player.name}
+                    {#if player.isAI && player.difficulty}
+                        <span class="ai-difficulty">({player.difficulty})</span>
+                    {/if}
+                </span>
                 <span class="player-stats">
                     {player.planets}🪐 {player.ships}🚀
                 </span>
