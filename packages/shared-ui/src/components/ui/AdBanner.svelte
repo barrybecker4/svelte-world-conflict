@@ -51,7 +51,7 @@
       }
 
       // Check if script already loaded
-      if (window.adsbygoogle) {
+      if ((window as any).adsbygoogle) {
         adScriptLoaded = true;
         resolve();
         return;
@@ -109,7 +109,7 @@
       // Wait a bit for script to initialize
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      if (typeof window === 'undefined' || !window.adsbygoogle) {
+      if (typeof window === 'undefined' || !(window as any).adsbygoogle) {
         throw new Error('AdSense not available');
       }
 
@@ -144,7 +144,7 @@
 
         // Push ad to AdSense
         try {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
+          ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
           adLoaded = true;
         } catch (err) {
           console.warn('AdSense push error (may be blocked):', err);
@@ -168,12 +168,6 @@
     };
   });
 
-  // TypeScript declaration for adsbygoogle
-  declare global {
-    interface Window {
-      adsbygoogle: any[];
-    }
-  }
 </script>
 
 {#if adsEnabled && adUnitId}
