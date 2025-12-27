@@ -476,6 +476,11 @@
         transform: translateY(-50%);
         z-index: 100;
         display: none;
+        pointer-events: none;
+    }
+
+    .ad-sidebar :global(*) {
+        pointer-events: auto;
     }
 
     .ad-banner-mobile {
