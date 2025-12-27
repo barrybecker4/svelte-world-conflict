@@ -63,6 +63,59 @@ function processAndDetectChanges(gameState: GalacticGameState): {
 
 
 /**
+ * Prepare game state for broadcast by capturing state and clearing events
+ */
+function prepareStateForBroadcast(gameState: GalacticGameState): ReturnType<typeof gameState.toJSON> {
+    const stateForBroadcast = gameState.toJSON();
+    gameState.clearBattleReplays();
+    gameState.clearReinforcementEvents();
+    gameState.clearConquestEvents();
+    gameState.clearPlayerEliminationEvents();
+    return stateForBroadcast;
+}
+
+/**
+ * Log processing results
+ */
+function logProcessingResults(
+    gameId: string,
+    stateBefore: GameStateSnapshot,
+    stateAfter: GameStateSnapshot,
+    retryCount: number
+): void {
+    const replaysAdded = stateAfter.replays - stateBefore.replays;
+    const armadasArrived = stateBefore.armadas - stateAfter.armadas;
+    logger.info(
+        `[EventProcessor] Processed events for game ${gameId}: ` +
+        `${replaysAdded} new replays, ` +
+        `${armadasArrived} armadas arrived, ` +
+        `status: ${stateBefore.status} -> ${stateAfter.status}, ` +
+        `endResult: ${formatEndResult(stateBefore.endResult)} -> ${formatEndResult(stateAfter.endResult)}, ` +
+        `lastUpdate: ${stateBefore.lastUpdateTime} -> ${stateAfter.lastUpdateTime}` +
+        (retryCount > 0 ? ` (retry ${retryCount})` : '')
+    );
+}
+
+/**
+ * Save game state and broadcast updates
+ * IMPORTANT: We save BEFORE broadcasting to prevent sending stale data.
+ */
+async function saveAndBroadcast(
+    gameId: string,
+    gameRecord: GameRecord,
+    gameState: GalacticGameState,
+    stateForBroadcast: ReturnType<typeof gameState.toJSON>,
+    stateAfter: GameStateSnapshot,
+    gameStorage: GameStorage,
+    expectedLastUpdateAt: number
+): Promise<void> {
+    gameRecord.gameState = gameState.toJSON();
+    gameRecord.status = stateAfter.status as 'PENDING' | 'ACTIVE' | 'COMPLETED';
+    await gameStorage.saveGame(gameRecord, expectedLastUpdateAt);
+    await WebSocketNotifications.gameUpdate(gameId, stateForBroadcast);
+}
+
+/**
  * Broadcast updates and save game state
  * 
  * IMPORTANT: We save BEFORE broadcasting to prevent sending stale data.
@@ -76,86 +129,68 @@ async function broadcastAndSaveChanges(
     stateBefore: GameStateSnapshot,
     stateAfter: GameStateSnapshot,
     gameStorage: GameStorage,
-    expectedLastUpdateAt: number,
-    retryCount: number = 0
+    expectedLastUpdateAt: number
 ): Promise<void> {
     const MAX_RETRIES = 2;
+    let currentRecord = gameRecord;
+    let currentState = gameState;
+    let currentStateBefore = stateBefore;
+    let currentStateAfter = stateAfter;
+    let currentExpectedVersion = expectedLastUpdateAt;
     
-    // Prepare state for broadcast (includes battle replays and events)
-    const stateForBroadcast = gameState.toJSON();
-    
-    // Clear events after capturing state for broadcast
-    gameState.clearBattleReplays();
-    gameState.clearReinforcementEvents();
-    gameState.clearConquestEvents();
-    gameState.clearPlayerEliminationEvents();
-
-    // Save state first with optimistic locking
-    // Only broadcast if save succeeds - this prevents sending stale data
-    // when another process has already updated the state
-    try {
-        gameRecord.gameState = gameState.toJSON();
-        gameRecord.status = stateAfter.status as 'PENDING' | 'ACTIVE' | 'COMPLETED';
-        await gameStorage.saveGame(gameRecord, expectedLastUpdateAt);
-
-        // Save succeeded - now broadcast the state (which includes battle replays)
-        await WebSocketNotifications.gameUpdate(gameId, stateForBroadcast);
-
-        const replaysAdded = stateAfter.replays - stateBefore.replays;
-        const armadasArrived = stateBefore.armadas - stateAfter.armadas;
-        logger.info(
-            `[EventProcessor] Processed events for game ${gameId}: ` +
-            `${replaysAdded} new replays, ` +
-            `${armadasArrived} armadas arrived, ` +
-            `status: ${stateBefore.status} -> ${stateAfter.status}, ` +
-            `endResult: ${formatEndResult(stateBefore.endResult)} -> ${formatEndResult(stateAfter.endResult)}, ` +
-            `lastUpdate: ${stateBefore.lastUpdateTime} -> ${stateAfter.lastUpdateTime}` +
-            (retryCount > 0 ? ` (retry ${retryCount})` : '')
-        );
-    } catch (error) {
-        // If version conflict, reload state and retry processing
-        if (error instanceof VersionConflictError) {
-            if (retryCount < MAX_RETRIES) {
-                logger.debug(
-                    `[EventProcessor] Version conflict for game ${gameId} (attempt ${retryCount + 1}/${MAX_RETRIES}), ` +
-                    `reloading state and retrying. Expected: ${expectedLastUpdateAt}, Actual: ${error.actualVersion}`
-                );
-                
-                // Reload the game state (which now has the newer version)
-                const reloaded = await loadAndValidateGame(gameId, gameStorage);
-                if (!reloaded) {
-                    logger.warn(`[EventProcessor] Could not reload game ${gameId} for retry`);
-                    return;
-                }
-                
-                // Process the reloaded state
-                const { gameRecord: reloadedRecord, gameState: reloadedState, expectedLastUpdateAt: newExpectedLastUpdateAt } = reloaded;
-                const { stateBefore: newStateBefore, stateAfter: newStateAfter, hasChanges: newHasChanges } = processAndDetectChanges(reloadedState);
-                
-                if (newHasChanges) {
-                    // Retry with the reloaded state
-                    await broadcastAndSaveChanges(
-                        gameId,
-                        reloadedRecord,
-                        reloadedState,
-                        newStateBefore,
-                        newStateAfter,
-                        gameStorage,
-                        newExpectedLastUpdateAt,
-                        retryCount + 1
+    for (let retryCount = 0; retryCount <= MAX_RETRIES; retryCount++) {
+        try {
+            const stateForBroadcast = prepareStateForBroadcast(currentState);
+            await saveAndBroadcast(
+                gameId,
+                currentRecord,
+                currentState,
+                stateForBroadcast,
+                currentStateAfter,
+                gameStorage,
+                currentExpectedVersion
+            );
+            logProcessingResults(gameId, currentStateBefore, currentStateAfter, retryCount);
+            return;
+        } catch (error) {
+            if (!(error instanceof VersionConflictError) || retryCount >= MAX_RETRIES) {
+                if (error instanceof VersionConflictError) {
+                    logger.debug(
+                        `[EventProcessor] Version conflict for game ${gameId} after ${MAX_RETRIES} retries, ` +
+                        `skipping save AND broadcast. Another process has newer data.`
                     );
                 } else {
-                    logger.debug(`[EventProcessor] Reloaded game ${gameId} but no changes detected after retry`);
+                    throw error;
                 }
-            } else {
-                // Max retries exhausted - log and skip
-                logger.debug(
-                    `[EventProcessor] Version conflict for game ${gameId} after ${MAX_RETRIES} retries, ` +
-                    `skipping save AND broadcast. Another process has newer data.`
-                );
+                return;
             }
-        } else {
-            throw error;
+
+            // Handle version conflict - reload and retry
+            logger.debug(
+                `[EventProcessor] Version conflict for game ${gameId} (attempt ${retryCount + 1}/${MAX_RETRIES}), ` +
+                `reloading state and retrying. Expected: ${currentExpectedVersion}, Actual: ${error.actualVersion}`
+            );
+            
+            const reloaded = await loadAndValidateGame(gameId, gameStorage);
+            if (!reloaded) {
+                logger.warn(`[EventProcessor] Could not reload game ${gameId} for retry`);
+                return;
+            }
+            
+            const { gameRecord: reloadedRecord, gameState: reloadedState, expectedLastUpdateAt: newExpectedVersion } = reloaded;
+            const { stateBefore: newStateBefore, stateAfter: newStateAfter, hasChanges } = processAndDetectChanges(reloadedState);
+            
+            if (!hasChanges) {
+                logger.debug(`[EventProcessor] Reloaded game ${gameId} but no changes detected after retry`);
+                return;
+            }
+            
+            // Update state for next iteration
+            currentRecord = reloadedRecord;
+            currentState = reloadedState;
+            currentStateBefore = newStateBefore;
+            currentStateAfter = newStateAfter;
+            currentExpectedVersion = newExpectedVersion;
         }
     }
 }
@@ -179,7 +214,7 @@ export async function processGameEvents(
         const { stateBefore, stateAfter, hasChanges } = processAndDetectChanges(gameState);
 
         if (hasChanges) {
-            await broadcastAndSaveChanges(gameId, gameRecord, gameState, stateBefore, stateAfter, gameStorage, expectedLastUpdateAt, 0);
+            await broadcastAndSaveChanges(gameId, gameRecord, gameState, stateBefore, stateAfter, gameStorage, expectedLastUpdateAt);
             return true;
         } else {
             logger.debug(`[EventProcessor] No changes detected for game ${gameId} (replays: ${stateBefore.replays}, armadas: ${stateBefore.armadas}, status: ${stateBefore.status})`);
