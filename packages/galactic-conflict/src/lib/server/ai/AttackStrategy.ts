@@ -20,7 +20,7 @@ export class AttackStrategy {
      */
     findAttackOpportunity(player: Player, myPlanets: Planet[], difficulty: AiDifficulty): AIDecision | null {
         const config = getAIDifficultyConfig(difficulty);
-        
+
         // Find source planets with sufficient ships
         const sourcePlanets = this.findSourcePlanetsForAttack(myPlanets, difficulty, config);
         if (sourcePlanets.length === 0) return null;
@@ -50,10 +50,10 @@ export class AttackStrategy {
      */
     private findSourcePlanetsForAttack(myPlanets: Planet[], difficulty: AiDifficulty, config: AIDifficultyConfig): Planet[] {
         const minSourceShips = config.attack.minSourceShips;
-        
+
         // Find planets with excess ships (threshold varies by difficulty)
         const sourcePlanets = myPlanets.filter(p => p.ships >= minSourceShips);
-        
+
         if (sourcePlanets.length === 0) {
             // If no planets meet the threshold, try with lower threshold for hard AI
             if (difficulty === 'hard') {
@@ -63,7 +63,7 @@ export class AttackStrategy {
                 }
             }
         }
-        
+
         return sourcePlanets;
     }
 
@@ -98,13 +98,13 @@ export class AttackStrategy {
     private scoreTargetPlanet(target: Planet, source: Planet, player: Player): number {
         const distance = getDistanceBetweenPlanets(source, target);
         const isNeutral = target.ownerId === null;
-        
+
         let score = 0;
         score -= target.ships * 10; // Prefer fewer defenders
-        score += isNeutral ? 20 : 0; // Slight preference for neutrals
+        score += isNeutral ? 10 : 0; // Slight preference for neutrals
         score -= distance / 10; // Prefer closer targets
         score += target.volume / 5; // Prefer larger planets
-        
+
         return score;
     }
 
@@ -115,7 +115,7 @@ export class AttackStrategy {
         const minShipsToSend = config.attack.minShipsToSend;
         const minAdvantage = config.attack.minAdvantage;
         const defenseBuffer = config.attack.defenseBuffer;
-        
+
         // Send enough ships to win, but keep some defense
         return Math.min(
             source.ships - defenseBuffer,

@@ -8,10 +8,12 @@ import { GameStatsService } from './GameStatsService';
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 import { deleteStaleGames } from './deleteStaleGames';
-import { updateOpenGamesCache, removeFromOpenGamesCache, getOpenGamesCache, saveOpenGamesCache, OPEN_GAMES_KEY, type OpenGamesList } from './OpenGamesCache';
-import { updateActiveGamesCache, removeFromActiveGamesCache, getActiveGamesCache, saveActiveGamesCache } from './ActiveGamesCache';
+import { getOpenGamesCache, saveOpenGamesCache, OPEN_GAMES_KEY, type OpenGamesList } from './OpenGamesCache';
+import { getActiveGamesCache, saveActiveGamesCache, removeFromActiveGamesCache } from './ActiveGamesCache';
 import { addPlayerToGame as addPlayerToGameOp, removePlayerFromGame as removePlayerFromGameOp, canGameStart as canGameStartOp } from './GameRecordOperations';
 import type { GameRecord } from './types';
+import { GameCacheCoordinator } from './GameCacheCoordinator';
+import { GameStatusHandler } from './GameStatusHandler';
 
 const GAME_KEY_PREFIX = 'gc_game:';
 
@@ -21,10 +23,17 @@ export type { GameRecord };
 export class GameStorage {
     private storage: KVStorage;
     private platform: App.Platform;
+    private cacheCoordinator: GameCacheCoordinator;
+    private statusHandler: GameStatusHandler;
 
     constructor(platform: App.Platform) {
         this.storage = new KVStorage(platform);
         this.platform = platform;
+        
+        // Initialize cache coordinator and status handler
+        this.cacheCoordinator = new GameCacheCoordinator(this.storage);
+        const statsService = this.getStatsService();
+        this.statusHandler = new GameStatusHandler(this.cacheCoordinator, statsService);
     }
 
     static create(platform: App.Platform): GameStorage {
@@ -48,7 +57,7 @@ export class GameStorage {
     async saveGame(game: GameRecord, expectedLastUpdateAt?: number): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${game.gameId}`;
 
-        // Check if status changed to COMPLETED
+        // Load existing game for version checking and status change detection
         const existingGame = await this.loadGame(game.gameId);
         
         // Optimistic locking: if expectedLastUpdateAt is provided, verify the game hasn't been modified
@@ -62,37 +71,14 @@ export class GameStorage {
                 );
             }
         }
-        
-        const statusChanged = existingGame && existingGame.status !== game.status;
 
+        // Update timestamp and save to KV
         game.lastUpdateAt = Date.now();
         await this.storage.put(key, game);
 
-        // Update open games cache if status changed
-        if (game.status === 'PENDING') {
-            await updateOpenGamesCache(game, this.storage);
-        } else {
-            await removeFromOpenGamesCache(game.gameId, this.storage);
-        }
-
-        // Update active games cache
-        if (game.status === 'ACTIVE') {
-            await updateActiveGamesCache(game.gameId, this.storage);
-        } else if (statusChanged && existingGame?.status === 'ACTIVE') {
-            // Remove from active cache if transitioning away from ACTIVE
-            await removeFromActiveGamesCache(game.gameId, this.storage);
-        }
-
-        // Record game completion statistics
-        if (game.status === 'COMPLETED' && statusChanged) {
-            logger.info(`Game ${game.gameId} completed - recording stats. endResult: ${JSON.stringify(game.gameState?.endResult)}`);
-            const statsService = this.getStatsService();
-            if (statsService) {
-                await statsService.recordGameCompleted(game);
-            } else {
-                logger.warn(`No stats service available for game ${game.gameId}`);
-            }
-        }
+        // Delegate cache updates and status change handling
+        await this.cacheCoordinator.onGameSaved(game, existingGame?.status);
+        await this.statusHandler.handleStatusChange(game, existingGame?.status);
     }
 
 
@@ -110,8 +96,7 @@ export class GameStorage {
     async deleteGame(gameId: string): Promise<void> {
         const key = `${GAME_KEY_PREFIX}${gameId}`;
         await this.storage.delete(key);
-        await removeFromOpenGamesCache(gameId, this.storage);
-        await removeFromActiveGamesCache(gameId, this.storage);
+        await this.cacheCoordinator.onGameDeleted(gameId);
     }
 
     /**
@@ -281,26 +266,13 @@ export class GameStorage {
      */
     async getActiveGames(): Promise<GameRecord[]> {
         try {
-            // Try to get from cache first
             const cachedList = await getActiveGamesCache(this.storage);
             
             if (cachedList && cachedList.gameIds.length > 0) {
-                // Read each game record from the cached IDs
-                const games: GameRecord[] = [];
-                for (const gameId of cachedList.gameIds) {
-                    const game = await this.loadGame(gameId);
-                    if (game && game.status === 'ACTIVE') {
-                        games.push(game);
-                    } else if (game && game.status !== 'ACTIVE') {
-                        // Cache is stale - game is no longer active, remove it
-                        logger.debug(`Removing ${gameId} from active cache (status: ${game?.status})`);
-                        await removeFromActiveGamesCache(gameId, this.storage);
-                    }
-                }
-                return games;
+                return await this.getActiveGamesFromCache(cachedList.gameIds);
             }
 
-            // Cache miss or empty - fall back to full scan
+            // Cache miss - fall back to full scan
             logger.info('Active games cache miss - performing full KV scan');
             return await this.getActiveGamesFromFullScan();
             
@@ -308,6 +280,26 @@ export class GameStorage {
             logger.warn('Error reading cached active games list, falling back to full scan:', error);
             return await this.getActiveGamesFromFullScan();
         }
+    }
+
+    /**
+     * Get active games from cached IDs, validating and cleaning up stale entries
+     */
+    private async getActiveGamesFromCache(cachedGameIds: string[]): Promise<GameRecord[]> {
+        const games: GameRecord[] = [];
+        
+        for (const gameId of cachedGameIds) {
+            const game = await this.loadGame(gameId);
+            if (game && game.status === 'ACTIVE') {
+                games.push(game);
+            } else if (game && game.status !== 'ACTIVE') {
+                // Cache is stale - game is no longer active, remove it
+                logger.debug(`Removing ${gameId} from active cache (status: ${game.status})`);
+                await removeFromActiveGamesCache(gameId, this.storage);
+            }
+        }
+        
+        return games;
     }
 
     /**
