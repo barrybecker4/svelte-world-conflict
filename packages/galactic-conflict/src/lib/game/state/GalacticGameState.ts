@@ -58,6 +58,7 @@ export class GalacticGameState {
         if (!this.state.recentConquestEvents) this.state.recentConquestEvents = [];
         if (!this.state.recentPlayerEliminationEvents) this.state.recentPlayerEliminationEvents = [];
         if (!this.state.resourcesByPlayer) this.state.resourcesByPlayer = {};
+        if (!this.state.aiLastDecisionTime) this.state.aiLastDecisionTime = {};
     }
 
     /**
@@ -134,6 +135,19 @@ export class GalacticGameState {
     get endResult(): Player | 'DRAWN_GAME' | null | undefined { return this.state.endResult; }
     set endResult(value: Player | 'DRAWN_GAME' | null | undefined) { this.state.endResult = value; }
     get resourcesByPlayer(): Record<number, number> { return { ...this.playerManager.getResourcesByPlayer() }; }
+    
+    // ==================== AI DECISION TRACKING ====================
+    
+    getAILastDecisionTime(slotIndex: number): number {
+        return this.state.aiLastDecisionTime?.[slotIndex] || 0;
+    }
+    
+    setAILastDecisionTime(slotIndex: number, time: number): void {
+        if (!this.state.aiLastDecisionTime) {
+            this.state.aiLastDecisionTime = {};
+        }
+        this.state.aiLastDecisionTime[slotIndex] = time;
+    }
 
     // ==================== PLANET MANAGEMENT ====================
 

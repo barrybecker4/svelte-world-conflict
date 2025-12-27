@@ -8,7 +8,7 @@ import type { AiDifficulty } from '$lib/game/entities/gameTypes';
 export interface AIDifficultyConfig {
     /** Cooldown time between AI decisions (ms) */
     cooldown: number;
-    
+
     /** Attack configuration */
     attack: {
         /** Minimum ships on source planet to consider attack */
@@ -20,7 +20,7 @@ export interface AIDifficultyConfig {
         /** Defense buffer (ships to keep on planet) */
         defenseBuffer: number;
     };
-    
+
     /** Build configuration */
     build: {
         /** Resource multiplier for build threshold */
@@ -69,17 +69,17 @@ export function getAIDifficultyConfig(difficulty: AiDifficulty): AIDifficultyCon
             };
         case 'hard':
             return {
-                cooldown: 3000, // aggressive
+                cooldown: 2000, // very aggressive - more frequent decisions
                 attack: {
-                    minSourceShips: 3,
-                    minAdvantage: 1,
-                    minShipsToSend: 3,
-                    defenseBuffer: 1,
+                    minSourceShips: 2, // attack with fewer ships
+                    minAdvantage: 0, // allow attacking when equal strength
+                    minShipsToSend: 2, // send small fleets, but not single ships
+                    defenseBuffer: 0, // commit all ships to attacks
                 },
                 build: {
                     resourceMultiplier: 1,
                     minShipsOnPlanet: 0,
-                    maxBuildAtOnce: 10,
+                    maxBuildAtOnce: 20, // build more aggressively
                 },
             };
         default:

@@ -30,12 +30,32 @@ export class AttackStrategy {
         const source = sourcePlanets[0];
 
         // Find the best target
-        const bestTarget = this.findBestTarget(source, this.gameState.planets, player, config);
-        if (!bestTarget) return null;
+        const bestTarget = this.findBestTarget(source, this.gameState.planets, player, difficulty, config);
+        if (!bestTarget) {
+            // Fallback: for hard AI, try to find any viable target
+            if (difficulty === 'hard') {
+                const viableTarget = this.findAnyViableTarget(source, this.gameState.planets, player, config);
+                if (viableTarget) {
+                    const shipsToSend = this.calculateShipsToSend(source, viableTarget, difficulty, config);
+                    if (shipsToSend >= config.attack.minShipsToSend && this.isViableAttack(source, viableTarget, shipsToSend)) {
+                        return {
+                            type: 'send_armada',
+                            sourcePlanetId: source.id,
+                            destinationPlanetId: viableTarget.id,
+                            shipCount: shipsToSend,
+                        };
+                    }
+                }
+            }
+            return null;
+        }
 
         // Calculate ships to send
-        const shipsToSend = this.calculateShipsToSend(source, bestTarget, config);
+        const shipsToSend = this.calculateShipsToSend(source, bestTarget, difficulty, config);
         if (shipsToSend < config.attack.minShipsToSend) return null;
+        
+        // Validate that the attack is viable (not suicidal)
+        if (!this.isViableAttack(source, bestTarget, shipsToSend)) return null;
 
         return {
             type: 'send_armada',
@@ -70,7 +90,7 @@ export class AttackStrategy {
     /**
      * Find the best target planet for an attack from the given source
      */
-    private findBestTarget(source: Planet, allPlanets: Planet[], player: Player, config: AIDifficultyConfig): Planet | null {
+    private findBestTarget(source: Planet, allPlanets: Planet[], player: Player, difficulty: AiDifficulty, config: AIDifficultyConfig): Planet | null {
         const minAdvantage = config.attack.minAdvantage;
         let bestTarget: Planet | null = null;
         let bestScore = -Infinity;
@@ -79,9 +99,59 @@ export class AttackStrategy {
             if (target.ownerId === player.slotIndex) continue;
 
             // Only consider if we have advantage (threshold varies by difficulty)
+            // For hard AI with minAdvantage = 0, this means source.ships > target.ships (equal or better)
             if (source.ships <= target.ships + minAdvantage) continue;
 
-            const score = this.scoreTargetPlanet(target, source, player);
+            const score = this.scoreTargetPlanet(target, source, player, difficulty);
+            if (score > bestScore) {
+                bestScore = score;
+                bestTarget = target;
+            }
+        }
+
+        // For hard AI: if no target meets the advantage threshold, consider targets where we're within 90% of their strength
+        if (!bestTarget && difficulty === 'hard') {
+            for (const target of allPlanets) {
+                if (target.ownerId === player.slotIndex) continue;
+                
+                // Consider targets where we have at least 90% of their strength
+                if (source.ships >= target.ships * 0.9 && source.ships > target.ships + minAdvantage) {
+                    // Verify we can send enough ships to win
+                    const testShips = this.calculateShipsToSend(source, target, difficulty, config);
+                    if (testShips >= config.attack.minShipsToSend && this.isViableAttack(source, target, testShips)) {
+                        const score = this.scoreTargetPlanet(target, source, player, difficulty);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestTarget = target;
+                        }
+                    }
+                }
+            }
+        }
+
+        return bestTarget;
+    }
+    
+    /**
+     * Find any viable target for hard AI when normal criteria don't match
+     * Only considers targets where we can send enough ships to have a reasonable chance of winning
+     */
+    private findAnyViableTarget(source: Planet, allPlanets: Planet[], player: Player, config: AIDifficultyConfig): Planet | null {
+        let bestTarget: Planet | null = null;
+        let bestScore = -Infinity;
+
+        for (const target of allPlanets) {
+            if (target.ownerId === player.slotIndex) continue;
+            
+            // Only consider targets where we have at least 90% of their strength
+            if (source.ships < target.ships * 0.9) continue;
+            
+            // Verify we can send enough ships to win
+            const testShips = this.calculateShipsToSend(source, target, 'hard', config);
+            if (testShips < config.attack.minShipsToSend) continue;
+            if (!this.isViableAttack(source, target, testShips)) continue;
+            
+            const score = this.scoreTargetPlanet(target, source, player, 'hard');
             if (score > bestScore) {
                 bestScore = score;
                 bestTarget = target;
@@ -95,14 +165,23 @@ export class AttackStrategy {
      * Score a target planet based on various factors
      * Higher score = better target
      */
-    private scoreTargetPlanet(target: Planet, source: Planet, player: Player): number {
+    private scoreTargetPlanet(target: Planet, source: Planet, player: Player, difficulty: AiDifficulty): number {
         const distance = getDistanceBetweenPlanets(source, target);
         const isNeutral = target.ownerId === null;
+        const isEnemy = !isNeutral && target.ownerId !== player.slotIndex;
 
         let score = 0;
         score -= target.ships * 10; // Prefer fewer defenders
         score += isNeutral ? 10 : 0; // Slight preference for neutrals
-        score -= distance / 10; // Prefer closer targets
+        
+        // For hard AI, prioritize enemy planets over neutrals and closer targets more heavily
+        if (difficulty === 'hard') {
+            score += isEnemy ? 20 : 0; // Strong preference for enemy planets
+            score -= distance / 5; // Prefer closer targets (more weight)
+        } else {
+            score -= distance / 10; // Prefer closer targets
+        }
+        
         score += target.volume / 5; // Prefer larger planets
 
         return score;
@@ -110,17 +189,54 @@ export class AttackStrategy {
 
     /**
      * Calculate how many ships to send in an attack
+     * Ensures hard AI always sends enough ships to have a reasonable chance of winning
      */
-    private calculateShipsToSend(source: Planet, target: Planet, config: AIDifficultyConfig): number {
+    private calculateShipsToSend(source: Planet, target: Planet, difficulty: AiDifficulty, config: AIDifficultyConfig): number {
         const minShipsToSend = config.attack.minShipsToSend;
-        const minAdvantage = config.attack.minAdvantage;
         const defenseBuffer = config.attack.defenseBuffer;
 
-        // Send enough ships to win, but keep some defense
-        return Math.min(
-            source.ships - defenseBuffer,
-            Math.max(minShipsToSend, Math.floor(target.ships * 1.5) + minAdvantage)
-        );
+        // Calculate base ships needed
+        let shipsNeeded: number;
+        if (difficulty === 'hard') {
+            // For hard AI, use more aggressive multiplier (1.3x) but ensure minimum
+            // Always send at least target.ships + 1 to have a chance of winning
+            shipsNeeded = Math.max(
+                target.ships + 1,
+                Math.ceil(target.ships * 1.3)
+            );
+        } else {
+            // For easy/medium, use conservative multiplier
+            shipsNeeded = Math.max(
+                minShipsToSend,
+                Math.floor(target.ships * 1.5)
+            );
+        }
+
+        // Never send fewer ships than the target has defenders (unless target has 0-1 ships)
+        if (target.ships > 1) {
+            shipsNeeded = Math.max(shipsNeeded, target.ships);
+        }
+
+        // Cap at available ships minus defense buffer
+        const maxAvailable = source.ships - defenseBuffer;
+        return Math.min(maxAvailable, Math.max(minShipsToSend, shipsNeeded));
+    }
+    
+    /**
+     * Validate that an attack is viable (not suicidal)
+     * Ensures we're sending enough ships to have a reasonable chance of winning
+     */
+    private isViableAttack(source: Planet, target: Planet, shipsToSend: number): boolean {
+        // Can't send more ships than we have
+        if (shipsToSend > source.ships) return false;
+        
+        // Can't send fewer ships than the target has defenders (unless target has 0-1 ships)
+        if (target.ships > 1 && shipsToSend < target.ships) return false;
+        
+        // Must send at least 1 ship
+        if (shipsToSend < 1) return false;
+        
+        return true;
     }
 }
 

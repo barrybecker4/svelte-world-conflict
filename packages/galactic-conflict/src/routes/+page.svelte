@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { AdBanner, GameInstructionsModal } from 'shared-ui';
   import GameConfiguration from '$lib/components/configuration/GameConfiguration.svelte';

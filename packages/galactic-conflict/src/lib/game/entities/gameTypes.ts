@@ -244,6 +244,12 @@ export interface GalacticGameStateData {
     
     /** Last state update timestamp */
     lastUpdateTime: number;
+    
+    /** 
+     * Last decision time for each AI player (slot index -> timestamp)
+     * Used to enforce cooldowns between AI decisions
+     */
+    aiLastDecisionTime?: Record<number, number>;
 }
 
 // ==================== PENDING GAME (WAITING ROOM) ====================
