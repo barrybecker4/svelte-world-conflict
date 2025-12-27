@@ -11,16 +11,24 @@ import { generateGameId, createPlayer, handleApiError } from '$lib/server/api-ut
 import { GALACTIC_CONSTANTS } from '$lib/game/constants/gameConstants';
 import { logger } from 'multiplayer-framework/shared';
 
+interface CreateGameRequest {
+    playerName?: string;
+    gameType?: string;
+    playerSlots?: PlayerSlot[];
+    settings?: Partial<GameSettings>;
+}
+
 export const POST: RequestHandler = async ({ request, platform }) => {
     try {
-        const body = await request.json();
+        const body = await request.json() as CreateGameRequest;
         const { playerName, playerSlots = [], settings } = body;
 
         if (!playerName?.trim()) {
             return json({ error: 'Player name is required' }, { status: 400 });
         }
 
-        const gameRecord = createGameRecord(body);
+        // After validation, we know playerName is defined
+        const gameRecord = createGameRecord({ ...body, playerName: playerName.trim() });
         
         await saveGame(gameRecord, platform!);
 
@@ -46,7 +54,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     }
 };
 
-function createGameRecord(body: any): GameRecord {
+function createGameRecord(body: CreateGameRequest & { playerName: string }): GameRecord {
     const {
         playerName,
         gameType = 'MULTIPLAYER',
@@ -57,14 +65,8 @@ function createGameRecord(body: any): GameRecord {
     const gameId = generateGameId();
 
     // Merge settings with defaults
-    // Default neutral planets: if old planetCount exists, calculate neutral from it (for backward compatibility)
-    // Otherwise use default
-    const defaultNeutralPlanets = settings.planetCount 
-        ? Math.max(0, settings.planetCount - 2) // Legacy: assume 2 players
-        : GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT;
-    
     const gameSettings: GameSettings = {
-        neutralPlanetCount: settings.neutralPlanetCount ?? defaultNeutralPlanets,
+        neutralPlanetCount: settings.neutralPlanetCount ?? GALACTIC_CONSTANTS.DEFAULT_NEUTRAL_PLANET_COUNT,
         armadaSpeed: settings.armadaSpeed ?? GALACTIC_CONSTANTS.DEFAULT_ARMADA_SPEED,
         gameDuration: settings.gameDuration ?? GALACTIC_CONSTANTS.DEFAULT_GAME_DURATION_MINUTES,
         stateBroadcastInterval: settings.stateBroadcastInterval ?? GALACTIC_CONSTANTS.DEFAULT_STATE_BROADCAST_INTERVAL_MS,

@@ -30,9 +30,6 @@ export class GalacticGameStateFactory {
         // Create players from slots
         const players = this.createPlayersFromSlots(playerSlots);
 
-        // Calculate total planets: players + neutral planets
-        const totalPlanetCount = players.length + settings.neutralPlanetCount;
-
         // Generate galaxy
         const generator = new GalaxyGenerator(
             GALACTIC_CONSTANTS.GALAXY_WIDTH,
@@ -41,7 +38,7 @@ export class GalacticGameStateFactory {
         );
 
         const planets = generator.generate({
-            planetCount: totalPlanetCount,
+            neutralPlanetCount: settings.neutralPlanetCount,
             playerCount: players.length,
             players,
             seed,

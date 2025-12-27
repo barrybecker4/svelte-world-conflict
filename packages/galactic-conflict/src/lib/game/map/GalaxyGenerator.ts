@@ -10,8 +10,8 @@ import { RandomNumberGenerator } from 'multiplayer-framework/shared';
 import { logger } from 'multiplayer-framework/shared';
 
 export interface GalaxyGenerationOptions {
-    /** Number of planets to generate */
-    planetCount: number;
+    /** Number of neutral planets to generate */
+    neutralPlanetCount: number;
     /** Galaxy width in units */
     width?: number;
     /** Galaxy height in units */
@@ -54,7 +54,7 @@ export class GalaxyGenerator {
      */
     generate(options: GalaxyGenerationOptions): Planet[] {
         const {
-            planetCount,
+            neutralPlanetCount,
             width = this.width,
             height = this.height,
             playerCount,
@@ -63,7 +63,8 @@ export class GalaxyGenerator {
             neutralShipsMultiplierMax = GALACTIC_CONSTANTS.NEUTRAL_SHIPS_MULTIPLIER_MAX,
         } = options;
 
-        logger.debug(`Generating galaxy with ${planetCount} planets for ${playerCount} players`);
+        const totalPlanetCount = playerCount + neutralPlanetCount;
+        logger.debug(`Generating galaxy with ${totalPlanetCount} planets (${playerCount} players, ${neutralPlanetCount} neutral) for ${playerCount} players`);
 
         const planets: Planet[] = [];
 
@@ -72,7 +73,7 @@ export class GalaxyGenerator {
         planets.push(...startingPlanets);
 
         // Then fill in with neutral planets
-        const neutralPlanetsNeeded = planetCount - startingPlanets.length;
+        const neutralPlanetsNeeded = neutralPlanetCount;
         const neutralPlanets = this.placeNeutralPlanets(
             neutralPlanetsNeeded,
             planets,

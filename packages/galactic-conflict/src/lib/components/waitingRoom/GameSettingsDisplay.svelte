@@ -1,7 +1,6 @@
 <script lang="ts">
     export let settings: {
         neutralPlanetCount?: number;
-        planetCount?: number;
         gameDuration?: number;
         armadaSpeed?: number;
     };

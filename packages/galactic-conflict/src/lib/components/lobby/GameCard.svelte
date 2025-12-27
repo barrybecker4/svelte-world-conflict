@@ -6,7 +6,7 @@
     export let game: any;
 
     $: playerCount = game.players?.length || game.playerSlots?.length || 0;
-    $: neutralPlanets = game.settings?.neutralPlanetCount ?? (game.settings?.planetCount ? game.settings.planetCount - playerCount : 8);
+    $: neutralPlanets = game.settings?.neutralPlanetCount ?? 8;
     $: totalPlanets = playerCount + neutralPlanets;
     $: openSlots = game.playerSlots?.filter((s: any) => s.type === 'Open') || [];
 

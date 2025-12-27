@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import GalacticConflictGame from '$lib/components/GalacticConflictGame.svelte';
   import WaitingRoom from '$lib/components/waitingRoom/WaitingRoom.svelte';
   import { goto } from '$app/navigation';
@@ -40,7 +40,7 @@
         // Try to extract error message from response body
         let errorMessage = response.statusText;
         try {
-          const errorData = await response.json();
+          const errorData = await response.json() as { error?: string };
           if (errorData && typeof errorData.error === 'string') {
             errorMessage = errorData.error;
           }
