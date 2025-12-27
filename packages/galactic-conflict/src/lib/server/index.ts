@@ -1,1 +1,1 @@
-export * from './GameLoop';
+export * from './processing/GameLoop';

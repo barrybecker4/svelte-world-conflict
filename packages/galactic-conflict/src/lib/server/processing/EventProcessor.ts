@@ -3,14 +3,14 @@
  * Processes game events (armada arrivals, battles, resource ticks) and broadcasts updates
  */
 
-import { GameStorage, VersionConflictError } from '$lib/server/storage';
-import type { GameRecord } from '$lib/server/storage';
+import { GameStorage, VersionConflictError } from '../storage';
+import type { GameRecord } from '../storage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
 import { processGameState } from './GameLoop';
-import { WebSocketNotifications } from './websocket/WebSocketNotifier';
+import { WebSocketNotifications } from '../websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';
-import { captureGameStateBefore, captureGameStateAfter, detectGameStateChanges, type GameStateSnapshot } from './utils/detectGameStateChanges';
-import { formatEndResult } from './utils/gameStateFormatters';
+import { captureGameStateBefore, captureGameStateAfter, detectGameStateChanges, type GameStateSnapshot } from '../utils/detectGameStateChanges';
+import { formatEndResult } from '../utils/gameStateFormatters';
 
 /**
  * Load and validate game record
@@ -59,40 +59,6 @@ function processAndDetectChanges(gameState: GalacticGameState): {
     return { stateBefore, stateAfter, hasChanges };
 }
 
-/**
- * Calculate number of replays added
- */
-function calculateReplaysAdded(stateBefore: GameStateSnapshot, stateAfter: GameStateSnapshot): number {
-    return stateAfter.replays - stateBefore.replays;
-}
-
-/**
- * Calculate number of armadas that arrived
- */
-function calculateArmadasArrived(stateBefore: GameStateSnapshot, stateAfter: GameStateSnapshot): number {
-    return stateBefore.armadas - stateAfter.armadas;
-}
-
-/**
- * Format the processing summary log message
- */
-function formatProcessingSummary(
-    gameId: string,
-    replaysAdded: number,
-    armadasArrived: number,
-    stateBefore: GameStateSnapshot,
-    stateAfter: GameStateSnapshot
-): string {
-    const parts = [
-        `[EventProcessor] Processed events for game ${gameId}:`,
-        `${replaysAdded} new replays,`,
-        `${armadasArrived} armadas arrived,`,
-        `status: ${stateBefore.status} -> ${stateAfter.status},`,
-        `endResult: ${formatEndResult(stateBefore.endResult)} -> ${formatEndResult(stateAfter.endResult)},`,
-        `lastUpdate: ${stateBefore.lastUpdateTime} -> ${stateAfter.lastUpdateTime}`
-    ];
-    return parts.join(' ');
-}
 
 /**
  * Broadcast updates and save game state
@@ -130,10 +96,16 @@ async function broadcastAndSaveChanges(
         // Save succeeded - now broadcast the state (which includes battle replays)
         await WebSocketNotifications.gameUpdate(gameId, stateForBroadcast);
 
-        const replaysAdded = calculateReplaysAdded(stateBefore, stateAfter);
-        const armadasArrived = calculateArmadasArrived(stateBefore, stateAfter);
-        const summary = formatProcessingSummary(gameId, replaysAdded, armadasArrived, stateBefore, stateAfter);
-        logger.info(summary);
+        const replaysAdded = stateAfter.replays - stateBefore.replays;
+        const armadasArrived = stateBefore.armadas - stateAfter.armadas;
+        logger.info(
+            `[EventProcessor] Processed events for game ${gameId}: ` +
+            `${replaysAdded} new replays, ` +
+            `${armadasArrived} armadas arrived, ` +
+            `status: ${stateBefore.status} -> ${stateAfter.status}, ` +
+            `endResult: ${formatEndResult(stateBefore.endResult)} -> ${formatEndResult(stateAfter.endResult)}, ` +
+            `lastUpdate: ${stateBefore.lastUpdateTime} -> ${stateAfter.lastUpdateTime}`
+        );
     } catch (error) {
         // If version conflict, DO NOT broadcast - another process already has newer data
         // The next EventProcessor run will pick up the correct state
@@ -176,3 +148,4 @@ export async function processGameEvents(
         return false;
     }
 }
+

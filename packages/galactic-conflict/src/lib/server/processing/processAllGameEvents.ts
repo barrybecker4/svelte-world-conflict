@@ -2,7 +2,7 @@
  * Shared function to process events for all active games
  */
 
-import { GameStorage } from './storage/GameStorage';
+import { GameStorage } from '../storage/GameStorage';
 import { processGameEvents } from './EventProcessor';
 import { logger } from 'multiplayer-framework/shared';
 
@@ -69,3 +69,4 @@ export async function processAllGameEvents(
         return { gamesProcessed, eventsProcessed, errors };
     }
 }
+

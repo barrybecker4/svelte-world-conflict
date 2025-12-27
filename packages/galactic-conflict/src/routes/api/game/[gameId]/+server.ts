@@ -6,7 +6,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GameStorage, VersionConflictError, type GameRecord } from '$lib/server/storage/GameStorage';
 import { GalacticGameState } from '$lib/game/state/GalacticGameState';
-import { processGameState } from '$lib/server/GameLoop';
+import { processGameState } from '$lib/server/processing/GameLoop';
 import { handleApiError } from '$lib/server/api-utils';
 import { WebSocketNotifications } from '$lib/server/websocket/WebSocketNotifier';
 import { logger } from 'multiplayer-framework/shared';

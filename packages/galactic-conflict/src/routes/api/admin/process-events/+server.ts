@@ -6,7 +6,7 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { processAllGameEvents } from '$lib/server/processAllGameEvents';
+import { processAllGameEvents } from '$lib/server/processing/processAllGameEvents';
 import { logger } from 'multiplayer-framework/shared';
 
 export const POST: RequestHandler = async ({ platform }) => {
