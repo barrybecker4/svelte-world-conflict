@@ -34,15 +34,22 @@ export class DecisionExecutor {
      * Execute sending an armada
      */
     private executeSendArmada(player: Player, decision: AIDecision): void {
-        if (!decision.sourcePlanetId || !decision.destinationPlanetId || !decision.shipCount) {
+        // Check for undefined/null (not falsy, since 0 is a valid planet ID)
+        if (decision.sourcePlanetId === undefined || decision.sourcePlanetId === null ||
+            decision.destinationPlanetId === undefined || decision.destinationPlanetId === null ||
+            decision.shipCount === undefined || decision.shipCount === null) {
             return;
         }
 
         const sourcePlanet = this.gameState.getPlanet(decision.sourcePlanetId);
         const destPlanet = this.gameState.getPlanet(decision.destinationPlanetId);
 
-        if (!sourcePlanet || !destPlanet) return;
-        if (sourcePlanet.ships < decision.shipCount) return;
+        if (!sourcePlanet || !destPlanet) {
+            return;
+        }
+        if (sourcePlanet.ships < decision.shipCount) {
+            return;
+        }
 
         // Create armada
         const armada = createArmada(
@@ -57,24 +64,27 @@ export class DecisionExecutor {
         this.gameState.setPlanetShips(sourcePlanet.id, sourcePlanet.ships - decision.shipCount);
         this.gameState.addArmada(armada);
 
-        logger.debug(`AI ${player.name} sent ${decision.shipCount} ships from ${sourcePlanet.name} to ${destPlanet.name}`);
+        logger.info(`[DecisionExecutor] AI ${player.name} sent ${decision.shipCount} ships from ${sourcePlanet.name} (${sourcePlanet.id}) to ${destPlanet.name} (${destPlanet.id})`);
     }
 
     /**
      * Execute building ships
      */
     private executeBuildShips(player: Player, decision: AIDecision): void {
-        if (!decision.sourcePlanetId || !decision.shipCount) return;
+        // Check for undefined/null (not falsy, since 0 is a valid planet ID)
+        if (decision.sourcePlanetId === undefined || decision.sourcePlanetId === null ||
+            decision.shipCount === undefined || decision.shipCount === null) {
+            return;
+        }
 
         const planet = this.gameState.getPlanet(decision.sourcePlanetId);
         if (!planet) return;
 
         const cost = decision.shipCount * GALACTIC_CONSTANTS.SHIP_COST;
         const playerResources = this.gameState.getPlayerResources(player.slotIndex);
-        
+
         // Check if player has enough global resources
         if (playerResources < cost) {
-            logger.debug(`AI ${player.name} attempted to build ${decision.shipCount} ships but only has ${playerResources} resources (needs ${cost})`);
             return;
         }
 
@@ -82,7 +92,7 @@ export class DecisionExecutor {
         this.gameState.spendPlayerResources(player.slotIndex, cost);
         this.gameState.addPlanetShips(planet.id, decision.shipCount);
 
-        logger.debug(`AI ${player.name} built ${decision.shipCount} ships at ${planet.name} for ${cost} resources (remaining: ${this.gameState.getPlayerResources(player.slotIndex)})`);
+        logger.info(`[DecisionExecutor] AI ${player.name} built ${decision.shipCount} ships at ${planet.name} (${planet.id}) for ${cost} resources (remaining: ${this.gameState.getPlayerResources(player.slotIndex).toFixed(1)})`);
     }
 }
 

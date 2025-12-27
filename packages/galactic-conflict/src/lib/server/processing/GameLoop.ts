@@ -238,8 +238,9 @@ export function processGameState(gameState: GalacticGameState, currentTime?: num
     processEvents(gameState, battleManager, currentTime);
 
     // Process AI decisions for AI players
+    // Pass currentTime to ensure AI decision timing is synchronized with game state time
     if (!gameState.isGameComplete()) {
-        processAITurns(gameState);
+        processAITurns(gameState, currentTime);
     }
 
     return gameState;

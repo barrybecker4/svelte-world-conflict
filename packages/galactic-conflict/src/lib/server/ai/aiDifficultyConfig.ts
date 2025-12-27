@@ -43,23 +43,23 @@ export function getAIDifficultyConfig(difficulty: AiDifficulty): AIDifficultyCon
                 attack: {
                     minSourceShips: 10,
                     minAdvantage: 4,
-                    minShipsToSend: 5,
-                    defenseBuffer: 4,
+                    minShipsToSend: 6,
+                    defenseBuffer: 5,
                 },
                 build: {
                     resourceMultiplier: 2,
                     minShipsOnPlanet: 3,
-                    maxBuildAtOnce: 2,
+                    maxBuildAtOnce: 3,
                 },
             };
         case 'medium':
             return {
                 cooldown: 10000, // moderate
                 attack: {
-                    minSourceShips: 5,
+                    minSourceShips: 6,
                     minAdvantage: 2,
                     minShipsToSend: 4,
-                    defenseBuffer: 2,
+                    defenseBuffer: 3,
                 },
                 build: {
                     resourceMultiplier: 1.5,
@@ -69,12 +69,12 @@ export function getAIDifficultyConfig(difficulty: AiDifficulty): AIDifficultyCon
             };
         case 'hard':
             return {
-                cooldown: 2000, // very aggressive - more frequent decisions
+                cooldown: 2500, // very aggressive - more frequent decisions
                 attack: {
                     minSourceShips: 2, // attack with fewer ships
-                    minAdvantage: 0, // allow attacking when equal strength
+                    minAdvantage: 1, // require slight advantage for primary attacks
                     minShipsToSend: 2, // send small fleets, but not single ships
-                    defenseBuffer: 0, // commit all ships to attacks
+                    defenseBuffer: 2, // keep 1 ship for defense
                 },
                 build: {
                     resourceMultiplier: 1,

@@ -37,7 +37,17 @@
       const response = await fetch(`/api/game/${gameId}`);
       
       if (!response.ok) {
-        throw new Error(`Failed to load game: ${response.statusText}`);
+        // Try to extract error message from response body
+        let errorMessage = response.statusText;
+        try {
+          const errorData = await response.json();
+          if (errorData && typeof errorData.error === 'string') {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // If JSON parsing fails, use statusText
+        }
+        throw new Error(`Failed to load game: ${errorMessage}`);
       }
 
       const data = await response.json() as GameApiResponse;

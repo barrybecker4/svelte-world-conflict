@@ -93,7 +93,17 @@ async function saveAndBroadcastIfNeeded(
 export const GET: RequestHandler = async ({ params, platform }) => {
     try {
         const { gameId } = params;
-        const gameStorage = GameStorage.create(platform!);
+        
+        if (!platform) {
+            logger.error('[GET /game] Platform not available');
+            return json({ error: 'Platform not available' }, { status: 503 });
+        }
+        
+        if (!gameId) {
+            return json({ error: 'Game ID is required' }, { status: 400 });
+        }
+        
+        const gameStorage = GameStorage.create(platform);
         const gameRecord = await gameStorage.loadGame(gameId);
 
         if (!gameRecord) {
@@ -112,33 +122,48 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         }
 
         // For ACTIVE games, process events and return current state
-        if (gameRecord.status === 'ACTIVE' && gameRecord.gameState) {
-            const expectedLastUpdateAt = gameRecord.lastUpdateAt;
-            const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
-            
-            const before = captureSnapshot(gameState);
-            processGameState(gameState);
-            const after = captureSnapshot(gameState);
-            
-            const hasChanges = hasStateChanged(before, after);
-            
-            if (hasChanges) {
-                await saveAndBroadcastIfNeeded(
-                    gameId,
-                    gameRecord,
-                    gameState,
-                    before,
-                    after,
-                    gameStorage,
-                    expectedLastUpdateAt
-                );
+        if (gameRecord.status === 'ACTIVE') {
+            if (!gameRecord.gameState) {
+                logger.error(`[GET /game] Game ${gameId} is ACTIVE but has no gameState`);
+                return json({ error: 'Game state is missing' }, { status: 500 });
             }
+            
+            try {
+                const expectedLastUpdateAt = gameRecord.lastUpdateAt;
+                const gameState = GalacticGameState.fromJSON(gameRecord.gameState);
+                
+                const before = captureSnapshot(gameState);
+                processGameState(gameState);
+                const after = captureSnapshot(gameState);
+                
+                const hasChanges = hasStateChanged(before, after);
+                
+                if (hasChanges) {
+                    await saveAndBroadcastIfNeeded(
+                        gameId,
+                        gameRecord,
+                        gameState,
+                        before,
+                        after,
+                        gameStorage,
+                        expectedLastUpdateAt
+                    );
+                }
 
-            return json({
-                gameId: gameRecord.gameId,
-                status: hasChanges ? after.status : gameRecord.status,
-                gameState: hasChanges ? gameState.toJSON() : gameRecord.gameState,
-            });
+                return json({
+                    gameId: gameRecord.gameId,
+                    status: hasChanges ? after.status : gameRecord.status,
+                    gameState: hasChanges ? gameState.toJSON() : gameRecord.gameState,
+                });
+            } catch (processingError) {
+                logger.error(`[GET /game] Error processing game state for ${gameId}:`, processingError);
+                // Return the unprocessed state if processing fails
+                return json({
+                    gameId: gameRecord.gameId,
+                    status: gameRecord.status,
+                    gameState: gameRecord.gameState,
+                });
+            }
         }
 
         // COMPLETED games

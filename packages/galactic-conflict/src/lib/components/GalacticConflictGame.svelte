@@ -107,6 +107,13 @@
      * Automatically stops when the game is completed.
      */
     function startEventProcessing() {
+        // Clear any existing interval before starting a new one
+        if (devEventProcessingInterval) {
+            logger.debug('Clearing existing event processing interval before starting new one');
+            clearInterval(devEventProcessingInterval);
+            devEventProcessingInterval = null;
+        }
+
         logger.debug('Starting event processing interval');
         devEventProcessingInterval = setInterval(async () => {
             // Stop polling if game is completed
@@ -123,11 +130,17 @@
             try {
                 await GameApiClient.processEvents();
             } catch (error) {
-                // Silently fail - this is just triggering server-side processing
-                // Errors are logged server-side
+                // Log error but continue running - this is just triggering server-side processing
+                // Errors are logged server-side, but we want to ensure the interval keeps running
                 logger.debug('Event processing trigger failed (non-critical):', error);
+                // Don't clear the interval - keep trying
             }
         }, 2000); // Every 2 seconds
+
+        // Verify interval was created successfully
+        if (!devEventProcessingInterval) {
+            logger.error('Failed to create event processing interval');
+        }
     }
 
     onMount(async () => {
