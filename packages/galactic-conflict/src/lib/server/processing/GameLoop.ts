@@ -16,6 +16,18 @@ import { processAITurns } from '../ai';
 import { hasArmadaArrived } from '$lib/game/entities/Armada';
 
 /**
+ * Minimum time an armada must be in transit before it can be processed as arrived.
+ * This prevents newly created armadas from being immediately processed due to clock skew.
+ */
+const MIN_ARMADA_TRAVEL_TIME_MS = 400;
+
+/**
+ * Buffer time added to game state's lastUpdateTime when processing events.
+ * Prevents processing events that were created in the same millisecond as the last update.
+ */
+const EVENT_PROCESSING_TIME_BUFFER_MS = 100;
+
+/**
  * Process all armadas that have arrived
  * This is the source of truth - armadas contain their arrival time
  * @returns true if any armadas were processed
@@ -26,6 +38,30 @@ function processArrivedArmadas(gameState: GalacticGameState, battleManager: Batt
 
     // Find all armadas that have arrived
     for (const armada of armadas) {
+        // Validate armada has valid departure time (not in the future)
+        if (armada.departureTime > currentTime) {
+            logger.warn(
+                `[GameLoop] Skipping armada ${armada.id} with future departure time: ` +
+                `departureTime=${new Date(armada.departureTime).toISOString()}, ` +
+                `currentTime=${new Date(currentTime).toISOString()}`
+            );
+            continue;
+        }
+
+        // Check minimum travel time to prevent processing newly created armadas
+        const timeInTransit = currentTime - armada.departureTime;
+        if (timeInTransit < MIN_ARMADA_TRAVEL_TIME_MS) {
+            logger.debug(
+                `[GameLoop] Skipping armada ${armada.id} - not enough time in transit: ` +
+                `${timeInTransit}ms < ${MIN_ARMADA_TRAVEL_TIME_MS}ms ` +
+                `(departureTime=${new Date(armada.departureTime).toISOString()}, ` +
+                `arrivalTime=${new Date(armada.arrivalTime).toISOString()}, ` +
+                `currentTime=${new Date(currentTime).toISOString()})`
+            );
+            continue;
+        }
+
+        // Check if armada has actually arrived
         if (hasArmadaArrived(armada, currentTime)) {
             arrivedArmadas.push(armada.id);
         }
@@ -33,7 +69,17 @@ function processArrivedArmadas(gameState: GalacticGameState, battleManager: Batt
 
     // Process each arrived armada
     for (const armadaId of arrivedArmadas) {
-        logger.info(`[GameLoop] Processing arrived armada ${armadaId} (checked directly from armada state)`);
+        const armada = gameState.getArmada(armadaId);
+        if (armada) {
+            logger.info(
+                `[GameLoop] Processing arrived armada ${armadaId}: ` +
+                `${armada.ships} ships from planet ${armada.sourcePlanetId} to ${armada.destinationPlanetId}, ` +
+                `departureTime=${new Date(armada.departureTime).toISOString()}, ` +
+                `arrivalTime=${new Date(armada.arrivalTime).toISOString()}, ` +
+                `currentTime=${new Date(currentTime).toISOString()}, ` +
+                `timeInTransit=${currentTime - armada.departureTime}ms`
+            );
+        }
         battleManager.handleArmadaArrival(armadaId);
     }
 
@@ -164,8 +210,30 @@ function processEvents(gameState: GalacticGameState, battleManager: BattleManage
 /**
  * Process a game state and return the updated state
  * This is the main entry point for game updates
+ *
+ * @param gameState - The game state to process
+ * @param currentTime - Optional current time. If not provided, uses game state's lastUpdateTime + buffer,
+ *                     or Date.now() if that would be in the past. This ensures consistent time tracking
+ *                     across distributed workers and prevents processing events that were just created.
  */
-export function processGameState(gameState: GalacticGameState, currentTime: number = Date.now()): GalacticGameState {
+export function processGameState(gameState: GalacticGameState, currentTime?: number): GalacticGameState {
+    // If currentTime is not provided, use game state's lastUpdateTime as baseline
+    // Add buffer to prevent processing events created in the same millisecond
+    // But ensure we don't go backwards in time
+    if (currentTime === undefined) {
+        const baselineTime = gameState.state.lastUpdateTime + EVENT_PROCESSING_TIME_BUFFER_MS;
+        const now = Date.now();
+        currentTime = Math.max(baselineTime, now);
+
+        logger.debug(
+            `[GameLoop] Using calculated currentTime: ` +
+            `lastUpdateTime=${new Date(gameState.state.lastUpdateTime).toISOString()}, ` +
+            `baselineTime=${new Date(baselineTime).toISOString()}, ` +
+            `now=${new Date(now).toISOString()}, ` +
+            `currentTime=${new Date(currentTime).toISOString()}`
+        );
+    }
+
     const battleManager = new BattleManager(gameState);
     processEvents(gameState, battleManager, currentTime);
 
