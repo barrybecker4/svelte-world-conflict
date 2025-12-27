@@ -5,7 +5,6 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { GameStorage } from '$lib/server/storage/GameStorage';
 import { rebuildActiveGamesCache } from '$lib/server/storage/ActiveGamesCache';
 import { KVStorage } from '$lib/server/storage/KVStorage';
 import { logger } from 'multiplayer-framework/shared';

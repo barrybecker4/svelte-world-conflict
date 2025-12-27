@@ -8,6 +8,31 @@ import { GameStorage, VersionConflictError } from '$lib/server/storage/GameStora
 import { createArmada } from '$lib/game/entities/Armada';
 import { loadActiveGame, saveAndNotify, withRetry } from '$lib/server/api-utils';
 import { logger } from 'multiplayer-framework/shared';
+import type { Planet } from '$lib/game/entities/gameTypes';
+
+function validatePath(
+    sourcePlanet: Planet | undefined,
+    destinationPlanet: Planet | undefined,
+    playerId?: number,
+    shipCount?: number
+): { sourcePlanet: Planet; destinationPlanet: Planet } {
+    if (!sourcePlanet) {
+        throw new Error('Source planet not found');
+    }
+    if (!destinationPlanet) {
+        throw new Error('Destination planet not found');
+    }
+    if (sourcePlanet.id === destinationPlanet.id) {
+        throw new Error('Source and destination must be different');
+    }
+    if (playerId !== undefined && sourcePlanet.ownerId !== playerId) {
+        throw new Error('You do not own the source planet');
+    }
+    if (shipCount !== undefined && sourcePlanet.ships < shipCount) {
+        throw new Error('Not enough ships on source planet');
+    }
+    return { sourcePlanet, destinationPlanet };
+}
 
 export const POST: RequestHandler = async ({ params, request, platform }) => {
     try {
@@ -38,31 +63,18 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             const sourcePlanet = gameState.getPlanet(sourcePlanetId);
             const destinationPlanet = gameState.getPlanet(destinationPlanetId);
 
-            if (!sourcePlanet) {
-                throw new Error('Source planet not found');
-            }
-            if (!destinationPlanet) {
-                throw new Error('Destination planet not found');
-            }
-            if (sourcePlanet.ownerId !== playerId) {
-                throw new Error('You do not own the source planet');
-            }
-            if (sourcePlanet.ships < shipCount) {
-                throw new Error('Not enough ships on source planet');
-            }
-            if (sourcePlanetId === destinationPlanetId) {
-                throw new Error('Source and destination must be different');
-            }
+            const { sourcePlanet: validatedSource, destinationPlanet: validatedDestination } = 
+                validatePath(sourcePlanet, destinationPlanet, playerId, shipCount);
 
             // Remove ships from source planet
-            gameState.setPlanetShips(sourcePlanetId, sourcePlanet.ships - shipCount);
+            gameState.setPlanetShips(sourcePlanetId, validatedSource.ships - shipCount);
 
             // Create and add armada
             const armada = createArmada(
                 playerId,
                 shipCount,
-                sourcePlanet,
-                destinationPlanet,
+                validatedSource,
+                validatedDestination,
                 gameState.armadaSpeed
             );
 
@@ -75,8 +87,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
             return {
                 armada,
-                sourcePlanetName: sourcePlanet.name,
-                destinationPlanetName: destinationPlanet.name,
+                sourcePlanetName: validatedSource.name,
+                destinationPlanetName: validatedDestination.name,
             };
         }, { operationName: 'send-armada' });
 

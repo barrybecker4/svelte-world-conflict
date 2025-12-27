@@ -61,7 +61,6 @@ function processAndDetectChanges(gameState: GalacticGameState): {
     return { stateBefore, stateAfter, hasChanges };
 }
 
-
 /**
  * Prepare game state for broadcast by capturing state and clearing events
  */
@@ -226,4 +225,3 @@ export async function processGameEvents(
         return false;
     }
 }
-
